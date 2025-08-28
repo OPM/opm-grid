@@ -362,9 +362,9 @@ void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
 /// @param [out] refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace  
 ///     Inverse mapping: (refined level grid, refined face idx)->(marked element idx, marked-element-refined face idx).
 /// @param [out] refined_face_count_vec  Number of refined faces per refined level grid.
-/// @param [in] markedElem_to_itsLgr  
-/// @param [in] assignRefinedLevel  
-/// @param [in] faceInMarkedElemAndRefinedFaces  
+/// @param [in] markedElem_to_itsLgr
+/// @param [in] assignRefinedLevel
+/// @param [in] faceInMarkedElemAndRefinedFaces
 /// @param [in] cells_per_dim_vec
 void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                                   int preAdaptMaxLevel,
@@ -390,7 +390,8 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
 /// @param [in] assignRefinedLevel
 /// @param [in] faceInMarkedElemAndRefinedFaces
 /// @param [in] cells_per_dim_vec
-void identifyLeafGridFaces(const Dune::CpGrid& grid,
+void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
+                           int preAdaptMaxLevel,
                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
                            std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
                            int& face_count,

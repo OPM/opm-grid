@@ -969,7 +969,8 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
     } // end-elem loop
 }
 
-void identifyLeafGridFaces(const Dune::CpGrid& grid,
+void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
+                           int preAdaptMaxLevel,
                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
                            std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
                            int& face_count,
@@ -978,10 +979,8 @@ void identifyLeafGridFaces(const Dune::CpGrid& grid,
                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
-    const int preAdaptMaxLevel = grid.maxLevel();
-
     // Step 1. Add LGR faces (new refined ones)
-    for (int elem = 0; elem < grid.currentData().back()->size(0); ++elem) {
+    for (int elem = 0; elem < current_data.size(0); ++elem) {
         if (!markedElem_to_itsLgr[elem]) continue;
 
         const int level = assignRefinedLevel[elem];
@@ -1005,7 +1004,7 @@ void identifyLeafGridFaces(const Dune::CpGrid& grid,
                 // of the marked element that got refined, then, we have two cases:
                 // - the marked face appears only in one marked element -> then, we store this face now.
                 // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(), cells_per_dim_vec[shiftedLevel],
+                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(current_data, cells_per_dim_vec[shiftedLevel],
                                                                         face, markedElem_to_itsLgr[elem], elem);
 
                 assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
@@ -1023,7 +1022,7 @@ void identifyLeafGridFaces(const Dune::CpGrid& grid,
     } // end-elem loop
 
     // Step 2. Add original grid faces not involved in any LGR
-    for (int face = 0; face < grid.currentData().back()->numFaces(); ++face) {
+    for (int face = 0; face < current_data.numFaces(); ++face) {
         if (faceInMarkedElemAndRefinedFaces[face].empty()) {
             insertBidirectional(elemLgrAndElemLgrFace_to_adaptedFace,
                                 adaptedFace_to_elemLgrAndElemLgrFace,

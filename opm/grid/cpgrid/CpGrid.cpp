@@ -2170,7 +2170,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::unordered_map< int, std::array<int,2> > adaptedFace_to_elemLgrAndElemLgrFace;
     // Integer to count adapted faces (mixed between faces from current_view_data_ (not involved in LGRs), and (new-born) refined faces).
     int face_count = 0;
-    Opm::Lgr::identifyLeafGridFaces(*this,
+    Opm::Lgr::identifyLeafGridFaces(*currentData().back(),
+                                    preAdaptMaxLevel,
                                     elemLgrAndElemLgrFace_to_adaptedFace,
                                     adaptedFace_to_elemLgrAndElemLgrFace,
                                     face_count,
