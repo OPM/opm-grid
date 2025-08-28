@@ -1284,7 +1284,7 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
     }
 }
 
-void populateRefinedCells(const Dune::CpGrid& grid,
+void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>>& refined_cells_vec,
                           std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
                           std::vector<std::vector<int>>& refined_global_cell_vec,
@@ -1323,7 +1323,7 @@ void populateRefinedCells(const Dune::CpGrid& grid,
 
             // global_cell_ values of refined cells from level grid created via adapt() (i.e., without parameters startIJK, endIJK
             // delimiting a block of parent cells) inherit the global_cell_ value of its parent cell.
-            refined_global_cell_vec[shiftedLevel][cell] = grid.currentData().back()->globalCell()[elemLgr];
+            refined_global_cell_vec[shiftedLevel][cell] = current_data.globalCell()[elemLgr];
             
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             const auto& preAdapt_cell_to_point = markedElem_to_itsLgr.at(elemLgr)->cellToPoint(elemLgrCell);
@@ -1373,7 +1373,7 @@ void populateRefinedCells(const Dune::CpGrid& grid,
                 auto face_candidate = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.find({elemLgr, preAdaptFace});
                 if (face_candidate == elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.end()) {
                     // Get the index of the marked face where the refined face was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(),
+                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(current_data,
                                                                                     cells_per_dim_vec[shiftedLevel],
                                                                                     preAdaptFace,
                                                                                     markedElem_to_itsLgr[elemLgr], elemLgr);
@@ -1461,7 +1461,7 @@ int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
     OPM_THROW(std::logic_error,  "Cannot convert face index from one LGR to its neighboring LGR.");
 }
 
-void setRefinedLevelGridsGeometries(const Dune::CpGrid& grid,
+void setRefinedLevelGridsGeometries(const Dune::cpgrid::CpGridData& current_data,
                                     /* Refined corner arguments */
                                     std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
                                     const std::vector<int>& refined_corner_count_vec,
@@ -1514,7 +1514,7 @@ void setRefinedLevelGridsGeometries(const Dune::CpGrid& grid,
                          cornerInMarkedElemWithEquivRefinedCorner,
                          markedElemAndEquivRefinedCorn_to_corner);
     // --- Refined cells  ---
-    populateRefinedCells(grid,
+    populateRefinedCells(current_data,
                          refined_cells_vec,
                          refined_cell_to_point_vec,
                          refined_global_cell_vec,

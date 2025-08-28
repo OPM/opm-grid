@@ -2180,7 +2180,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                     faceInMarkedElemAndRefinedFaces,
                                     cells_per_dim_vec);
 
-    Opm::Lgr::setRefinedLevelGridsGeometries(*this,
+    Opm::Lgr::setRefinedLevelGridsGeometries(*currentData().back(),
                                              /* Refined corner arguments */
                                              refined_corners_vec,
                                              refined_corner_count_vec,
