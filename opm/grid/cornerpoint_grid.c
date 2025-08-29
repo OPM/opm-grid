@@ -169,7 +169,7 @@ create_grid_cornerpoint(const struct grdecl *in,
 {
     struct UnstructuredGrid *g;
     int                      ok;
-    struct processed_grid    pg;
+    struct processed_grid    pg = {0};
 
     g = create_grid_empty();
     if (g == NULL) {
