@@ -1813,11 +1813,8 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     // Get parent cell
     const cpgrid::Geometry<3,3>& parent_cell = (*(geometry_.geomVector(std::integral_constant<int,0>())))[EntityRep<0>(parent_idx, true)];
     // Get parent cell corners.
-    const std::array<int,8>& parent_to_point = this->cell_to_point_[parent_idx];
-    const std::set<int> nonRepeated_parentCorners(parent_to_point.begin(), parent_to_point.end());
-    if (nonRepeated_parentCorners.size() != 8){
-        OPM_THROW(std::logic_error, "Cell is not a hexahedron. Cannot be refined (yet).");
-    }
+    const auto& parent_to_point = this->cell_to_point_[parent_idx];
+    Opm::Lgr::containsEightDifferentCorners(parent_to_point);
     // Refine parent cell
     parent_cell.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                                      refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
