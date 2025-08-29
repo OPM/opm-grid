@@ -206,6 +206,12 @@ PartitionType getPartitionType(const PartitionTypeIndicator& p, int i,
     return p.getPartitionType(Entity<3>(grid, i, true));
 }
 
+int getIndex(std::vector<int>::const_iterator  i)
+{
+     return *i;
+}
+
+
 int getIndex(const int* i)
 {
     return *i;
@@ -925,7 +931,7 @@ struct AttributeDataHandle
 
     bool fixedSize()
     {
-        return true;
+        return false;
     }
     std::size_t size(std::size_t i)
     {
@@ -934,8 +940,7 @@ struct AttributeDataHandle
     template<class B>
     void gather(B& buffer, std::size_t i)
     {
-        typedef typename GetRowType<T>::type::const_iterator RowIter;
-        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
+        for(auto f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f)
         {
             char t=getPartitionType(indicator_, *f, grid_);
@@ -946,8 +951,7 @@ struct AttributeDataHandle
     template<class B>
     void scatter(B& buffer, std::size_t i, std::size_t s)
     {
-        typedef typename GetRowType<T>::type::const_iterator RowIter;
-        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
+        for(auto f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f, --s)
         {
             std::pair<int,char> rank_attr;
@@ -1608,6 +1612,8 @@ void CpGridData::computePointPartitionType()
     // type border, then the type of the point is overwritten with border. In the other cases
     // we set the type of the point to the one of the face as long as the type of the point is
     // not border.
+    // ghost should never happen;
+    std::array<Dune::PartitionType,4> type_order({InteriorEntity,OverlapEntity,BorderEntity,FrontEntity});
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
                                                        InteriorEntity);
     for(int i=0; i<face_to_point_.size(); ++i)
@@ -1617,15 +1623,37 @@ void CpGridData::computePointPartitionType()
         {
             PartitionType new_type=partition_type_indicator_->getFacePartitionType(i);
             PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
-            if(old_type==InteriorEntity)
-            {
-                if(new_type!=OverlapEntity)
-                    partition_type_indicator_->point_indicator_[*p]=new_type;
+            int new_order=-1;
+            int old_order=-1;
+            for(int j=0; j < 4; ++j){
+                if(new_type == type_order[j]){
+                    new_order = j;
+                }
+                if(old_type == type_order[j]){
+                    old_order = j;
+                }
             }
-            if(old_type==OverlapEntity)
-                partition_type_indicator_->point_indicator_[*p]=new_type;
-            if(old_type==FrontEntity && new_type==BorderEntity)
-                partition_type_indicator_->point_indicator_[*p]=new_type;
+            assert(new_order>=0);
+            assert(old_order>=0);
+            if(old_order== 3){//font
+                // something which is in contact with overlap or front can not be in contact with interior face
+                if(new_order == 0){
+                    std::cout << "Front and Interior face at same node" << std::endl;
+                }
+                if(new_order == 2){
+                    std::cout << "Front and Border face at same node" << std::endl;
+                }
+            }
+            if(old_order == 2){// border
+                if(new_order ==3){
+                    std::cout << "Border and Front face at same node" << std::endl;
+                }
+            }
+            
+
+            if(new_order> old_order){
+                partition_type_indicator_->point_indicator_[*p]= type_order[new_order];
+            }
         }
     }
 #endif
@@ -1670,6 +1698,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
     face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
     */
+    /*
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
     AttributeDataHandle<std::vector<std::array<int,8> > >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
@@ -1680,6 +1709,43 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
         comm.forward(point_handle);
     }
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
+                     point_interfaces_);
+                     */
+    //point inter_face all
+    size_t nc = cell_to_point_.size();
+    std::vector<int> points;
+    for (size_t cell = 0; cell < nc; ++cell) {
+        const auto& faces = cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
+        int nf = faces.size();
+        // new code
+        points.clear();
+        for (int f = 0; f < nf; ++f) {
+            auto face = faces[f].index();
+            const auto& fnodes = face_to_point_[face];
+            // auto faceSize = fnodes.size();
+            //  std::set<int> nodes;
+            for (const auto& fv : fnodes) {
+                // for (int v = 0; v < faceSize; ++v) {
+                //   int fv = fnodes[v];
+                points.push_back(fv);
+            }
+        }
+        std::sort(points.begin(), points.end());
+        auto unique_end = std::unique(points.begin(), points.end());
+        points.erase(unique_end, points.end());
+        cell_to_allpoint_.appendRow(points.begin(), points.end());
+    }
+
+    std::vector<std::map<int,char> > allpoint_attributes(noExistingPoints);
+    AttributeDataHandle<Opm::SparseTable<int> >
+        allpoint_handle(ccobj_.rank(), *partition_type_indicator_,
+                     allpoint_attributes, cell_to_allpoint_, *this);
+    if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(cell_interfaces_))
+        .interfaces().size() )
+    {
+        comm.forward(allpoint_handle);
+    }
+    createInterfaces(allpoint_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
 #endif
 }
