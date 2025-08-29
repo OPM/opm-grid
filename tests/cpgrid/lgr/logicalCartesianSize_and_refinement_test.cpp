@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: logicalCartesianSize_and_refinement_test.cpp
-//
-// Created: Tuesday 29.04.2025 09:50:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 

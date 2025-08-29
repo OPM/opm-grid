@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: save_lgr_coord_zcorn_test.cpp
-//
-// Created: Thursday 13.02.2025 15:17:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 

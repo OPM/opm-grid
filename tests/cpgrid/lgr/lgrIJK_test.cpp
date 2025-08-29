@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: lgrIJK_test.cpp
-//
-// Created: Thursday 30.01.2025 08:17:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 

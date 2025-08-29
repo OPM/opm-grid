@@ -438,7 +438,7 @@ namespace Dune
             IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
 
             template<int codim>
-            IdType getMaxCodimGlobalId()
+            IdType getMaxCodimGlobalId() const
             {
                 if(idSet_)
                 {
@@ -466,7 +466,7 @@ namespace Dune
                 }
             }
 
-            IdType getMaxGlobalId()
+            IdType getMaxGlobalId() const
             {
                 // Ignore faces
                 return std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<3>());

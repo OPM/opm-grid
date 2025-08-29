@@ -37,6 +37,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
+  opm/grid/cpgrid/LgrHelpers.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/common/GeometryHelpers.cpp
@@ -120,9 +121,8 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
     tests/cpgrid/eclCentroid_test.cpp
     tests/cpgrid/geometry_test.cpp
     tests/cpgrid/lgr/adapt_cpgrid_test.cpp
+    tests/cpgrid/lgr/addLgrs_if_non_nnc_in_lgrs_test.cpp
     tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
-    tests/cpgrid/lgr/avoidNNCinLGRsCpGrid_test.cpp
-    tests/cpgrid/lgr/avoidNNCinLGRs_test.cpp
     tests/cpgrid/lgr/cuboidShape_test.cpp
     tests/cpgrid/lgr/lgrIJK_test.cpp
     tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
@@ -208,6 +208,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/LookUpCellCentroid.hh
   opm/grid/LookUpData.hh
   opm/grid/cpgrid/ElementMarkHandle.hpp

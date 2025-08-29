@@ -1,19 +1,5 @@
-//===========================================================================
-//
-// File: cuboidShape_test.cpp
-//
-// Created: Tue 05.12.2023 11:00:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
-
 /*
-  Copyright 2023 Equinor ASA.
+  Copyright 2023, 2025 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -34,24 +20,11 @@
 
 #define BOOST_TEST_MODULE CuboidShapeTest
 #include <boost/test/unit_test.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
-#include <boost/test/floating_point_comparison.hpp>
-#else
-#include <boost/test/tools/floating_point_comparison.hpp>
-#endif
-
-#include <dune/common/version.hh>
-#include <dune/grid/common/mcmgmapper.hh>
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/LookUpCellCentroid.hh>
-
-#include <sstream>
-#include <iostream>
 
 struct Fixture
 {
@@ -73,6 +46,37 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid& grid)
+{
+    const auto& levelZeroGrid = grid.currentData().front();
+
+    const auto cellToPoint = levelZeroGrid->cellToPoint(element.index());
+    // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
+
+    // Compute 'cuboid' volume with corners: |corn[1]-corn[0]|x|corn[3]-corn[1]|x|corn[5]-corn[1]|
+    std::vector<Dune::cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
+    aFewCorners.resize(4); // {'0', '1', '3', '5'}
+    aFewCorners[0] = (*(levelZeroGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+    aFewCorners[1] = (*(levelZeroGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+    aFewCorners[2] = (*(levelZeroGrid -> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
+    aFewCorners[3] = (*(levelZeroGrid -> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
+    //  l = length. b = breadth. h = height.
+    double  length, breadth, height;
+    length = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
+                        ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
+                        ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
+    breadth = std::sqrt( ((aFewCorners[1][0] -aFewCorners[2][0])*(aFewCorners[1][0] -aFewCorners[2][0])) +
+                         ((aFewCorners[1][1] -aFewCorners[2][1])*(aFewCorners[1][1] -aFewCorners[2][1])) +
+                         ((aFewCorners[1][2] -aFewCorners[2][2])*(aFewCorners[1][2] -aFewCorners[2][2])));
+    height = std::sqrt( ((aFewCorners[1][0] -aFewCorners[3][0])*(aFewCorners[1][0] -aFewCorners[3][0])) +
+                        ((aFewCorners[1][1] -aFewCorners[3][1])*(aFewCorners[1][1] -aFewCorners[3][1])) +
+                        ((aFewCorners[1][2] -aFewCorners[3][2])*(aFewCorners[1][2] -aFewCorners[3][2])));
+    const double cuboidVolume = length*breadth*height;
+    const auto cellVolume =  (*(levelZeroGrid-> getGeometry().geomVector(std::integral_constant<int,0>())))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
+    
+    return (std::abs(cuboidVolume - cellVolume) <  1e-6);
+}
+
 void createEclGridCpGrid_and_checkCuboidShape(const std::string& deckString)
 {
     Opm::Parser parser;
@@ -82,9 +86,11 @@ void createEclGridCpGrid_and_checkCuboidShape(const std::string& deckString)
     Opm::EclipseGrid eclGrid(deck);
 
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
-
-    const auto& leafGridView = grid.currentData()[0]; // Leaf Grid coincides with level 0, in this case. 
-    BOOST_CHECK_THROW(leafGridView->checkCuboidShape({0}), std::logic_error);
+    
+    for (const auto& element : Dune::elements(grid.leafGridView()))
+    {
+        BOOST_CHECK(!checkCuboidShape(element, grid));
+    }
 }
 
 BOOST_AUTO_TEST_CASE(nonCuboidCell)

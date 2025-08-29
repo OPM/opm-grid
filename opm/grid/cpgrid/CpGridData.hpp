@@ -101,10 +101,6 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
 
-#if HAVE_ECL_INPUT
-void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
-#endif
-
 namespace Dune
 {
 namespace cpgrid
@@ -131,11 +127,6 @@ class CpGridData
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                             const std::array<int, 3>&,
                             bool);
-
-#if HAVE_ECL_INPUT
-    friend
-    void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
-#endif
 
 private:
     CpGridData(const CpGridData& g);
@@ -326,36 +317,70 @@ public:
     ///    Active cell index.
     ///
     /// @param [out] ijk  Cartesian index triplet
-    void getIJK(int c, std::array<int,3>& ijk) const
-    {
-        // For level zero and the leaf grids, use logicalCartesianSize from level zero grid.
-        // Note: when the entire grid gets refined, the leaf grid logical Cartesian size does
-        //       not coincide with the level zero grid one.
-
-        // By default, level_ is initialized to 0 and isn’t updated during refinement.
-        // As a result, after refinement, (the leaf grid) level_data_ptr_->back()->level_ remains 0,
-        // even though this no longer makes sense.
-        // The else branch is needed to ensure the leaf grid view uses the logical Cartesian size
-        // of the original level-zero grid.
-
-        if (level_) { // refined level grids with level > 0
-            ijk = getIJK(global_cell_[c], logical_cartesian_size_);
-        }
-        else { // level zero and leaf grids
-            ijk = getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
-        }
-    }
+    void getIJK(int c, std::array<int,3>& ijk) const;
 
     int cellFace(int cell, int local_index) const
     {
         return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
     }
 
-    int faceToCellSize(int face) const {
-        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
-        return face_to_cell_[faceEntity].size();
+    auto cellToFace(int cellIdx) const
+    {
+        return cell_to_face_[cpgrid::EntityRep<0>(cellIdx, true)];
     }
 
+    const auto& cellToPoint() const
+    {
+        return cell_to_point_;
+    }
+    
+    const auto& cellToPoint(int cellIdx) const
+    {
+        return cell_to_point_[cellIdx];
+    }
+
+    int faceToCellSize(int face) const {
+        Dune::cpgrid::EntityRep<1> faceRep(face, true);
+        return face_to_cell_[faceRep].size();
+    }
+
+    auto faceTag(int faceIdx) const
+    {
+        Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
+        return face_tag_[faceRep];
+    }
+
+    auto faceNormals(int faceIdx) const
+    {
+        Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
+        return face_normals_[faceRep];
+    }
+
+    auto faceToPoint(int faceIdx) const
+    {
+        return face_to_point_[faceIdx];
+    }
+
+    int numFaces() const
+    {
+        return face_to_cell_.size();
+    }
+
+    auto cornerHistorySize() const
+    {
+        return corner_history_.size();
+    }
+
+    const auto& getCornerHistory(int cornerIdx) const
+    {
+        if(cornerHistorySize()) {
+            return corner_history_[cornerIdx];
+        }
+        else {
+            OPM_THROW(std::logic_error, "Vertex has no history record.\n");
+        }
+    }
+    
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -367,62 +392,10 @@ public:
         return  global_cell_;
     }
 
-    /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
-    ///    where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
-    ///
-    /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
-    /// @param [in] cells_per_dim
-    /// @return Cartesian index triplet.
-    std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
-    {
-        // idx = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
-        // with 0<= i < cells_per_dim_[0], 0<= j < cells_per_dim_[1], 0<= k <cells_per_dim_[2].
-        assert(cells_per_dim[0]);
-        assert(cells_per_dim[1]);
-        assert(cells_per_dim[2]);
-
-        std::array<int,3> ijk = {0,0,0};
-        ijk[0] = idx_in_parent_cell % cells_per_dim[0]; idx_in_parent_cell /= cells_per_dim[0];
-        ijk[1] = idx_in_parent_cell % cells_per_dim[1];
-        ijk[2] = idx_in_parent_cell /cells_per_dim[1];
-        return ijk;
-    }
-
-    /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... endIJK_vec[<patch>][2]-1}.
-    ///
-    /// @return allPatches_cells
-    std::vector<int>
-    getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
     /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
     ///        Assumption: all grid cells are active.
     bool hasNNCs(const std::vector<int>& cellIndices) const;
-
-    /// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
-    ///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
-    ///
-    /// @param [in]  startIJK_vec       Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec         Vector of Cartesian triplet indices where each patch ends.
-    ///                                 Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
-    void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
-    /// @brief Check that every cell to be refined has cuboid shape.
-    void checkCuboidShape(const std::vector<int>& cellIdx_vec) const;
-
-    /// @brief Determine if a finite amount of patches (of cells) share a face.
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
-    bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
-    int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches, const std::vector<std::array<int,3>>& endIJK_2Patches) const;
-
-
+    
     /// @brief Mark entity for refinement or coarsening.
     ///
     /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.
@@ -472,7 +445,7 @@ private:
     /// @return True if all block of cells either do not share faces on their boundaries, or they may share faces with compatible
     ///         subdivisions. Example: block1 and block2 share an I_FACE, then number of subdivisions NY NZ should coincide, i.e.
     ///         if block1, block2 cells_per_dim values are {NX1, NY1, NZ1}, {NX2, NY2, NZ2}, respectively, then NY1 == NY2 and
-    ///         NZ1 == Nz2.
+    ///         NZ1 == NZ2.
     ///         False if at least two blocks share a face and their subdivions are not compatible. In the example above,
     ///         if NY1 != NY2 or NZ1 != NZ2.
     bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
@@ -480,33 +453,6 @@ private:
                                 const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
-
-    /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
-    std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Compute cell indices of a patch of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endIJK[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_cells
-    std::vector<int> getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Compute patch boundary face indices (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_boundary_faces
-    std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
 public:
     /// Add doc/or remove method and replace it with better approach
@@ -546,6 +492,20 @@ public:
     const std::vector<std::tuple<int,std::vector<int>>>& getParentToChildren() const {
         return parent_to_children_cells_;
     }
+
+    const cpgrid::DefaultGeometryPolicy getGeometry() const
+    {
+        return geometry_;
+    }
+
+    int getLeafIdxFromLevelIdx(int level_cell_idx) const
+    {
+        if (level_to_leaf_cells_.empty()) {
+            OPM_THROW(std::logic_error, "Grid has no LGRs. No mapping to the leaf.\n");
+        }
+        return level_to_leaf_cells_[level_cell_idx];
+    }
+    
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
     /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the

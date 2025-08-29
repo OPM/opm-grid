@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: grid_global_id_set_test.cpp
-//
-// Created: Friday 28.02.2025 11:09:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 
