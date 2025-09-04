@@ -88,12 +88,11 @@ BOOST_AUTO_TEST_CASE(refineCellWithFewerThanEightCornersThrows)
         0 1 0  0 1 1   -- Pillar 3: bottom at (0,1,0), top at (0,1,1)
         1 1 0  1 1 0   -- Pillar 4: bottom at (1,1,0) = same at top
         /
-        -- ZCORN: eight Z values: bottom 4, then top 4
+        -- ZCORN: eight Z values: top 4, then bottom 4
         ZCORN
-        6*0
-        2*1
+        6*0 -- top end of the pillars
+        2*1 -- bottom end of the pillars
         /
-
         ACTNUM
         1*1
         /
@@ -203,10 +202,10 @@ COORD
  0 2 0   -1 3 1    -- Pillar 3: bottom at (0,2,0), top at (-1,3,1)
  2 2 0    4 4 4    -- Pillar 4: bottom at (2,2,0), top at (4,4,4)
 /
--- ZCORN: eight Z values: bottom 4, then top 4
+-- ZCORN: eight Z values: top 4, then bottom 4
 ZCORN
- 0 0 0 0
- 2 3 1 4
+ 0 0 0 0 -- top end of the pillars
+ 2 3 1 4 -- bottom end of the pillars
 /
 ACTNUM
  1
@@ -236,13 +235,12 @@ COORD
 /
 ZCORN
 -- ZCORN: 2 cells stacked vertically -> 16 values
--- Cell 1 (bottom)
-0 0 0 0    -- bottom pillars
-2 3 1 4    -- top pillars
-
 -- Cell 2 (above cell 1)
-2 3 1 4    -- bottom = same as cell 1 top
-5 7 4 8    -- top pillars
+2 3 1 4   -- top end of the pillars
+5 7 4 8   -- bottom end of the pillars = same as cell 1 top
+-- Cell 1 (bottom)
+0 0 0 0   -- top end of the pillars
+2 3 1 4   -- bottom end of the pillars
 /
 ACTNUM
  2*1
