@@ -123,13 +123,13 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
     tests/cpgrid/lgr/adapt_cpgrid_test.cpp
     tests/cpgrid/lgr/addLgrs_if_non_nnc_in_lgrs_test.cpp
     tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
-    tests/cpgrid/lgr/cuboidShape_test.cpp
     tests/cpgrid/lgr/lgrIJK_test.cpp
     tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
     tests/cpgrid/lgr/lgr_coord_zcorn_test.cpp
     tests/cpgrid/lgr/lgr_with_inactive_parent_cells_test.cpp
     tests/cpgrid/lgr/lookUpCellCentroid_cpgrid_test.cpp
     tests/cpgrid/lgr/lookupdataCpGrid_test.cpp
+    tests/cpgrid/lgr/refine_hexahedron_with_non_rectangular_faces_test.cpp
     tests/cpgrid/lgr/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
     tests/cpgrid/lgr/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
     tests/cpgrid/lgr/save_lgr_coord_zcorn_test.cpp
