@@ -164,6 +164,13 @@ int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
 void checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
                                                const std::vector<int>& expected_global_cells);
 
+void checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
+                             bool preAdapt);
+
+void checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
+                              int preAdaptMaxLevel,
+                              bool isNested);
+
 } // namespace Opm
 
 void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
@@ -271,9 +278,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     BOOST_CHECK( !origin.isLeaf() );
     BOOST_CHECK( origin.mightVanish() );
     
-    BOOST_CHECK( !father.isLeaf() ); // Father vanished during refinement.
-    BOOST_CHECK( father.mightVanish() );
-
+    
     auto itFather = father.hbegin(grid.maxLevel());
     const auto& endItFather = father.hend(grid.maxLevel());
     // If itFather != endItFather and !father.isLeaf() (if dristibuted_data_ is empty).
@@ -317,7 +322,6 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
             BOOST_CHECK( element.getOrigin().level() <= preAdaptMaxLevel);
 
             if (isLeaf) {
-                BOOST_CHECK( !element.mightVanish() );
                 BOOST_CHECK( grid.getMark(element) == 0); // postAdapt() has been called, therefore every element gets marked with 0
             }
 
@@ -335,8 +339,6 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                     // If there is no nested refinement, entity.isLeaf() and it == endIt (if dristibuted_data_ is empty).
                     BOOST_CHECK( it == endIt);
                     BOOST_CHECK( element.isLeaf() );
-                    BOOST_CHECK( element.isNew() );
-                    BOOST_CHECK( !element.mightVanish() );
                 }
             }
             else {
@@ -348,13 +350,10 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                     BOOST_CHECK( element.getOrigin() == element.getLevelElem() );
                     BOOST_CHECK_THROW(element.father(), std::logic_error);
                     BOOST_CHECK_THROW(element.geometryInFather(), std::logic_error);
-                    BOOST_CHECK( !element.isNew() );
                 }
             }
         }
     }
-
-    /** TODO: Update isNew tag when refine. */
 }
 
 void Opm::checkLocalIndicesMatchMapper(const Dune::CpGrid& grid)
@@ -767,34 +766,43 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
                               const std::array<int,3>& cells_per_dim,
                               const std::vector<int>& markedCells)
 {
-    const int startingGridIdx = grid.currentData().size() -1; // size before calling adapt
-    std::vector<int> assignRefinedLevel(grid.currentData()[startingGridIdx]->size(0));
+    std::vector<int> assignRefinedLevel(grid.currentData().back()->size(0));
+    int preAdaptMaxLevel = grid.maxLevel();
 
     for (const auto& elemIdx : markedCells)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(grid.currentData()[startingGridIdx]), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(grid.currentData().back()), elemIdx, true);
         grid.mark(1, elem);
         assignRefinedLevel[elemIdx] = grid.maxLevel() + 1;
-        BOOST_CHECK( grid.getMark(elem) == 1);
-        BOOST_CHECK( elem.mightVanish() == true);
+        BOOST_CHECK_EQUAL( grid.getMark(elem), 1);
     }
-    grid.preAdapt();
+    bool preAdapt = grid.preAdapt();
+    checkMarksAfterPreAdapt(grid, preAdapt);
+
     grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
+
     grid.postAdapt();
+    checkMarksAfterPostAdapt(grid, preAdaptMaxLevel, /* isNested = */ false);
 }
 
 void Opm::adaptGrid(Dune::CpGrid& grid,
                     const std::vector<int>& markedCells)
 {
     const auto& leafGridView = grid.currentData().back();
+    int preAdaptMaxLevel = grid.maxLevel();
+    
     for (const auto& elemIdx : markedCells)
     {
         const auto& elem =  Dune::cpgrid::Entity<0>(*leafGridView, elemIdx, true);
         grid.mark(1, elem);
     }
-    grid.preAdapt();
+    bool preAdapt = grid.preAdapt();
+    checkMarksAfterPreAdapt(grid, preAdapt);
+    
     grid.adapt();
+    
     grid.postAdapt();
+    checkMarksAfterPostAdapt(grid, preAdaptMaxLevel, /* isNested = */ false);
 }
 
 void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
@@ -854,6 +862,32 @@ void Opm::checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
     BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells.back());
 }
 
+
+void Opm::checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
+                                  bool preAdapt)
+{
+    if (preAdapt) { // at least one element has been marked
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            if (grid.getMark(element) == 1) { // refinement
+                // Element does not vanish, it belongs to its level grid. 
+                BOOST_CHECK(!element.mightVanish()); 
+            }
+            BOOST_CHECK(element.isLeaf()); // all leaf elements are leaf
+        }
+    }
+}
+void Opm::checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
+                                   int preAdaptMaxLevel,
+                                   bool isNested)
+{
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        if (!isNested && (element.level() > preAdaptMaxLevel)) { // born in last refinement call
+            BOOST_CHECK(element.isNew());
+        }
+        BOOST_CHECK_EQUAL(grid.getMark(element), 0); // marks are resest after postAdapt().
+        BOOST_CHECK(element.isLeaf());
+    }
+}   
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
 

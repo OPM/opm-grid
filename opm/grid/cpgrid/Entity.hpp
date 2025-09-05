@@ -221,15 +221,14 @@ public:
     /// @brief Iterator end over the children/beyond last child iterator.
     HierarchicIterator hend(int) const;
 
-    /// \brief Returns true, if the entity has been created during the last call to adapt(). Dummy.
+    /// \brief Returns true, if the entity has been created during the last call to adapt().
     bool isNew() const;
 
-    /// \brief Returns true, if entity might disappear during the next call to adapt().
+    /// \brief Indicates whether the entity may be removed in the next call to adapt().
     ///
-    ///        Currently, returns true if the element has been marked to be refined. Therefore, it "vanishes"
-    ///        in the sense that it gets replaced by its children.
-    ///        To be modified: When supporting coarsening, mightVanish should return true for all the "siblings"
-    ///        refined cells of one refined cell that got marked to be coarsened.
+    /// For CpGrid, this currently always returns false, since only refinement
+    /// (and no coarsening) is supported. A return value of false guarantees
+    /// that the entity will still exist after adaptation.
     bool mightVanish() const;
 
     /// @brief ONLY FOR CELLS (Entity<0>)
@@ -482,12 +481,10 @@ bool Entity<codim>::isNew() const
     return (isLeaf() && hasFather());
 }
 
-
 template<int codim>
 bool Entity<codim>::mightVanish() const
 {
-    const auto refinementMark = pgrid_ -> getMark(*this);
-    return (refinementMark == 1);
+    return false;
 }
 
 template<int codim>
