@@ -168,8 +168,7 @@ void checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
                              bool preAdapt);
 
 void checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
-                              int preAdaptMaxLevel,
-                              bool isNested);
+                              int preAdaptMaxLevel);
 
 } // namespace Opm
 
@@ -782,7 +781,7 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
     grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
 
     grid.postAdapt();
-    checkMarksAfterPostAdapt(grid, preAdaptMaxLevel, /* isNested = */ false);
+    checkMarksAfterPostAdapt(grid, preAdaptMaxLevel);
 }
 
 void Opm::adaptGrid(Dune::CpGrid& grid,
@@ -798,11 +797,11 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
     }
     bool preAdapt = grid.preAdapt();
     checkMarksAfterPreAdapt(grid, preAdapt);
-    
+
     grid.adapt();
-    
+
     grid.postAdapt();
-    checkMarksAfterPostAdapt(grid, preAdaptMaxLevel, /* isNested = */ false);
+    checkMarksAfterPostAdapt(grid, preAdaptMaxLevel);
 }
 
 void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
@@ -877,17 +876,20 @@ void Opm::checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
     }
 }
 void Opm::checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
-                                   int preAdaptMaxLevel,
-                                   bool isNested)
+                                   int preAdaptMaxLevel)
 {
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        if (!isNested && (element.level() > preAdaptMaxLevel)) { // born in last refinement call
+        // An element created during the last refinement step may still be refined further
+        // on a higher level (e.g., through nested refinement).
+        // The isNew flag is used to identify such newly created elements so that data 
+        // interpolation is applied only to them.
+        if (element.level() > preAdaptMaxLevel) { // born in last refinement call
             BOOST_CHECK(element.isNew());
         }
         BOOST_CHECK_EQUAL(grid.getMark(element), 0); // marks are resest after postAdapt().
         BOOST_CHECK(element.isLeaf());
     }
-}   
+}
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
 

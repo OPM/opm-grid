@@ -2315,6 +2315,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         (*data[refinedLevelGridIdx]).level_to_leaf_cells_ =  refined_level_to_leaf_cells_vec[level];
         (*data[refinedLevelGridIdx]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[refinedLevelGridIdx]->size(0),
                                                                                      data[refinedLevelGridIdx]->size(3));
+        (*data[refinedLevelGridIdx]).refinement_max_level_ = levels + preAdaptMaxLevel;
         // Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
         (*data[refinedLevelGridIdx]).cells_per_dim_ = cells_per_dim_vec[level];
         // TO DO: This new code for refinement do not assume Cartesian Shape. How does logical_cartesian_size_ should be defined then?
@@ -2347,6 +2348,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
                                                                                           data[levels + preAdaptMaxLevel +1]->size(3));
+    (*data[levels + preAdaptMaxLevel +1]).refinement_max_level_ = levels + preAdaptMaxLevel;
+    
     if (isGlobalRefine) {
         assert(cells_per_dim_vec.size() == 1);
         (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  { lcs[0]*cells_per_dim_vec[0][0],
