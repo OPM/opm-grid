@@ -59,9 +59,9 @@ template <typename Grid, typename GridView>
 struct LookUpCellCentroid
 {
     /// \brief:     Constructor taking a GridView, CartesianMapper
-    /// \param [in] GridView
-    /// \param [in] CartesianIndexMapper
-    /// \param [in] EclipseGrid
+    /// \param [in] gridView Grid view
+    /// \param [in] cartMapper Cartesian index mapper
+    /// \param [in] eclgrid Eclipse grid
     explicit LookUpCellCentroid(const GridView& gridView,
                                 const Dune::CartesianIndexMapper<Grid>& cartMapper,
                                 const Opm::EclipseGrid* eclgrid) :

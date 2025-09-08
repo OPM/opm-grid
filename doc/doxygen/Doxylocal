@@ -1,4 +1,3 @@
 INPUT                  += @abs_top_srcdir@/doc/doxygen/mainpage \
                          @abs_top_srcdir@/doc/doxygen/modules \
-                         @abs_top_srcdir@/dune/common/ \
-                         @abs_top_srcdir@/dune/grid/
+                         @abs_top_srcdir@/opm/grid/
