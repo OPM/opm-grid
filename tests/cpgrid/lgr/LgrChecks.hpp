@@ -285,10 +285,12 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     checkReferenceElemParentCellCenter(itFather, endItFather, expected_total_children,
                                        isNested, grid.maxLevel());
 
-    auto itOrigin = origin.hbegin(grid.maxLevel());
-    const auto& endItOrigin = origin.hend(grid.maxLevel());
     // If itOrigin != endItOrigin and !origin.isLeaf() (if dristibuted_data_ is empty).
-    BOOST_CHECK( itOrigin != endItOrigin );
+    BOOST_CHECK( iorigin.hbegin(grid.maxLevel() != origin.hbegin(grid.maxLevel() );
+    // next level l is used to iterate only over one level
+    auto l = iorigin.hbegin(grid.maxLevel())->level();
+    auto itOrigin = origin.hbegin(l);
+    const auto& endItOrigin = origin.hend(l);
 
     const auto& [child_level, siblings_list] = fatherLevelData->getChildrenLevelAndIndexList(father.index());
 
