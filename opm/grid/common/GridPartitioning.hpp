@@ -70,6 +70,8 @@ namespace Dune
     ///                      because of inactive cells, or higher than expected,
     ///                      because of splits to ensure connectedness.
     /// @param[out] cell_part a vector containing, for each cell, its partition number
+    /// @param[in] recursive True to use recursion in connectivity check
+    /// @param[in] ensureConnectivity True to ensure that partitions are connected
     void partition(const CpGrid& grid,
                    const std::array<int, 3>& initial_split,
                    int& num_part,
@@ -83,6 +85,7 @@ namespace Dune
     /// \param[out] cell_overlap a vector of sets that contains for each cell all
     ///             the partition numbers that it is an overlap cell of.
     /// \param[in] mypart The partition number of the processor.
+    /// \param[in] overlapLayers Number of overlap layers
     /// \param[in] all Whether to compute the overlap for all partions or just the
     ///            one associated by mypart.
     /// \param[in] level Indicating level grid that is partitioned. Default -1 for leaf grid view.
@@ -105,7 +108,7 @@ namespace Dune
     /// \param[in] cc The communication object
     /// \param[in] addCornerCells Switch for adding corner cells to overlap layer.
     /// \param[in] trans The transmissibilities on cell faces. When trans[i]==0, no overlap is added.
-    /// \param[in] layer Number of overlap layers
+    /// \param[in] layers Number of overlap layers
     /// \param[in] level Indicating level grid that is partitioned. Default -1 for leaf grid view.
     int addOverlapLayer(const CpGrid& grid,
                         const std::vector<int>& cell_part,

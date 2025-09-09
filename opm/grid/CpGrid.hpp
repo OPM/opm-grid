@@ -568,7 +568,7 @@ namespace Dune
         /// @param [in] assignRefinedLevel   Vector with size equal to total amount of cells of the starting grid where
         ///                                  the marked elements belong. In each entry, the refined level grid where the
         ///                                  refined entities of the (parent) marked element should belong is stored.
-        /// @param [in] lgr_name_vector      Each refined level grid name, e.g. {"LGR1", "LGR2"}.
+        /// @param [in] lgr_name_vec         Each refined level grid name, e.g. {"LGR1", "LGR2"}.
         /// @param [in] startIJK_vec         Default empty vector. When isCARFIN, the starting ijk Cartesian index of each
         ///                                  block of cells to be refined.
         /// @param [in] endIJK_vec           Default empty vector. When isCARFIN, the final ijk Cartesian index of each
@@ -965,6 +965,14 @@ namespace Dune
         ///              and the ranks communicator need to be able to map all parts. Needs to valid
         ///              at rank 0. Number of parts cannot exceed the number of ranks. Parts need to
         ///              numbered consecutively starting from zero.
+        /// \param wells Vector of wells
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The first entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be in the same partition when partitioning
+        ///            the grid.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
@@ -1070,13 +1078,14 @@ namespace Dune
         /// \param wells The wells of the eclipse.
         /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
-        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            The first entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
         ///            future connection. The possible future connections are handed over to the grid
         ///            partitioner to make sure these will be no the same partition when partitioning
         ///            the grid.
          /// \param transmissibilities The transmissibilities used to calculate the edge weights.
          /// \param numParts Number of parts in the partition.
+         /// \param imbalanceTol Partitioning imbalance tolerance
          /// \return An array with the domain index for each cell.
          std::vector<int>
          zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType>* wells,
@@ -1199,7 +1208,7 @@ namespace Dune
         int numFaceVertices(int face) const;
 
         /// \brief Get the index identifying a vertex of a face.
-        /// \param cell The index identifying the face.
+        /// \param face The index identifying the face.
         /// \param local_index The local_index (in [0,numFaceVertices(vertex) - 1]])
         ///  of the vertex.
         int faceVertex(int face, int local_index) const;
@@ -1216,20 +1225,20 @@ namespace Dune
 
         // Geometry
         /// \brief Get the Position of a vertex.
-        /// \param cell The index identifying the cell.
+        /// \param vertex The index identifying the vertex.
         /// \return The coordinates of the vertex.
         const Vector& vertexPosition(int vertex) const;
 
         /// \brief Get the area of a face.
-        /// \param cell The index identifying the face.
+        /// \param face The index identifying the face.
         double faceArea(int face) const;
 
         /// \brief Get the coordinates of the center of a face.
-        /// \param cell The index identifying the face.
+        /// \param face The index identifying the face.
         const Vector& faceCentroid(int face) const;
 
         /// \brief Get the unit normal of a face.
-        /// \param cell The index identifying the face.
+        /// \param face The index identifying the face.
         /// \see faceCell
         const Vector& faceNormal(int face) const;
 
@@ -1303,7 +1312,7 @@ namespace Dune
         ///
         /// The tag tells us in which direction the face would point
         /// in the underlying cartesian grid.
-        /// \param An iterator that points to the face and was obtained
+        /// \param cell_face An iterator that points to the face and was obtained
         /// by iterating over Opm::UgGridHelpers::cell2Faces(grid).
         template<class Cell2FacesRowIterator>
         int

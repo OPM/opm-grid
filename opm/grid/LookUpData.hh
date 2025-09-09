@@ -36,8 +36,10 @@
 
 #include <dune/grid/common/mcmgmapper.hh>
 
-#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
+#include <opm/grid/common/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
+
+#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 
 #include <functional>
 #include <string>
@@ -63,12 +65,12 @@ class LookUpData
 {
 public:
     /// \brief:     Constructor taking a GridView and a bool
-    /// \param [in] GridView
+    /// \param [in] gridView The Grid view to use
     /// \param [in] isFieldPropInLgr   bool: default false (search field property in unrefined grid)
     ///                                      true (search field property in refined grid; LGR-id/level required)
     ///                                      Currently, isFieldPropInLgr_ == false means that all the field
     ///                                      properties are given in the unrefined grid (level 0).
-    explicit LookUpData(const  GridView& gridView, bool isFieldPropInLgr = false) :
+    explicit LookUpData(const GridView& gridView, bool isFieldPropInLgr = false) :
         gridView_(gridView),
         elemMapper_(gridView, Dune::mcmgElementLayout()),
         isFieldPropInLgr_(isFieldPropInLgr)
@@ -137,7 +139,7 @@ public:
     /// \tparam ElementType
     ///     The type of the element or index passed in. 
     ///
-    /// \param elementOrIndex
+    /// \param elem
     ///     An integral cell index or a grid entity (e.g., \c Dune::cpgrid::Entity<0>).
     ///
     /// \return
@@ -247,7 +249,7 @@ public:
     /// \tparam ElementType the type of the element or index passed in.
     ///
     ///
-    /// \param elementOrIndex
+    /// \param elemIdx
     ///     An integral cell index or a grid entity (\c EntityType) used to compute the
     ///     cartesian index. For CpGrid, if an integral index is passed, the method creates
     ///     a \c Dune::cpgrid::Entity on the fly. Otherwise, it uses the provided entity.

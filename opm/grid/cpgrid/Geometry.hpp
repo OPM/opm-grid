@@ -408,7 +408,7 @@ namespace Dune
             ///        corners.
             /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
-            /// @param allcorners pointer of all corner positions in the grid
+            /// @param allcorners_ptr pointer of all corner positions in the grid
             /// @param corner_indices array of 8 indices into allcorners. The
             ///                       indices must be given in lexicographical order
             ///                       by (kji), i.e. i running fastest.

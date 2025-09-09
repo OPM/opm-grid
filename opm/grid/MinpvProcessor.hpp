@@ -63,7 +63,7 @@ namespace Opm
         ///                             zero transmissibility in Z direction betwenn the cells is expected.
         ///                             (default: false)
         /// \param[in]       permz     Cell permeability in Z direction.
-        /// \oaram[in]       multz     transmissiblity multipliers in Z direction
+        /// \param[in]       multZ     transmissiblity multipliers in Z direction
         /// After processing, all cells that have lower pore volume than minpv
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true

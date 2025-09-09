@@ -61,8 +61,8 @@ struct FaceViaCellHandleWrapper
     /// \brief Constructs the data handle
     ///
     /// \param handle Handle object wrapped and used for actual gather/scatter
-    /// \param c2pGather Table to determine points when gathering
-    /// \param c2p Table to determine points when scattering
+    /// \param c2fGather Table to determine points when gathering
+    /// \param c2f Table to determine points when scattering
     FaceViaCellHandleWrapper(Handle& handle,
                              const C2FTable& c2fGather,
                              const C2FTable& c2f)

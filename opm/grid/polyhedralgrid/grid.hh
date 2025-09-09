@@ -341,8 +341,8 @@ namespace Dune
 
     /** \brief constructor
      *
-     *  \param[in]  deck         Opm Eclipse deck
-     *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
+     *  \param[in]  n Number of cells in each direction
+     *  \param[in]  dx Size of cells in each direction
      */
     explicit PolyhedralGrid ( const std::vector< int >& n,
                               const std::vector< double >& dx )
@@ -361,7 +361,7 @@ namespace Dune
      *
      *  \note The grid will take ownership of the supplied grid pointer.
      *
-     *  \param[in]  ug  pointer to UnstructuredGrid
+     *  \param[in]  gridPtr  pointer to UnstructuredGrid
      */
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
@@ -380,7 +380,7 @@ namespace Dune
      *  The references to ug are stored in the grid.
      *  Therefore, they must remain valid until the grid is destroyed.
      *
-     *  \param[in]  ug    UnstructuredGrid reference
+     *  \param[in]  grid    UnstructuredGrid reference
      */
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
     : gridPtr_(),

@@ -114,8 +114,8 @@ namespace Dune
                 assert(index_arg >= 0);
             }
             /// @brief Set entity value.
-            /// @param index Entity index
-            /// @param orientation True if the entity's orientation is positive.
+            /// @param index_arg Entity index
+            /// @param orientation_arg True if the entity's orientation is positive.
             void setValue(int index_arg, bool orientation_arg)
             {
                 assert(index_arg >= 0);

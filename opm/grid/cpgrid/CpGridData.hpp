@@ -154,6 +154,7 @@ public:
 
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
+    /// \param data Pointer to existing data to use
     /// Default constructor.
     explicit CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
 

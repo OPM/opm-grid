@@ -64,7 +64,7 @@ namespace Dune
             {
             }
             /// @brief Constructor taking a row type and an orientation.
-            /// @param R Row type
+            /// @param r Row type
             /// @param orientation True if positive orientation.
             OrientedEntityRange(const R& r, bool orientation)
                 : R(r), orientation_(orientation)
@@ -103,7 +103,7 @@ namespace Dune
             {
             }
             /// @brief Constructor taking a row type and an orientation.
-            /// @param R Row type
+            /// @param r Row type
             /// @param orientation True if positive orientation.
             MutableOrientedEntityRange(const R& r, bool orientation)
                 : R(r), orientation_(orientation)
