@@ -48,8 +48,7 @@ namespace Opm
 {
 
 void checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
-                                        const Dune::cpgrid::HierarchicIterator& endIt,
-                                        bool isNested);
+                                        const Dune::cpgrid::HierarchicIterator& endIt);
 
 void checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
                                         const Dune::cpgrid::HierarchicIterator& endIt,
@@ -168,16 +167,14 @@ void checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
 } // namespace Opm
 
 void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
-                                             const Dune::cpgrid::HierarchicIterator& endIt,
-                                             bool isNested)
+                                             const Dune::cpgrid::HierarchicIterator& endIt)
 {
     double reference_elem_parent_cell_volume = std::accumulate(it, endIt, 0.0,
                                                                [](double sum, const Dune::cpgrid::Entity<0>& child) {
                                                                    return sum + child.geometryInFather().volume();
                                                                });
-    if (!isNested) {
-        BOOST_CHECK_CLOSE(reference_elem_parent_cell_volume, 1.0, 1e-12);
-    }
+
+    BOOST_CHECK_CLOSE(reference_elem_parent_cell_volume, 1.0, 1e-12);
 }
 
 void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
@@ -281,16 +278,21 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     const auto& endItFather = father.hend(grid.maxLevel());
     // If itFather != endItFather and !father.isLeaf() (if dristibuted_data_ is empty).
     BOOST_CHECK( itFather != endItFather );
-    checkReferenceElemParentCellVolume(itFather, endItFather, isNested);
+    // next level tmp_l is used to iterate only over one level
+    auto tmp_l = itFather->level();
+    auto itTmpL = father.hbegin(tmp_l);
+    const auto& endItTmpL = father.hend(tmp_l);
+    checkReferenceElemParentCellVolume(itTmpL, endItTmpL);
     checkReferenceElemParentCellCenter(itFather, endItFather, expected_total_children,
                                        isNested, grid.maxLevel());
 
     // If itOrigin != endItOrigin and !origin.isLeaf() (if dristibuted_data_ is empty).
-    BOOST_CHECK( iorigin.hbegin(grid.maxLevel() != origin.hbegin(grid.maxLevel() );
+    BOOST_CHECK( origin.hbegin(grid.maxLevel()) != origin.hend(grid.maxLevel()) );
     // next level l is used to iterate only over one level
-    auto l = iorigin.hbegin(grid.maxLevel())->level();
+    auto l = origin.hbegin(grid.maxLevel())->level();
     auto itOrigin = origin.hbegin(l);
     const auto& endItOrigin = origin.hend(l);
+    BOOST_CHECK( itOrigin != endItOrigin );
 
     const auto& [child_level, siblings_list] = fatherLevelData->getChildrenLevelAndIndexList(father.index());
 
