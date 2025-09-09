@@ -69,7 +69,6 @@ void checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(const std::vector<int>& gl
                                                       const std::vector<int>& globalCell_leaf);
 
 void checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                            int preAdaptMaxLevel,
                             double expected_total_children,
                             const Dune::CpGrid& grid,
                             bool isNested);
@@ -255,7 +254,6 @@ void Opm::checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(const std::vector<int
 }
 
 void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                                 int preAdaptMaxLevel,
                                  double expected_total_children,
                                  const Dune::CpGrid& grid,
                                  bool isNested)
@@ -268,8 +266,8 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
 
     const auto& father = element.father();
     const auto& fatherLevelData =  grid.currentData()[father.level()];
-    BOOST_CHECK( father.level() <= (isNested? grid.maxLevel() : preAdaptMaxLevel) );
-    
+    BOOST_CHECK( father.level() <= element.level() );
+
     BOOST_CHECK_EQUAL( originLevelData->getMark(origin), 1);
     BOOST_CHECK_EQUAL( fatherLevelData->getMark(father), 1);
 
@@ -327,8 +325,7 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                 int subdivisionsIdx = element.level()-1-preAdaptMaxLevel;
                 const auto expected_total_children = cells_per_dim_vec[subdivisionsIdx][0]*cells_per_dim_vec[subdivisionsIdx][1]*cells_per_dim_vec[subdivisionsIdx][2];
                 BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
-                checkFatherAndSiblings(element.getLevelElem(), preAdaptMaxLevel,
-                                       expected_total_children, grid, isNested);
+                checkFatherAndSiblings(element.getLevelElem(), expected_total_children, grid, isNested);
 
                 if (!preAdaptMaxLevel) {
                     // If there is no nested refinement, entity.isLeaf() and it == endIt (if dristibuted_data_ is empty).
