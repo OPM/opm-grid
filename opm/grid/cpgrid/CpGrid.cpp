@@ -1037,12 +1037,8 @@ void CpGrid::globalRefine (int refCount)
         OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
     }
 
-    // Throw if partial refinement is detected (there exists at least one coarse cell with >6 faces).
-    if(this->maxLevel()) { // In particular, maxLevel()>=1
-        // Detect whether the grid has been globally refined before (via globalRefine(...)
-        // or autoRefine(...)) by comparing the logicalCartesianSize() of the level-0
-        // grid and the leaf grid.
-        //
+    // Throw if strict local refinement is detected.
+    if(this->maxLevel()) {
         // For strict local refinement, these sizes are identical. Global refinement
         // results in a difference in at least one direction (x, y, or z).
         bool sameNX = currentData().back()->logicalCartesianSize()[0] == currentData().front()->logicalCartesianSize()[0];
