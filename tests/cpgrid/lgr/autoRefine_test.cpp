@@ -21,9 +21,18 @@
 #define BOOST_TEST_MODULE AutoRefineTests
 #include <boost/test/unit_test.hpp>
 
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/AutoRefinement.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/AutoRefManager.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/readKeywordAutoRef.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+
 #include <opm/grid/CpGrid.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -39,6 +48,43 @@ struct Fixture
 };
 
 BOOST_GLOBAL_FIXTURE(Fixture);
+
+void checkReadFromDeckValues(const Opm::Deck& deck,
+                             const std::array<int,3>& expected_nxnynz,
+                             double expected_option)
+{
+    const auto& autoref_keyword = deck["AUTOREF"][0];
+
+    Opm::AutoRefManager autoRefManager{};
+
+    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
+    const auto autoRef = autoRefManager.getAutoRef();
+
+    BOOST_CHECK_EQUAL( autoRef.NX(), expected_nxnynz[0]);
+    BOOST_CHECK_EQUAL( autoRef.NY(), expected_nxnynz[1]);
+    BOOST_CHECK_EQUAL( autoRef.NZ(), expected_nxnynz[2]);
+    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), expected_option);
+}
+
+void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
+                                  const std::array<int,3>& nxnynz)
+{
+    // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
+    // Note: in this case there is only one refined level grid, storing the global
+    // refinement.
+    std::vector<std::string> lgrNames(grid.maxLevel());
+    for (const auto& [name, level] : grid.getLgrNameToLevel()) {
+        if (level==0) { // skip level zero grid name for the checks
+            continue;
+        }
+        lgrNames[level-1] = name; // Shift the index since level zero has been removed.
+    }
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {nxnynz},
+                           /* lgr_name_vec = */ lgrNames,
+                           /* gridHasBeenGlobalRefined = */ true);
+}
+
 
 BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
 {
@@ -74,18 +120,146 @@ BOOST_AUTO_TEST_CASE(autoRefine)
     // nxnynz represents the refinement factors in x-,y-,and z-direction.
     grid.autoRefine(/* nxnynz = */ {3,5,7});
 
-    // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
-    // Note: in this case there is only one refined level grid, storing the global
-    // refinement.
-    std::vector<std::string> lgrNames(grid.maxLevel());
-    for (const auto& [name, level] : grid.getLgrNameToLevel()) {
-        if (level==0) { // skip level zero grid name for the checks
-            continue;
-        }
-        lgrNames[level-1] = name; // Shift the index since level zero has been removed.
+    checkGridAfterAutoRefinement(grid, {3,5,7});
+}
+
+BOOST_AUTO_TEST_CASE(readAutoref)
+{
+
+    const std::string deck_string = R"(
+RUNSPEC
+AUTOREF
+3 3 1 0. /
+DIMENS
+ 10 10 3 /
+GRID
+DX
+300*1 /
+DY
+300*1 /
+DZ
+300*1 /
+TOPS
+100*1 /
+PORO
+300*0.15 /
+)";
+
+    Opm::Parser parser;
+    Opm::Deck deck = parser.parseString(deck_string);
+
+    checkReadFromDeckValues(deck,
+                            {3,3,1}, // expected_nxnynz
+                            0.);     // expected_option_trans_mult
+
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
+
+    if (grid.comm().size()>1) { // distribute level zero grid, in parallel
+        grid.loadBalance();
     }
-    Opm::checkGridWithLgrs(grid,
-                           /* cells_per_dim_vec = */ {{3,5,7}},
-                           /* lgr_name_vec = */ lgrNames,
-                           /* gridHasBeenGlobalRefined = */ true);
+
+    // nxnynz represents the refinement factors in x-,y-,and z-direction.
+    grid.autoRefine(/* nxnynz = */ {3,3,1});
+
+    checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
+}
+
+BOOST_AUTO_TEST_CASE(firstAutoRefineSecondGlobalRefine_serial) {
+
+    const std::string deck_string = R"(
+RUNSPEC
+AUTOREF
+3 3 1 0. /
+DIMENS
+4 3 3 /
+GRID
+DX
+36*1 /
+DY
+36*1 /
+DZ
+36*1 /
+TOPS
+36*1 /
+PORO
+36*0.15 /
+)";
+
+    Opm::Parser parser;
+    Opm::Deck deck = parser.parseString(deck_string);
+
+    checkReadFromDeckValues(deck,
+                            {3,3,1}, // expected_nxnynz
+                            0.);     // expected_option_trans_mult
+
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
+
+    if (grid.comm().size() == 1 ) { // serial
+
+        // nxnynz represents the refinement factors in x-,y-,and z-direction.
+        grid.autoRefine(/* nxnynz = */ {3,3,1});
+
+        checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
+
+        grid.globalRefine(2);
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(firstAutoRefineSecondAdapt_serial) {
+
+    const std::string deck_string = R"(
+RUNSPEC
+AUTOREF
+3 3 1 0. /
+DIMENS
+4 3 3 /
+GRID
+DX
+36*1 /
+DY
+36*1 /
+DZ
+36*1 /
+TOPS
+36*1 /
+PORO
+36*0.15 /
+)";
+
+    Opm::Parser parser;
+    Opm::Deck deck = parser.parseString(deck_string);
+
+    checkReadFromDeckValues(deck,
+                            {3,3,1}, // expected_nxnynz
+                            0.);     // expected_option_trans_mult
+
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
+
+    if (grid.comm().size() == 1 ) { // serial
+
+        // nxnynz represents the refinement factors in x-,y-,and z-direction.
+        grid.autoRefine(/* nxnynz = */ {3,3,1});
+
+        checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
+
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            grid.mark(1, element);
+        }
+        grid.preAdapt();
+        grid.adapt();
+        grid.postAdapt();
+    }
 }
