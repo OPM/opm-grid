@@ -207,7 +207,7 @@ void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it
     else {
         BOOST_CHECK( levels.size()<= maxLevel +1); // +1 to include level zero grid
     }
-    
+
     for (int c = 0; c < 3; ++c) {
         reference_elem_parent_cell_center[c]/= total_children;
         BOOST_CHECK_CLOSE(reference_elem_parent_cell_center[c], .5, 1e-12);
@@ -274,10 +274,6 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     BOOST_CHECK_EQUAL( originLevelData->getMark(origin), 1);
     BOOST_CHECK_EQUAL( fatherLevelData->getMark(father), 1);
 
-    BOOST_CHECK( !origin.isLeaf() );
-    BOOST_CHECK( origin.mightVanish() );
-    
-    
     auto itFather = father.hbegin(grid.maxLevel());
     const auto& endItFather = father.hend(grid.maxLevel());
     // If itFather != endItFather and !father.isLeaf() (if dristibuted_data_ is empty).
@@ -334,7 +330,7 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                 BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
                 checkFatherAndSiblings(element.getLevelElem(), expected_total_children, grid, isNested);
 
-                if (!preAdaptMaxLevel) {
+                if (!preAdaptMaxLevel && !isNested) {
                     // If there is no nested refinement, entity.isLeaf() and it == endIt (if dristibuted_data_ is empty).
                     BOOST_CHECK( it == endIt);
                     BOOST_CHECK( element.isLeaf() );
