@@ -52,7 +52,9 @@ void checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
 
 void checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
                                         const Dune::cpgrid::HierarchicIterator& endIt,
-                                        double expected_total_children);
+                                        double expected_total_children,
+                                        bool isNested,
+                                        unsigned int maxLevel);
 
 void checkGlobalCellBounds(const Dune::CpGrid& grid,
                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data,
@@ -66,13 +68,14 @@ void checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(const std::vector<int>& gl
                                                       const std::vector<int>& globalCell_leaf);
 
 void checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                            int preAdaptMaxLevel,
                             double expected_total_children,
-                            const Dune::CpGrid& grid);
+                            const Dune::CpGrid& grid,
+                            bool isNested);
 
 void checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                                 const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                int preAdaptMaxLevel = 0);
+                                int preAdaptMaxLevel = 0,
+                                bool isNested = false);
 
 void checkLocalIndicesMatchMapper(const Dune::CpGrid& grid);
 
@@ -83,7 +86,8 @@ void checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
                                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
 void checkLgrNameToLevel(const Dune::CpGrid& grid,
-                         const std::vector<std::string>& lgr_name_vec);
+                         const std::vector<std::string>& lgr_name_vec,
+                         int preRefineMaxLevel);
 
 void checkVertexAndFaceIndexAreNonNegative(const Dune::CpGrid& grid);
 
@@ -150,7 +154,9 @@ void adaptGrid(Dune::CpGrid& grid,
 void checkGridWithLgrs(const Dune::CpGrid& grid,
                        const std::vector<std::array<int,3>>& cells_per_dim_vec,
                        const std::vector<std::string>& lgr_name_vec,
-                       bool gridHasBeenGlobalRefined = false);
+                       bool gridHasBeenGlobalRefined = false,
+                       int preRefineMaxLevel = 0,
+                       bool isNested = false);
 
 int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
                                   int level = -1); // defualt -1 represents leaf grid view.
@@ -167,12 +173,15 @@ void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it
                                                                [](double sum, const Dune::cpgrid::Entity<0>& child) {
                                                                    return sum + child.geometryInFather().volume();
                                                                });
+
     BOOST_CHECK_CLOSE(reference_elem_parent_cell_volume, 1.0, 1e-12);
 }
 
 void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
                                              const Dune::cpgrid::HierarchicIterator& endIt,
-                                             double expected_total_children)
+                                             double expected_total_children,
+                                             bool isNested,
+                                             unsigned int maxLevel)
 {
     int total_children = 0;
     std::set<int> levels{};
@@ -185,9 +194,14 @@ void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it
         }
         ++total_children;
     }
-    BOOST_CHECK_EQUAL(total_children, expected_total_children);
-    BOOST_CHECK_EQUAL( levels.size(), 1); // all children belong to the same level.
-
+    if (!isNested) {
+        BOOST_CHECK_EQUAL(total_children, expected_total_children);
+        BOOST_CHECK_EQUAL( levels.size(), 1); // all children belong to the same level.
+    }
+    else {
+        BOOST_CHECK( levels.size()<= maxLevel +1); // +1 to include level zero grid
+    }
+    
     for (int c = 0; c < 3; ++c) {
         reference_elem_parent_cell_center[c]/= total_children;
         BOOST_CHECK_CLOSE(reference_elem_parent_cell_center[c], .5, 1e-12);
@@ -237,28 +251,48 @@ void Opm::checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(const std::vector<int
 }
 
 void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                                 int preAdaptMaxLevel,
                                  double expected_total_children,
-                                 const Dune::CpGrid& grid)
+                                 const Dune::CpGrid& grid,
+                                 bool isNested)
 {
-    const auto& father = element.father();
-    const auto& fatherLevelData = grid.currentData()[father.level()];
-
-    BOOST_CHECK( father.level() <= preAdaptMaxLevel );
-    BOOST_CHECK_EQUAL( fatherLevelData ->getMark(father), 1);
-    BOOST_CHECK( !father.isLeaf()); // Father vanished during refinement.
-    BOOST_CHECK( father.mightVanish() );
-
+    const auto& origin = element.getOrigin();
+    const auto& originLevelData = grid.currentData()[origin.level()];
     // getOrigin() returns the level-zero ancestor, even when the grid
     // has undergone multiple refinements.
-    BOOST_CHECK_EQUAL( element.getOrigin().level(), 0);
+    BOOST_CHECK_EQUAL( origin.level(), 0);
+
+    const auto& father = element.father();
+    const auto& fatherLevelData =  grid.currentData()[father.level()];
+    BOOST_CHECK( father.level() <= element.level() );
+
+    BOOST_CHECK_EQUAL( originLevelData->getMark(origin), 1);
+    BOOST_CHECK_EQUAL( fatherLevelData->getMark(father), 1);
+
+    BOOST_CHECK( !origin.isLeaf() );
+    BOOST_CHECK( origin.mightVanish() );
+    
+    BOOST_CHECK( !father.isLeaf() ); // Father vanished during refinement.
+    BOOST_CHECK( father.mightVanish() );
 
     auto itFather = father.hbegin(grid.maxLevel());
     const auto& endItFather = father.hend(grid.maxLevel());
     // If itFather != endItFather and !father.isLeaf() (if dristibuted_data_ is empty).
     BOOST_CHECK( itFather != endItFather );
-    checkReferenceElemParentCellVolume( itFather, endItFather);
-    checkReferenceElemParentCellCenter(itFather, endItFather, expected_total_children);
+    // next level tmp_l is used to iterate only over one level
+    auto tmp_l = itFather->level();
+    auto itTmpL = father.hbegin(tmp_l);
+    const auto& endItTmpL = father.hend(tmp_l);
+    checkReferenceElemParentCellVolume(itTmpL, endItTmpL);
+    checkReferenceElemParentCellCenter(itFather, endItFather, expected_total_children,
+                                       isNested, grid.maxLevel());
+
+    // If itOrigin != endItOrigin and !origin.isLeaf() (if dristibuted_data_ is empty).
+    BOOST_CHECK( origin.hbegin(grid.maxLevel()) != origin.hend(grid.maxLevel()) );
+    // next level l is used to iterate only over one level
+    auto l = origin.hbegin(grid.maxLevel())->level();
+    auto itOrigin = origin.hbegin(l);
+    const auto& endItOrigin = origin.hend(l);
+    BOOST_CHECK( itOrigin != endItOrigin );
 
     const auto& [child_level, siblings_list] = fatherLevelData->getChildrenLevelAndIndexList(father.index());
 
@@ -270,7 +304,8 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
 
 void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                     int preAdaptMaxLevel)
+                                     int preAdaptMaxLevel,
+                                     bool isNested)
 {
     const int maxLevel = grid.maxLevel(); // Leaf Grid View has index maxLevel +1
 
@@ -294,7 +329,7 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                 int subdivisionsIdx = element.level()-1-preAdaptMaxLevel;
                 const auto expected_total_children = cells_per_dim_vec[subdivisionsIdx][0]*cells_per_dim_vec[subdivisionsIdx][1]*cells_per_dim_vec[subdivisionsIdx][2];
                 BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
-                checkFatherAndSiblings(element.getLevelElem(), preAdaptMaxLevel, expected_total_children, grid);
+                checkFatherAndSiblings(element.getLevelElem(), expected_total_children, grid, isNested);
 
                 if (!preAdaptMaxLevel) {
                     // If there is no nested refinement, entity.isLeaf() and it == endIt (if dristibuted_data_ is empty).
@@ -463,15 +498,16 @@ void Opm::checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
 }
 
 void Opm::checkLgrNameToLevel(const Dune::CpGrid& grid,
-                              const std::vector<std::string>& lgr_name_vec)
+                              const std::vector<std::string>& lgr_name_vec,
+                              int preRefineMaxLevel)
 {
     if (grid.maxLevel()) {
         const auto& lgrNameToLevel =  grid.getLgrNameToLevel();
         for (const auto& [lgrName, level] : lgrNameToLevel) {
-            if (level){ // If the grid has been refined only once.
-                BOOST_CHECK_EQUAL( lgrName, lgr_name_vec[level-1]);
+            if (level>preRefineMaxLevel){
+                BOOST_CHECK_EQUAL( lgrName, lgr_name_vec[level-preRefineMaxLevel-1]);
             }
-            else {
+            else if (level == 0) {
                 BOOST_CHECK_EQUAL( lgrName, "GLOBAL");
             }
         }
@@ -764,15 +800,17 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
 void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
                             const std::vector<std::string>& lgr_name_vec,
-                            bool gridHasBeenGlobalRefined)
+                            bool gridHasBeenGlobalRefined,
+                            int preRefineMaxLevel,
+                            bool isNested)
 {
     const auto& data = grid.currentData();
 
-    checkLgrNameToLevel(grid, lgr_name_vec);
+    checkLgrNameToLevel(grid, lgr_name_vec, preRefineMaxLevel);
     checkVertexAndFaceIndexAreNonNegative(grid);
     checkFaceHas4VerticesAndMax2NeighboringCells(grid, data);
     checkLocalIndicesMatchMapper(grid); // Decide if it's worth to keep it
-    checkGridBasicHiearchyInfo(grid, cells_per_dim_vec);
+    checkGridBasicHiearchyInfo(grid, cells_per_dim_vec, preRefineMaxLevel, isNested);
 
     checkCellGlobalIdUniquenessForInteriorCells(grid, data);
     /** Vertex global id uniqueness can't be guaranteed because the overlap layer size is set to 1.

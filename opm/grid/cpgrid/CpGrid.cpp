@@ -1036,18 +1036,15 @@ void CpGrid::globalRefine (int refCount)
     if (refCount < 0) {
         OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
     }
-    // Throw if the grid has been already partially refined, i.e., there exist coarse cells with more than 6 faces.
-    // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
-    // got refined. Therefore, the coarse face that they share got replaced by refined-faces. In this case, we do not
-    // support yet global refinement.
+
+    // Throw if strict local refinement is detected.
     if(this->maxLevel()) {
-        bool isOnlyGlobalRefined = true;
-        for (int level = 0; level < this->maxLevel(); ++level) {
-            // When the grid has been refined only via global refinement, i.e., each cell has been refined into 2x2x2 children cells,
-            // then the quotient between the total amount of two consecutive refined level grids is equal to 8 = 2x2x2.
-            isOnlyGlobalRefined = isOnlyGlobalRefined && ( (currentData()[level+1]->size(0)) / (currentData()[level]->size(0)) == 8 );
-        }
-        if (!isOnlyGlobalRefined) {
+        // For strict local refinement, these sizes are identical. Global refinement
+        // results in a difference in at least one direction (x, y, or z).
+        bool sameNX = currentData().back()->logicalCartesianSize()[0] == currentData().front()->logicalCartesianSize()[0];
+        bool sameNY = currentData().back()->logicalCartesianSize()[1] == currentData().front()->logicalCartesianSize()[1];
+        bool sameNZ = currentData().back()->logicalCartesianSize()[2] == currentData().front()->logicalCartesianSize()[2];
+        if (sameNX && sameNY && sameNZ) {
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
     }
