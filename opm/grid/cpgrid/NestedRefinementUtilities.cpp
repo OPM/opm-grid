@@ -33,14 +33,14 @@ namespace Opm
 {
 
 bool isNameInTheList(const std::vector<std::string>& lgr_parent_grid_names,
-                     const std::string& parent_grid_name)
+                     const std::string& grid_name)
 {
     return (std::find(lgr_parent_grid_names.begin(), lgr_parent_grid_names.end(),
-                      parent_grid_name) != lgr_parent_grid_names.end());
+                      grid_name) != lgr_parent_grid_names.end());
 }
 
-std::vector<int> collectIndicesWithSameParentGridName(const std::vector<std::string>& lgr_parent_grid_names,
-                                                      const std::string& parent_grid_name)
+std::vector<int> getLgrDataIndicesByParentGrid(const std::vector<std::string>& lgr_parent_grid_names,
+                                               const std::string& parent_grid_name)
 {
     if (!isNameInTheList(lgr_parent_grid_names, parent_grid_name)) {
         throw std::invalid_argument("Parent grid name does not exist.\n");
@@ -48,7 +48,7 @@ std::vector<int> collectIndicesWithSameParentGridName(const std::vector<std::str
 
     std::vector<int> indices;
 
-    for (size_t i = 0; i < lgr_parent_grid_names.size(); ++i) {
+    for (std::size_t i = 0; i < lgr_parent_grid_names.size(); ++i) {
         if (lgr_parent_grid_names[i] == parent_grid_name) {
             indices.push_back(i);
         }
@@ -67,8 +67,8 @@ filterLgrDataPerParentGridName(const std::vector<std::array<int,3>>& cells_per_d
                                const std::vector<std::string>& lgr_parent_grid_name_vec,
                                const std::string& parent_grid_name)
 {
-    const auto lgrs_with_given_parent_grid = collectIndicesWithSameParentGridName(lgr_parent_grid_name_vec,
-                                                                                  parent_grid_name);
+    const auto lgrs_with_given_parent_grid = getLgrDataIndicesByParentGrid(lgr_parent_grid_name_vec,
+                                                                           parent_grid_name);
     // Assume all vector sizes are equal
     const auto& size =  lgrs_with_given_parent_grid.size();
     std::vector<std::array<int,3>> filtered_cells_per_dim_vec{};
