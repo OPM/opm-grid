@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(distributedLgrFailsVertexGlobalIdsUniquenessWithAddCornerCe
     }
 }
 
-BOOST_AUTO_TEST_CASE(callAdaptWithArgsIsEquivalentToCallAddLgrsUpdateLeafGridViewOnDistributedCoarseGrid)
+BOOST_AUTO_TEST_CASE(callRefineAndUpdateGridOnDistributedCoarseGrid)
 {
     Dune::CpGrid grid;
     auto parts = createTestCartesianGridAndParts(grid);
@@ -209,11 +209,11 @@ BOOST_AUTO_TEST_CASE(callAdaptWithArgsIsEquivalentToCallAddLgrsUpdateLeafGridVie
         for (const auto& idx : marked_elemIdx)
             assignRefinedLevel[idx] = 1;
 
-        grid.adapt(cells_per_dim_vec,
-                   assignRefinedLevel,
-                   {"LGR1"} /*lgr_name_vec*/,
-                   startIJK_vec,
-                   endIJK_vec);
+        grid.refineAndUpdateGrid(cells_per_dim_vec,
+                                 assignRefinedLevel,
+                                 {"LGR1"} /*lgr_name_vec*/,
+                                 startIJK_vec,
+                                 endIJK_vec);
 
         Opm::checkGridWithLgrs(grid, cells_per_dim_vec, {"LGR1"}, /* isGlobalRefined = */ false);
     }

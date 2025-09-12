@@ -774,7 +774,7 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
     bool preAdapt = grid.preAdapt();
     checkMarksAfterPreAdapt(grid, preAdapt);
 
-    grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
+    grid.refineAndUpdateGrid({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
 
     grid.postAdapt();
     checkMarksAfterPostAdapt(grid, preAdaptMaxLevel);

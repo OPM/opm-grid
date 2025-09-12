@@ -1063,7 +1063,7 @@ void CpGrid::globalRefine (int refCount)
             }
 
             preAdapt();
-            adapt(/* cells_per_dim_vec = */ {{2,2,2}}, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
+            refineAndUpdateGrid(/* cells_per_dim_vec = */ {{2,2,2}}, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
             postAdapt();
         }
     }
@@ -1870,16 +1870,16 @@ bool CpGrid::adapt()
         // Rewrite the lgr name (GR stands for GLOBAL REFINEMET)
         lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
         const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
-        return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
+        return this->refineAndUpdateGrid(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
     }
-    return this-> adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
+    return this-> refineAndUpdateGrid(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
 }
 
-bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                   const std::vector<int>& assignRefinedLevel,
-                   const std::vector<std::string>& lgr_name_vec,
-                   const std::vector<std::array<int,3>>& startIJK_vec,
-                   const std::vector<std::array<int,3>>& endIJK_vec)
+bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                 const std::vector<int>& assignRefinedLevel,
+                                 const std::vector<std::string>& lgr_name_vec,
+                                 const std::vector<std::array<int,3>>& startIJK_vec,
+                                 const std::vector<std::array<int,3>>& endIJK_vec)
 {
     // To do: support coarsening.
     assert( static_cast<int>(assignRefinedLevel.size()) == current_view_data_->size(0));
@@ -2714,7 +2714,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
 
     // Refine
-    adapt(filtered_cells_per_dim_vec, assignRefinedLevel, filtered_lgr_name_vec, filtered_startIJK_vec, filtered_endIJK_vec);
+    refineAndUpdateGrid(filtered_cells_per_dim_vec, assignRefinedLevel, filtered_lgr_name_vec, filtered_startIJK_vec, filtered_endIJK_vec);
 
     // Print total refined level grids and total cells on the leaf grid view
     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
