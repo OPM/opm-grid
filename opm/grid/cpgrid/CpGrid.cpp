@@ -2627,11 +2627,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 filtered_startIJK_vec,
                 filtered_endIJK_vec,
                 filtered_lgr_name_vec,
-                filtered_lgr_parent_grid_name_vec] = Opm::Lgr::filterUndesiredNumberOfSubdivisions(cells_per_dim_vec,
-                                                                                                   startIJK_vec,
-                                                                                                   endIJK_vec,
-                                                                                                   lgr_name_vec,
-                                                                                                   parent_grid_names);
+                filtered_lgr_parent_grid_name_vec] = Opm::Lgr::excludeFakeSubdivisions(cells_per_dim_vec,
+                                                                                       startIJK_vec,
+                                                                                       endIJK_vec,
+                                                                                       lgr_name_vec,
+                                                                                       parent_grid_names);
     if (allUndesired) { // if all LGRs expect 1 child per direction, then no refinement will be done.
         return;
     }

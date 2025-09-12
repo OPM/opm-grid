@@ -711,9 +711,11 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
 ///
 /// A warning is logged for each excluded LGR name.
 ///
-/// @param [in] startIJK_vec          Vector of Cartesian triplet indices where each patch starts.
-/// @param [in] endIJK_vec            Vector of Cartesian triplet indices where each patch ends.
-/// @param [in] lgr_name_vec          Names (std::string) for the LGRs/levels.
+/// @param [in] startIJK_vec              Vector of Cartesian triplet indices where each patch starts.
+/// @param [in] endIJK_vec                Vector of Cartesian triplet indices where each patch ends.
+/// @param [in] lgr_name_vec              Names (std::string) for the LGRs/levels.
+/// @param [in] lgr_parent_grid_name_vec  Names (std::string) for the LGRs/levels parent grids.
+///                                       A parent grid may have more than one child LGR.
 ///
 /// @return A tuple containing a bool and the filtered vectors:
 ///         - allUndesired         True if all LGRs have cells_per_dim_ = {1,1,1}
@@ -721,17 +723,18 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
 ///         - startIJK_vec
 ///         - endIJK_vec
 ///         - lgr_name_vec
+///         - lgr_parent_grid_name_vec
 std::tuple<bool,
            std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::string>,
            std::vector<std::string>>
-filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                    const std::vector<std::array<int, 3>>& startIJK_vec,
-                                    const std::vector<std::array<int, 3>>& endIJK_vec,
-                                    const std::vector<std::string>& lgr_name_vec,
-                                    const std::vector<std::string>& lgr_parent_grid_name_vec);
+excludeFakeSubdivisions(const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                        const std::vector<std::array<int, 3>>& startIJK_vec,
+                        const std::vector<std::array<int, 3>>& endIJK_vec,
+                        const std::vector<std::string>& lgr_name_vec,
+                        const std::vector<std::string>& lgr_parent_grid_name_vec);
 
 /// @brief Check compatibility of number of subdivisions of neighboring LGRs.
 ///

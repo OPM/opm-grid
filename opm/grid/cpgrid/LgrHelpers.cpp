@@ -2150,11 +2150,11 @@ std::tuple<bool,
            std::vector<std::array<int,3>>,
            std::vector<std::string>,
            std::vector<std::string>>
-filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                    const std::vector<std::array<int,3>>& startIJK_vec,
-                                    const std::vector<std::array<int,3>>& endIJK_vec,
-                                    const std::vector<std::string>& lgr_name_vec,
-                                    const std::vector<std::string>& lgr_parent_grid_name_vec)
+excludeFakeSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                        const std::vector<std::array<int,3>>& startIJK_vec,
+                        const std::vector<std::array<int,3>>& endIJK_vec,
+                        const std::vector<std::string>& lgr_name_vec,
+                        const std::vector<std::string>& lgr_parent_grid_name_vec)
 {
     // Assume all vector sizes are equal
     const std::size_t size = cells_per_dim_vec.size();
