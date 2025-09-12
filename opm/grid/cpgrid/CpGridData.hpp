@@ -851,7 +851,8 @@ private:
     /** Level-grid or Leaf-grid cell to parent cell and refined-cell-in-parent-cell index (number between zero and total amount
         of children per parent (cells_per_dim[0]_*cells_per_dim_[1]*cells_per_dim_[2])). Entry is -1 when cell has no father. */
     std::vector<int> cell_to_idxInParentCell_;
-
+    /** To keep track of refinement processes */
+    int refinement_max_level_{0};
 
 
     /// \brief Object for collective communication operations.

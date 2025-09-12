@@ -221,15 +221,19 @@ public:
     /// @brief Iterator end over the children/beyond last child iterator.
     HierarchicIterator hend(int) const;
 
-    /// \brief Returns true, if the entity has been created during the last call to adapt(). Dummy.
+    /// \brief Returns true, if the entity has been created during the last call to adapt().
+    ///
+    /// Note: An element created during the last refinement step may still be refined further
+    /// on a higher level (e.g., through nested refinement).
+    /// The isNew flag is used to identify such newly created elements so that data 
+    /// interpolation is applied only to them.
     bool isNew() const;
 
-    /// \brief Returns true, if entity might disappear during the next call to adapt().
+    /// \brief Indicates whether the entity may be removed in the next call to adapt().
     ///
-    ///        Currently, returns true if the element has been marked to be refined. Therefore, it "vanishes"
-    ///        in the sense that it gets replaced by its children.
-    ///        To be modified: When supporting coarsening, mightVanish should return true for all the "siblings"
-    ///        refined cells of one refined cell that got marked to be coarsened.
+    /// For CpGrid, this currently always returns false, since only refinement
+    /// (and no coarsening) is supported. A return value of false guarantees
+    /// that the entity will still exist after adaptation.
     bool mightVanish() const;
 
     /// @brief ONLY FOR CELLS (Entity<0>)
@@ -461,33 +465,35 @@ int Entity<codim>::level() const
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
-    if (pgrid_ -> parent_to_children_cells_.empty()){ // LGR cells
+    if (pgrid_ -> parent_to_children_cells_.empty()){ // Grid cells without nested refinement
         return true;
     }
     else {
-        return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Cells from GLOBAL, not involved in any LGR
+        return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Not involved in any LGR
     }
 }
 
 template<int codim>
 bool Entity<codim>::isNew() const
 {
-    // WIP
-    // For an Entity "to be new" means that
-    // - it has a father
-    // - it has been created in the last call of adapt()
-    // To determine that, we track the level of the Entity and
-    // check if it was marked for refinement in the previos state
-    // of current_view_data_
-    return (isLeaf() && hasFather());
+    int data_count = pgrid_->level_data_ptr_->size();
+    if (data_count == 1) { // CpGrid has only level zero grid.
+        return false; // no element is new
+    }
+    else {
+        assert(data_count >= 2); // Level zero and leaf grids, plus at least one refined level grid
+        // In nested refinement, an element created during the last refinement step
+        // may itself be refined further within the same step at a higher level.
+        // To handle this case, we also check whether the element is a leaf
+        // (i.e., it has no children).
+        return isLeaf() && (pgrid_->refinement_max_level_ == data_count - 2); // minus "level zero" and "leaf"
+    }
 }
-
 
 template<int codim>
 bool Entity<codim>::mightVanish() const
 {
-    const auto refinementMark = pgrid_ -> getMark(*this);
-    return (refinementMark == 1);
+    return false;
 }
 
 template<int codim>
