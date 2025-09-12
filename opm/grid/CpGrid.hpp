@@ -481,13 +481,15 @@ namespace Dune
         /// Old-corners and old-faces (from coarse grid) lying on the boundary of the patches, get replaced by new-born-equivalent corners
         /// and new-born-faces.
         ///
-        /// @param [in] cells_per_dim_vec      Vector of Number of (refined) cells in each direction that each
-        ///                                    parent cell should be refined to.
-        /// @param [in] startIJK_vec           Vector of Cartesian triplet indices where each patch starts.
-        /// @param [in] endIJK_vec             Vector of Cartesian triplet indices where each patch ends.
-        ///                                    Last cell part of each patch(lgr) will be
-        ///                                    {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
-        /// @param [in] lgr_name_vec           Names (std::string) for the LGRs/levels.
+        /// @param [in] cells_per_dim_vec         Vector of Number of (refined) cells in each direction that each
+        ///                                       parent cell should be refined to.
+        /// @param [in] startIJK_vec              Vector of Cartesian triplet indices where each patch starts.
+        /// @param [in] endIJK_vec                Vector of Cartesian triplet indices where each patch ends.
+        ///                                       Last cell part of each patch(lgr) will be
+        ///                                       {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
+        /// @param [in] lgr_name_vec              Names (std::string) for the LGRs/levels.
+        /// @param [in] lgr_parent_grid_name_vec  Names (std::string) for the LGRs/levels parent grids.
+        ///                                       A parent grid may have more than one child LGR.
         void addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
                                    const std::vector<std::array<int,3>>& endIJK_vec,

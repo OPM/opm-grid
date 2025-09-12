@@ -2636,12 +2636,19 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         return;
     }
 
+    // Refinement proceeds in steps. In each step, for every parent grid:
+    //   1. Gather the data of its child LGRs.
+    //   2. Create the corresponding LGRs.
+    //   3. Update the leaf grid view.
+    //
+    // To achieve this, we first collect the set of unique parent grid names
+    // (avoiding duplicates).
     std::set<std::string> non_repeated_parent_grid_names(filtered_lgr_parent_grid_name_vec.begin(),
                                                          filtered_lgr_parent_grid_name_vec.end());
     int tmp_maxLevel = this->maxLevel();
 
     for (const auto& parent_grid_name : non_repeated_parent_grid_names) {
-
+        //   1. Gather the data of its child LGRs.
         auto [cells_per_dim_vec_parent_grid,
               startIJK_vec_parent_grid,
               endIJK_vec_parent_grid,
@@ -2706,7 +2713,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
         tmp_maxLevel = tmp_maxLevel + startIJK_vec_parent_grid.size(); // Update the maxLevel
-        // Refine
+
+        //   2. Create the corresponding LGRs. and  3. Update the leaf grid view.
         adapt(cells_per_dim_vec_parent_grid,
               assignRefinedLevel,
               lgr_name_vec_parent_grid,
