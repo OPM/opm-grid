@@ -2636,6 +2636,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         return;
     }
 
+    if (!Opm::areParentGridsAvailableBeforeTheirLgrs(getLgrNameToLevel(),
+                                                     filtered_lgr_name_vec,
+                                                     filtered_lgr_parent_grid_name_vec)) {
+        OPM_THROW(std::invalid_argument, "Parent grid (name) must exist before its LGRs.");
+    }
+
     // Refinement proceeds in steps. In each step, for every parent grid:
     //   1. Gather the data of its child LGRs.
     //   2. Create the corresponding LGRs.

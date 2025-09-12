@@ -23,6 +23,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -87,6 +89,32 @@ filterLgrDataPerParentGridName(const std::vector<std::array<int,3>>& cells_per_d
         filtered_lgr_name_vec.push_back(lgr_name_vec[lgr_idx]);
     }
     return std::make_tuple(filtered_cells_per_dim_vec, filtered_startIJK_vec, filtered_endIJK_vec, filtered_lgr_name_vec);
+}
+
+bool areParentGridsAvailableBeforeTheirLgrs(const std::map<std::string,int>& existing_grid_names,
+                                            const std::vector<std::string>& new_lgr_names,
+                                            const std::vector<std::string>& new_lgrs_parent_grid_names)
+{
+    assert(new_lgr_names.size() == new_lgrs_parent_grid_names.size());
+
+    for (std::size_t i = 0; i < new_lgrs_parent_grid_names.size(); ++i) {
+        const std::string& parent = new_lgrs_parent_grid_names[i];
+
+        // Case 1: Parent already exists
+        if (existing_grid_names.find(parent) != existing_grid_names.end()) {
+            continue;
+        }
+
+        // Case 2: Parent must appear earlier among the new LGRs
+        bool foundEarlier = std::find(new_lgr_names.begin(),
+                                      new_lgr_names.begin() + i,
+                                      parent) != new_lgr_names.begin() + i;
+
+        if (!foundEarlier) {
+            return false; // parent not found before child
+        }
+    }
+    return true; // all parent grids valid (exist before their LGRs)
 }
 
 } // namespace Opm

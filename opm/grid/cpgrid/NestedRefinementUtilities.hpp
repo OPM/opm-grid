@@ -80,7 +80,20 @@ filterLgrDataPerParentGridName(const std::vector<std::array<int,3>>& cells_per_d
                                const std::vector<std::string>& lgr_name_vec,
                                const std::vector<std::string>& lgr_parent_grid_name_vec,
                                const std::string& parent_grid_name);
-    
+
+/// @brief Check whether each parent grid exists before its child LGRs.
+///
+/// Ensures that a parent grid is either already present in the set of existing
+/// grids or appears earlier in the list of new LGRs, before its children.
+///
+/// @param [in] existing_grid_names         Map of existing grid names.
+/// @param [in] new_lgr_names               Names of new LGRs to be created.
+/// @param [in] new_lgrs_parent_grid_names  Corresponding parent grid names for each LGR.
+/// @return true if all parent grids exist before their child LGRs, false otherwise.
+bool areParentGridsAvailableBeforeTheirLgrs(const std::map<std::string,int>& existing_grid_names,
+                                            const std::vector<std::string>& new_lgr_names,
+                                            const std::vector<std::string>& new_lgrs_parent_grid_names);
+
 } // namespace Opm
 
 #endif // OPM_NESTEDREFINEMENTUTILITIES_HEADER_INCLUDED

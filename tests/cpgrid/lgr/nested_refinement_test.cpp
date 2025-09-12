@@ -204,3 +204,22 @@ BOOST_AUTO_TEST_CASE(mixNameOrderAndNestedRefinement){
         BOOST_CHECK_EQUAL( element.father().level(), 2); // LGR4 parent grid is LGR3-> grid index 2
     }
 }
+
+BOOST_AUTO_TEST_CASE(throwIfParentGridNameDoesNotExitBeforeItsLgrs){
+
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{3,3,1}, {2,2,2}, {3,2,1}, {3,4,1}};
+    const std::vector<std::array<int,3>> startIJK_vec = {{1,1,0},{0,0,0}, {0,0,0}, {1,1,0}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{2,2,1},{1,1,1}, {1,1,1}, {2,2,1}};
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
+    const std::vector<std::string> lgr_parent_grid_name_vec = {"GLOBAL","LGR3","GLOBAL","LGR1"};
+
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+
+    BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec,
+                                                  startIJK_vec,
+                                                  endIJK_vec,
+                                                  lgr_name_vec,
+                                                  lgr_parent_grid_name_vec), std::invalid_argument);
+}
+
