@@ -51,6 +51,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/ColumnExtract.cpp
   opm/grid/FaceQuadrature.cpp
   opm/grid/GraphOfGrid.cpp
+  opm/grid/CoarseGraphOfGrid.cpp
   opm/grid/GraphOfGridWrappers.cpp
   opm/grid/GridHelpers.cpp
   opm/grid/GridManager.cpp
@@ -91,6 +92,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_geom2d.cpp
   tests/test_graphofgrid.cpp
   tests/test_graphofgrid_parallel.cpp
+  tests/test_coarsegraphofgrid.cpp
   tests/test_gridutilities.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
@@ -251,6 +253,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/ColumnExtract.hpp
   opm/grid/FaceQuadrature.hpp
   opm/grid/GraphOfGrid.hpp
+  opm/grid/CoarseGraphOfGrid.hpp
   opm/grid/GraphOfGridWrappers.hpp
   opm/grid/GridHelpers.hpp
   opm/grid/GridManager.hpp

@@ -43,6 +43,7 @@
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/grid/common/grid.hh>
+#include <dune/istl/bcrsmatrix.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
@@ -958,12 +959,16 @@ namespace Dune
                     bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltanGoG,
                     double imbalanceTol = 1.1,
                     bool allowDistributedWells = false,
-                    bool useTransToFilterOverlap = true)
+                    bool useTransToFilterOverlap = true,
+                    Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* graph = nullptr,
+                    double coarseThreshold = 1.0,
+                    int coarsePartitionMaxNodeSize = -1)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
                                    addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells,
                                    /* input_cell_parts = */ std::vector<int>{}, /* level = */ 0,
-                                   useTransToFilterOverlap);
+                                   useTransToFilterOverlap, graph,
+                                   coarseThreshold, coarsePartitionMaxNodeSize);
             using std::get;
             if (get<0>(ret))
             {
@@ -1481,7 +1486,10 @@ namespace Dune
                     bool allowDistributedWells = true,
                     const std::vector<int>& input_cell_part = {},
                     int level = -1,
-                    bool useTransToFilterOverlap = true);
+                    bool useTransToFilterOverlap = true,
+                    Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph = nullptr,
+                    double coarseThreshold = 1.0,
+                    int coarsePartitionMaxNodeSize = -1);
 
         /** @brief The data stored in the grid.
          *
