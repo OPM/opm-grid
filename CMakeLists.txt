@@ -119,22 +119,33 @@ if(MPI_FOUND)
   if(NOT MPIEXEC_EXECUTABLE)
     set(MPIEXEC_EXECUTABLE ${MPIEXEC})
   endif()
-  add_test(addLgrsOnDistributedGrid_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/addLgrsOnDistributedGrid_test)
-  add_test(autoRefine_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/autoRefine_test)
-  add_test(communicate_distributed_grid_with_lgrs_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/communicate_distributed_grid_with_lgrs_test)
-  add_test(distribute_level_zero_from_grid_with_lgrs_and_wells_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribute_level_zero_from_grid_with_lgrs_and_wells_test)
-  add_test(distribute_level_zero_from_grid_with_lgrs_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribute_level_zero_from_grid_with_lgrs_test)
-  add_test(distribution_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribution_test)
-  add_test(grid_global_id_set_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/grid_global_id_set_test)
-  add_test(level_and_grid_cartesianIndexMappers_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/level_and_grid_cartesianIndexMappers_test)
-  add_test(lgr_cell_id_sync_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/lgr_cell_id_sync_test)
-  add_test(logicalCartesianSize_and_refinement_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/logicalCartesianSize_and_refinement_test)
+
+  set(tests_4proc
+    addLgrsOnDistributedGrid_test
+    autoRefine_test
+    communicate_distributed_grid_with_lgrs_test
+    distribute_level_zero_from_grid_with_lgrs_and_wells_test
+    distribute_level_zero_from_grid_with_lgrs_test
+    distribution_test
+    grid_global_id_set_test
+    level_and_grid_cartesianIndexMappers_test
+    lgr_cell_id_sync_test
+    logicalCartesianSize_and_refinement_test
+    test_communication_utils
+  )
+
   if(Boost_VERSION_STRING VERSION_GREATER 1.53)
-     add_test(lgr_with_inactive_parent_cells_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/lgr_with_inactive_parent_cells_test)
-     add_test(test_graphofgrid_parallel3 ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 3 bin/test_graphofgrid_parallel)
-     add_test(test_graphofgrid_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_graphofgrid_parallel)
+    list(APPEND test_4proc lgr_with_inactive_parent_cells_test)
+     foreach(procs 3 4)
+       add_test(test_graphofgrid_parallel${procs} ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${procs} bin/test_graphofgrid_parallel)
+       set_tests_properties(test_graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
+     endforeach()
   endif()
-  add_test(test_communication_utils_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_communication_utils)
+
+  foreach(test4 ${tests_4proc})
+    add_test(${test4}_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/${test4})
+    set_tests_properties(${test4}_parallel PROPERTIES PROCESSORS 4)
+  endforeach()
 endif()
 
 if(MPI_FOUND AND HAVE_OPM_TESTS AND HAVE_ECL_INPUT)
