@@ -2721,11 +2721,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         tmp_maxLevel = tmp_maxLevel + startIJK_vec_parent_grid.size(); // Update the maxLevel
 
         //   2. Create the corresponding LGRs. and  3. Update the leaf grid view.
-        adapt(cells_per_dim_vec_parent_grid,
-              assignRefinedLevel,
-              lgr_name_vec_parent_grid,
-              startIJK_vec_parent_grid,
-              endIJK_vec_parent_grid);
+        refineAndUpdateGrid(cells_per_dim_vec_parent_grid,
+                            assignRefinedLevel,
+                            lgr_name_vec_parent_grid,
+                            startIJK_vec_parent_grid,
+                            endIJK_vec_parent_grid);
 
         int non_empty_lgrs = 0;
         for (std::size_t level = 0; level < filtered_startIJK_vec.size(); ++level) {
