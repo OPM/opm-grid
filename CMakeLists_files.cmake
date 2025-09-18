@@ -94,6 +94,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
   tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
+  tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
   tests/cpgrid/lgr/nested_refinement_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp

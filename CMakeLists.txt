@@ -131,6 +131,7 @@ if(MPI_FOUND)
     level_and_grid_cartesianIndexMappers_test
     lgr_cell_id_sync_test
     logicalCartesianSize_and_refinement_test
+    mapLevelIndicesToCartesianOutputOrder_test
     test_communication_utils
   )
 
