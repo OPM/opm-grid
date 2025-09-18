@@ -774,6 +774,9 @@ private:
     cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
     /** @brief Container for the lookup of the points for each face. */
     Opm::SparseTable<int>             face_to_point_;
+    /**  @brief Container for the lookup of the ALL points i.e. not only the cannonical
+     *  for each cell used for communication. */
+    Opm::SparseTable<int>             cell_to_allpoint_;
     /** @brief Vector that contains an arrays of the points of each cell*/
     std::vector< std::array<int,8> >       cell_to_point_;
     /** @brief The size of the underlying logical cartesian grid.
@@ -807,7 +810,9 @@ private:
     /** @brief The global id set (used also as local id set). */
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
+    public:
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
+    private:
     /** Mark elements to be refined **/
     std::vector<int> mark_;
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */

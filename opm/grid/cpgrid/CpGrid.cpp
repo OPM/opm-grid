@@ -395,6 +395,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         comm().barrier();
 
         // first create the overlap
+        auto vertex_cell_map = this->vertexCell();
         auto noImportedOwner = addOverlapLayer(*this,
                                                computedCellPart,
                                                exportList,
@@ -1173,6 +1174,32 @@ int CpGrid::cellFace(int cell, int local_index, int level) const
     bool validLevel = (level>-1) && (level<= maxLevel());
     return validLevel? data_[level]-> cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index()
         : current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
+}
+
+std::array<std::vector<std::set<int>>, 2>
+CpGrid::vertexCell() const
+{
+    //int level = -1;
+    int nc = numCells();//(level)
+    int nv = this->numVertices();
+    std::vector<std::set<int>> vertex_cell(nv);
+    std::vector<std::set<int>> cell_vertex(nc);
+    for(int cell=0; cell< nc; ++cell){ //cells
+        int nlf = numCellFaces(cell);//level);
+        for(int lf=0; lf < nlf; ++lf){//local faces of cell
+            int face = this->cellFace(cell,lf);//level);
+            int nlv = numFaceVertices(face);//numFaceVertices(face,level);
+            for(int lv=0; lv < nlv; ++lv){//local nodes of face
+                int vertex = faceVertex(face,lv);
+                vertex_cell[vertex].insert(cell);
+                cell_vertex[cell].insert(vertex);
+            }
+        }
+    }
+    std::array<std::vector<std::set<int>>,2> out;
+    out[0] = vertex_cell;
+    out[1] = cell_vertex;
+    return out;
 }
 
 const cpgrid::OrientedEntityTable<0,1>::row_type CpGrid::cellFaceRow(int cell) const
