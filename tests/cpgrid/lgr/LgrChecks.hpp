@@ -270,7 +270,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     const auto& father = element.father();
     const auto& fatherLevelData =  grid.currentData()[father.level()];
     BOOST_CHECK( father.level() <= element.level() );
-
+    
     BOOST_CHECK_EQUAL( originLevelData->getMark(origin), 1);
     BOOST_CHECK_EQUAL( fatherLevelData->getMark(father), 1);
 

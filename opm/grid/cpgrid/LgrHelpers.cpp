@@ -2148,11 +2148,13 @@ std::tuple<bool,
            std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
+           std::vector<std::string>,
            std::vector<std::string>>
-filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                    const std::vector<std::array<int,3>>& startIJK_vec,
-                                    const std::vector<std::array<int,3>>& endIJK_vec,
-                                    const std::vector<std::string>& lgr_name_vec)
+excludeFakeSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                        const std::vector<std::array<int,3>>& startIJK_vec,
+                        const std::vector<std::array<int,3>>& endIJK_vec,
+                        const std::vector<std::string>& lgr_name_vec,
+                        const std::vector<std::string>& lgr_parent_grid_name_vec)
 {
     // Assume all vector sizes are equal
     const std::size_t size = cells_per_dim_vec.size();
@@ -2161,11 +2163,13 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_
     std::vector<std::array<int,3>> filtered_startIJK_vec{};
     std::vector<std::array<int,3>> filtered_endIJK_vec{};
     std::vector<std::string> filtered_lgr_name_vec{};
+    std::vector<std::string> filtered_lgr_parent_grid_name_vec{};
     
     filtered_cells_per_dim_vec.reserve(size);
     filtered_startIJK_vec.reserve(size);
     filtered_endIJK_vec.reserve(size);
     filtered_lgr_name_vec.reserve(size);
+    filtered_lgr_parent_grid_name_vec.reserve(size);
 
     bool allUndesired = true;
     for (std::size_t i = 0; i < size; ++i)
@@ -2177,6 +2181,7 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_
             filtered_startIJK_vec.push_back(startIJK_vec[i]);
             filtered_endIJK_vec.push_back(endIJK_vec[i]);
             filtered_lgr_name_vec.push_back(lgr_name_vec[i]);
+            filtered_lgr_parent_grid_name_vec.push_back(lgr_parent_grid_name_vec[i]);
             allUndesired = false;
         }
         else {
@@ -2187,7 +2192,46 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_
                            std::move(filtered_cells_per_dim_vec),
                            std::move(filtered_startIJK_vec),
                            std::move(filtered_endIJK_vec),
-                           std::move(filtered_lgr_name_vec));
+                           std::move(filtered_lgr_name_vec),
+                           std::move(filtered_lgr_parent_grid_name_vec));
+}
+
+bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                            const std::vector<std::array<int,3>>& startIJK_vec,
+                            const std::vector<std::array<int,3>>& endIJK_vec,
+                            const std::array<int,3>& logicalCartesianSize)
+{
+    bool compatibleSubdivisions = true;
+    if (startIJK_vec.size() > 1) {
+        bool notAllowedYet = false;
+        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+            for (std::size_t otherLevel = level+1; otherLevel < startIJK_vec.size(); ++otherLevel) {
+                const int sharedTag = sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]},
+                                                          {endIJK_vec[level],endIJK_vec[otherLevel]},
+                                                          logicalCartesianSize);
+                if(sharedTag == -1){
+                    break; // Go to the next "other patch"
+                }
+                if (sharedTag == 0 ) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
+                }
+                if (sharedTag == 1) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
+                }
+                if (sharedTag == 2) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));
+                }
+                if (notAllowedYet){
+                    compatibleSubdivisions = false;
+                    break;
+                }
+            } // end-otherLevel-for-loop
+        } // end-level-for-loop
+    }// end-if-patchesShareFace
+    return compatibleSubdivisions;
 }
 
 void containsEightDifferentCorners(const std::array<int,8>& cell_to_point)

@@ -38,6 +38,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/LgrHelpers.cpp
+  opm/grid/cpgrid/NestedRefinementUtilities.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/common/GeometryHelpers.cpp
@@ -93,6 +94,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
   tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
+  tests/cpgrid/lgr/nested_refinement_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp
@@ -204,6 +206,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
+  opm/grid/cpgrid/NestedRefinementUtilities.hpp
   opm/grid/CpGrid.hpp
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp

@@ -481,17 +481,20 @@ namespace Dune
         /// Old-corners and old-faces (from coarse grid) lying on the boundary of the patches, get replaced by new-born-equivalent corners
         /// and new-born-faces.
         ///
-        /// @param [in] cells_per_dim_vec      Vector of Number of (refined) cells in each direction that each
-        ///                                    parent cell should be refined to.
-        /// @param [in] startIJK_vec           Vector of Cartesian triplet indices where each patch starts.
-        /// @param [in] endIJK_vec             Vector of Cartesian triplet indices where each patch ends.
-        ///                                    Last cell part of each patch(lgr) will be
-        ///                                    {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
-        /// @param [in] lgr_name_vec           Names (std::string) for the LGRs/levels.
+        /// @param [in] cells_per_dim_vec         Vector of Number of (refined) cells in each direction that each
+        ///                                       parent cell should be refined to.
+        /// @param [in] startIJK_vec              Vector of Cartesian triplet indices where each patch starts.
+        /// @param [in] endIJK_vec                Vector of Cartesian triplet indices where each patch ends.
+        ///                                       Last cell part of each patch(lgr) will be
+        ///                                       {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
+        /// @param [in] lgr_name_vec              Names (std::string) for the LGRs/levels.
+        /// @param [in] lgr_parent_grid_name_vec  Names (std::string) for the LGRs/levels parent grids.
+        ///                                       A parent grid may have more than one child LGR.
         void addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
                                    const std::vector<std::array<int,3>>& endIJK_vec,
-                                   const std::vector<std::string>& lgr_name_vec);
+                                   const std::vector<std::string>& lgr_name_vec,
+                                   const std::vector<std::string>& lgr_parent_grid_name_vec = std::vector<std::string>{});
 
         /// @brief Global refine the grid with different refinement factors in each direction.
         ///
@@ -630,18 +633,8 @@ namespace Dune
         ///        level zero.
         ///        For nested refinement, we lookup the oldest ancestor, from level zero.
         void computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf);
-        
-    private:
-        /// @brief Check if there are non neighboring connections on blocks of cells selected for refinement.
-        ///
-        /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
-        /// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
-        ///
-        /// @return True if all blocks of cells do not contain any NNCs (non-neighboring-connection).
-        ///         False if there is a block with at least one cell with a NNC.
-        bool nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec,
-                                      const std::vector<std::array<int,3>>& endIJK_vec) const;
 
+    private:
         /// @brief Mark selected elements, assign them their corresponding level, and detect active LGRs.
         ///
         /// Given blocks of cells selected for refinement, mark selected elements and assign them their corresponding
