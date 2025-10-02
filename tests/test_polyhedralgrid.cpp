@@ -351,8 +351,8 @@ int main(int argc, char** argv )
         gridFile << "0 0 0" << std::endl;
         gridFile << "0.0 0.0 1.0 0.0 1.0 0.0 0.0 1.0 1.0" << std::endl;
         gridFile << "0 2 4 6" << std::endl;
-        gridFile << "0 1 0 2 1 2" << std::endl;  
-        gridFile << "0 -1 0 -1 0 -1" << std::endl; 
+        gridFile << "0 1 0 2 1 2" << std::endl;
+        gridFile << "0 -1 0 -1 0 -1" << std::endl;
         gridFile << "1.4142135623730951 1.0 1.0" << std::endl;
         gridFile << "0.0 0.5 0.5 0.0 0.5 1.0 0.0 1.0 0.5" << std::endl;
         gridFile << "-1.1102230246251565e-16 -1.0 -1.0 1.1102230246251565e-16 0.0 1.0 0.0 1.0 0.0" << std::endl;

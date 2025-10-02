@@ -64,28 +64,28 @@ void setMetisOptions(const std::map<std::string, std::string>& optionsMap, int& 
     };
     // A map containing the METIS option values
     std::unordered_map<std::string, int> metisOptionValues = {
-        {"METIS_PTYPE_RB", METIS_PTYPE_RB}, 
+        {"METIS_PTYPE_RB", METIS_PTYPE_RB},
         {"METIS_PTYPE_KWAY", METIS_PTYPE_KWAY},
         {"METIS_OBJTYPE_CUT", METIS_OBJTYPE_CUT},
         {"METIS_OBJTYPE_VOL", METIS_OBJTYPE_VOL},
         {"METIS_CTYPE_RM", METIS_CTYPE_RM},
         {"METIS_CTYPE_SHEM", METIS_CTYPE_SHEM},
-        {"METIS_IPTYPE_GROW", METIS_IPTYPE_GROW}, 
-        {"METIS_IPTYPE_RANDOM", METIS_IPTYPE_RANDOM}, 
-        {"METIS_IPTYPE_EDGE", METIS_IPTYPE_EDGE}, 
+        {"METIS_IPTYPE_GROW", METIS_IPTYPE_GROW},
+        {"METIS_IPTYPE_RANDOM", METIS_IPTYPE_RANDOM},
+        {"METIS_IPTYPE_EDGE", METIS_IPTYPE_EDGE},
         {"METIS_IPTYPE_NODE", METIS_IPTYPE_NODE},
-        {"METIS_RTYPE_FM", METIS_RTYPE_FM}, 
-        {"METIS_RTYPE_GREEDY", METIS_RTYPE_GREEDY}, 
-        {"METIS_RTYPE_SEP2SIDED", METIS_RTYPE_SEP2SIDED}, 
+        {"METIS_RTYPE_FM", METIS_RTYPE_FM},
+        {"METIS_RTYPE_GREEDY", METIS_RTYPE_GREEDY},
+        {"METIS_RTYPE_SEP2SIDED", METIS_RTYPE_SEP2SIDED},
         {"METIS_RTYPE_SEP1SIDED", METIS_RTYPE_SEP1SIDED},
         {"METIS_DBG_INFO", METIS_DBG_INFO},
-        {"METIS_DBG_TIME", METIS_DBG_TIME}, 
-        {"METIS_DBG_COARSEN", METIS_DBG_COARSEN}, 
-        {"METIS_DBG_REFINE", METIS_DBG_REFINE}, 
-        {"METIS_DBG_IPART", METIS_DBG_IPART}, 
-        {"METIS_DBG_MOVEINFO", METIS_DBG_MOVEINFO}, 
-        {"METIS_DBG_SEPINFO", METIS_DBG_SEPINFO}, 
-        {"METIS_DBG_CONNINFO", METIS_DBG_CONNINFO}, 
+        {"METIS_DBG_TIME", METIS_DBG_TIME},
+        {"METIS_DBG_COARSEN", METIS_DBG_COARSEN},
+        {"METIS_DBG_REFINE", METIS_DBG_REFINE},
+        {"METIS_DBG_IPART", METIS_DBG_IPART},
+        {"METIS_DBG_MOVEINFO", METIS_DBG_MOVEINFO},
+        {"METIS_DBG_SEPINFO", METIS_DBG_SEPINFO},
+        {"METIS_DBG_CONNINFO", METIS_DBG_CONNINFO},
         {"METIS_DBG_CONTIGINFO", METIS_DBG_CONTIGINFO}
     };
     // Option keys not valid for the METIS_PartGraphRecursive or METIS_PartGraphKway functions.
@@ -177,7 +177,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
         // The number of vertices, every cell is a vertex in the graph.
         idx_t n = cpgrid.numCells();
-        
+
         // This is a vector of size n that upon successful completion stores the partition vector of the graph.
         // The numbering of this vector starts from either 0 or 1, depending on the value of options[METIS_OPTION_NUMBERING].
         idx_t* gpart = new idx_t[n];
@@ -187,7 +187,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         idx_t objval = 0;
 
         // The number of partitions to split the graph into, we want to distribtue over all processes, so cc.size()
-        idx_t nparts = cc.size(); 
+        idx_t nparts = cc.size();
 
         auto& globalIdSet         =  cpgrid.globalIdSet();
         auto& localIdSet          =  cpgrid.localIdSet();
@@ -209,7 +209,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // An array of size n+1 that specifies the adjacency structure of the graph. The adjacency list of vertex i is stored in adjncy[xadj[i]] to adjncy[xadj[i+1]-1].
         idx_t* xadj = new idx_t[n+1];
         xadj[0] = 0;
-        
+
         int manuallySelectedMethod = 0; // 0: choose according to number of partitions, 1: recursive, 2: kway
 #if IS_SCOTCH_METIS_HEADER
         Opm::OpmLog::info("Not setting specific METIS Options since you're using Scotch-METIS.");
@@ -237,7 +237,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         //////// Now, we define all variables that *do depend* on whether there are wells or not
 
         if( wells )
-        {            
+        {
             for (int i = 0; i < n;  i++) {
                 xadj[i+1] = xadj[i] + Dune::cpgrid::getNumberOfEdgesForSpecificCellForGridWithWells(*gridAndWells, lids[i]);
             }
@@ -257,8 +257,8 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // The adjacency list of vertex i is stored in array adjncy starting at index xadj[i] and ending at (but not
         // including) index xadj[i + 1] (i.e., adjncy[xadj[i]] through and including adjncy[xadj[i + 1]-1])
         // So: xadj contains the indices where we start for the respective component
-        idx_t* adjncy = new idx_t[twoM]; 
-        
+        idx_t* adjncy = new idx_t[twoM];
+
         // An array that contains the weights of the edges. If all edges have the same weight, this can be set to NULL.
         // The weights of the edges (if any) are stored in an additional array called adjwgt. This array contains 2m elements, and the weight of edge adjncy[j] is stored at location adjwgt[j]
         idx_t* adjwgt = new idx_t[twoM];
@@ -290,7 +290,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                 Opm::OpmLog::info("Partitioning grid using METIS_PartGraphRecursive.");
             else if (nparts < 65 && ((nparts & (nparts - 1)) == 0))
                 Opm::OpmLog::info("Partitioning grid using METIS_PartGraphRecursive, since the number of partitions is small (<65) and a power of 2. If you want to use METIS_PartGraphKway instead, set the METIS Parameter METIS_OPTION_PTYPE = METIS_PTYPE_KWAY.");
-            rc = METIS_PartGraphRecursive(&n, 
+            rc = METIS_PartGraphRecursive(&n,
                                           &ncon,
                                           xadj,
                                           adjncy,
@@ -305,7 +305,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                           gpart);
         } else {
             Opm::OpmLog::info("Partitioning grid using METIS_PartGraphKway.");
-            rc = METIS_PartGraphKway(&n, 
+            rc = METIS_PartGraphKway(&n,
                                      &ncon,
                                      xadj,
                                      adjncy,
@@ -321,7 +321,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         }
 
         partitionVector.assign(gpart, gpart + n);
-        
+
         delete[] gids;
         delete[] lids;
         delete[] xadj;
@@ -341,10 +341,10 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         OPM_THROW(std::runtime_error, "METIS could not allocate the required memory!");
     } else if (rc == METIS_ERROR) {
         OPM_THROW(std::runtime_error, "Some other type of METIS error!");
-    } else {   
+    } else {
         OPM_THROW(std::runtime_error, "Some other type of general error!");
     }
-    
+
     return cpgrid::createListsFromParts(cpgrid, wells, possibleFutureConnections, transmissibilities, partitionVector, allowDistributedWells, gridAndWells);
 }
 

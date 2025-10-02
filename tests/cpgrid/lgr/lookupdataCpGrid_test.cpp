@@ -220,14 +220,14 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const s
     const auto& poro = fpm.get_double("PORO");
     const auto& eqlnum =  fpm.get_int("EQLNUM");
     const auto& porv = fpm.get_double("PORV");
-    
+
     const auto& leaf_view = grid.leafGridView();
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapper(grid);
     const LeafMapper  mapper(leaf_view, Dune::mcmgElementLayout());
-    
+
     const LookUpData lookUpData(leaf_view);
     const LookUpCartesianData lookUpCartesianData(leaf_view, cartMapper);
-    
+
     const auto& poroOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORO");
     const auto& poroOnLeafCart = lookUpCartesianData.assignFieldPropsDoubleOnLeaf(fpm, "PORO");
 
@@ -240,7 +240,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const s
     {
         const auto elemIdx = mapper.index(elem);
         const auto elemOriginIdx = elem.getOrigin().index();
-        
+
         // PORO
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "PORO", elemIdx));
@@ -248,7 +248,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const s
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elemIdx));
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], poroOnLeaf[elemIdx]);
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], poroOnLeafCart[elemIdx]);
-        
+
         // EQLNUM
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropInt<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropInt<int>(fpm, "EQLNUM", elemIdx));
@@ -256,7 +256,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const s
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropInt(fpm, "EQLNUM", elemIdx));
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx]-true, eqlnumOnLeaf[elemIdx]);
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx]-true, eqlnumOnLeafCart[elemIdx]);
-        
+
         // PORV
         if (elem.hasFather()) {
             // Pore volume of the father must be equalivalent to the sum of the pore volume of its chidren.
@@ -385,4 +385,3 @@ EQLNUM
 
     fieldProp_check(grid, eclGrid, deckString);
 }
-

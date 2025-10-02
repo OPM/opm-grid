@@ -9,23 +9,23 @@ following programs installed on your system:
 Getting started
 ---------------
 
-If these preliminaries are met, you should run 
+If these preliminaries are met, you should run
 
   dunecontrol all
 
-which will find all installed dune modules as well as all dune modules 
-(not installed) which sources reside in a subdirectory of the current 
+which will find all installed dune modules as well as all dune modules
+(not installed) which sources reside in a subdirectory of the current
 directory. Note that if dune is not installed properly you will either
-have to add the directory where the dunecontrol script resides (probably 
+have to add the directory where the dunecontrol script resides (probably
 ./dune-common/bin) to your path or specify the relative path of the script.
 
-On your project and all uninstalled DUNE source modules found the script 
-will then calls the GNU autoconf/automake to create a ./configure-script 
+On your project and all uninstalled DUNE source modules found the script
+will then calls the GNU autoconf/automake to create a ./configure-script
 and the Makefiles. Afterwards that configure script will be called and the
 modules will be build using make all
 
-Most probably you'll have to provide additional information to dunecontrol 
-(e. g. compilers, configure options) and/or make options. 
+Most probably you'll have to provide additional information to dunecontrol
+(e. g. compilers, configure options) and/or make options.
 
 The most convenient way is to use options files in this case. The files
 defining three variables:
@@ -50,7 +50,7 @@ To get a full list of available configure flags just run
 
   dunecontrol configure --help
 
-after running at least 
+after running at least
   dunecontrol autogen
 
 More info
@@ -59,12 +59,10 @@ More info
 See
 
      dunecontrol --help
-   
+
 for further options.
 
 
 The full build-system is described in the dune-common/doc/buildsystem (SVN version) or under share/doc/dune-common/buildsystem if you installed DUNE!
 
 $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
-
-

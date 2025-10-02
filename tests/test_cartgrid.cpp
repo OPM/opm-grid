@@ -56,4 +56,3 @@ BOOST_AUTO_TEST_CASE (facenumbers)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

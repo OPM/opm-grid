@@ -26,7 +26,7 @@ inline const double* multiplyFaceNormalWithArea(const Dune::CpGrid& grid, int fa
     int d=Opm::UgGridHelpers::dimensions(grid);
     double* out=new double[d];
     double area=Opm::UgGridHelpers::faceArea(grid, face_index);
-    
+
     for(int i=0;i<d;++i)
         out[i]=in[i]*area;
     return out;
@@ -62,7 +62,7 @@ tpfa_htrans_compute(const Grid* G, const double *perm, double *htrans)
     typename CellCentroidTraits<Grid>::IteratorType cc = beginCellCentroids(*G);
     typename Cell2FacesTraits<Grid>::Type c2f = cell2Faces(*G);
     typename FaceCellTraits<Grid>::Type face_cells = faceCells(*G);
-    
+
     const double *n;
     const double *K;
 
@@ -77,10 +77,10 @@ tpfa_htrans_compute(const Grid* G, const double *perm, double *htrans)
 
     for (int c =0, i = 0; c < numCells(*G); c++) {
         K  = perm + (c * d * d);
-        
+
         typedef typename Cell2FacesTraits<Grid>::Type::row_type FaceRow;
         FaceRow faces = c2f[c];
-        
+
         for(typename FaceRow::const_iterator f=faces.begin(), end=faces.end();
             f!=end; ++f, ++i)
         {
@@ -91,7 +91,7 @@ tpfa_htrans_compute(const Grid* G, const double *perm, double *htrans)
             dgemv_("No Transpose", &nrows, &ncols,
                    &a1, K, &ldA, nn, &incx, &a2, &Kn[0], &incy);
             maybeFreeFaceNormal(*G, nn);
-            
+
             htrans[i] = denom = 0.0;
             for (j = 0; j < d; j++) {
                 dist = fc[j] - getCoordinate(cc, j);
@@ -127,7 +127,7 @@ tpfa_trans_compute(const Grid* G, const double *htrans, double *trans)
     for (int c = 0, i = 0; c < numCells(*G); c++) {
         typedef typename Cell2FacesTraits<Grid>::Type::row_type FaceRow;
         FaceRow faces = c2f[c];
-        
+
         for(typename FaceRow::const_iterator f=faces.begin(), end=faces.end();
             f!=end; ++f, ++i)
         {
@@ -161,7 +161,7 @@ tpfa_eff_trans_compute(const Grid*        G,
     for (int c = 0, i = 0; c < numCells(*G); c++) {
         typedef typename Cell2FacesTraits<Grid>::Type::row_type FaceRow;
         FaceRow faces = c2f[c];
-        
+
         for(typename FaceRow::const_iterator f=faces.begin(), end=faces.end();
             f!=end; ++f, ++i)
         {

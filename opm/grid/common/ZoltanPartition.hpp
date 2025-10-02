@@ -197,7 +197,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
 /// The difference between this function and zoltanGraphPartitionGridOnRoot
 /// is that the number of parts is an argument of the method and not inferred
 /// by the MPI communicator.
-/// 
+///
 /// @param grid The grid to partition
 /// @param wells The wells of the eclipse If null wells will be neglected.
 /// @param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.

@@ -13,7 +13,7 @@
 //===========================================================================
 
 /*
-  Copyright 2023 Equinor ASA. 
+  Copyright 2023 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -84,7 +84,7 @@ void createEclGridCpGrid_and_checkEclCentroid(const std::string& deckString)
     Opm::EclipseGrid ecl_grid(deck);
 
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
-    
+
     const auto& gridLeafView = grid.leafGridView();
     Dune::CartesianIndexMapper<Dune::CpGrid> gridCartMapper =  Dune::CartesianIndexMapper<Dune::CpGrid>(grid);
     for (const auto& element: Dune::elements(gridLeafView)){
@@ -96,7 +96,7 @@ void createEclGridCpGrid_and_checkEclCentroid(const std::string& deckString)
             BOOST_CHECK_CLOSE(elemEclCentroid[coord],elemCpGridEclCentroid_Entity[coord] , 1e-6);
             BOOST_CHECK_CLOSE(elemEclCentroid[coord],elemCpGridEclCentroid_Index[coord] , 1e-6);
         }
-    } 
+    }
 }
 
 
@@ -163,8 +163,8 @@ BOOST_AUTO_TEST_CASE(stringB)
         0.02   NOGAP   1*   1*
         /
         )";
-    
-    createEclGridCpGrid_and_checkEclCentroid(deckString);   
+
+    createEclGridCpGrid_and_checkEclCentroid(deckString);
 }
 
 BOOST_AUTO_TEST_CASE(stringC)
@@ -198,7 +198,7 @@ Cell corners:      COORD
         /
         )";
 
-    createEclGridCpGrid_and_checkEclCentroid(deckString);   
+    createEclGridCpGrid_and_checkEclCentroid(deckString);
 }
 
 BOOST_AUTO_TEST_CASE(stringD)
@@ -268,4 +268,3 @@ Cell corners:       COORD
 
     createEclGridCpGrid_and_checkEclCentroid(deckString);
 }
-

@@ -111,7 +111,7 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
 
     const auto& localCartesianIdxSets_to_leafIdx = grid.mapLocalCartesianIndexSetsToLeafIndexSet();
     const auto& leafIdx_to_localCartesianIdxSets = grid.mapLeafIndexSetToLocalCartesianIndexSets();
-    
+
     for (int level = 0; level < grid.maxLevel(); ++level)
     {
         for (const auto& element : elements(grid.levelGridView(level)))
@@ -214,6 +214,6 @@ BOOST_AUTO_TEST_CASE(inactiveCells_in_lgrs)
     grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    
+
     checkGlobalCellLgr(grid);
 }

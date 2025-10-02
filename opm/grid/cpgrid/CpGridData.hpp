@@ -334,7 +334,7 @@ public:
     {
         return cell_to_point_;
     }
-    
+
     const auto& cellToPoint(int cellIdx) const
     {
         return cell_to_point_[cellIdx];
@@ -381,7 +381,7 @@ public:
             OPM_THROW(std::logic_error, "Vertex has no history record.\n");
         }
     }
-    
+
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -487,7 +487,7 @@ public:
         }
         return level_to_leaf_cells_[level_cell_idx];
     }
-    
+
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
     /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the

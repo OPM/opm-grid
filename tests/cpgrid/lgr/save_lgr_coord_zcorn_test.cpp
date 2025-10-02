@@ -267,4 +267,3 @@ SCHEDULE
 
     eclipse_grid.save("TEST3CARFIN.EGRID",false, vecNNC, units);
 }
-

@@ -257,4 +257,3 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
     BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 }
-

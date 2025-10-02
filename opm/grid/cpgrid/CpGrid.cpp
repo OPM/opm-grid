@@ -2317,7 +2317,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
                                                                                           data[levels + preAdaptMaxLevel +1]->size(3));
     (*data[levels + preAdaptMaxLevel +1]).refinement_max_level_ = levels + preAdaptMaxLevel;
-    
+
     if (isGlobalRefine) {
         assert(cells_per_dim_vec.size() == 1);
         (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  { lcs[0]*cells_per_dim_vec[0][0],
@@ -2796,7 +2796,7 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
             currentData()[refinedLevel]->corner_history_[refinedCorner] = preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, static_cast<int>(corner)}} :  preAdaptGrid_corner_history[corner];
         }
     }
-   
+
     // corner_history_ leaf grid view
     for ( int leafCorner = 0; leafCorner < corner_count; ++leafCorner){
         currentData().back()->corner_history_.resize(corner_count);
@@ -2812,5 +2812,3 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
 }
 
 } // namespace Dune
-
-

@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(Pinch4ALL)
                                option4all, permz, multz);
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
     auto multz2 = [](int i){ if (i==2) return 0.0; else return 1.0;};
-    
+
     minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
 			       fill_removed_cells, z1.data(), pinch_no_gap,
 			       option4all, permz, multz2);

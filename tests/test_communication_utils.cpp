@@ -91,14 +91,14 @@ createParallelData(const C& comm, T)
     std::vector<int> sizes(comm.size());
     std::vector<int> displ(comm.size()+1);
     std::vector<T> allVals;
-    
+
     if (comm.rank() == 0)
     {
         // Initialize with random numbers.
         std::random_device rndDevice;
         std::mt19937 mersenneEngine {rndDevice()};  // Generates random integers
         std::uniform_int_distribution<int> dist {1, 10};
-        
+
         auto gen = [&dist, &mersenneEngine](){
                        return dist(mersenneEngine);
                    };
@@ -145,7 +145,7 @@ void testAllGatherv(const C& comm)
     std::vector<double> allVals;
     std::vector<double> myVals;
     double d=0;
-    
+
     std::tie(expectedAllVals, myVals, std::ignore, expectedDispl) = createParallelData(comm, d);
     std::tie(allVals, displ) = Opm::allGatherv(myVals, comm);
     checkGlobalData(allVals, expectedAllVals, displ, expectedDispl);
@@ -164,7 +164,7 @@ void testGatherv(const C& comm)
     std::vector<double> allVals;
     std::vector<double> myVals;
     double d = 0;
-    
+
     std::tie(expectedAllVals, myVals, std::ignore, expectedDispl) = createParallelData(comm, d);
     std::tie(allVals, displ) = Opm::gatherv(myVals, comm, 0);
     if ( comm.rank() != 0)
@@ -196,4 +196,3 @@ BOOST_AUTO_TEST_CASE(Gatherv)
 {
     testGatherv(Dune::MPIHelper::getCommunication());
 }
-

@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOne)
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1., 1., 1.});
     // Refine each cell into 1 child does nothing to the grid. ( subdivision per x-,y-,z- direction).
-    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}}, 
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}},
                                /* startIJK_vec = */ {{0,0,0}},
                                /* endIJK_vec = */ { {4,3,3}},
                                /* lgr_name_vec = */ {"LGR1"});

@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
         checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
         grid.globalRefine(2);
-        
+
         Opm::checkGridWithLgrs(grid,
                                /* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
                                /* lgr_name_vec = */ {"GR2", "GR3"},
@@ -162,10 +162,10 @@ BOOST_AUTO_TEST_CASE(callAdaptNotAllElementsMarkedAfterAutoRefine_serial) {
         checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
         const int maxCellId =  grid.currentData().back()->globalIdSet().getMaxCodimGlobalId<0>();
-        
+
         for (const auto& element : Dune::elements(grid.leafGridView())) {
             const int id = grid.globalIdSet().id(element);
-            // Mark two elements 
+            // Mark two elements
             if ( (id == maxCellId - 2) || (id == maxCellId -1)) {
                 grid.mark(1, element);
             }

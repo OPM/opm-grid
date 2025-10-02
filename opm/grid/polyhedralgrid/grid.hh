@@ -1010,7 +1010,7 @@ namespace Dune
       {
         const int coordIndex = GlobalCoordinate :: dimension * seed.index();
         return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
-      }      
+      }
       return GlobalCoordinate( 0 );
     }
 

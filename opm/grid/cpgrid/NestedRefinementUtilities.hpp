@@ -29,10 +29,10 @@ namespace Opm
 
 /// @brief Check whether a grid name exists in a list of parent grid names.
 ///
-/// @param [in] lgr_parent_grid_names  List of parent grid names (std::string) 
+/// @param [in] lgr_parent_grid_names  List of parent grid names (std::string)
 ///                                    used for refinement.
 /// @param [in] grid_name              Grid name to search for.
-/// @return true if grid_name is found in lgr_parent_grid_names, 
+/// @return true if grid_name is found in lgr_parent_grid_names,
 ///         false otherwise.
 bool isNameInTheList(const std::vector<std::string>& lgr_parent_grid_names,
                      const std::string& grid_name);
@@ -51,17 +51,17 @@ getLgrDataIndicesByParentGrid(const std::vector<std::string>& lgr_parent_grid_na
 
 /// @brief Retrieve LGR data associated with a specific parent grid.
 ///
-/// Filters LGR information (cell refinements, block bounds, and LGR names) 
+/// Filters LGR information (cell refinements, block bounds, and LGR names)
 /// based on the given parent grid name.
 ///
-/// @param [in] cells_per_dim_vec        Vector of triplets specifying the number of 
+/// @param [in] cells_per_dim_vec        Vector of triplets specifying the number of
 ///                                      refined cells in each dimension for each patch.
-/// @param [in] startIJK_vec             Vector of triplets specifying the starting 
+/// @param [in] startIJK_vec             Vector of triplets specifying the starting
 ///                                      Cartesian indices of each patch.
-/// @param [in] endIJK_vec               Vector of triplets specifying the ending 
+/// @param [in] endIJK_vec               Vector of triplets specifying the ending
 ///                                      Cartesian indices of each patch.
 /// @param [in] lgr_name_vec             Vector of LGR/level names.
-/// @param [in] lgr_parent_grid_name_vec Vector of parent grid names corresponding 
+/// @param [in] lgr_parent_grid_name_vec Vector of parent grid names corresponding
 ///                                      to each LGR.
 /// @param [in] parent_grid_name         Parent grid name to filter by.
 /// @return A tuple containing:

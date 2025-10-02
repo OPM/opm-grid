@@ -1578,8 +1578,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute partition type for points
     computePointPartitionType();
-   
-    computeCommunicationInterfaces(noExistingPoints);   
+
+    computeCommunicationInterfaces(noExistingPoints);
 #else // #if HAVE_MPI
     static_cast<void>(grid);
     static_cast<void>(view_data);
@@ -1915,7 +1915,7 @@ bool CpGridData::preAdapt()
             if (local_empty)
                 mark_.resize(size(0));
         }
-       
+
         // Detect the maximum mark across processes, and rewrite
         // the local entry in mark_, i.e.,
         // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.

@@ -270,7 +270,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     const auto& father = element.father();
     const auto& fatherLevelData =  grid.currentData()[father.level()];
     BOOST_CHECK( father.level() <= element.level() );
-    
+
     BOOST_CHECK_EQUAL( originLevelData->getMark(origin), 1);
     BOOST_CHECK_EQUAL( fatherLevelData->getMark(father), 1);
 
@@ -785,7 +785,7 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
 {
     const auto& leafGridView = grid.currentData().back();
     int preAdaptMaxLevel = grid.maxLevel();
-    
+
     for (const auto& elemIdx : markedCells)
     {
         const auto& elem =  Dune::cpgrid::Entity<0>(*leafGridView, elemIdx, true);
@@ -864,8 +864,8 @@ void Opm::checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
     if (preAdapt) { // at least one element has been marked
         for (const auto& element : Dune::elements(grid.leafGridView())) {
             if (grid.getMark(element) == 1) { // refinement
-                // Element does not vanish, it belongs to its level grid. 
-                BOOST_CHECK(!element.mightVanish()); 
+                // Element does not vanish, it belongs to its level grid.
+                BOOST_CHECK(!element.mightVanish());
             }
             BOOST_CHECK(element.isLeaf()); // all leaf elements are leaf
         }
@@ -877,7 +877,7 @@ void Opm::checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         // An element created during the last refinement step may still be refined further
         // on a higher level (e.g., through nested refinement).
-        // The isNew flag is used to identify such newly created elements so that data 
+        // The isNew flag is used to identify such newly created elements so that data
         // interpolation is applied only to them.
         if (element.level() > preAdaptMaxLevel) { // born in last refinement call
             BOOST_CHECK(element.isNew());
@@ -888,4 +888,3 @@ void Opm::checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
 }
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
-

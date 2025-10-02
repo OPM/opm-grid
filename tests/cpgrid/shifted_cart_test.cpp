@@ -77,7 +77,7 @@ void createAndTestShiftCartGrid(std::array<int, 3> shift)
                         boost::test_tools::per_element() );
             continue;
         }
-        
+
     }
 }
 
@@ -95,4 +95,3 @@ BOOST_AUTO_TEST_CASE(nonShiftedCartGrid, *boost::unit_test::tolerance(1e-12))
 {
     createAndTestShiftCartGrid({0, 0, 0});
 }
-
