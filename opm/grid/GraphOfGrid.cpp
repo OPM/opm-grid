@@ -140,7 +140,7 @@ void GraphOfGrid<Dune::CpGrid>::createGraph (const double* transmissibilities,
     bool validLevel = (level>-1) && (level <= grid.maxLevel());
     auto it = validLevel?  grid.template lbegin<0>(level) :  grid.template leafbegin<0>();
     auto itEnd = validLevel? grid.template lend<0>(level) : grid.template leafend<0>();
-            
+
     for (; it!=itEnd; ++it)
     {
         VertexProperties vertex;
@@ -149,7 +149,7 @@ void GraphOfGrid<Dune::CpGrid>::createGraph (const double* transmissibilities,
         int gID = validLevel? grid.currentData()[level]->globalIdSet().id(*it) : grid.globalIdSet().id(*it);
 
         // iterate over vertex's faces and store neighbors' IDs
-       
+
         // To access cell_to_face_, face_to_cell_ local ID is needed
         for (int face_lID=0; face_lID<grid.numCellFaces(it->index(), level); ++face_lID)
         {
@@ -273,7 +273,7 @@ void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
 {
     if (well.empty())
         return;
-    
+
     int wellIdx = *(well.begin());
     std::set<int> newWell;
     for (int idx : well)
@@ -309,7 +309,7 @@ void GraphOfGrid<Grid>::contractWellAndAdd(const std::set<int>& well)
 {
     if (well.empty())
         return;
-    
+
     int wID = *(well.begin());
     std::accumulate(well.begin(), well.end(), wID,
                     [this](const auto wId, const auto gID)

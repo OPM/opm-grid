@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(ifNonParentGridNameProvidedDefaultIsAllChildGridsFromGlobal
                                endIJK_vec,
                                lgr_name_vec,
                                lgr_parent_grid_name_vec);
-    
+
     equiv_grid.addLgrsUpdateLeafView(cells_per_dim_vec,
                                      startIJK_vec,
                                      endIJK_vec,
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(nestedRefinementOnly) {
         BOOST_CHECK_EQUAL( element.father().level(), 0);
     }
 
-    for (const auto& element : Dune::elements(grid.levelGridView(2))) { 
+    for (const auto& element : Dune::elements(grid.levelGridView(2))) {
         BOOST_CHECK_EQUAL( element.father().level(), 1);
     }
 
@@ -222,4 +222,3 @@ BOOST_AUTO_TEST_CASE(throwIfParentGridNameDoesNotExitBeforeItsLgrs){
                                                   lgr_name_vec,
                                                   lgr_parent_grid_name_vec), std::invalid_argument);
 }
-

@@ -106,6 +106,3 @@ namespace Opm
     } // namespace time
 
 } // namespace Opm
-
-
-

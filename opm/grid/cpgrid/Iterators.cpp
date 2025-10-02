@@ -4,8 +4,8 @@
 //
 // Created: Mon February 20  14:02:00 2023
 //
-// Author(s): Antonella Ritorto <antonella.ritorto@opm-op.com> 
-//            
+// Author(s): Antonella Ritorto <antonella.ritorto@opm-op.com>
+//
 //
 // $Date$
 //
@@ -58,4 +58,3 @@ void Dune::cpgrid::HierarchicIterator::resetEntity_()
     // Otherwise, a pointer pointing at the to element of elemStack_.
     virtualEntity_ = elemStack_.empty() ? Entity<0>(Entity<0>::InvalidIndex, true) : elemStack_.top();
 }
-

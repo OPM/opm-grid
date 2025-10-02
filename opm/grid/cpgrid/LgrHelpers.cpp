@@ -39,7 +39,7 @@
 
 namespace Opm
 {
-namespace Lgr 
+namespace Lgr
 {
 
 void insertBidirectional(std::map<std::array<int,2>,int>& a_to_b,
@@ -98,13 +98,13 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
         // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
         if (grid.getMark(element) ==  0) {
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getLevelElem().index()] = cell_count;
-             
-            insertBidirectional(elemLgrAndElemLgrCell_to_adaptedCell, 
-                                adaptedCell_to_elemLgrAndElemLgrCell, 
+
+            insertBidirectional(elemLgrAndElemLgrCell_to_adaptedCell,
+                                adaptedCell_to_elemLgrAndElemLgrCell,
                                 std::array{-1, element.index()},
                                 cell_count);
         }
-           
+
         // When the element is marked for refinement, we also mark its corners and faces
         // since they will get replaced by refined ones.
         if (grid.getMark(element) ==  1) {
@@ -196,7 +196,7 @@ defineChildToParentAndIdxInParentCell(const Dune::cpgrid::CpGridData& current_da
             }
         }
     }
-    
+
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
         refined_child_to_parent_cells_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_cell_to_idxInParentCell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
@@ -1050,7 +1050,7 @@ std::array<int,3> getRefinedFaceIJK(const std::array<int,3>& cells_per_dim,
     if (faceIdxInLgr >= i_faces + j_faces + k_faces) {
         OPM_THROW(std::logic_error, "Invalid face index from single-cell-refinement.\n");
     }
-    
+
     const auto& faceTag =  elemLgr_ptr ->faceTag(faceIdxInLgr);
     std::array<int,3> ijk;
     switch (faceTag) {
@@ -1304,7 +1304,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::vector<std::array<int,3>>&  cells_per_dim_vec)
-{   
+{
     // --- Refined cells ---
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
 
@@ -1325,7 +1325,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
             // global_cell_ values of refined cells from level grid created via adapt() (i.e., without parameters startIJK, endIJK
             // delimiting a block of parent cells) inherit the global_cell_ value of its parent cell.
             refined_global_cell_vec[shiftedLevel][cell] = current_data.globalCell()[elemLgr];
-            
+
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             const auto& preAdapt_cell_to_point = markedElem_to_itsLgr.at(elemLgr)->cellToPoint(elemLgrCell);
             // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
@@ -1888,7 +1888,7 @@ void getFirstChildGlobalIds(const Dune::CpGrid& grid,
 /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
 /// @param [in] cells_per_dim
 /// @return Cartesian index triplet.
-std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) 
+std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim)
 {
     // idx = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
     // with 0<= i < cells_per_dim_[0], 0<= j < cells_per_dim_[1], 0<= k <cells_per_dim_[2].
@@ -2052,9 +2052,9 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
     assert(endIJK_2Patches.size() == 2);
 
     int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
-     
+
     if (patchesShareFace(startIJK_2Patches, endIJK_2Patches, grid_dim)) {
-        
+
         const auto& detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs){
             bool faceIsShared = false;
             for (const auto& face : faceIdxs) {
@@ -2067,7 +2067,7 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
             }
             return faceIsShared; // should be false here
         };
-     
+
         const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = getBoundaryPatchFaces(startIJK_2Patches[0],
                                                                                           endIJK_2Patches[0],
                                                                                           grid_dim);
@@ -2159,13 +2159,13 @@ excludeFakeSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 {
     // Assume all vector sizes are equal
     const std::size_t size = cells_per_dim_vec.size();
-    
+
     std::vector<std::array<int,3>> filtered_cells_per_dim_vec{};
     std::vector<std::array<int,3>> filtered_startIJK_vec{};
     std::vector<std::array<int,3>> filtered_endIJK_vec{};
     std::vector<std::string> filtered_lgr_name_vec{};
     std::vector<std::string> filtered_lgr_parent_grid_name_vec{};
-    
+
     filtered_cells_per_dim_vec.reserve(size);
     filtered_startIJK_vec.reserve(size);
     filtered_endIJK_vec.reserve(size);
@@ -2274,4 +2274,3 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
 
 } // namespace Lgr
 } // namespace Opm
-

@@ -225,7 +225,7 @@ public:
     ///
     /// Note: An element created during the last refinement step may still be refined further
     /// on a higher level (e.g., through nested refinement).
-    /// The isNew flag is used to identify such newly created elements so that data 
+    /// The isNew flag is used to identify such newly created elements so that data
     /// interpolation is applied only to them.
     bool isNew() const;
 

@@ -283,4 +283,3 @@ BOOST_AUTO_TEST_CASE(stringE)
 
     createEclGridCpGrid_and_checkCentroid(deckString);
 }
-

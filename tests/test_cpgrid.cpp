@@ -166,7 +166,7 @@ int main(int argc, char** argv )
 
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
-    
+
     const auto& grid_leafView = grid.leafGridView();
     Dune::CartesianIndexMapper<Grid> grid_cartMapper =  Dune::CartesianIndexMapper<Grid>(grid);
     for (const auto& element: Dune::elements(grid_leafView)){
@@ -183,8 +183,8 @@ int main(int argc, char** argv )
         }
         std::cout << " " << '\n';
     }
-    
-    
+
+
 #endif
 
     std::stringstream dgfFile;

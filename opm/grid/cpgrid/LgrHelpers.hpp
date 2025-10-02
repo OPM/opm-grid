@@ -23,7 +23,7 @@
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/common/version.hh>
 
-#include <opm/grid/CpGrid.hpp> 
+#include <opm/grid/CpGrid.hpp>
 
 #include <array>
 #include <map>
@@ -289,16 +289,16 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_
 /// Maps pre-adapt and refined corners from single-element refinements to the leaf grid,
 /// and vice versa.
 ///
-/// @param [out] elemLgrAndElemLgrCorner_to_adaptedCorner  
+/// @param [out] elemLgrAndElemLgrCorner_to_adaptedCorner
 ///     Maps (marked element idx, marked-element-refined corner idx) or {-1, corner in original grid} -> leaf grid corner idx.
-/// @param [out] adaptedCorner_to_elemLgrAndElemLgrCorner  
+/// @param [out] adaptedCorner_to_elemLgrAndElemLgrCorner
 ///     Inverse mapping: leaf grid corner idx -> (marked element idx, marked-element-refined corner idx) or {-1, original corner idx}.
 /// @param [out] corner_count  Total number of corners in the leaf (adapted) grid.
-/// @param [in] markedElem_to_itsLgr  
-/// @param [in] assignRefinedLevel  
-/// @param [in] cornerInMarkedElemWithEquivRefinedCorner  
-/// @param [in] vanishedRefinedCorner_to_itsLastAppearance  
-/// @param [in] faceInMarkedElemAndRefinedFaces  
+/// @param [in] markedElem_to_itsLgr
+/// @param [in] assignRefinedLevel
+/// @param [in] cornerInMarkedElemWithEquivRefinedCorner
+/// @param [in] vanishedRefinedCorner_to_itsLastAppearance
+/// @param [in] faceInMarkedElemAndRefinedFaces
 /// @param [in] cells_per_dim_vec
 void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
                              int preAdaptMaxLevel,
@@ -360,9 +360,9 @@ void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
 /// Maps faces from each marked element’s single-cell refinement to its assigned refined level grid,
 /// and provides the inverse mapping.
 ///
-/// @param [out] elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace  
+/// @param [out] elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace
 ///     Maps (marked element idx, marked-element-refined face idx)->(refined level grid, refined face idx).
-/// @param [out] refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace  
+/// @param [out] refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace
 ///     Inverse mapping: (refined level grid, refined face idx)->(marked element idx, marked-element-refined face idx).
 /// @param [out] refined_face_count_vec  Number of refined faces per refined level grid.
 /// @param [in] markedElem_to_itsLgr
@@ -407,10 +407,10 @@ void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
 ///
 /// A single cell refined into {nx, ny, nz} children has
 /// ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) faces, stored in the order defined by Geometry::refine:
-/// - K_FACES: (k*nx*ny) + (j*nx) + i  
-/// - I_FACES: (nx*ny*(nz+1)) + (i*ny*nz) + (k*ny) + j  
-/// - J_FACES: (nx*ny*(nz+1)) + ((nx+1)*ny*nz) + (j*nx*nz) + (i*nz) + k  
-/// where i=0..nx-1, j=0..ny-1, k=0..nz-1.  
+/// - K_FACES: (k*nx*ny) + (j*nx) + i
+/// - I_FACES: (nx*ny*(nz+1)) + (i*ny*nz) + (k*ny) + j
+/// - J_FACES: (nx*ny*(nz+1)) + ((nx+1)*ny*nz) + (j*nx*nz) + (i*nz) + k
+/// where i=0..nx-1, j=0..ny-1, k=0..nz-1.
 /// This function converts faceIdxInLgr to its {i,j,k} index.
 ///
 /// @param [in] cells_per_dim  Number of child cells in {x,y,z} directions.

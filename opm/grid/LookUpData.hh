@@ -114,7 +114,7 @@ public:
                      const std::string& propString,
                      const ElemOrIndex& elemOrIndex) const;
 
-    /// @brief calls \c getFieldPropIdx<Grid, ElementType>(elem) 
+    /// @brief calls \c getFieldPropIdx<Grid, ElementType>(elem)
     template<typename ElementType>
     auto getFieldPropIdx(const ElementType& elem) const;
 
@@ -135,9 +135,9 @@ public:
     ///     Auxiliary type used to specialize the method for CpGrid
     ///     vs. other grids. If \c GridType = \c Dune::CpGrid, local grid refinements (LGR)
     ///     are considered; otherwise, LGR is not supported.
-    /// 
+    ///
     /// \tparam ElementType
-    ///     The type of the element or index passed in. 
+    ///     The type of the element or index passed in.
     ///
     /// \param elem
     ///     An integral cell index or a grid entity (e.g., \c Dune::cpgrid::Entity<0>).
@@ -234,7 +234,7 @@ public:
     ///
     /// - **Non-CpGrid**: If \c GridType is not \c Dune::CpGrid, the cartesian index is
     ///   obtained via \c cartMapper_->cartesianIndex(...). The function asserts that
-    ///   \c maxLevel() == 0, i.e., no local grid refinements (LGR). 
+    ///   \c maxLevel() == 0, i.e., no local grid refinements (LGR).
     ///
     /// - **CpGrid**: For CpGrid, if \c isFieldPropInLgr_ is true and the element resides
     ///   on a refined level (> 0), then its cartesian index is taken from the LGR-level
@@ -408,7 +408,7 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrI
             return this-> elemMapper_.index(elementOrIndex);
         }
     }
-    
+
 }
 
 /// LookUpCartesianData
@@ -510,9 +510,9 @@ auto Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const Ele
             static_assert(std::is_same_v<Grid,GridType>);
             // Check there are no LGRs. LGRs (level>0) only supported for CpGrid.
             assert(gridView_.grid().maxLevel() == 0);
-            return cartMapper_-> cartesianIndex(this->elemMapper_.index(elementOrIndex));            
+            return cartMapper_-> cartesianIndex(this->elemMapper_.index(elementOrIndex));
         }
     }
-    
+
 }
 #endif

@@ -297,8 +297,8 @@ void addOverlapCornerCell(const CpGrid& grid,
     // I = interior cells, O = overlap cells and E = exterior cells.
     //
     //  With corner     Without corner
-    //  I I O E         I I O E 
-    //  I I O E         I I O E 
+    //  I I O E         I I O E
+    //  I I O E         I I O E
     //  O O O E         O O E E
     //  E E E E         E E E E
     using AttributeSet = Dune::cpgrid::CpGridDataTraits::AttributeSet;
@@ -454,7 +454,7 @@ void addOverlapLayer(const CpGrid& grid,
                     // Add cells to the overlap that just share a corner with e.
                     auto iit2 = validLevel? iit->outside().ilevelbegin() : iit->outside().ileafbegin();
                     const auto& endIit2 = validLevel?  iit->outside().ilevelend() :  iit->outside().ileafend();
-                
+
                     for (; iit2 != endIit2; ++iit2) {
                         if ( iit2->neighbor() )
                         {
@@ -784,4 +784,3 @@ namespace cpgrid
 #endif
 } // namespace cpgrid
 } // namespace Dune
-

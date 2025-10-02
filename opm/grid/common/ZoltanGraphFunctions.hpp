@@ -173,7 +173,7 @@ public:
 
     double logTransmissibilityWeights(int face_index) const
     {
-        double trans = transmissibilities_ ?  transmissibilities_[face_index] : 1; 
+        double trans = transmissibilities_ ?  transmissibilities_[face_index] : 1;
         return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
     }
 

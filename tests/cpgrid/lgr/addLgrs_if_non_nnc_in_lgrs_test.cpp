@@ -150,7 +150,6 @@ BOOST_AUTO_TEST_CASE(addLgrsIfNNCoutsideAllLgrsIsSupported)
                                /* startIJK_vec = */ {{0,0,0}, {0,0,2}, {0,0,4}},
                                /* endIJK_vec = */  {{1,1,1}, {1,1,3}, {1,1,5}},
                                /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"});
-    
-    Opm::checkGridBasicHiearchyInfo(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}});        
-}
 
+    Opm::checkGridBasicHiearchyInfo(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}});
+}

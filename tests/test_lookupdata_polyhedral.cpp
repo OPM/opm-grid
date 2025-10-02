@@ -91,7 +91,7 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
 
     std::vector<double> fake_feature_double(grid.size(0), 0.);
     std::iota(fake_feature_double.begin(), fake_feature_double.end(), .5);
-    
+
     const auto leaf_view = grid.leafGridView();
     using GridView = std::remove_cv_t< typename std::remove_reference<decltype(grid.leafGridView())>::type>;
     // LookUpData
@@ -241,4 +241,3 @@ EQLNUM
     Dune::PolyhedralGrid<3,3> grid(eclGrid, porv);
     fieldProp_check(grid, eclGrid, deck_string);
 }
-

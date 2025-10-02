@@ -866,7 +866,7 @@ BOOST_AUTO_TEST_CASE (BBLT_And_Elevation)
          0.0, -1.0,
         -1.0, -1.0,
         -1.0, -1.5,             // Bottom below lower top at c(1,1)
-         
+
           0.0, -1.0,
          10.0,  0.0,
        -  2.0,  0.0,
@@ -930,7 +930,7 @@ BOOST_AUTO_TEST_CASE (TBB_And_BBLT_And_Elevation)
          0.0, -1.6,             // Top below bottom at c(1,1)
         -1.0, -1.0,
         -1.0, -1.5,             // Bottom below lower top at c(1,1)
-         
+
           0.0, -1.0,
          10.0,  0.0,
        -  2.0,  0.0,
@@ -1376,7 +1376,7 @@ BOOST_AUTO_TEST_CASE (BBLT_And_Elevation)
          0.0, -1.0,
         -1.0, -1.0,
         -1.0, -1.5,
-         
+
           0.0, -1.0,
          10.0,  0.0,
        -  2.0,  0.0,
@@ -1443,7 +1443,7 @@ BOOST_AUTO_TEST_CASE (TBB_And_BBLT_And_Elevation)
          0.0, -1.6,             // Top below bottom at c(1,1)
         -1.0, -1.0,
         -1.0, -1.5,             // Bottom below lower top at c(1,1)
-         
+
           0.0, -1.0,
          10.0,  0.0,
        -  2.0,  0.0,
@@ -1460,7 +1460,7 @@ BOOST_AUTO_TEST_CASE (TBB_And_BBLT_And_Elevation)
         -1.0, -1.6,
         -1.0, -1.0,
         -1.0, -1.5,
-         
+
           0.0, -1.0,
          10.0,  0.0,
        -  2.0,  0.0,

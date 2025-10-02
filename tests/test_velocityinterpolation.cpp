@@ -480,5 +480,3 @@ BOOST_AUTO_TEST_CASE(test_VelocityInterpolationECVI)
     // construction does not, so the below test cannot be expected to succeed.
     // testLinearVelReproIrregPrism<VelocityInterpolationECVI>();
 }
-
-

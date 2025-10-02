@@ -99,7 +99,7 @@ lgrCOORDandZCORN(const Dune::CpGrid& grid,
     // Initialized as {nz, -1} to detect inactive cell columns.
     std::vector<std::array<int,2>> minMaxPerCellPillar(nx*ny, {nz, -1});
 
-   
+
     for (const auto& ijk : lgrIJK) {
 
          // Compute the bottom and top k per cell pillar (i, j).
