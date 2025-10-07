@@ -308,9 +308,10 @@ namespace cpgrid
                     for (std::size_t cell_top = cell1, cell_bottom = cell_top + ecl_grid.getNX() * ecl_grid.getNY();
                          cell_top < static_cast<std::size_t>(cell2);
                          cell_top = cell_bottom, cell_bottom +=  ecl_grid.getNX() * ecl_grid.getNY(), ++trans) {
-
+                        // We use the normal region multiplier as these are neighbors
                         *trans *= transMult.getMultiplier(cell_top, ::Opm::FaceDir::ZPlus) *
-                            transMult.getMultiplier(cell_bottom, ::Opm::FaceDir::ZMinus);
+                            transMult.getMultiplier(cell_bottom, ::Opm::FaceDir::ZMinus) *
+                            transMult.getRegionMultiplier(cell_top, cell_bottom, ::Opm::FaceDir::ZPlus);
                     }
 
                     //Compute harmonic average over pinched out cells.
@@ -327,7 +328,7 @@ namespace cpgrid
                     else
                         average = 1.0 / average;
 
-                    // Set nnc and transmissibility, last param indicates that this from pinch
+                    // Set nnc and transmissibility, last param indicates that this is from pinch
                     // It is needed to overwrite transmissibilities instead of adding to existing ones.
                     pinchedNNCs.emplace_back(cell1, cell2, average);
                 }
