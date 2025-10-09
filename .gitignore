@@ -68,3 +68,11 @@ dune/grid/test/grdecl2vtu
 
 # Ignoring generated documents
 doc/EquationNotes.pdf
+
+# Mac OS X debug info
+*.dSYM
+*.DS_Store
+
+# VSCode
+.vs
+.vscode
