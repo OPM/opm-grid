@@ -2269,34 +2269,5 @@ void containsEightDifferentCorners(const std::array<int,8>& cell_to_point)
     }
 }
 
-std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
-                                                       const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
-                                                       int level)
-{
-    const int lgr_cells = grid.levelGridView(level).size(0);
-
-    std::vector<std::pair<int,int>> sorted_levelIdxToLevelCartIdx;
-    sorted_levelIdxToLevelCartIdx.reserve(lgr_cells);
-
-    for (const auto& element : Dune::elements(grid.levelGridView(level))) {
-        sorted_levelIdxToLevelCartIdx.push_back(std::make_pair(element.index(),
-                                                               levelCartMapp.cartesianIndex(element.index(),level)));
-    }
-
-    std::sort(sorted_levelIdxToLevelCartIdx.begin(), sorted_levelIdxToLevelCartIdx.end(),
-              [](std::pair<int,int>& a, std::pair<int,int>& b) {
-                  return a.second < b.second;
-              });
-
-    std::vector<int> toOutput; // Consecutive numbers, from 0 to total elemts in LGR1 -1
-    toOutput.reserve(lgr_cells);
-
-    // Redefinition of level Cartesian indices (output-style)
-    for (const auto& [sorted_elemIdx, sorted_cartIdx] : sorted_levelIdxToLevelCartIdx) {
-        toOutput.push_back(sorted_elemIdx);
-    }
-    return toOutput;
-}
-
 } // namespace Lgr
 } // namespace Opm
