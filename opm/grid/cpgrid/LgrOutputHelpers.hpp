@@ -1,0 +1,184 @@
+/*
+  Copyright 2025 Equinor ASA.
+
+  This file is part of the Open Porous Media project (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
+#define OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
+
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
+
+#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
+#include <opm/input/eclipse/Units/UnitSystem.hpp>
+#include <opm/output/data/Aquifer.hpp>
+#include <opm/output/data/Cells.hpp>
+#include <opm/output/data/Groups.hpp>
+#include <opm/output/data/Solution.hpp>
+#include <opm/output/data/Wells.hpp>
+#include <opm/output/eclipse/RestartValue.hpp>
+
+#include <cstddef> // for std::size_t
+#include <utility> // for std::move
+#include <vector>
+
+namespace Opm
+{
+namespace Lgr
+{
+
+/// @brief Builds a mapping from level element indices to the Cartesian ordering required by output files.
+///
+/// Output file solution data containers for LGRs expect elements to be ordered in strict Cartesian order,
+/// with the i-direction varying fastest, followed by j, then k.
+///
+/// @param [in] grid          The CpGrid instance representing the simulation grid.
+/// @param [in] levelCartMapp The LevelCartesianIndexMapper providing Cartesian index information across all levels.
+/// @param [in] level         The grid level (integer) for which to build the index mapping.
+/// @return A vector where each position corresponds to the output ordering, and the value is the element index
+///         in that position. This ensures compatibility with the Cartesian ordering expected by output files.
+std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
+                                                       const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                                       int level);
+
+/// @brief Reorder data from a simulation container into the order assumed by output for refined level grids.
+///
+/// @param [in] simulatorContainer  Container with simulation data ordered by compressed indices.
+/// @param [in] toOutput            A vector where each position corresponds to the output ordering, and the
+///                                 value is the element index in that position.
+/// @return container with reordered data as expected by output, i.e. in strict Cartesian order, with the
+///         i-direction varying fastest, followed by j, then k.
+template <typename Container>
+Container reorderForOutput(const Container& simulatorContainer,
+                           const std::vector<int>& toOutput)
+{
+    // Use toOutput to reorder simulatorContainer
+    Container outputContainer;
+    outputContainer.resize(toOutput.size());
+    for (std::size_t i = 0; i < toOutput.size(); ++i) {
+        outputContainer[i] = simulatorContainer[toOutput[i]];
+    }
+    return outputContainer;
+}
+
+/// @brief Extracts and organizes solution data for all grid refinement levels.
+///
+/// It derives these level-specific solutions from a given leaf-solution. For cells
+/// that no longer exist in the leaf grid (i.e., parent cells that were refined away),
+/// the default Scalar value (or a "rubbish -1") is assigned. This behavior is
+/// temporary and will be replaced with proper restriction in a future implementation.
+///
+/// Each resulting ScalarBuffer (std::vector<Scalar>) follows the ordering expected by
+/// output files, i.e., increasing level Cartesian indices.
+///
+/// @param [template] Scalar The numeric type of the stored solution values (e.g., double, float).
+/// @param [in]       grid
+/// @param [in]       leafSolution The complete solution defined on the leaf grid, containing
+///                                one or more named data fields (e.g., pressure, saturation).
+/// @return   A vector of Opm::data::Solution objects, one for each refinement level
+///           (from level 0 to grid.maxLevel()), where each entry contains data reordered
+///           according to increasing level Cartesian indices for output.
+template <typename Scalar>
+std::vector<Opm::data::Solution> extractSolutionLevelGrids(const Dune::CpGrid& grid,
+                                                           const Opm::data::Solution& leafSolution)
+{
+    int maxLevel = grid.maxLevel();
+
+    // To restrict/create the level cell data, based on the leaf cells and the hierarchy
+    std::vector<Opm::data::Solution> levelSolutions{};
+    levelSolutions.resize(maxLevel+1);
+
+    for (const auto& [name, leafCellData] : leafSolution)
+    {
+        const auto& leafVector = leafCellData.template data<Scalar>();
+        const auto& measure =  leafCellData.dim;  // Opm::UnitSystem::measure;
+        const auto& target = leafCellData.target; // Opm::data::TargetType>;
+
+        if (leafVector.empty()) {
+            continue;
+        }
+
+        std::vector<std::vector<Scalar>> levelVectors{};
+        levelVectors.resize(maxLevel+1);
+
+        const auto rubbish = -1;
+        for (int level = 0; level <= maxLevel; ++level) {
+            levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
+        }
+
+        // For level cells that appear in the leaf, extract the data value from leafVector
+        // and assign it the the equivalent level cell.
+        // Notice that cells that vanished (parent cells) get the rubbish value.
+        // Store in the order expected by outout files (increasing level Cartesian indices)
+        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
+            levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
+        }
+
+        for (int level = 0; level <= maxLevel; ++level) {
+            levelSolutions[level].insert(name,
+                                         measure,
+                                         std::move(levelVectors[level]),
+                                         target);
+        }
+    }
+    return levelSolutions;
+}
+
+/// @brief Constructs restart-value containers for all grid refinement levels.
+///
+/// The level-specific solution data are first derived from the leaf solution
+/// using extractSolutionLevelGrids(...). Other data components (such as wells,
+/// group/network values, and aquifers) are passed unchanged to each level.
+///
+/// @param [template] Scalar The numeric type of the stored solution values (e.g., double, float).
+/// @param [in]       grid
+/// @param [in]       leafSolution The complete solution defined on the leaf grid, containing
+///                                one or more named data fields (e.g., pressure, saturation).
+/// @param [in]       leafWells
+/// @param [in]       leafGroupAndNetworkValues
+/// @param [in]       leafAquifer
+/// @return   A vector of RestartValue objects, one for each refinement level
+///           (from level 0 to grid.maxLevel()).
+template <typename Scalar>
+std::vector<Opm::RestartValue> getRestartValueLevelGrids(const Dune::CpGrid& grid,
+                                                         const Opm::data::Solution& leafSolution,
+                                                         const Opm::data::Wells& leafWells,
+                                                         const Opm::data::GroupAndNetworkValues& leafGroupAndNetworkValues,
+                                                         const Opm::data::Aquifers& leafAquifer)
+{
+    int maxLevel = grid.maxLevel();
+    std::vector<Opm::RestartValue> restartValue_levels{};
+    restartValue_levels.resize(maxLevel+1); // level 0, 1, ..., max level
+
+    const auto dataSolutionLevels = extractSolutionLevelGrids<Scalar>(grid, leafSolution);
+
+    for (int level = 0; level <= maxLevel; ++level) {
+        restartValue_levels[level] = Opm::RestartValue(dataSolutionLevels[level],
+                                                       leafWells,
+                                                       leafGroupAndNetworkValues,
+                                                       leafAquifer,
+                                                       level);
+    }
+    return restartValue_levels;
+}
+
+} // namespace Lgr
+} // namespace Opm
+
+#endif // OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
