@@ -97,6 +97,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
   tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
   tests/cpgrid/lgr/nested_refinement_test.cpp
+  tests/cpgrid/lgr/restrict_data_to_level_grids_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp
