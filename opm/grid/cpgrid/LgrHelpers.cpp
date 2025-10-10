@@ -957,7 +957,7 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                     int firstElem = faceInMarkedElemAndRefinedFaces[markedFace][0].first;
                     int firstElemLevel = assignRefinedLevel[firstElem];
 
-                    if (firstElemLevel != level) {
+                    if (firstElemLevel > level) {
                         int shiftedFirstLevel = firstElemLevel - preAdaptMaxLevel - 1;
                         insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                             refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
