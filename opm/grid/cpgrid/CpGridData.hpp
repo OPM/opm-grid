@@ -285,6 +285,8 @@ public:
     ///
     /// \param[in,out] nnc Non-neighboring connections.
     ///
+    /// \param[in] remove_ij_boundary True to remove outer cell layer
+    ///
     /// \param[in] turn_normals Whether or not to turn all normals.
     /// This is intended for handling inputs with wrong orientations.
     ///
