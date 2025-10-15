@@ -518,6 +518,171 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
     }
 }
 #endif
+BOOST_AUTO_TEST_CASE(PartitionTest)
+{
+#if HAVE_MPI
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm twocom = MPI_COMM_WORLD;
+    if (size==1)
+        return;
+    if (size > 2)
+    {
+        MPI_Comm_split(MPI_COMM_WORLD, rank<2, rank, &twocom);
+    }
+    if (rank < 2)
+    {
+        Dune::CpGrid grid(twocom);
+        std::array<int, 3> dims={{7, 5, 1}};
+        std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+        std::vector<int> parts = { 0, 1, 1, 0, 0, 0, 0,
+                                   0, 1, 1, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0, 0 };
+        grid.createCartesian(dims, size);
+        grid.loadBalance(parts, false, false, 1);
+
+        if( rank == 1)
+        {
+            BOOST_CHECK(10  == grid.size(0));
+            std::vector<int> points(grid.size(3));
+            std::vector<int> cells(grid.size(0));
+            std::map<Dune::PartitionType, int> cells_per_part_type;
+
+            for(const auto& cell: Dune::elements(grid.leafGridView()))
+            {
+                cells[cell.index()] = cell.partitionType();
+                ++cells_per_part_type[cell.partitionType()];
+            }
+
+            BOOST_CHECK(cells_per_part_type.size() == 2);
+            BOOST_CHECK(cells_per_part_type[Dune::InteriorEntity] == 4);
+            BOOST_CHECK(cells_per_part_type[Dune::OverlapEntity] == 6);
+
+            std::map<Dune::PartitionType, int> points_per_part_type;
+
+            for(const auto& point: Dune::vertices(grid.leafGridView()))
+            {
+                const auto& center = point.geometry().center();
+                std::cout<< center[0]<<", "<<center[1]<<", "<<center[2]<<": "<<  point.partitionType()
+                         << std::endl;
+                points[point.index()] = point.partitionType();
+                ++points_per_part_type[point.partitionType()];
+            }
+
+            BOOST_CHECK(points_per_part_type.size() == 4);
+            BOOST_CHECK(points_per_part_type[Dune::InteriorEntity] == 4);
+            BOOST_CHECK(points_per_part_type[Dune::BorderEntity] == 14);
+            BOOST_CHECK(points_per_part_type[Dune::OverlapEntity] == 4);
+            BOOST_CHECK(points_per_part_type[Dune::FrontEntity] == 14);
+
+            auto cellpart = cells.begin();
+            for (int j = 0; j < 3; ++j) {
+                if (j < 2) {
+                    for(int i= 0; i < 4; ++i)
+                        std::cout << *cellpart++<<" ";
+                } else {
+                    std::cout << "  ";
+                    for(int i= 0; i < 2; ++i)
+                        std::cout << *cellpart++ << " ";
+                }
+                std::cout << std::endl;
+            }
+            std::cout<<"done interior "<<(int)Dune::InteriorEntity<<" overlap "<<(int)Dune::OverlapEntity
+                     <<" border "<<(int)Dune::BorderEntity<<" front "<<(int)Dune::FrontEntity<<std::endl;
+        }         
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    if (size > 2)
+    {
+        MPI_Comm_free(&twocom);
+    }    
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(PartitionTestWithCorners)
+{
+#if HAVE_MPI
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm twocom = MPI_COMM_WORLD;
+    if (size==1)
+        return;
+    if (size > 2)
+    {
+        MPI_Comm_split(MPI_COMM_WORLD, rank<2, rank, &twocom);
+    }
+    if (rank < 2)
+    {
+        Dune::CpGrid grid(twocom);
+        std::array<int, 3> dims={{7, 5, 1}};
+        std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+        std::vector<int> parts = { 0, 1, 1, 0, 0, 0, 0,
+                                   0, 1, 1, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0, 0 };
+        grid.createCartesian(dims, size);
+        grid.loadBalance(parts, false, true, 1);
+
+        if( rank == 1)
+        {
+            BOOST_CHECK(12  == grid.size(0));
+            std::vector<int> points(grid.size(3));
+            std::vector<int> cells(grid.size(0));
+            std::map<Dune::PartitionType, int> cells_per_part_type;
+
+            for(const auto& cell: Dune::elements(grid.leafGridView()))
+            {
+                cells[cell.index()] = cell.partitionType();
+                ++cells_per_part_type[cell.partitionType()];
+            }
+
+
+            auto cellpart = cells.begin();
+            for (int j = 0; j < 3; ++j) {
+                for(int i= 0; i < 4; ++i) {
+                    std::cout << *cellpart++<<" ";
+                }
+                std::cout << std::endl;
+            }
+            std::cout<<"done interior "<<(int)Dune::InteriorEntity<<" overlap "<<(int)Dune::OverlapEntity
+                     <<" border "<<(int)Dune::BorderEntity<<" front "<<(int)Dune::FrontEntity<<std::endl;
+            
+            BOOST_CHECK(cells_per_part_type.size() == 2);
+            BOOST_CHECK(cells_per_part_type[Dune::InteriorEntity] == 4);
+            BOOST_CHECK(cells_per_part_type[Dune::OverlapEntity] == 8);
+
+            std::map<Dune::PartitionType, int> points_per_part_type;
+
+            for(const auto& point: Dune::vertices(grid.leafGridView()))
+            {
+                const auto& center = point.geometry().center();
+                std::cout<< center[0]<<", "<<center[1]<<", "<<center[2]<<": "<<  point.partitionType()
+                         << std::endl;
+                points[point.index()] = point.partitionType();
+                ++points_per_part_type[point.partitionType()];
+            }
+
+            BOOST_CHECK(points_per_part_type.size() == 4);
+            BOOST_CHECK(points_per_part_type[Dune::InteriorEntity] == 4);
+            BOOST_CHECK(points_per_part_type[Dune::BorderEntity] == 14);
+            BOOST_CHECK(points_per_part_type[Dune::OverlapEntity] == 6);
+            BOOST_CHECK(points_per_part_type[Dune::FrontEntity] == 16);
+        }         
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    if (size > 2)
+    {
+        MPI_Comm_free(&twocom);
+    }    
+#endif
+}
 
 BOOST_AUTO_TEST_CASE(distribute)
 {
