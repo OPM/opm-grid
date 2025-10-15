@@ -55,44 +55,25 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
             grid_data_->face_to_cell_[Entity<1>(*grid_data_,i,true)];
         if(cells_of_face.size()==1)
         {
+            // We are on the global domain boundary
+            // partition type of intersection is the same as the one of the cell.
             int cell_index = cells_of_face[0].index();
             Entity<0> cell0(*grid_data_, cell_index, true);
             PartitionType cell_part = getPartitionType(cell0);
-            if(cell_part!=OverlapEntity)
-                return cell_part;
-            else
-            {
-                // If the cell is in the overlap and the face is on the boundary,
-                // then the partition type has to Front! Here we check whether
-                // we are at the boundary.
-                OrientedEntityTable<0,1>::row_type cell_to_face=grid_data_->cell_to_face_[cell0];
-                Entity<0>::LeafIntersectionIterator intersection=cell0.ilevelbegin();
-                for(int subindex=0; subindex<cell_to_face.size(); ++subindex, ++intersection)
-                    if(cell_to_face[subindex].index()==i)
-                        break;
-                assert(intersection!=cell0.ilevelend());
-                if(intersection.boundary())
-                    return FrontEntity;
-                else
-                    return cell_part;
+            return cell_part;
+        } else {
+            // One of the cells might have index -1. That means that the
+            // neighbor is not on this process but on another one. In this
+            // case the intersection is Front
+            auto idx0 = cells_of_face[0].index();
+            auto idx1 = cells_of_face[1].index();
+            if (idx0 == std::numeric_limits<int>::max() || idx1 == std::numeric_limits<int>::max()) {
+                // One neighbor is on another process => FrontEntity
+                return FrontEntity;
             }
-        }
-        else
-        {
-            Entity<0> cell0(*grid_data_, cells_of_face[0].index(), true);
-            Entity<0> cell1(*grid_data_, cells_of_face[1].index(), true);
-            if(cells_of_face[0].index()==std::numeric_limits<int>::max())
-            {
-                assert(cells_of_face[1].index()!=std::numeric_limits<int>::max());
-                // At the boder of the processor's but not the global domain
-                return getProcessorBoundaryPartitionType(getPartitionType(cell1));
-            }
-            if(cells_of_face[1].index()==std::numeric_limits<int>::max())
-            {
-                assert(cells_of_face[0].index()!=std::numeric_limits<int>::max());
-                // At the boder of the processor's but not the global domain
-                return getProcessorBoundaryPartitionType(getPartitionType(cell0));
-            }
+
+            Entity<0> cell0(*grid_data_, idx0, true);
+            Entity<0> cell1(*grid_data_, idx1, true);
             if(getPartitionType(cell0) == getPartitionType(cell1))
                 return getPartitionType(cell0);
             else

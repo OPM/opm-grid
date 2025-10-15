@@ -1610,22 +1610,39 @@ void CpGridData::computePointPartitionType()
     // not border.
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
                                                        InteriorEntity);
+    // marking border entities first
     for(int i=0; i<face_to_point_.size(); ++i)
     {
-        for(auto p=face_to_point_[i].begin(),
-                pend=face_to_point_[i].end(); p!=pend; ++p)
+        PartitionType face_type = partition_type_indicator_->getFacePartitionType(i);
+        if (face_type ==  BorderEntity)
         {
-            PartitionType new_type=partition_type_indicator_->getFacePartitionType(i);
-            PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
-            if(old_type==InteriorEntity)
+            // all vertices are border
+            for(auto p=face_to_point_[i].begin(),
+                    pend=face_to_point_[i].end(); p!=pend; ++p)
             {
-                if(new_type!=OverlapEntity)
-                    partition_type_indicator_->point_indicator_[*p]=new_type;
+                partition_type_indicator_->point_indicator_[*p]=face_type;
             }
-            if(old_type==OverlapEntity)
-                partition_type_indicator_->point_indicator_[*p]=new_type;
-            if(old_type==FrontEntity && new_type==BorderEntity)
-                partition_type_indicator_->point_indicator_[*p]=new_type;
+        }
+    }
+
+    for(int i=0; i<face_to_point_.size(); ++i)
+    {
+        PartitionType new_type = partition_type_indicator_->getFacePartitionType(i);
+
+        if (new_type != InteriorEntity && new_type != BorderEntity)
+        {
+            for(auto p=face_to_point_[i].begin(),
+                    pend=face_to_point_[i].end(); p!=pend; ++p)
+            {
+                PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
+
+                if ( old_type != BorderEntity && new_type == FrontEntity)
+                {
+                    partition_type_indicator_->point_indicator_[*p] = FrontEntity;
+                } else if(new_type == OverlapEntity && old_type != FrontEntity && old_type != BorderEntity) {
+                    partition_type_indicator_->point_indicator_[*p] = OverlapEntity;
+                }
+            }
         }
     }
 #endif
