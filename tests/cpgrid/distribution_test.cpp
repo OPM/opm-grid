@@ -534,14 +534,14 @@ BOOST_AUTO_TEST_CASE(PartitionTest)
     if (rank < 2)
     {
         Dune::CpGrid grid(twocom);
-        std::array<int, 3> dims={{7, 5, 1}};
-        std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+        std::array<int, 3> dims = {{7, 5, 1}};
+        std::array<double, 3> sizes = {{ 1.0, 1.0, 1.0}};
         std::vector<int> parts = { 0, 1, 1, 0, 0, 0, 0,
                                    0, 1, 1, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0 };
-        grid.createCartesian(dims, size);
+        grid.createCartesian(dims, sizes);
         grid.loadBalance(parts, false, false, 1);
 
         if( rank == 1)
@@ -619,14 +619,14 @@ BOOST_AUTO_TEST_CASE(PartitionTestWithCorners)
     if (rank < 2)
     {
         Dune::CpGrid grid(twocom);
-        std::array<int, 3> dims={{7, 5, 1}};
-        std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+        std::array<int, 3> dims = {{7, 5, 1}};
+        std::array<double, 3> sizes = {{ 1.0, 1.0, 1.0}};
         std::vector<int> parts = { 0, 1, 1, 0, 0, 0, 0,
                                    0, 1, 1, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0 };
-        grid.createCartesian(dims, size);
+        grid.createCartesian(dims, sizes);
         grid.loadBalance(parts, false, true, 1);
 
         if( rank == 1)
