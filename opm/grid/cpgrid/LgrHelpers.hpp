@@ -721,14 +721,12 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
 ///                                       A parent grid may have more than one child LGR.
 ///
 /// @return A tuple containing a bool and the filtered vectors:
-///         - allUndesired         True if all LGRs have cells_per_dim_ = {1,1,1}
 ///         - cells_per_dim_vec
 ///         - startIJK_vec
 ///         - endIJK_vec
 ///         - lgr_name_vec
 ///         - lgr_parent_grid_name_vec
-std::tuple<bool,
-           std::vector<std::array<int,3>>,
+std::tuple<std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::string>,
