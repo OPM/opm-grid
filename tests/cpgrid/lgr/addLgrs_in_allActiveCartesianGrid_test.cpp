@@ -245,6 +245,26 @@ BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOne)
     Opm::checkLeafGridGeometryEquality(grid, fine_grid);
 }
 
+BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOneForAllLgrs)
+{
+    // Create a 4x3x3 grid with sizes 4x3x3
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1., 1., 1.});
+    // Refine each cell into 1 child does nothing to the grid. ( subdivision per x-,y-,z- direction).
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}, {1,1,1}},
+                               /* startIJK_vec = */ {{0,0,0}, {3,1,1}},
+                               /* endIJK_vec = */ {{2,1,1}, {4,3,3}},
+                               /* lgr_name_vec = */ {"LGR1", "LGR2"});
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 0); // no refinement has been triggered
+
+    // Create a 4x3x3 grid with sizes 4x3x3
+    Dune::CpGrid fine_grid;
+    fine_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
+
+    Opm::checkLeafGridGeometryEquality(grid, fine_grid);
+}
+
+
 BOOST_AUTO_TEST_CASE(filterLgrThatDoesNotTriggerActualRefinement)
 {
     Dune::CpGrid grid;

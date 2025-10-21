@@ -2145,8 +2145,7 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
     return faceTag; // -1 when no face is shared, otherwise: 0 (shared I_FACE), 1 (shared J_FACE), 2 (shared K_FACE)
 }
 
-std::tuple<bool,
-           std::vector<std::array<int,3>>,
+std::tuple<std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::array<int,3>>,
            std::vector<std::string>,
@@ -2172,7 +2171,6 @@ excludeFakeSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     filtered_lgr_name_vec.reserve(size);
     filtered_lgr_parent_grid_name_vec.reserve(size);
 
-    bool allUndesired = true;
     for (std::size_t i = 0; i < size; ++i)
     {
         const auto& cellsPerDim = cells_per_dim_vec[i];
@@ -2183,14 +2181,12 @@ excludeFakeSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
             filtered_endIJK_vec.push_back(endIJK_vec[i]);
             filtered_lgr_name_vec.push_back(lgr_name_vec[i]);
             filtered_lgr_parent_grid_name_vec.push_back(lgr_parent_grid_name_vec[i]);
-            allUndesired = false;
         }
         else {
             Opm::OpmLog::warning(lgr_name_vec[i]+" not created. Desired refined cells should be >1 in at least one direction.\n");
         }
     }
-    return std::make_tuple(allUndesired,
-                           std::move(filtered_cells_per_dim_vec),
+    return std::make_tuple(std::move(filtered_cells_per_dim_vec),
                            std::move(filtered_startIJK_vec),
                            std::move(filtered_endIJK_vec),
                            std::move(filtered_lgr_name_vec),

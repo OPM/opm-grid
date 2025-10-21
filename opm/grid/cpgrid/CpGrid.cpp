@@ -2622,8 +2622,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
 
     // Discard LGRs whose subdivisions do not trigger actual refinement, i.e., cells_per_dim_ = {1,1,1}
-    const auto [allUndesired,
-                filtered_cells_per_dim_vec,
+    const auto [filtered_cells_per_dim_vec,
                 filtered_startIJK_vec,
                 filtered_endIJK_vec,
                 filtered_lgr_name_vec,
@@ -2632,7 +2631,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                                                        endIJK_vec,
                                                                                        lgr_name_vec,
                                                                                        parent_grid_names);
-    if (allUndesired) { // if all LGRs expect 1 child per direction, then no refinement will be done.
+    if (filtered_cells_per_dim_vec.size() == 0) { // if all LGRs expect 1 child per direction, then no refinement will be done.
         return;
     }
 
@@ -2686,10 +2685,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
 
-        // To determine if an LGR is not empty in a given process, we set
-        // at_least_one_active_parent[in that level] to 1 if it contains
-        // at least one active cell, and to 0 otherwise.
-        std::vector<int> at_least_one_active_parent(filtered_startIJK_vec.size());
+        // To determine if an LGR is not empty in a given process, for each
+        // parent grid, we set at_least_one_active_parent[in that level] to 1
+        // if it contains at least one active cell, and to 0 otherwise.
+        std::vector<int> at_least_one_active_parent(startIJK_vec_parent_grid.size());
 
         // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
         for(const auto& element: elements(this->leafGridView())) {
@@ -2728,20 +2727,20 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                             endIJK_vec_parent_grid);
 
         int non_empty_lgrs = 0;
-        for (std::size_t level = 0; level < filtered_startIJK_vec.size(); ++level) {
+        for (std::size_t level = 0; level < startIJK_vec_parent_grid.size(); ++level){
             // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
-            if (at_least_one_active_parent[level] == 0) {
-                Opm::OpmLog::warning(filtered_lgr_name_vec[level]+ " contains only inactive cells (in " + std::to_string(comm().rank()) + " rank).\n");
-            }
-            else {
+            if (at_least_one_active_parent[level]) {
                 ++non_empty_lgrs;
+            }
+            if ((comm().max(at_least_one_active_parent[level]) == 0) && (comm().rank() == 0)) {
+                Opm::OpmLog::warning(lgr_name_vec_parent_grid[level]+ " contains only inactive cells (in rank " + std::to_string(comm().rank()) +").\n");
             }
         }
 
         // Notice that in a parallel run, non_empty_lgrs represents the local active lgrs, i.e. the lgrs containing active cells which also belong
         // to the current process. Considered per parent grid.
-        auto globalActiveLgrs = comm().sum(non_empty_lgrs);
-        if(globalActiveLgrs == 0) {
+        auto globalActiveLgrs_currentParentGrid = comm().sum(non_empty_lgrs);
+        if((globalActiveLgrs_currentParentGrid == 0) && (comm().rank() == 0)) {
             Opm::OpmLog::warning("All the LGRs with parent grid " + parent_grid_name + " contain only inactive cells.\n");
         }
     }
