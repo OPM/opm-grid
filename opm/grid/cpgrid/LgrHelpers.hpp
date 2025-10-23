@@ -446,7 +446,8 @@ bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int face
 /// @param [in] elemLgr        Parent cell index from the original grid.
 /// @return Index of the parent face containing the refined face.
 int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& current_data,
-                                           const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                           const std::array<int,3>& cells_per_dim,
+                                           int faceIdxInLgr,
                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
                                            int elemLgr);
 

@@ -910,59 +910,77 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
-    // Loop over elements
-    for (int elem = 0; elem < current_data.size(0); ++elem) {
-        if (!markedElem_to_itsLgr[elem]) continue;
+    for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
+        if (!markedElem_to_itsLgr[elemIdx]) continue; // skip elements not involved in refinement
 
-        const int level = assignRefinedLevel[elem];
+        const int level = assignRefinedLevel[elemIdx];
         assert(level > 0);
         // To access containers with refined level grid information
         const int shiftedLevel = level - preAdaptMaxLevel - 1;
 
-        // Loop over faces of this element
-        for (int face = 0; face < markedElem_to_itsLgr[elem]->numFaces(); ++face) {
+        int rubbish = -1; // To explicitly show that a value won't be used in future assignements
+        // when invoking insertBirectional( map1, map2, keyA, keyB, counter), keyB[1] won't be used
+
+        // Loop over refined faces of the auxiliary single-cell-refinement of the current element (with index elemIdx)
+        for (int face = 0; face < markedElem_to_itsLgr[elemIdx]->numFaces(); ++face) {
             bool isInterior = !isRefinedFaceOnLgrBoundary(cells_per_dim_vec[shiftedLevel],
-                                                          face, markedElem_to_itsLgr[elem]);
-            // Discard marked faces. Store (new born) refined faces
+                                                          face, markedElem_to_itsLgr[elemIdx]);
+            // Store new born refined faces (do not have a "parent face" from the parent cell with index elemIdx)
             if (isInterior) {
                 // Case 1: Interior refined face -> store immediately
                 insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                     refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                    {elem, face}, {level, face},
+                                    {elemIdx, face}, {level, rubbish},
                                     refined_face_count_vec[shiftedLevel]);
             }
             else {
-                // Case 2: Boundary refined face
-                // If the refined face lays on the boundary of the LGR, e.i., it was born on one of the faces
-                // of the marked element that got refined, then, we have two cases:
-                // - the marked face appears only in one marked element -> then, we store this face now.
-                // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
+                // Case 2: Boundary (of the single-cell-refinement of elemIdx) refined face
+                // If the refined face lays on the boundary of the auxiliary single-cell-refinement,
+                // "it has a parent face" being one of the coarse faces of the marked element
+                // (with index elemIdx) that got refined. Each marked face appears in a maximum of two
+                // marked elements.
+                // - If the marked face appears only in one marked element -> then, we store this face now.
+                // - If the marked face appears in two marked elements -> we distinguish between 
+                //   both marked elements sharing that face belonging to the same level, or not. 
                 int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(current_data, cells_per_dim_vec[shiftedLevel],
-                                                                        face, markedElem_to_itsLgr[elem], elem);
+                                                                        face, markedElem_to_itsLgr[elemIdx], elemIdx);
 
                 assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
 
-                int lastLgr = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+                int lastElemIdxWithMarkedFace = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
 
-                // Store at last appearance
-                if (lastLgr == elem) {
+                if (faceInMarkedElemAndRefinedFaces[markedFace].size() == 1) {
+                     // The marked face appears only in one marked element -> then, we store this face now.
+                    assert(lastElemIdxWithMarkedFace == elemIdx); 
+                    
                     insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                         refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                        {elem, face}, {level, face},
+                                        {elemIdx, face}, {level, rubbish},
                                         refined_face_count_vec[shiftedLevel]);
                 }
+                else { // The marked face appears in two marked element. Distinguish between 
+                    //   both marked elements sharing that face belonging to the same level, or not
+                    assert(faceInMarkedElemAndRefinedFaces[markedFace].size() == 2);
 
-                // If this marked face appears in two elements with different levels, handle the other
-                if (faceInMarkedElemAndRefinedFaces[markedFace].size() > 1) {
-                    int firstElem = faceInMarkedElemAndRefinedFaces[markedFace][0].first;
-                    int firstElemLevel = assignRefinedLevel[firstElem];
-
-                    if (firstElemLevel > level) {
-                        int shiftedFirstLevel = firstElemLevel - preAdaptMaxLevel - 1;
+                    const auto maxElemIdx = std::max( faceInMarkedElemAndRefinedFaces[markedFace][0].first,
+                                                      faceInMarkedElemAndRefinedFaces[markedFace][1].first);
+                    int maxElemLevel = assignRefinedLevel[maxElemIdx];
+                    
+                    // If this marked face appears in two elements assigned to the same level, we store
+                    // the face only once, for the largest marked element index. 
+                    if ((maxElemLevel == level) && (maxElemIdx == elemIdx))  {
+                        int shiftedFirstLevel = maxElemLevel - preAdaptMaxLevel - 1;
                         insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                             refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                            {firstElem, face}, {firstElemLevel, face},
+                                            {maxElemIdx, face}, {maxElemLevel, rubbish}, 
                                             refined_face_count_vec[shiftedFirstLevel]);
+                    }
+                    else if (maxElemLevel != level) { // 2 neighboring (parent) cells got refined but
+                        // children belong to different levels then, store the refined face now
+                          insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                        refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                        {elemIdx, face}, {level, rubbish},
+                                        refined_face_count_vec[shiftedLevel]);
                     }
                 }
             }
