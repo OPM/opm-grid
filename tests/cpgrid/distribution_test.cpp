@@ -542,7 +542,9 @@ BOOST_AUTO_TEST_CASE(PartitionTest)
                                    0, 0, 0, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0 };
         grid.createCartesian(dims, sizes);
-        grid.loadBalance(parts, false, false, 1);
+        grid.loadBalance(parts, /*ownersFirst = */ false,
+                         /* addCornerCells = */ false,
+                         /* overlapLayerSize= */ 1);
 
         if( rank == 1)
         {
@@ -565,9 +567,6 @@ BOOST_AUTO_TEST_CASE(PartitionTest)
 
             for(const auto& point: Dune::vertices(grid.leafGridView()))
             {
-                const auto& center = point.geometry().center();
-                std::cout<< center[0]<<", "<<center[1]<<", "<<center[2]<<": "<<  point.partitionType()
-                         << std::endl;
                 points[point.index()] = point.partitionType();
                 ++points_per_part_type[point.partitionType()];
             }
@@ -577,22 +576,7 @@ BOOST_AUTO_TEST_CASE(PartitionTest)
             BOOST_CHECK(points_per_part_type[Dune::BorderEntity] == 14);
             BOOST_CHECK(points_per_part_type[Dune::OverlapEntity] == 4);
             BOOST_CHECK(points_per_part_type[Dune::FrontEntity] == 14);
-
-            auto cellpart = cells.begin();
-            for (int j = 0; j < 3; ++j) {
-                if (j < 2) {
-                    for(int i= 0; i < 4; ++i)
-                        std::cout << *cellpart++<<" ";
-                } else {
-                    std::cout << "  ";
-                    for(int i= 0; i < 2; ++i)
-                        std::cout << *cellpart++ << " ";
-                }
-                std::cout << std::endl;
-            }
-            std::cout<<"done interior "<<(int)Dune::InteriorEntity<<" overlap "<<(int)Dune::OverlapEntity
-                     <<" border "<<(int)Dune::BorderEntity<<" front "<<(int)Dune::FrontEntity<<std::endl;
-        }         
+        }
     }
     MPI_Barrier(MPI_COMM_WORLD);
     
@@ -627,7 +611,9 @@ BOOST_AUTO_TEST_CASE(PartitionTestWithCorners)
                                    0, 0, 0, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0 };
         grid.createCartesian(dims, sizes);
-        grid.loadBalance(parts, false, true, 1);
+        grid.loadBalance(parts,  /*ownersFirst = */ false,
+                         /* addCornerCells = */ true,
+                        /* overlapLayerSize= */ 1);
 
         if( rank == 1)
         {
