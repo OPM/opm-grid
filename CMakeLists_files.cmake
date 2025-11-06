@@ -93,6 +93,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/grid_global_id_set_test.cpp
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
+  tests/cpgrid/lgr/lgrs_sharing_faces_test.cpp
   tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
   tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
   tests/cpgrid/lgr/nested_refinement_test.cpp

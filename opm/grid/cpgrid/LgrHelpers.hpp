@@ -348,12 +348,26 @@ void processBoundaryCorners(int elemIdx, int shiftedLevel,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
 // To insert bidirectional mapping and increment counter
+// keyB is equal to counter, before it gets increased by one.
+void insertBidirectional(std::map<std::array<int,2>,int>& a_to_b,
+                         std::unordered_map<int,std::array<int,2>>& b_to_a,
+                         const std::array<int,2>& keyA,
+                         int& counter);
+
+// To insert bidirectional mapping and increment counter
 void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
                          std::map<std::array<int,2>,std::array<int,2>>& b_to_a,
                          const std::array<int,2>& keyA,
                          const std::array<int,2>& keyB,
-                         int& counter,
-                         bool useFullKeyB = false);
+                         int& counter);
+
+// To insert bidirectional mapping and increment counter
+// keyB = {keyBfirst, counter before it gets increased by one}.
+void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
+                         std::map<std::array<int,2>,std::array<int,2>>& b_to_a,
+                         const std::array<int,2>& keyA,
+                         int keyBfirst,
+                         int& counter);
 
 /// @brief Define mappings between single-cell-refinement faces and refined level faces.
 ///
@@ -446,7 +460,8 @@ bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int face
 /// @param [in] elemLgr        Parent cell index from the original grid.
 /// @return Index of the parent face containing the refined face.
 int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& current_data,
-                                           const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                           const std::array<int,3>& cells_per_dim,
+                                           int faceIdxInLgr,
                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
                                            int elemLgr);
 
