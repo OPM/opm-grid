@@ -26,6 +26,7 @@
 
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
+#include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
 
 #include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
@@ -51,58 +52,6 @@ struct Fixture
 };
 
 BOOST_GLOBAL_FIXTURE(Fixture);
-
-template <typename Scalar>
-std::vector<Opm::data::Solution> extractDataForLevelGrids(const Dune::CpGrid& grid,
-                                                          const Opm::data::Solution& leafSolution)
-{
-    int maxLevel = grid.maxLevel();
-
-    // To restrict/create the level cell data, based on the leaf cells and the hierarchy
-    std::vector<Opm::data::Solution> levelSolutions{};
-    levelSolutions.resize(maxLevel+1);
-
-    for (const auto& [name, leafCellData] : leafSolution)
-    {
-        const auto& leafVector = leafCellData.template data<Scalar>();
-        const auto& messure =  leafCellData.dim;  // Opm::UnitSystem::measure;
-        const auto& target = leafCellData.target; // Opm::data::TargetType>;
-
-        if (leafVector.empty()) {
-            continue;
-        }
-
-        std::vector<std::vector<Scalar>> levelVectors{};
-        levelVectors.resize(maxLevel+1);
-
-        const auto rubbish = -1;
-        for (int level = 0; level <= maxLevel; ++level) {
-            levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
-        }
-
-        // For level cells that appear in the leaf, extract the data value from leafVector
-        // and assign it the the equivalent level cell.
-        // Notice that cells that vanished (parent cells) get the rubbish value.
-        for (const auto& element : Dune::elements(grid.leafGridView())) {
-            levelVectors[element.level()][element.getLevelElem().index()] = leafVector[element.index()];
-        }
-
-        // Reorder the containers in the order expected by outout files (increasing level Cartesian indices)
-        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-        for (int level = 0; level <= maxLevel; ++level) {
-
-            const auto toOutput = Opm::Lgr::mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
-            auto outputContainer = Opm::Lgr::reorderForOutput( levelVectors[level],
-                                                               toOutput);
-
-            levelSolutions[level].insert(name,
-                                         messure,
-                                         std::move(outputContainer),
-                                         target);
-        }
-    }
-    return levelSolutions;
-}
 
 void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
                                       const std::vector<std::vector<double>>& expected_data_levels)
@@ -134,7 +83,7 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
     const auto& leafFakePropData = leafSolution.data<double>("FAKEPROP");
     BOOST_CHECK_EQUAL(leafFakePropData.size(), leafView.size(0));
 
-    const auto levelSolutions = extractDataForLevelGrids<double>(grid, leafSolution);
+    const auto levelSolutions = Opm::Lgr::extractDataForLevelGrids<double>(grid, leafSolution);
 
     // By now, all level cells have data assigned.
     // Notice that the cells that vanished (i.e. do not appear on the leaf grid view,

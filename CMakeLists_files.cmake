@@ -38,6 +38,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/LgrHelpers.cpp
+  opm/grid/cpgrid/LgrOutputHelpers.cpp
   opm/grid/cpgrid/NestedRefinementUtilities.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
@@ -215,6 +216,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
+  opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/LookUpCellCentroid.hh
   opm/grid/LookUpData.hh
   opm/grid/cpgrid/ElementMarkHandle.hpp
