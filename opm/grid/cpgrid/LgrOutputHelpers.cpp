@@ -73,5 +73,72 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
 }
 
 
+
+std::vector<std::vector<int>> ifLeafGetLevelIndexToLeafIndex(const Dune::CpGrid& grid)
+{
+    int maxLevel = grid.maxLevel();
+
+    int rubbish = -1; // value for vanished cells (i.e. parent cells, not appearing on the leaf)
+    
+    std::vector<std::vector<int>> levelIdx_to_leafIdx{};
+    levelIdx_to_leafIdx.resize(maxLevel +1);
+    
+    for (int level = 0; level <= maxLevel; ++level) {
+        levelIdx_to_leafIdx[level].resize(grid.levelGridView(level).size(0), rubbish);
+    }
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        levelIdx_to_leafIdx[ element.level() ][ element.getLevelElem().index() ] = element.index();
+    }
+    return levelIdx_to_leafIdx;
+}
+
+std::vector<std::array<int,2>> ifVanishedGetDescendantsPresentOnLeaf(const Dune::cpgrid::Entity<0>& element,
+                                                                     int maxLevel)
+{
+    if (element.isLeaf()) {
+        throw;
+    }
+    
+    std::vector<std::array<int,2>> refinedChildrenPresentOnLeaf{}; // {level, child level index}
+   
+         
+    auto it = element.hbegin(maxLevel);
+    const auto& endIt = element.hend(maxLevel);
+    
+    for (; it != endIt; ++it) {
+        if (it->isLeaf())
+            refinedChildrenPresentOnLeaf.emplace_back(std::array{it->level(), it-> index()});
+    }
+    return refinedChildrenPresentOnLeaf;
+}
+
+std::vector<std::vector<std::vector<int>>> getDescendantsPresentOnLeaf(const Dune::CpGrid& grid)
+{
+    int maxLevel = grid.maxLevel();
+    std::vector<std::vector<std::vector<int>>> descendantsOnLeaf{};
+    descendantsOnLeaf.resize(maxLevel+1);
+    
+    const auto levelIdx_to_leafIdx = ifLeafGetLevelIndexToLeafIndex(grid);
+
+    for (int level = 0; level <= maxLevel; ++level) {
+        descendantsOnLeaf[level].resize(grid.levelGridView(level).size(0));
+        
+        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+            if (element.isLeaf()) {
+                descendantsOnLeaf[level][element.index()].emplace_back(levelIdx_to_leafIdx[ level ][element.index()]);
+            }
+            else {
+                for (const auto& level_levelIdx : ifVanishedGetDescendantsPresentOnLeaf(element, grid.maxLevel())) {
+                    descendantsOnLeaf[level][element.index()].emplace_back(levelIdx_to_leafIdx[ level_levelIdx[0] ][level_levelIdx[1]]);
+                }
+            }
+        }
+    }
+    return descendantsOnLeaf;
+}
+
+
+
+
 } // namespace Lgr
 } // namespace Opm

@@ -34,6 +34,7 @@
 #include <opm/output/data/Cells.hpp>
 
 #include <array>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -145,6 +146,25 @@ std::vector<Opm::data::Solution> extractDataForLevelGrids(const Dune::CpGrid& gr
     return levelSolutions;
 }
 
+std::vector<std::vector<int>> ifLeafGetLevelIndexToLeafIndex(const Dune::CpGrid& grid);
+
+std::vector<std::array<int,2>> ifVanishedGetDescendantsPresentOnLeaf(const Dune::cpgrid::Entity<0>& element,
+                                                                     int maxLevel);
+
+std::vector<std::vector<std::vector<int>>> getDescendantsPresentOnLeaf(const Dune::CpGrid& grid);
+
+
+/*template <typename Scalar>
+std::vector<std::unordered_map<std::unit64_t, Scalar>> extractTransmissibilitiesForLevelGrids(const Dune::CpGrid& grid,
+                                                                                              const std::unorderd_map<std::unit64_t, Scalar>& leafTransmissibilities)
+{
+    int maxLevel = grid.maxLevel();
+
+    std::vector<std::unordered_map<std::unit64_t, Scalar>> transLevels{};
+    transLevels.resize(maxLevel +1); // including level zero
+}
+
+*/
 
 } // namespace Lgr
 } // namespace Opm
