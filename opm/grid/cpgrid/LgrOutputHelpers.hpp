@@ -58,6 +58,39 @@ template<class Grid> class LevelCartesianIndexMapper;
 namespace Lgr
 {
 
+/// @brief Builds a mapping from level element indices to the Cartesian ordering required by output files.
+///
+/// Output file solution data containers for LGRs expect elements to be ordered in strict Cartesian order,
+/// with the i-direction varying fastest, followed by j, then k.
+///
+/// @param [in] grid          The CpGrid instance representing the simulation grid.
+/// @param [in] levelCartMapp The LevelCartesianIndexMapper providing Cartesian index information across all levels.
+/// @param [in] level         The grid level (integer) for which to build the index mapping.
+/// @return A vector where each position corresponds to the output ordering, and the value is the element index
+///         in that position. This ensures compatibility with the Cartesian ordering expected by output files.
+std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
+                                                       const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                                       int level);
+
+/// @brief Reorder data from a simulation container into the order assumed by output for refined level grids.
+///
+/// @param [in] simulatorContainer  Container with simulation data ordered by compressed indices.
+/// @param [in] toOutput            A vector where each position corresponds to the output ordering, and the
+///                                 value is the element index in that position.
+/// @return container with reordered data as expected by output, i.e. in strict Cartesian order, with the
+///         i-direction varying fastest, followed by j, then k.
+template <typename Container>
+Container reorderForOutput(const Container& simulatorContainer,
+                           const std::vector<int>& toOutput)
+{
+    // Use toOutput to reorder simulatorContainer
+    Container outputContainer;
+    outputContainer.resize(toOutput.size());
+    for (std::size_t i = 0; i < toOutput.size(); ++i) {
+        outputContainer[i] = simulatorContainer[toOutput[i]];
+    }
+    return outputContainer;
+}
 
 
 template <typename Scalar>
