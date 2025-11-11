@@ -111,11 +111,9 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
     Opm::data::Wells leafWells{};
     Opm::data::GroupAndNetworkValues leafGroupAndNetworkValues{};
     Opm::data::Aquifers leafAquifer{};
+    Opm::RestartValue leafRestartValue(leafSolution, leafWells, leafGroupAndNetworkValues, leafAquifer);
     const auto restartValue_levels = Opm::Lgr::getRestartValueLevelGrids<double>(grid,
-                                                                                 leafSolution,
-                                                                                 leafWells,
-                                                                                 leafGroupAndNetworkValues,
-                                                                                 leafAquifer);
+                                                                                 leafRestartValue);
 
 }
 

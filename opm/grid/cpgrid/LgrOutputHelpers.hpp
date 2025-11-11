@@ -148,33 +148,52 @@ std::vector<Opm::data::Solution> extractSolutionLevelGrids(const Dune::CpGrid& g
 ///
 /// @param [template] Scalar The numeric type of the stored solution values (e.g., double, float).
 /// @param [in]       grid
-/// @param [in]       leafSolution The complete solution defined on the leaf grid, containing
-///                                one or more named data fields (e.g., pressure, saturation).
-/// @param [in]       leafWells
-/// @param [in]       leafGroupAndNetworkValues
-/// @param [in]       leafAquifer
+/// @param [in]       leafRestartValue
 /// @return   A vector of RestartValue objects, one for each refinement level
 ///           (from level 0 to grid.maxLevel()).
 template <typename Scalar>
 std::vector<Opm::RestartValue> getRestartValueLevelGrids(const Dune::CpGrid& grid,
-                                                         const Opm::data::Solution& leafSolution,
-                                                         const Opm::data::Wells& leafWells,
-                                                         const Opm::data::GroupAndNetworkValues& leafGroupAndNetworkValues,
-                                                         const Opm::data::Aquifers& leafAquifer)
+                                                         const Opm::RestartValue& leafRestartValue)
 {
     int maxLevel = grid.maxLevel();
     std::vector<Opm::RestartValue> restartValue_levels{};
     restartValue_levels.resize(maxLevel+1); // level 0, 1, ..., max level
 
-    const auto dataSolutionLevels = extractSolutionLevelGrids<Scalar>(grid, leafSolution);
+    const auto dataSolutionLevels = extractSolutionLevelGrids<Scalar>(grid, leafRestartValue.solution);
 
     for (int level = 0; level <= maxLevel; ++level) {
         restartValue_levels[level] = Opm::RestartValue(dataSolutionLevels[level],
-                                                       leafWells,
-                                                       leafGroupAndNetworkValues,
-                                                       leafAquifer,
+                                                       leafRestartValue.wells,
+                                                       leafRestartValue.grp_nwrk,
+                                                       leafRestartValue.aquifer,
                                                        level);
     }
+
+    for (const auto& [rst_key, leafVector] : leafRestartValue.extra) {
+
+        std::vector<std::vector<Scalar>> levelVectors{};
+        levelVectors.resize(maxLevel+1);
+
+        const auto rubbish = -1;
+        for (int level = 0; level <= maxLevel; ++level) {
+            levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
+        }
+
+        // For level cells that appear in the leaf, extract the data value from leafVector
+        // and assign it the the equivalent level cell.
+        // Notice that cells that vanished (parent cells) get the rubbish value.
+        // Store in the order expected by outout files (increasing level Cartesian indices)
+        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
+            levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
+        }
+
+        for (int level = 0; level <= maxLevel; ++level) {
+            restartValue_levels[level].addExtra(rst_key.key, rst_key.dim, levelVectors[level]);
+        }
+    }
+
     return restartValue_levels;
 }
 
