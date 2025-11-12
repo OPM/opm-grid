@@ -23,17 +23,12 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
-
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
-#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
 
-#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
-#include <opm/output/data/Solution.hpp>
 #include <opm/output/data/Cells.hpp>
-
-#include <dune/grid/common/mcmgmapper.hh>
+#include <opm/output/data/Solution.hpp>
 
 #include <array>
 #include <string>
@@ -80,17 +75,20 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
     const auto& leafFakePropData = leafSolution.data<double>("FAKEPROP");
     BOOST_CHECK_EQUAL(leafFakePropData.size(), leafView.size(0));
 
-    const auto levelSolutions = Opm::Lgr::extractSolutionLevelGrids(grid, leafSolution);
+    std::vector<Opm::data::Solution> levelSolutions{};
+    Opm::Lgr::extractSolutionLevelGrids(grid,
+                                        leafSolution,
+                                        levelSolutions);
 
     // By now, all level cells have data assigned.
     // Notice that the cells that vanished (i.e. do not appear on the leaf grid view,
     // they were parent cells) got the value "rubbish = -1"
-     for (int level = 0; level <= grid.maxLevel(); ++level) {
-         for (const auto& element : Dune::elements(grid.levelGridView(level))) {
-             if (element.isLeaf())
-                 continue;
-             BOOST_CHECK_EQUAL(levelSolutions[level].data<double>("FAKEPROP")[element.index()], -1);
-         }
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+            if (element.isLeaf())
+                continue;
+            BOOST_CHECK_EQUAL(levelSolutions[level].data<double>("FAKEPROP")[element.index()], -1);
+        }
     }
      
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
@@ -104,13 +102,12 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
                                       expected_data_levels[level].begin(), expected_data_levels[level].end());
     }
 
-    Opm::data::Wells leafWells{};
-    Opm::data::GroupAndNetworkValues leafGroupAndNetworkValues{};
-    Opm::data::Aquifers leafAquifer{};
-    Opm::RestartValue leafRestartValue(leafSolution, leafWells, leafGroupAndNetworkValues, leafAquifer);
-    const auto restartValue_levels = Opm::Lgr::getRestartValueLevelGrids(grid,
-                                                                                 leafRestartValue);
-
+    Opm::data::Wells dummyWells{};
+    Opm::data::GroupAndNetworkValues dummyGroupAndNetworkValues{};
+    Opm::data::Aquifers dummyAquifer{};
+    Opm::RestartValue leafRestartValue(leafSolution, dummyWells, dummyGroupAndNetworkValues, dummyAquifer);
+    std::vector<Opm::RestartValue> restartValue_levels{};
+    Opm::Lgr::extractRestartValueLevelGrids<Dune::CpGrid>(grid, leafRestartValue, restartValue_levels);
 }
 
 BOOST_AUTO_TEST_CASE(restrictDataForNonNestedLgrsSharingEdges)

@@ -22,8 +22,12 @@
 #include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
+#include <opm/input/eclipse/Units/UnitSystem.hpp>
+#include <opm/output/data/Cells.hpp>
+#include <opm/output/data/Solution.hpp>
+
 #include <algorithm> // for std::sort
-#include <utility> // for std::pair
+#include <utility>   // for std::pair
 #include <vector>
 
 namespace Opm
@@ -60,14 +64,14 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
     return toOutput;
 }
 
-std::vector<Opm::data::Solution> extractSolutionLevelGrids(const Dune::CpGrid& grid,
-                                                           const Opm::data::Solution& leafSolution)
+void extractSolutionLevelGrids(const Dune::CpGrid& grid,
+                               const Opm::data::Solution& leafSolution,
+                               std::vector<Opm::data::Solution>& levelSolutions)
 
 {
     int maxLevel = grid.maxLevel();
 
     // To restrict/create the level cell data, based on the leaf cells and the hierarchy
-    std::vector<Opm::data::Solution> levelSolutions{};
     levelSolutions.resize(maxLevel+1);
 
     for (const auto& [name, leafCellData] : leafSolution)
@@ -105,54 +109,7 @@ std::vector<Opm::data::Solution> extractSolutionLevelGrids(const Dune::CpGrid& g
                                          target);
         }
     }
-    return levelSolutions;
 }
-
-std::vector<Opm::RestartValue> getRestartValueLevelGrids(const Dune::CpGrid& grid,
-                                                         const Opm::RestartValue& leafRestartValue)
-{
-    int maxLevel = grid.maxLevel();
-    std::vector<Opm::RestartValue> restartValue_levels{};
-    restartValue_levels.resize(maxLevel+1); // level 0, 1, ..., max level
-
-    const auto dataSolutionLevels = extractSolutionLevelGrids(grid, leafRestartValue.solution);
-
-    for (int level = 0; level <= maxLevel; ++level) {
-        restartValue_levels[level] = Opm::RestartValue(dataSolutionLevels[level],
-                                                       leafRestartValue.wells,
-                                                       leafRestartValue.grp_nwrk,
-                                                       leafRestartValue.aquifer,
-                                                       level);
-    }
-
-    for (const auto& [rst_key, leafVector] : leafRestartValue.extra) {
-
-        std::vector<std::vector<double>> levelVectors{};
-        levelVectors.resize(maxLevel+1);
-
-        const auto rubbish = -1;
-        for (int level = 0; level <= maxLevel; ++level) {
-            levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
-        }
-
-        // For level cells that appear in the leaf, extract the data value from leafVector
-        // and assign it the the equivalent level cell.
-        // Notice that cells that vanished (parent cells) get the rubbish value.
-        // Store in the order expected by outout files (increasing level Cartesian indices)
-        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-        for (const auto& element : Dune::elements(grid.leafGridView())) {
-            int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
-            levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
-        }
-
-        for (int level = 0; level <= maxLevel; ++level) {
-            restartValue_levels[level].addExtra(rst_key.key, rst_key.dim, levelVectors[level]);
-        }
-    }
-
-    return restartValue_levels;
-}
-
 
 } // namespace Lgr
 } // namespace Opm

@@ -23,17 +23,17 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
-#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
-#include <opm/output/data/Aquifer.hpp>
-#include <opm/output/data/Cells.hpp>
-#include <opm/output/data/Groups.hpp>
+//#include <opm/output/data/Aquifer.hpp>
+//#include <opm/output/data/Cells.hpp>
+//#include <opm/output/data/Groups.hpp>
 #include <opm/output/data/Solution.hpp>
-#include <opm/output/data/Wells.hpp>
+//#include <opm/output/data/Wells.hpp>
 #include <opm/output/eclipse/RestartValue.hpp>
 
-#include <cstddef> // for std::size_t
-#include <utility> // for std::move
+#include <cstddef>      // for std::size_t
+#include <utility>      // for std::move
+#include <type_traits>  // for std::is_same_v
 #include <vector>
 
 namespace Opm
@@ -64,16 +64,7 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
 ///         i-direction varying fastest, followed by j, then k.
 template <typename Container>
 Container reorderForOutput(const Container& simulatorContainer,
-                           const std::vector<int>& toOutput)
-{
-    // Use toOutput to reorder simulatorContainer
-    Container outputContainer;
-    outputContainer.resize(toOutput.size());
-    for (std::size_t i = 0; i < toOutput.size(); ++i) {
-        outputContainer[i] = simulatorContainer[toOutput[i]];
-    }
-    return outputContainer;
-}
+                           const std::vector<int>& toOutput);
 
 /// @brief Extracts and organizes solution data for all grid refinement levels.
 ///
@@ -92,9 +83,9 @@ Container reorderForOutput(const Container& simulatorContainer,
 /// @return   A vector of Opm::data::Solution objects, one for each refinement level
 ///           (from level 0 to grid.maxLevel()), where each entry contains data reordered
 ///           according to increasing level Cartesian indices for output.
-std::vector<Opm::data::Solution> extractSolutionLevelGrids(const Dune::CpGrid& grid,
-                                                           const Opm::data::Solution& leafSolution);
-
+void extractSolutionLevelGrids(const Dune::CpGrid& grid,
+                               const Opm::data::Solution& leafSolution,
+                               std::vector<Opm::data::Solution>&);
 
 /// @brief Constructs restart-value containers for all grid refinement levels.
 ///
@@ -102,15 +93,81 @@ std::vector<Opm::data::Solution> extractSolutionLevelGrids(const Dune::CpGrid& g
 /// using extractSolutionLevelGrids(...). Other data components (such as wells,
 /// group/network values, and aquifers) are passed unchanged to each level.
 ///
-/// @param [template] Scalar The numeric type of the stored solution values (e.g., double, float).
+/// @param [template] Grid The function has no effect for grids other than CpGrid.
 /// @param [in]       grid
 /// @param [in]       leafRestartValue
-/// @return   A vector of RestartValue objects, one for each refinement level
-///           (from level 0 to grid.maxLevel()).
-std::vector<Opm::RestartValue> getRestartValueLevelGrids(const Dune::CpGrid& grid,
-                                                         const Opm::RestartValue& leafRestartValue);
+/// @param [out]      A vector of RestartValue objects, one for each refinement level
+///                   (from level 0 to grid.maxLevel()).
+template <typename Grid>
+void extractRestartValueLevelGrids(const Grid& grid,
+                                   const Opm::RestartValue& leafRestartValue,
+                                   std::vector<Opm::RestartValue>& restartValue_levels);
 
 } // namespace Lgr
 } // namespace Opm
+
+template <typename Container>
+Container Opm::Lgr::reorderForOutput(const Container& simulatorContainer,
+                                     const std::vector<int>& toOutput)
+{
+    // Use toOutput to reorder simulatorContainer
+    Container outputContainer;
+    outputContainer.resize(toOutput.size());
+    for (std::size_t i = 0; i < toOutput.size(); ++i) {
+        outputContainer[i] = simulatorContainer[toOutput[i]];
+    }
+    return outputContainer;
+}
+
+
+template <typename Grid>
+void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
+                                             const Opm::RestartValue& leafRestartValue,
+                                             std::vector<Opm::RestartValue>& restartValue_levels)
+{
+    if constexpr (std::is_same_v<Grid, Dune::CpGrid>) {
+
+        int maxLevel = grid.maxLevel();
+        restartValue_levels.resize(maxLevel+1); // level 0, 1, ..., max level
+
+        std::vector<Opm::data::Solution> dataSolutionLevels{};
+        extractSolutionLevelGrids(grid,
+                                  leafRestartValue.solution,
+                                  dataSolutionLevels);
+
+        for (int level = 0; level <= maxLevel; ++level) {
+            restartValue_levels[level] = Opm::RestartValue(dataSolutionLevels[level],
+                                                           leafRestartValue.wells,
+                                                           leafRestartValue.grp_nwrk,
+                                                           leafRestartValue.aquifer,
+                                                           level);
+        }
+
+        for (const auto& [rst_key, leafVector] : leafRestartValue.extra) {
+
+            std::vector<std::vector<double>> levelVectors{};
+            levelVectors.resize(maxLevel+1);
+
+            const auto rubbish = -1;
+            for (int level = 0; level <= maxLevel; ++level) {
+                levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
+            }
+
+            // For level cells that appear in the leaf, extract the data value from leafVector
+            // and assign it the the equivalent level cell.
+            // Notice that cells that vanished (parent cells) get the rubbish value.
+            // Store in the order expected by outout files (increasing level Cartesian indices)
+            const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+            for (const auto& element : Dune::elements(grid.leafGridView())) {
+                int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
+                levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
+            }
+
+            for (int level = 0; level <= maxLevel; ++level) {
+                restartValue_levels[level].addExtra(rst_key.key, rst_key.dim, levelVectors[level]);
+            }
+        }
+    }
+}
 
 #endif // OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
