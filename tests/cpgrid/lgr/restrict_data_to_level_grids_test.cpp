@@ -62,16 +62,12 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
 
     const auto& leafView = grid.leafGridView();
 
-    //  using LeafMapper = Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView>;
-    //    const LeafMapper leafMapper(leafView, Dune::mcmgElementLayout());
-
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapper(grid);
     
     std::vector<double> leafVec{};
     leafVec.resize(leafView.size(0));
     for (const auto& element : Dune::elements(leafView)) {
-        leafVec[//leafMapper.index(element)
-                element.index()] = cartMapper.cartesianIndex(element.index())*0.1;
+        leafVec[element.index()] = cartMapper.cartesianIndex(element.index())*0.1;
     }
 
     leafSolution.insert("FAKEPROP",
@@ -84,7 +80,7 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
     const auto& leafFakePropData = leafSolution.data<double>("FAKEPROP");
     BOOST_CHECK_EQUAL(leafFakePropData.size(), leafView.size(0));
 
-    const auto levelSolutions = Opm::Lgr::extractSolutionLevelGrids<double>(grid, leafSolution);
+    const auto levelSolutions = Opm::Lgr::extractSolutionLevelGrids(grid, leafSolution);
 
     // By now, all level cells have data assigned.
     // Notice that the cells that vanished (i.e. do not appear on the leaf grid view,
@@ -112,7 +108,7 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
     Opm::data::GroupAndNetworkValues leafGroupAndNetworkValues{};
     Opm::data::Aquifers leafAquifer{};
     Opm::RestartValue leafRestartValue(leafSolution, leafWells, leafGroupAndNetworkValues, leafAquifer);
-    const auto restartValue_levels = Opm::Lgr::getRestartValueLevelGrids<double>(grid,
+    const auto restartValue_levels = Opm::Lgr::getRestartValueLevelGrids(grid,
                                                                                  leafRestartValue);
 
 }
