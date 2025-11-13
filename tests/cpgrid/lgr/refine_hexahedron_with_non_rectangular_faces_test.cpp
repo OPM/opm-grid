@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(refineCellWithFewerThanEightCornersThrows)
                           std::logic_error);
 
         // Mark element for refinment, to check (below) that calling adapt() throws.
-        grid.mark(1,element);
+        grid.mark(1,element, /* throwOnFailure = */ true);
     }
     // Throw for all four refinement methods.
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,3}}, // cells_per_dim_vec
@@ -157,7 +157,7 @@ void createAndRefineTestGrid(const std::string& deckString,
 
         // If selectMethod == 3-> adapt -> mark at least one element
         if ((selectMethod == 3) && (element.index()==0)){
-            grid.mark(1,element);
+            grid.mark(1,element, /* throwOnFailure = */ true);
         }
     }
 

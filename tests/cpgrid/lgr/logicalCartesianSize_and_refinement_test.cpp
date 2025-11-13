@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_
     for (const auto& element : elements(grid.leafGridView())) {
         const auto& id = grid.globalIdSet().id(element);
         if (markedCells.count(id) > 0) {
-            grid.mark(1, element);
+            grid.mark(1, element, /* throwOnFailure = */ true);
         }
     }
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt
     }
     // Mark all elements -> 'indirect' globalRefine
     for (const auto& element : elements(grid.leafGridView())) {
-        grid.mark(1, element);
+        grid.mark(1, element, /* throwOnFailure = */ true);
     }
     grid.preAdapt();
     grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
@@ -194,10 +194,10 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_after_globalRefine_makeSense)
 
     Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
                   grid.currentLeafData().logicalCartesianSize());
-    
+
     Opm::areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
                   grid.logicalCartesianSize());
-    
+
     // The refined level grid is a "copy" of the leaf grid view, if globalRefine has been invoked.
     // TODO: remove the refined level grid in this case.
     Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},

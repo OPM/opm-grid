@@ -792,7 +792,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     for (const auto& element : elements(grid.leafGridView())) {
         const auto& id = grid.globalIdSet().id(element);
         if (markedCells.count(id) > 0) {
-            grid.mark(1, element);
+            grid.mark(1, element, /* throwOnFailure = */ true);
         }
     }
 
@@ -971,7 +971,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
     }
     // Mark all elements -> 'indirect' globalRefine
     for (const auto& element : elements(grid.leafGridView())) {
-        grid.mark(1, element);
+        grid.mark(1, element, /* throwOnFailure = */ true);
     }
     grid.preAdapt();
     grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.

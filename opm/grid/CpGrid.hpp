@@ -470,7 +470,8 @@ namespace Dune
         /// \brief  Refine the grid refCount times using the default refinement rule.
         ///         This behaves like marking all elements for refinement and then calling preAdapt, adapt and postAdapt.
         ///         The state after globalRefine is comparable to the state after postAdapt.
-        void globalRefine (int refCount);
+        /// @param [in] throwOnFailure If true, the function will throw an exception if the marking of any entity is invalid.
+        void globalRefine (int refCount, bool throwOnFailure = false);
 
         const std::vector<Dune::GeometryType>& geomTypes(const int) const;
 
@@ -552,9 +553,10 @@ namespace Dune
         ///                        - doing nothing, refCount == 0
         ///                        - coarsening, refCount == -1 (not applicable yet)
         /// @param [in] element    Entity<0>. Currently, an element from the GLOBAL grid (level zero).
+        /// @param [in] throwOnFailure If true, the function will throw an exception if the marking is invalid.
         /// @return true, if marking was succesfull.
         ///         false, if marking was not possible.
-        bool mark(int refCount, const cpgrid::Entity<0>& element);
+        bool mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure = false);
 
         /// @brief Return refinement mark for entity.
         ///
