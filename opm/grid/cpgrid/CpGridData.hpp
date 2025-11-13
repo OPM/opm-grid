@@ -409,9 +409,10 @@ public:
     ///                        - doing nothing, refCount == 0
     ///                        - coarsening, refCount == -1 (not applicable yet)
     /// @param [in] element    Entity<0>. Currently, an element from the GLOBAL grid (level zero).
+    /// @param [in] throwOnFailure If true, the function will throw an exception if the marking is invalid.
     /// @return true, if marking was succesfull.
     ///         false, if marking was not possible.
-    bool mark(int refCount, const cpgrid::Entity<0>& element);
+    bool mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure = false);
 
     /// @brief Return refinement mark for entity.
     ///
