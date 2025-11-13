@@ -224,13 +224,11 @@ namespace Dune
             {
                 if constexpr (cd == 0)
                     return computeId_cell(e);
-                else if constexpr (cd == 1)
-                    return computeId(e);
                 else if constexpr (cd == 3)
                     return computeId_point(e);
                 else
                     static_assert(AlwaysFalse<index_constant<cd>>::value,
-                                  "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
+                                  "IdSet::id not implemented for codims other than 0, and 3.");
             }
 
             template<class EntityType>
@@ -240,10 +238,13 @@ namespace Dune
             }
 
             template<int codim>
-            IdType id(const cpgrid::EntityRep<codim>& e) const
+            IdType idLevelZero(const cpgrid::EntityRep<codim>& e) const
             {
                 return computeId(e);
             }
+
+            template<int codim>
+            IdType idLevelZero(const Entity<codim>& e) const = delete;
 
             /// return id of intersection (here face number)
             IdType id( const cpgrid::Intersection& intersection ) const
@@ -414,13 +415,16 @@ namespace Dune
             }
 
             template<int codim>
-            IdType id(const EntityRep<codim>& e) const
+            IdType idLevelZero(const EntityRep<codim>& e) const
             {
                 if(idSet_)
-                    return idSet_->id(e);
+                    return idSet_->idLevelZero(e);
                 else
                     return this->template getMapping<codim>()[e.index()];
             }
+
+            template<int codim>
+            IdType idLevelZero(const Entity<codim>& e) const = delete;
 
             template<class EntityType>
             IdType id(const EntityType& e) const

@@ -387,7 +387,7 @@ unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
             return 8;
         }
     }
-    return 0;
+    DUNE_THROW(NotImplemented, "subEntities not implemented for this codimension");
 }
 
 template <int codim>
