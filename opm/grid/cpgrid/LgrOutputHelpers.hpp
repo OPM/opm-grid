@@ -24,11 +24,8 @@
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
-//#include <opm/output/data/Aquifer.hpp>
-//#include <opm/output/data/Cells.hpp>
-//#include <opm/output/data/Groups.hpp>
+#include <opm/output/data/Cells.hpp>
 #include <opm/output/data/Solution.hpp>
-//#include <opm/output/data/Wells.hpp>
 #include <opm/output/eclipse/RestartValue.hpp>
 
 #include <cstddef>      // for std::size_t
@@ -118,7 +115,6 @@ Container Opm::Lgr::reorderForOutput(const Container& simulatorContainer,
     }
     return outputContainer;
 }
-
 
 template <typename Grid>
 void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,

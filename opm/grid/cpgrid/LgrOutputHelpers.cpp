@@ -18,13 +18,13 @@
 */
 #include "config.h"
 
-#include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
-#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
-
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 #include <opm/output/data/Cells.hpp>
 #include <opm/output/data/Solution.hpp>
+
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
+#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
 #include <algorithm> // for std::sort
 #include <utility>   // for std::pair
@@ -76,38 +76,53 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
 
     for (const auto& [name, leafCellData] : leafSolution)
     {
-        const auto& leafVector = leafCellData.template data<double>();
         const auto& measure =  leafCellData.dim;  // Opm::UnitSystem::measure;
         const auto& target = leafCellData.target; // Opm::data::TargetType>;
 
-        if (leafVector.empty()) {
-            continue;
-        }
+        leafCellData.visit([&](const auto& leafVector) {
+            using T = std::decay_t<decltype(leafVector)>;
 
-        std::vector<std::vector<double>> levelVectors{};
-        levelVectors.resize(maxLevel+1);
+            if constexpr (std::is_same_v<T, std::monostate>) {
+                // do nothing
+            }
+            else {
 
-        const auto rubbish = -1;
-        for (int level = 0; level <= maxLevel; ++level) {
-            levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
-        }
+                if (!leafVector.empty()) {
+                    std::vector<T> levelVectors{};
+                    levelVectors.resize(maxLevel+1);
 
-        // For level cells that appear in the leaf, extract the data value from leafVector
-        // and assign it the the equivalent level cell.
-        // Notice that cells that vanished (parent cells) get the rubbish value.
-        // Store in the order expected by outout files (increasing level Cartesian indices)
-        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-        for (const auto& element : Dune::elements(grid.leafGridView())) {
-            int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
-            levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
-        }
+                    const auto rubbish = -1;
+                    for (int level = 0; level <= maxLevel; ++level) {
+                        levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
+                    }
 
-        for (int level = 0; level <= maxLevel; ++level) {
-            levelSolutions[level].insert(name,
-                                         measure,
-                                         std::move(levelVectors[level]),
-                                         target);
-        }
+                    // For level cells that appear in the leaf, extract the data value from leafVector
+                    // and assign it the the equivalent level cell.
+                    // Notice that cells that vanished (parent cells) get the rubbish value.
+                    // Store in the order expected by outout files (increasing level Cartesian indices)
+                    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+                    for (const auto& element : Dune::elements(grid.leafGridView())) {
+                        int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
+                        levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
+                    }
+
+                    for (int level = 0; level <= maxLevel; ++level) {
+                        if constexpr (std::is_same_v<T, std::vector<double>>) {
+                        levelSolutions[level].insert(name,
+                                                     measure,
+                                                     std::move(levelVectors[level]),
+                                                     target);
+                        }
+                        else if constexpr (std::is_same_v<T, std::vector<int>>) {
+                             levelSolutions[level].insert(name,
+                                                     std::move(levelVectors[level]),
+                                                     target);
+                        }
+                        
+                    }
+                }
+            }
+        });
     }
 }
 
