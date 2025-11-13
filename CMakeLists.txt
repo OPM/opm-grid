@@ -138,13 +138,13 @@ if(MPI_FOUND)
   if(Boost_VERSION_STRING VERSION_GREATER 1.53)
     list(APPEND test_4proc lgr_with_inactive_parent_cells_test)
      foreach(procs 3 4)
-       add_test(test_graphofgrid_parallel${procs} ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${procs} bin/test_graphofgrid_parallel)
-       set_tests_properties(test_graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
+       add_test(NAME graphofgrid_parallel${procs} COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${procs} $<TARGET_FILE:test_graphofgrid_parallel>)
+       set_tests_properties(graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
      endforeach()
   endif()
 
   foreach(test4 ${tests_4proc})
-    add_test(${test4}_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/${test4})
+    add_test(NAME ${test4}_parallel COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:${test4}>)
     set_tests_properties(${test4}_parallel PROPERTIES PROCESSORS 4)
   endforeach()
 endif()
@@ -165,7 +165,7 @@ if(MPI_FOUND AND HAVE_OPM_TESTS AND HAVE_ECL_INPUT)
     DRIVER_ARGS -np 4
     TEST_ARGS -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
     LIBRARIES opmgrid ${Boost_LIBRARIES})
-  add_test(cpgrid_aquifer_parallel_test ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/cpgrid_aquifer_test -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
+  add_test(NAME cpgrid_aquifer_parallel COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:cpgrid_aquifer_test> -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
 endif()
 
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
