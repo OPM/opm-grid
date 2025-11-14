@@ -22,7 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
-#include <opm/grid/cpgrid/LgrHelpers.hpp>
+#include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <algorithm> // for std::minmax_element, std::is_sorted
