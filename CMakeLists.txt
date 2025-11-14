@@ -133,6 +133,7 @@ if(MPI_FOUND)
     logicalCartesianSize_and_refinement_test
     mapLevelIndicesToCartesianOutputOrder_test
     test_communication_utils
+    id_entity_entityrep_test
   )
 
   if(Boost_VERSION_STRING VERSION_GREATER 1.53)
