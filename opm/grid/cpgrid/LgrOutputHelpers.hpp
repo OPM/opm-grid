@@ -67,13 +67,13 @@ Container reorderForOutput(const Container& simulatorContainer,
 ///
 /// It derives these level-specific solutions from a given leaf-solution. For cells
 /// that no longer exist in the leaf grid (i.e., parent cells that were refined away),
-/// the default Scalar value (or a "rubbish -1") is assigned. This behavior is
-/// temporary and will be replaced with proper restriction in a future implementation.
+/// the default Scalar value (or a "rubbish std::numeric_limits<T>::max()") is assigned.
+/// This behavior is temporary and will be replaced with proper restriction in a future
+/// implementation.
 ///
 /// Each resulting ScalarBuffer (std::vector<Scalar>) follows the ordering expected by
 /// output files, i.e., increasing level Cartesian indices.
 ///
-/// @param [template] Scalar The numeric type of the stored solution values (e.g., double, float).
 /// @param [in]       grid
 /// @param [in]       leafSolution The complete solution defined on the leaf grid, containing
 ///                                one or more named data fields (e.g., pressure, saturation).
@@ -143,17 +143,18 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
 
             std::vector<std::vector<double>> levelVectors{};
             levelVectors.resize(maxLevel+1);
-
-            const auto rubbish = -1;
+             const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+             
             for (int level = 0; level <= maxLevel; ++level) {
-                levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
+                levelVectors[level].resize(levelCartMapp.cartesianSize(level),//grid.levelGridView(level).size(0),
+                                           std::numeric_limits<double>::max());
             }
 
             // For level cells that appear in the leaf, extract the data value from leafVector
             // and assign it the the equivalent level cell.
             // Notice that cells that vanished (parent cells) get the rubbish value.
             // Store in the order expected by outout files (increasing level Cartesian indices)
-            const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+           
             for (const auto& element : Dune::elements(grid.leafGridView())) {
                 int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
                 levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];

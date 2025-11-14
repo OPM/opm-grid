@@ -91,16 +91,19 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
                     std::vector<T> levelVectors{};
                     levelVectors.resize(maxLevel+1);
 
-                    const auto rubbish = -1;
+                    using ScalarType = std::decay_t<decltype(leafVector[0])>;
+
+                     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+                    
                     for (int level = 0; level <= maxLevel; ++level) {
-                        levelVectors[level].resize(grid.levelGridView(level).size(0), rubbish);
+                        levelVectors[level].resize(levelCartMapp.cartesianSize(level),//grid.levelGridView(level).size(0),
+                                                   std::numeric_limits<ScalarType>::max());
                     }
 
                     // For level cells that appear in the leaf, extract the data value from leafVector
                     // and assign it the the equivalent level cell.
                     // Notice that cells that vanished (parent cells) get the rubbish value.
                     // Store in the order expected by outout files (increasing level Cartesian indices)
-                    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
                     for (const auto& element : Dune::elements(grid.leafGridView())) {
                         int levelCartIdx = levelCartMapp.cartesianIndex(element.getLevelElem().index(), element.level());
                         levelVectors[element.level()][levelCartIdx] = leafVector[element.index()];
