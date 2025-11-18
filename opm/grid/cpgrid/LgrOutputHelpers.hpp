@@ -75,12 +75,16 @@ Container reorderForOutput(const Container& simulatorContainer,
 /// output files, i.e., increasing level Cartesian indices.
 ///
 /// @param [in]       grid
+/// @param [in]       toOutput_refinedLevels For level grids 1,2,..,maxLevel, a map to store
+///                                          data in the order expected by outout files
+///                                          (increasing level Cartesian indices)
 /// @param [in]       leafSolution The complete solution defined on the leaf grid, containing
 ///                                one or more named data fields (e.g., pressure, saturation).
 /// @return   A vector of Opm::data::Solution objects, one for each refinement level
 ///           (from level 0 to grid.maxLevel()), where each entry contains data reordered
 ///           according to increasing level Cartesian indices for output.
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,
+                               const std::vector<std::vector<int>>& toOutput_refinedLevels,
                                const Opm::data::Solution& leafSolution,
                                std::vector<Opm::data::Solution>&);
 
@@ -125,21 +129,22 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
 
         int maxLevel = grid.maxLevel();
         restartValue_levels.resize(maxLevel+1); // level 0, 1, ..., max level
-
-        std::vector<Opm::data::Solution> dataSolutionLevels{};
-        extractSolutionLevelGrids(grid,
-                                  leafRestartValue.solution,
-                                  dataSolutionLevels);
-
+        
         // To store leafRestartValue.extra data in the order expected
         // by outout files (increasing level Cartesian indices)
-        std::vector<std::vector<int>> toOutput_levels{};
-        toOutput_levels.resize(maxLevel); // exclude level zero (does not need reordering)
+        std::vector<std::vector<int>> toOutput_refinedLevels{};
+        toOutput_refinedLevels.resize(maxLevel); // exclude level zero (does not need reordering)
 
         const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
         for (int level = 1; level <= maxLevel; ++level) { // exclude level zero (does not need reordering)
-            toOutput_levels[level-1] = mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
+            toOutput_refinedLevels[level-1] = mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
         }
+
+        std::vector<Opm::data::Solution> dataSolutionLevels{};
+        extractSolutionLevelGrids(grid,
+                                  toOutput_refinedLevels,
+                                  leafRestartValue.solution,
+                                  dataSolutionLevels);
 
         for (int level = 0; level <= maxLevel; ++level) { // exclude level zero (does not need reordering)
             restartValue_levels[level] = Opm::RestartValue(std::move(dataSolutionLevels[level]),
@@ -168,7 +173,7 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
 
             // Use toOutput_levels to reorder in ascending level cartesian indices
             for (int level = 1; level<=maxLevel; ++level) { // exclude level zero (does not need reordering)
-                levelVectors[level] = Opm::Lgr::reorderForOutput(levelVectors[level], toOutput_levels[level-1]);
+                levelVectors[level] = Opm::Lgr::reorderForOutput(levelVectors[level], toOutput_refinedLevels[level-1]);
             }
 
             for (int level = 0; level <= maxLevel; ++level) {

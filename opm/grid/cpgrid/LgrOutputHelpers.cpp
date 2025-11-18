@@ -65,20 +65,12 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
 }
 
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,
+                               const std::vector<std::vector<int>>& toOutput_refinedLevels,
                                const Opm::data::Solution& leafSolution,
                                std::vector<Opm::data::Solution>& levelSolutions)
 
 {
     int maxLevel = grid.maxLevel();
-    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-
-    // To store in the order expected by outout files (increasing level Cartesian indices)
-    std::vector<std::vector<int>> toOutput_levels{};
-    toOutput_levels.resize(maxLevel); // exclude level zero (does not need reordering)
-    for (int level = 1; level <= maxLevel; ++level) {
-        toOutput_levels[level-1] = mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
-    }
-
     // To restrict/create the level cell data, based on the leaf cells and the hierarchy
     levelSolutions.resize(maxLevel+1);
 
@@ -86,7 +78,7 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
     {
         leafCellData.visit([&grid,
                             &maxLevel,
-                            &toOutput_levels,
+                            &toOutput_refinedLevels,
                             &levelSolutions,
                             &name,
                             &leafCellData](const auto& leafVector) {
@@ -113,7 +105,7 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
                     }
                     // Use toOutput_levels to reorder in ascending level cartesian indices
                     for (int level = 1; level<=maxLevel; ++level) { // exclude level zero (does not need reordering)
-                        levelVectors[level] = Opm::Lgr::reorderForOutput(levelVectors[level], toOutput_levels[level-1]);
+                        levelVectors[level] = Opm::Lgr::reorderForOutput(levelVectors[level], toOutput_refinedLevels[level-1]);
                     }
 
                     for (int level = 0; level <= maxLevel; ++level) {

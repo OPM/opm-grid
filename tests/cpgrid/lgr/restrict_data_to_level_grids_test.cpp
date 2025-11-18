@@ -134,42 +134,6 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
     const auto& leafIntPropData = leafSolution.data<int>("INTPROP");
     BOOST_CHECK_EQUAL(leafIntPropData.size(), leafView.size(0));
 
-    std::vector<Opm::data::Solution> levelSolutions{};
-    Opm::Lgr::extractSolutionLevelGrids(grid,
-                                        leafSolution,
-                                        levelSolutions);
-
-    // By now, all level cells have data assigned.
-    // Inactive or parent cells (i.e. do not appear on the leaf grid view,
-    // got the value "rubbish = std::numeric_limits<double>::max()"
-    for (int level = 0; level <= grid.maxLevel(); ++level) {
-        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
-            if (element.isLeaf())
-                continue;
-            BOOST_CHECK_EQUAL(levelSolutions[level].data<double>("DOUPROP")[element.index()], std::numeric_limits<double>::max());
-            BOOST_CHECK_EQUAL(levelSolutions[level].data<int>("INTPROP")[element.index()], std::numeric_limits<int>::max());
-        }
-    }
-
-    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-    for (int level = 0; level <= grid.maxLevel(); ++level) {
-
-        BOOST_CHECK(levelSolutions[level].has("DOUPROP"));
-        BOOST_CHECK(levelSolutions[level].has("INTPROP"));
-
-        const auto& levelDoublePropData = levelSolutions[level].data<double>("DOUPROP");
-        const auto& levelIntPropData = levelSolutions[level].data<int>("INTPROP");
-
-        BOOST_CHECK_EQUAL(levelDoublePropData.size(), grid.levelGridView(level).size(0));
-        BOOST_CHECK_EQUAL(levelIntPropData.size(), grid.levelGridView(level).size(0));
-
-        BOOST_CHECK_EQUAL_COLLECTIONS(levelDoublePropData.begin(), levelDoublePropData.end(),
-                                      expected_double_data_levels[level].begin(), expected_double_data_levels[level].end());
-
-        BOOST_CHECK_EQUAL_COLLECTIONS(levelIntPropData.begin(), levelIntPropData.end(),
-                                      expected_int_data_levels[level].begin(), expected_int_data_levels[level].end());
-
-    }
 
     Opm::data::Wells dummyWells{};
     Opm::data::GroupAndNetworkValues dummyGroupAndNetworkValues{};
@@ -191,6 +155,28 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
 
 
     for (int level = 0; level <= grid.maxLevel(); ++level) {
+
+        BOOST_CHECK(restartValue_levels[level].solution.has("DOUPROP"));
+        BOOST_CHECK(restartValue_levels[level].solution.has("INTPROP"));
+
+        const auto& levelDoublePropData = restartValue_levels[level].solution.data<double>("DOUPROP");
+        const auto& levelIntPropData = restartValue_levels[level].solution.data<int>("INTPROP");
+
+        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+            if (element.isLeaf())
+                continue;
+            BOOST_CHECK_EQUAL(levelDoublePropData[element.index()], std::numeric_limits<double>::max());
+            BOOST_CHECK_EQUAL(levelIntPropData[element.index()], std::numeric_limits<int>::max());
+        }
+
+        BOOST_CHECK_EQUAL(levelDoublePropData.size(), grid.levelGridView(level).size(0));
+        BOOST_CHECK_EQUAL(levelIntPropData.size(), grid.levelGridView(level).size(0));
+
+        BOOST_CHECK_EQUAL_COLLECTIONS(levelDoublePropData.begin(), levelDoublePropData.end(),
+                                      expected_double_data_levels[level].begin(), expected_double_data_levels[level].end());
+
+        BOOST_CHECK_EQUAL_COLLECTIONS(levelIntPropData.begin(), levelIntPropData.end(),
+                                      expected_int_data_levels[level].begin(), expected_int_data_levels[level].end());
 
         for (const auto& [rst_key, levelVector] : restartValue_levels[level].extra) {
 
@@ -258,11 +244,11 @@ BOOST_AUTO_TEST_CASE(restrictDataForNonNestedLgrsSharingEdges)
 
     cartesian_data_levels[1] = {13,13,14,14,13,13,14,14,  // layer 0
                                 17,17,18,18,17,17,18,18,
-                                13,13,14,14,13,13,14,14,
+                                13,13,14,14,13,13,14,14,  // layer 1
                                 17,17,18,18,17,17,18,18,
-                                25,25,26,26,25,25,26,26,  // layer 1
+                                25,25,26,26,25,25,26,26,  // layer 2
                                 29,29,30,30,29,29,30,30,
-                                25,25,26,26,25,25,26,26,
+                                25,25,26,26,25,25,26,26,  // layer 3
                                 29,29,30,30,29,29,30,30};
     cartesian_data_levels[2] = {  9, 9, 10, 10, 9, 9, 10, 10, 9, 9, 10, 10,  // layer 0
                                   9, 9, 10, 10, 9, 9, 10, 10, 9, 9, 10, 10}; // layer 1
