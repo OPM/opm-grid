@@ -96,10 +96,10 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
             myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
         }
     }
-    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
-    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
-
-
+    if (parts.size() != 0){ // Avoid merge if the second part is empty. Only root merges.
+        std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
+        std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+    }
 
 
     if( wells )
