@@ -506,12 +506,6 @@ namespace Dune
             return levelIdSet(e.pgrid_).id(e);
         }
 
-        template<class EntityType>
-        IdType id(const EntityType& e) const
-        {
-            return id<EntityType::codimension>(e);
-        }
-
         template <int cc>
         IdType subId(const typename Codim<0>::Entity& e, int i) const
         {
