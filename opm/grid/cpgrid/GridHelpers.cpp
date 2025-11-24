@@ -42,8 +42,13 @@ EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& input
         (inputGrid.getNZ( ) == static_cast<size_t>(dims[2]))) {
 
         std::vector<int> updatedACTNUM( inputGrid.getCartesianSize( ) , 0 );
-        const int* global_cell = UgGridHelpers::globalCell( grid );
-        for (int c = 0; c < numCells( grid ); c++) {
+        // To correctly generate RESTART files for CpGrid level grids with LGRs,
+        // the globalCell() and numCells() values from the level-0 grid must be used
+        // when constructing the EclipseGrid. The level-0 grid is stored in
+        // grid.currentData().front().
+        const int* global_cell = &(grid.currentData().front()->globalCell())[0];
+        const int numCells = grid.currentData().front()->size(0);
+        for (int c = 0; c < numCells; c++) {
             updatedACTNUM[global_cell[c]] = 1;
         }
 
