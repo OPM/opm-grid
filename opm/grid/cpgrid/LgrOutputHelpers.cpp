@@ -74,8 +74,10 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
     // To restrict/create the level cell data, based on the leaf cells and the hierarchy
     levelSolutions.resize(maxLevel+1);
 
-    for (const auto& [name, leafCellData] : leafSolution)
+    for (const auto& leaf : leafSolution)
     {
+        const auto& name = leaf.first;
+        const auto& leafCellData = leaf.second;
         leafCellData.visit([&grid,
                             &maxLevel,
                             &toOutput_refinedLevels,
