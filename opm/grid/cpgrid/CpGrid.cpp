@@ -669,6 +669,15 @@ std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData()
 {
     return *current_data_;
 }
+const Dune::cpgrid::CpGridData& CpGrid::currentLeafData() const
+{
+    return *current_data_->back();
+}
+
+Dune::cpgrid::CpGridData& CpGrid::currentLeafData()
+{
+    return *current_data_->back();
+}
 
 const std::vector<int>& CpGrid::globalCell() const
 {

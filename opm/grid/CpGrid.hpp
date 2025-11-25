@@ -376,6 +376,12 @@ namespace Dune
         /// @brief Returns either data_ or distributed_data_(if non empty).
         std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData();
 
+        /// @brief Returns current view data (the leaf grid)
+        const Dune::cpgrid::CpGridData& currentLeafData() const;
+
+        /// @brief Returns current view data (the leaf grid)
+        Dune::cpgrid::CpGridData& currentLeafData();
+
         /// @brief
         ///    Extract Cartesian index triplet (i,j,k) of an active cell.
         ///
