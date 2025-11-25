@@ -683,7 +683,7 @@ const std::vector<int>& CpGrid::globalCell() const
 {
     // Temporary. For a grid with LGRs, we set the globalCell() of the as the one for level 0.
     //            Goal: CartesianIndexMapper well-defined for CpGrid LeafView with LGRs.
-    return currentData().back() -> global_cell_;
+    return currentLeafData().global_cell_;
 }
 
 void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& startIJK, std::vector<int>& global_cell_lgr)
@@ -737,7 +737,7 @@ std::vector<std::unordered_map<std::size_t, std::size_t>> CpGrid::mapLocalCartes
 
 std::vector<std::array<int,2>> CpGrid::mapLeafIndexSetToLocalCartesianIndexSets() const
 {
-    std::vector<std::array<int,2>> leafIdx_to_localCartesianIdxSets(currentData().back()->size(0));
+    std::vector<std::array<int,2>> leafIdx_to_localCartesianIdxSets(currentLeafData().size(0));
     for (const auto& element : elements(leafGridView())) {
         const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getLevelElem().index()];
         leafIdx_to_localCartesianIdxSets[element.index()] = {element.level(), global_cell_level};
@@ -997,7 +997,7 @@ int CpGrid::size (int level, int codim) const
 
 int CpGrid::size (int codim) const
 {
-    return currentData().back()->size(codim);
+    return currentLeafData().size(codim);
 }
 
 int CpGrid::size (int level, GeometryType type) const
@@ -1009,7 +1009,7 @@ int CpGrid::size (int level, GeometryType type) const
 
 int CpGrid::size (GeometryType type) const
 {
-    return currentData().back()->size(type);
+    return currentLeafData().size(type);
 }
 
 const CpGridFamily::Traits::GlobalIdSet& CpGrid::globalIdSet() const
@@ -1044,9 +1044,9 @@ void CpGrid::globalRefine (int refCount)
     if(this->maxLevel()) {
         // For strict local refinement, these sizes are identical. Global refinement
         // results in a difference in at least one direction (x, y, or z).
-        bool sameNX = currentData().back()->logicalCartesianSize()[0] == currentData().front()->logicalCartesianSize()[0];
-        bool sameNY = currentData().back()->logicalCartesianSize()[1] == currentData().front()->logicalCartesianSize()[1];
-        bool sameNZ = currentData().back()->logicalCartesianSize()[2] == currentData().front()->logicalCartesianSize()[2];
+        bool sameNX = currentLeafData().logicalCartesianSize()[0] == currentData().front()->logicalCartesianSize()[0];
+        bool sameNY = currentLeafData().logicalCartesianSize()[1] == currentData().front()->logicalCartesianSize()[1];
+        bool sameNZ = currentLeafData().logicalCartesianSize()[2] == currentData().front()->logicalCartesianSize()[2];
         if (sameNX && sameNY && sameNZ) {
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
@@ -1057,7 +1057,7 @@ void CpGrid::globalRefine (int refCount)
             std::vector<int> assignRefinedLevel(current_data_->back()-> size(0));
             const auto& preAdaptMaxLevel = this ->maxLevel();
             std::vector<std::string> lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
-            const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
+            const std::array<int,3>& endIJK = currentLeafData().logicalCartesianSize();
 
             for(const auto& element: elements(this-> leafGridView())) {
                 // Mark all the elements of the current leaf grid view for refinement
@@ -1837,7 +1837,7 @@ bool CpGrid::adapt()
     if (is_global_refine) { // parallel or sequential
         // Rewrite the lgr name (GR stands for GLOBAL REFINEMET)
         lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
-        const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
+        const std::array<int,3>& endIJK = currentLeafData().logicalCartesianSize();
         return this->refineAndUpdateGrid(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
     }
     return this-> refineAndUpdateGrid(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
@@ -1850,7 +1850,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
                                  const std::vector<std::array<int,3>>& endIJK_vec)
 {
     // To do: support coarsening.
-    assert( static_cast<int>(assignRefinedLevel.size()) == currentData().back()->size(0));
+    assert( static_cast<int>(assignRefinedLevel.size()) == currentLeafData().size(0));
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
 
     auto& data = currentData(); // data pointed by current_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
@@ -2052,7 +2052,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     const auto& [refined_child_to_parent_cells_vec,
                  refined_cell_to_idxInParentCell_vec,
                  adapted_child_to_parent_cells,
-                 adapted_cell_to_idxInParentCell] = Opm::Lgr::defineChildToParentAndIdxInParentCell(*currentData().back(),
+                 adapted_cell_to_idxInParentCell] = Opm::Lgr::defineChildToParentAndIdxInParentCell(currentLeafData(),
                                                                                                     preAdaptMaxLevel,
                                                                                                     refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                                                                                     refined_cell_count_vec,adaptedCell_to_elemLgrAndElemLgrCell,
@@ -2062,7 +2062,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     // refined_level_to_leaf_cells_vec:  Relation between the refined grid and leafview cell indices.
     // leaf_to_level_cells:              Relation between an adapted cell and its equivalent cell coming either from pre-refined-leaf or the refined grid (level)
     const auto& [refined_level_to_leaf_cells_vec,
-                 leaf_to_level_cells] = Opm::Lgr::defineLevelToLeafAndLeafToLevelCells(*currentData().back(),
+                 leaf_to_level_cells] = Opm::Lgr::defineLevelToLeafAndLeafToLevelCells(currentLeafData(),
                                                                                        preAdaptMaxLevel,
                                                                                        elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
                                                                                        refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
@@ -2080,7 +2080,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     std::map<std::array<int,2>,std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance;
     // Integer to count only refined corners.
     std::vector<int> refined_corner_count_vec(levels, 0);
-    Opm::Lgr::identifyRefinedCornersPerLevel(*currentData().back(),
+    Opm::Lgr::identifyRefinedCornersPerLevel(currentLeafData(),
                                              preAdaptMaxLevel,
                                              /* Refined grid parameters */
                                              elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
@@ -2099,7 +2099,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner;
     // Integer to count adapted corners (mixed between corners from pre-refined-leaf corners not involved in LGRs, and new-born refined corners).
     int corner_count = 0;
-    Opm::Lgr::identifyLeafGridCorners(*currentData().back(),
+    Opm::Lgr::identifyLeafGridCorners(currentLeafData(),
                                       preAdaptMaxLevel,
                                       /* Adapted grid parameters */
                                       elemLgrAndElemLgrCorner_to_adaptedCorner,
@@ -2120,7 +2120,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace;
     // Integer to count adapted faces (mixed between faces from level0 (not involved in LGRs), and (new-born) refined faces).
     std::vector<int> refined_face_count_vec(levels, 0);
-    Opm::Lgr::identifyRefinedFacesPerLevel(*currentData().back(),
+    Opm::Lgr::identifyRefinedFacesPerLevel(currentLeafData(),
                                            preAdaptMaxLevel,
                                            elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                            refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
@@ -2135,7 +2135,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
     std::unordered_map< int, std::array<int,2> > adaptedFace_to_elemLgrAndElemLgrFace;
     // Integer to count adapted faces (mixed between faces from pre-refined-leaf faces not involved in LGRs and new-born refined faces).
     int face_count = 0;
-    Opm::Lgr::identifyLeafGridFaces(*currentData().back(),
+    Opm::Lgr::identifyLeafGridFaces(currentLeafData(),
                                     preAdaptMaxLevel,
                                     elemLgrAndElemLgrFace_to_adaptedFace,
                                     adaptedFace_to_elemLgrAndElemLgrFace,
@@ -2166,7 +2166,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
                                    cornerInMarkedElemWithEquivRefinedCorner,
                                    markedElemAndEquivRefinedCorn_to_corner);
     // --- Refined cells  ---
-    Opm::Lgr::populateRefinedCells(*currentData().back(),
+    Opm::Lgr::populateRefinedCells(currentLeafData(),
                                    refined_cells_vec,
                                    refined_cell_to_point_vec,
                                    refined_global_cell_vec,
@@ -2188,13 +2188,13 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
 
     // Update leaf grid geometries
     // --- Adapted corners ---
-    Opm::Lgr::populateLeafGridCorners(*currentData().back(),
+    Opm::Lgr::populateLeafGridCorners(currentLeafData(),
                                       adapted_corners,
                                       corner_count,
                                       markedElem_to_itsLgr,
                                       adaptedCorner_to_elemLgrAndElemLgrCorner);
     // --- Adapted faces ---
-    Opm::Lgr::populateLeafGridFaces(*currentData().back(),
+    Opm::Lgr::populateLeafGridFaces(currentLeafData(),
                                     adapted_faces,
                                     mutable_face_tags,
                                     mutable_face_normals,
@@ -2210,7 +2210,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
                                     cells_per_dim_vec,
                                     preAdaptMaxLevel);
     // --- Adapted cells ---
-    Opm::Lgr::populateLeafGridCells(*currentData().back(),
+    Opm::Lgr::populateLeafGridCells(currentLeafData(),
                                     adapted_cells,
                                     adapted_cell_to_point,
                                     cell_count,
@@ -2664,7 +2664,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         int parent_grid_index = getLgrNameToLevel().at(parent_grid_name);
         // Determine the assigned level for the refinement of each marked cell
-        std::vector<int> assignRefinedLevel(currentData().back()->size(0));
+        std::vector<int> assignRefinedLevel(currentLeafData().size(0));
 
         // Compatibility of numbers of subdivisions of neighboring LGRs".
         // The method compatibleSubdivision returns a bool. We convert it into an int since MPI within DUNE does not support bool directly.

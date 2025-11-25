@@ -761,12 +761,12 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
                               const std::array<int,3>& cells_per_dim,
                               const std::vector<int>& markedCells)
 {
-    std::vector<int> assignRefinedLevel(grid.currentData().back()->size(0));
+    std::vector<int> assignRefinedLevel(grid.currentLeafData().size(0));
     int preAdaptMaxLevel = grid.maxLevel();
 
     for (const auto& elemIdx : markedCells)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(grid.currentData().back()), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(grid.currentLeafData(), elemIdx, true);
         grid.mark(1, elem);
         assignRefinedLevel[elemIdx] = grid.maxLevel() + 1;
         BOOST_CHECK_EQUAL( grid.getMark(elem), 1);
@@ -783,12 +783,12 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
 void Opm::adaptGrid(Dune::CpGrid& grid,
                     const std::vector<int>& markedCells)
 {
-    const auto& leafGridView = grid.currentData().back();
+    const auto& leafGridView = grid.currentLeafData();
     int preAdaptMaxLevel = grid.maxLevel();
 
     for (const auto& elemIdx : markedCells)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*leafGridView, elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(leafGridView, elemIdx, true);
         grid.mark(1, elem);
     }
     bool preAdapt = grid.preAdapt();

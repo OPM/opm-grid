@@ -379,7 +379,7 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrI
     if constexpr (std::is_same_v<GridType, Dune::CpGrid>) {
         static_assert(std::is_same_v<Grid,GridType>);
         if constexpr (isIntegral) {
-            const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().currentData().back()), elementOrIndex, true);
+            const auto& elem = Dune::cpgrid::Entity<0>(gridView_.grid().currentLeafData(), elementOrIndex, true);
             if (isFieldPropInLgr_ && elem.level()) { // level > 0 == true ; level == 0 == false
                 // In case some LGRs do not have refined field properties, the next line need to be modified.
                 return elem.getLevelElem().index();
@@ -492,7 +492,7 @@ auto Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const Ele
     if constexpr (std::is_same_v<GridType, Dune::CpGrid>) {
         static_assert(std::is_same_v<Grid,GridType>);
         if constexpr (isIntegral) {
-            const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().currentData().back()), elementOrIndex, true);
+            const auto& elem = Dune::cpgrid::Entity<0>(gridView_.grid().currentLeafData(), elementOrIndex, true);
             return this -> getFieldPropCartesianIdx<Dune::CpGrid>(elem);
         } else {
             if (isFieldPropInLgr_ && elementOrIndex.level()) { // level == 0 false; level > 0 true

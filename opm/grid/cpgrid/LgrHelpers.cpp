@@ -94,8 +94,6 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
                                             /* Additional parameters */
                                             const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-
     // Each marked element for refinement (mark equal to 1), will be refined individuality, creating its own Lgr. The element index will
     // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
     // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
@@ -130,7 +128,7 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
                          parentCell_to_itsRefinedCells,
                          refinedFace_to_itsParentFace,
                          refinedCell_to_itsParentCell]
-                = grid.currentData().back()->refineSingleCell(cells_per_dim_vec[shiftedLevel], element.index());
+                = grid.currentLeafData().refineSingleCell(cells_per_dim_vec[shiftedLevel], element.index());
             markedElem_to_itsLgr[ element.index() ] = elemLgr_ptr;
 
             const int childrenCount = cells_per_dim_vec[shiftedLevel][0]*cells_per_dim_vec[shiftedLevel][1]*cells_per_dim_vec[shiftedLevel][2];
@@ -186,12 +184,12 @@ defineChildToParentAndIdxInParentCell(const Dune::cpgrid::CpGridData& current_da
     // Rewrite only the entries of adapted cells that have a parent cell
     for (int cell = 0; cell < cell_count; ++cell) {
         // For the element with index "cell" in the adapted grid (or updated-leaf-grid-view),
-        // - if "cell" is a new born refined cell (i.e. born in the current adapt-call), we get the parent cell from the preAdapt-leaf-grid-view ("current_view_data_").
+        // - if "cell" is a new born refined cell (i.e. born in the current adapt-call), we get the parent cell from the preAdapt-leaf-grid-view.
         //   In this case, "preAdapt_parent_or_elem" represents "preAdapt_parent".
         // - if "cell" is either a coarse cell or a refined cell that was born in a preAdapt-refined-level-grid, we get the equivalent cell in the
-        //   preAdapt-leaf-grid-view ("current_view_data_"). In this case, "preAdapt_parent_or_elem" represents "preAdapt_elem".
+        //   preAdapt-leaf-grid-view. In this case, "preAdapt_parent_or_elem" represents "preAdapt_elem".
         const auto& [elemLgr, elemLgrCell] = adaptedCell_to_elemLgrAndElemLgrCell.at(cell);
-        // Get the element of either a parent cell of a new born refined cell with index "cell" or an equivalent cell, in the preAdapt-leaf-grid-view ("current_view_data_").
+        // Get the element of either a parent cell of a new born refined cell with index "cell" or an equivalent cell, in the preAdapt-leaf-grid-view.
         const auto& preAdapt_parent_or_elem = Dune::cpgrid::Entity<0>(current_data, ((elemLgr != -1) ? elemLgr : elemLgrCell), true);
         if (elemLgr != -1) { // "cell" is a new born refined cell
             adapted_child_to_parent_cells[cell] = {preAdapt_parent_or_elem.level(), preAdapt_parent_or_elem.getLevelElem().index()};
@@ -213,10 +211,10 @@ defineChildToParentAndIdxInParentCell(const Dune::cpgrid::CpGridData& current_da
         // Every refined cell has a parent cell
         for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
             const auto& [elemLgr, elemLgrCell] = refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell.at({level, cell});
-            // (elemLgr == -1) means that the adapted cell is equivalent to a cell from the starting grid (current_view_data_)
+            // (elemLgr == -1) means that the adapted cell is equivalent to a cell from the starting grid.
             assert(elemLgr != -1);
             // Search for the level where the parent cell was born, and its index in that level grid.
-            // Notice that elemLgr is a cell index in current_view_data_ (the starting grid where elements got marked for (further) refinement).
+            // Notice that elemLgr is a cell index in current leaf grid data (the starting grid where elements got marked for (further) refinement).
             const auto& element = Dune::cpgrid::Entity<0>(current_data, elemLgr, true);  // elemLgr == parent cell index in starting grid.
             refined_child_to_parent_cells_vec[shiftedLevel][cell] = {element.level(), element.getLevelElem().index()};
             refined_cell_to_idxInParentCell_vec[shiftedLevel][cell] = elemLgrCell;
@@ -243,7 +241,7 @@ defineLevelToLeafAndLeafToLevelCells(const Dune::cpgrid::CpGridData& current_dat
 {
     // Relation between the refined grid and leafview cell indices.
     std::vector<std::vector<int>> refined_level_to_leaf_cells_vec(refined_cell_count_vec.size());
-    // Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
+    // Relation between an adapted cell and its equivalent cell coming either from current leaf or the refined grid (level)
     std::vector<std::array<int,2>> leaf_to_level_cells;
     leaf_to_level_cells.resize(cell_count);
 
@@ -1163,7 +1161,7 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& curre
     assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
     const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
-    // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current_view_data_ is level zero
+    // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current leaf data is level zero
 
     if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.");
@@ -1498,12 +1496,11 @@ void populateLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
                              const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                              const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner)
 {
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
     adapted_corners.resize(corner_count);
     for (int corner = 0; corner < corner_count; ++corner) {
         const auto& [elemLgr, elemLgrCorner] = adaptedCorner_to_elemLgrAndElemLgrCorner.at(corner);
         // Note: Since we are associating each LGR with its parent cell index, and this index can take
-        //       the value 0, we represent the current_view_data_ with the value -1
+        //       the value 0, we represent the current leaf data with the value -1
         adapted_corners[corner] = ((elemLgr == -1) ?
                                    current_data :
                                    *markedElem_to_itsLgr[elemLgr]).getGeometry().geomVector(std::integral_constant<int,3>())-> get(elemLgrCorner);
@@ -1539,7 +1536,7 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
 
         const auto& [elemLgr, elemLgrFace] = adaptedFace_to_elemLgrAndElemLgrFace.at(face);
         // Note: Since we are associating each LGR with its parent cell index, and this index can take
-        //       the value 0, with the value -1 we refer to current_view_data_ (grid where the elements have been marked).
+        //       the value 0, with the value -1 we refer to current leaf grid data (grid where the elements have been marked).
         const auto& elemLgrFaceEntity =  Dune::cpgrid::EntityRep<1>(elemLgrFace, true);
         const auto& grid_or_elemLgr_data = (elemLgr == -1) ? current_data : *markedElem_to_itsLgr[elemLgr];
 
