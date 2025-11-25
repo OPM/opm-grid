@@ -995,7 +995,7 @@ int CpGrid::size (int level, int codim) const
 
 int CpGrid::size (int codim) const
 {
-    return current_view_data_->size(codim);
+    return currentData().back()->size(codim);
 }
 
 int CpGrid::size (int level, GeometryType type) const
@@ -1007,7 +1007,7 @@ int CpGrid::size (int level, GeometryType type) const
 
 int CpGrid::size (GeometryType type) const
 {
-    return current_view_data_->size(type);
+    return currentData().back()->size(type);
 }
 
 const CpGridFamily::Traits::GlobalIdSet& CpGrid::globalIdSet() const
