@@ -49,7 +49,7 @@ void checkRefinedFaceCountPerGrid(const Dune::CpGrid& grid,
     for (int level = 0; level <= grid.maxLevel(); ++level) {
         BOOST_CHECK_EQUAL( grid.currentData()[level]->numFaces(), expected_leafFaceCount_per_level[level]);
     }
-    BOOST_CHECK_EQUAL( grid.currentData().back()->numFaces(), expected_leafFaceCount_per_level.back());
+    BOOST_CHECK_EQUAL( grid.currentLeafData().numFaces(), expected_leafFaceCount_per_level.back());
 }
 
 void checkExpectedFaceCentersAndAreas(const Dune::CpGrid& grid,

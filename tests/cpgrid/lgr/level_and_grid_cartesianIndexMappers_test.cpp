@@ -65,7 +65,7 @@ void compressedSizeCoincidesWithLeafGridCellCount(const Dune::CpGrid& grid,
 {
     BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.leafGridView().size(0));
     BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.size(0));
-    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.currentData().back()->size(0));
+    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.currentLeafData().size(0));
 }
 
 void checkLevels(const Dune::CpGrid& grid,

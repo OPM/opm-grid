@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(callAdaptNotAllElementsMarkedAfterAutoRefine_serial) {
 
         checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
-        const int maxCellId =  grid.currentData().back()->globalIdSet().getMaxCodimGlobalId<0>();
+        const int maxCellId =  grid.currentLeafData().globalIdSet().getMaxCodimGlobalId<0>();
 
         for (const auto& element : Dune::elements(grid.leafGridView())) {
             const int id = grid.globalIdSet().id(element);

@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE(leafGlobalIdCellAndGridGlobalIdsCoincide)
                                /* lgr_name_vec = */ {"LGR1"});
     const auto& gridGlobalIdSet = grid.globalIdSet();
 
-    const auto& leafGlobalIdSet = grid.currentData().back()->globalIdSet();
+    const auto& leafGlobalIdSet = grid.currentLeafData().globalIdSet();
     const auto& leafElements = Dune::elements(grid.leafGridView());
     for (const auto& element : leafElements) {
         BOOST_CHECK_EQUAL( gridGlobalIdSet.id(element), leafGlobalIdSet.id(element));
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE(leafGlobalIdCellAndGridGlobalIdsCoincideWithDistributedLeve
                                    /* lgr_name_vec = */ {"LGR1"});
         const auto& gridGlobalIdSet = grid.globalIdSet();
 
-        const auto& leafGlobalIdSet = grid.currentData().back()->globalIdSet();
+        const auto& leafGlobalIdSet = grid.currentLeafData().globalIdSet();
         const auto& leafElements = Dune::elements(grid.leafGridView());
         for (const auto& element : leafElements) {
             BOOST_CHECK_EQUAL( gridGlobalIdSet.id(element), leafGlobalIdSet.id(element));

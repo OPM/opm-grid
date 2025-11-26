@@ -376,6 +376,12 @@ namespace Dune
         /// @brief Returns either data_ or distributed_data_(if non empty).
         std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData();
 
+        /// @brief Returns current view data (the leaf grid)
+        const Dune::cpgrid::CpGridData& currentLeafData() const;
+
+        /// @brief Returns current view data (the leaf grid)
+        Dune::cpgrid::CpGridData& currentLeafData();
+
         /// @brief
         ///    Extract Cartesian index triplet (i,j,k) of an active cell.
         ///
@@ -1134,13 +1140,13 @@ namespace Dune
         /// \brief Get the number of cells.
         ///
         /// \param level Integer representing the level grid to be considered.
-        ///        Default leaf grid view (current_view_data_) set to -1.
+        ///        Default leaf grid view set to -1.
         int numCells(int level = -1) const;
 
         /// \brief Get the number of faces.
         ///
         /// \param level Integer representing the level grid to be considered.
-        ///        Default leaf grid view (current_view_data_) set to -1.
+        ///        Default leaf grid view set to -1.
         int numFaces(int level = -1) const;
 
         /// \brief Get The number of vertices.
@@ -1154,14 +1160,14 @@ namespace Dune
         /// no upper bound.
         /// \param cell the index identifying the cell.
         /// \param level Integer representing the level grid to be considered.
-        ///        Default leaf grid view (current_view_data_) set to -1.
+        ///        Default leaf grid view set to -1.
         int numCellFaces(int cell, int level = -1) const;
 
         /// \brief Get a specific face of a cell.
         /// \param cell The index identifying the cell.
         /// \param local_index The local index (in [0,numFaces(cell))) of the face in this cell.
         /// \param level Integer representing the level grid to be considered.
-        ///        Default leaf grid view (current_view_data_) set to -1.
+        ///        Default leaf grid view set to -1.
         /// \return The index identifying the face.
         int cellFace(int cell, int local_index, int level = -1) const;
 
@@ -1184,7 +1190,7 @@ namespace Dune
         /// \param face The index identifying the face.
         /// \param local_index The local_index of the cell.
         /// \param level Integer representing the level grid to be considered.
-        ///        Default leaf grid view (current_view_data_) set to -1.
+        ///        Default leaf grid view set to -1.
         /// \return The index identifying a cell or -1 if there is no such
         /// cell due the face being part of the grid boundary or the
         /// cell being stored on another process.
@@ -1465,8 +1471,6 @@ namespace Dune
          * All the data of all grids are stored there and
          * calls are forwarded to relevant grid.*/
         std::vector<std::shared_ptr<cpgrid::CpGridData>> data_;
-        /** @brief A pointer to data of the current View. */
-        cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
         std::vector<std::shared_ptr<cpgrid::CpGridData>> distributed_data_;
         /** @brief A pointer to the current data used. */
@@ -1548,7 +1552,7 @@ namespace Dune
     template<class DataHandle>
     void CpGrid::communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const
     {
-        current_view_data_->communicate(data, iftype, dir);
+        current_data_->back()->communicate(data, iftype, dir);
     }
 
 
@@ -1601,8 +1605,8 @@ namespace Dune
         typedef cpgrid::OrientedEntityTable<1,0>::row_type F2C;
 
         const cpgrid::EntityRep<1> f(face, true);
-        const F2C&     f2c = current_view_data_->face_to_cell_[f];
-        const face_tag tag = current_view_data_->face_tag_[f];
+        const F2C&     f2c = current_data_->back()->face_to_cell_[f];
+        const face_tag tag = current_data_->back()->face_tag_[f];
 
         assert ((f2c.size() == 1) || (f2c.size() == 2));
 

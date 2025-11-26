@@ -187,7 +187,7 @@ void GraphOfGrid<Dune::CpGrid>::createGraph (const double* transmissibilities,
             }
             // lookup otherCell gID
             const auto& otherCellElem = validLevel? Dune::cpgrid::Entity<0>(*(grid.currentData()[level]), otherCell, true) :
-                Dune::cpgrid::Entity<0>(*(grid.currentData().back()), otherCell, true);
+                Dune::cpgrid::Entity<0>(grid.currentLeafData(), otherCell, true);
             int otherCellgID = validLevel? grid.currentData()[level]->globalIdSet().id(otherCellElem) : grid.globalIdSet().id(otherCellElem);
             vertex.edges.try_emplace(otherCellgID /*otherCell*/, weight);
         }

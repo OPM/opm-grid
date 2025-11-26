@@ -43,8 +43,8 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid& grid)
 {
-    const auto& leafGrid = grid.currentData().back();
-    const auto cellToPoint = leafGrid->cellToPoint(element.index());
+    const auto& leafGrid = grid.currentLeafData();
+    const auto cellToPoint = leafGrid.cellToPoint(element.index());
 
     // Select four corners to approximate cuboid volume
     //    2 ---- 3                          6 ---- 7
@@ -52,10 +52,10 @@ bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid
     //  0 ---- 1                          4 ---- 5
     std::vector<Dune::cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
     aFewCorners.resize(4); // {'0', '1', '3', '5'}
-    aFewCorners[0] = (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-    aFewCorners[1] = (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-    aFewCorners[2] = (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
-    aFewCorners[3] = (*(leafGrid -> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
+    aFewCorners[0] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+    aFewCorners[1] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+    aFewCorners[2] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
+    aFewCorners[3] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
 
     auto distance = [](const auto& p1, const auto& p2) {
         double dx = p2[0] - p1[0];
@@ -69,7 +69,7 @@ bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid
     double height  = distance(aFewCorners[1], aFewCorners[3]);
 
     const double cuboidVolume = length*breadth*height;
-    const auto actualVolume =  (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,0>())))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
+    const auto actualVolume =  (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,0>())))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
 
     return (std::abs(cuboidVolume - actualVolume) <  1e-6);
 }
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(refineCellWithFewerThanEightCornersThrows)
         // Check the single-cell from level zero is not a cuboid
         BOOST_CHECK(!checkCuboidShape(element, grid));
         // Check the single-cell from level zero has fewer than 8 corners
-        BOOST_CHECK_THROW(Opm::Lgr::containsEightDifferentCorners( grid.currentData().back()->cellToPoint(element.index())),
+        BOOST_CHECK_THROW(Opm::Lgr::containsEightDifferentCorners( grid.currentLeafData().cellToPoint(element.index())),
                           std::logic_error);
 
         // Mark element for refinment, to check (below) that calling adapt() throws.
@@ -153,7 +153,7 @@ void createAndRefineTestGrid(const std::string& deckString,
         BOOST_CHECK(!checkCuboidShape(element, grid));
 
         // Check the cell(s) from level zero has(have) 8 corners
-        Opm::Lgr::containsEightDifferentCorners(grid.currentData().back()->cellToPoint(element.index()));
+        Opm::Lgr::containsEightDifferentCorners(grid.currentLeafData().cellToPoint(element.index()));
 
         // If selectMethod == 3-> adapt -> mark at least one element
         if ((selectMethod == 3) && (element.index()==0)){
@@ -184,7 +184,7 @@ void createAndRefineTestGrid(const std::string& deckString,
         BOOST_CHECK(!checkCuboidShape(element, grid));
 
         // Check the cell has 8 different corners
-        Opm::Lgr::containsEightDifferentCorners(grid.currentData().back()->cellToPoint(element.index()));
+        Opm::Lgr::containsEightDifferentCorners(grid.currentLeafData().cellToPoint(element.index()));
     }
 }
 
