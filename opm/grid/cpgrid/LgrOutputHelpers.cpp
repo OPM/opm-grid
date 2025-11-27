@@ -95,20 +95,11 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
                     levelVectors.resize(maxLevel+1);
                     using ScalarType = std::decay_t<decltype(leafVector[0])>;
 
-                    for (int level = 0; level <= maxLevel; ++level) {
-                        // Parent cells get rubbish value: std::numeric_limist<ScalarType>::max()
-                        levelVectors[level].resize(grid.levelGridView(level).size(0),
-                                                   std::numeric_limits<ScalarType>::max());
-                    }
-                    // For level cells that appear in the leaf, extract the data value from leafVector
-                    // and assign it the the equivalent level cell.
-                    for (const auto& element : Dune::elements(grid.leafGridView())) {
-                        levelVectors[element.level()][element.getLevelElem().index()] = leafVector[element.index()];
-                    }
-                    // Use toOutput_levels to reorder in ascending level cartesian indices
-                    for (int level = 1; level<=maxLevel; ++level) { // exclude level zero (does not need reordering)
-                        levelVectors[level] = Opm::Lgr::reorderForOutput(levelVectors[level], toOutput_refinedLevels[level-1]);
-                    }
+                    populateDataVectorLevelGrids<ScalarType>(grid,
+                                                             maxLevel,
+                                                             leafVector,
+                                                             toOutput_refinedLevels,
+                                                             levelVectors);
 
                     for (int level = 0; level <= maxLevel; ++level) {
                         if constexpr (std::is_same_v<T, std::vector<double>>) {
