@@ -1249,9 +1249,8 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
             const auto refinedCell =  (coarseCell == cellIn) ? cellOut : cellIn;
             assert(coarseCell.level() != refinedCell.level());
 
-            // Get parent cell (on level zero) of the refined cell
+            // Get parent cell of the refined cell
             const auto& parentCell = refinedCell.father();
-            assert(refinedCell.father().level() == 0);
 
             // Get the index inside and orientation from the leaf grid (refined) face
             const auto& intersectionIdxInInside = intersection.indexInInside();
