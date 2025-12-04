@@ -27,6 +27,7 @@
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
 #include <algorithm> // for std::sort
+#include <unordered_map>
 #include <utility>   // for std::pair
 #include <vector>
 
@@ -62,6 +63,19 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
         toOutput.push_back(sorted_elemIdx);
     }
     return toOutput;
+}
+
+std::vector<std::unordered_map<int,int>> levelCartesianToLevelCompressedMaps(const Dune::CpGrid& grid,
+                                                                             const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp)
+{
+    std::vector<std::unordered_map<int,int>> levelCartToLevelCompressed{};
+    levelCartToLevelCompressed.resize(grid.maxLevel()+1);
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+            levelCartToLevelCompressed[level].emplace(levelCartMapp.cartesianIndex(element.index(), level), element.index());
+        }
+    }
+    return levelCartToLevelCompressed;
 }
 
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,
