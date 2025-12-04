@@ -29,6 +29,7 @@
 #include <opm/output/eclipse/RestartValue.hpp>
 
 #include <cstddef>      // for std::size_t
+#include <unordered_map>
 #include <utility>      // for std::move
 #include <type_traits>  // for std::is_same_v
 #include <vector>
@@ -62,6 +63,16 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
 template <typename Container>
 Container reorderForOutput(const Container& simulatorContainer,
                            const std::vector<int>& toOutput);
+
+/// @brief Map level Cartesian index to level compressed index (active cell)
+///
+/// @param [in] grid
+/// @param [in] levelCartesianIndexMapper
+/// @return Vector of unordered maps, each entry holds the map for a level grid.
+///         levelCartesianIndex (key) -> levelCompressedIndex (value).
+std::vector<std::unordered_map<int,int>>
+levelCartesianToLevelCompressedMaps(const Dune::CpGrid& grid,
+                                    const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp);
 
 /// @brief Extracts and organizes solution data for all grid refinement levels.
 ///
@@ -103,6 +114,12 @@ template <typename Grid>
 void extractRestartValueLevelGrids(const Grid& grid,
                                    const Opm::RestartValue& leafRestartValue,
                                    std::vector<Opm::RestartValue>& restartValue_levels);
+
+template <typename Grid, typename TransmissibilityType, typename DirectVerticalNeighborsFunc>
+void extractTransLevelGrids(const Grid& grid,
+                            const TransmissibilityType& leafTrans,
+                            std::vector<Opm::data::Solution>& outputTrans_levels,
+                            const DirectVerticalNeighborsFunc& directVerticalNeighbors);
 
 } // namespace Lgr
 } // namespace Opm
@@ -180,6 +197,93 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
                 restartValue_levels[level].addExtra(rst_key.key, rst_key.dim, std::move(levelVectors[level]));
             }
         }
+    }
+}
+
+template <typename Grid, typename TransmissibilityType, typename DirectVecticalNeighborsFunc>
+void Opm::Lgr::extractTransLevelGrids(const Grid& grid,
+                                      const TransmissibilityType& leafTrans,
+                                      std::vector<Opm::data::Solution>& outputTrans_levels,
+                                      const DirectVecticalNeighborsFunc& directVerticalNeighbors)
+
+{
+    if constexpr (std::is_same_v<Grid, Dune::CpGrid>) {
+
+        int maxLevel = grid.maxLevel();
+        outputTrans_levels.resize(maxLevel+1); // level 0, 1, ..., max level
+
+        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+        const auto levelCartToLevelCompressed = levelCartesianToLevelCompressedMaps(grid, levelCartMapp);
+
+        // Extract trans values for level cells that appear in the leaf grid
+        for (int level = 0; level <= maxLevel; ++level) {
+
+            const auto& levelCartDims = levelCartMapp.cartesianDimensions(level);
+
+            auto createCellData = [&levelCartDims]() {
+                return Opm::data::CellData{
+                    Opm::UnitSystem::measure::transmissibility,
+                    std::vector<double>(levelCartDims[0] * levelCartDims[1] * levelCartDims[2], 0.0),
+                    Opm::data::TargetType::INIT
+                };
+            };
+
+            outputTrans_levels[level].clear();
+            outputTrans_levels[level].emplace("TRANX", createCellData());
+            outputTrans_levels[level].emplace("TRANY", createCellData());
+            outputTrans_levels[level].emplace("TRANZ", createCellData());
+
+            auto& tranx = outputTrans_levels[level].at("TRANX");
+            auto& trany = outputTrans_levels[level].at("TRANY");
+            auto& tranz = outputTrans_levels[level].at("TRANZ");
+
+            for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+                if (!element.isLeaf()) // will be considered later
+                    continue;
+
+                for (const auto& intersection : Dune::intersections(grid.levelGridView(level), element)) {
+                    if (!intersection.neighbor())
+                        continue; // intersection is on the level-domain boundary
+                    if (!intersection.outside().isLeaf())
+                        continue; // now, we only care about pair of level cells that are leaf
+
+                    assert(intersection.inside().level() == intersection.outside().level());
+
+                    const unsigned levelIdxIn = intersection.inside().index();
+                    const unsigned levelIdxOut= intersection.outside().index();
+
+                    if (levelIdxIn > levelIdxOut)
+                        continue; // we only need to handle each connection once.
+
+                    const int levelCartIdxIn = levelCartMapp.cartesianIndex( levelIdxIn, level);
+                    const int levelCartIdxOut = levelCartMapp.cartesianIndex( levelIdxOut, level);
+
+                    int minLevelCartIdx = std::min(levelCartIdxIn, levelCartIdxOut);
+                    int maxLevelCartIdx = std::max(levelCartIdxIn, levelCartIdxOut);
+
+                    int leafIdxIn = grid.currentData()[level]->getLeafIdxFromLevelIdx(levelIdxIn);
+                    int leafIdxOut = grid.currentData()[level]->getLeafIdxFromLevelIdx(levelIdxOut);
+
+                    if (maxLevelCartIdx - minLevelCartIdx == 1 && levelCartDims[0] > 1 ) {
+                        tranx.template data<double>()[minLevelCartIdx] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                        continue; // skip other if clauses as they are false, last one needs some computation
+                    }
+
+                    if (maxLevelCartIdx - minLevelCartIdx == levelCartDims[0] && levelCartDims[1] > 1) {
+                        trany.template data<double>()[minLevelCartIdx] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                        continue; // skipt next if clause as it needs some computation
+                    }
+
+                    if ( maxLevelCartIdx - minLevelCartIdx == levelCartDims[0]*levelCartDims[1] ||
+                         directVerticalNeighbors(levelCartDims,
+                                                 levelCartToLevelCompressed[level],
+                                                 minLevelCartIdx,
+                                                 maxLevelCartIdx)) {
+                        tranz.template data<double>()[minLevelCartIdx] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                    }
+                }
+            } // end-for-loop-level
+        } // end-if-Grid=CpGrid
     }
 }
 
