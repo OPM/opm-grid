@@ -83,7 +83,8 @@ std::string coincideString(bool coincide)
     return coincide ? "coincide (all ids/indices are equal)" : "differ (at least one id/index is different)";
 }
 
-auto idRep(const auto& idSet, const auto& entityRep)
+template<typename IdSet, typename EntityRep>
+auto idRep(const IdSet& idSet, const EntityRep& entityRep)
 {
     return idSet.id(entityRep);
 }
@@ -130,7 +131,7 @@ void globalIdsEntityRepAndEntityInLevelZeroGrid(const Dune::CpGrid& grid, bool c
     const auto& globalIdSet = levelZeroGlobalIdSet;
     BOOST_CHECK(
         checkEntityIndex(levelZeroView,
-            [&](const auto& e){ return globalIdSet.template id<std::remove_cvref_t<decltype(e)>::codimension>(e); },
+            [&](const auto& e){ return globalIdSet.template id<std::decay_t<decltype(e)>::codimension>(e); },
             [&](const auto& er){ return idRep(levelZeroGlobalIdSet, er); },
             coincide /* mustCoincide */
         ) || grid.comm().rank() != 0 // only rank 0 reports test failures
