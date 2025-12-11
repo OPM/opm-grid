@@ -19,17 +19,19 @@
 */
 #include "config.h"
 
-#define BOOST_TEST_MODULE TemplateOverloadsForIdAndIndexTests
+#define BOOST_TEST_MODULE EntityAndEntityRepIdComparisonTests
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
 
 #include <unordered_set>
 
-// This fine attempts to verify that the ids and indices returned by Entity and EntityRep are the same
+// This file attempts to verify that the ids and indices returned by Entity and EntityRep are the same
 // where they are supposed to be the same, and different where they are supposed to be different.
 // This is a test to make sure that modofications to the overloads of id() and index() functions
 // in CpGridData and IndexSet does not break the current behaviour.
+// The main motivation is to ensure that Entity is not being treated as EntityRep somewhere in the
+// codebase (e.g. due to an implicit conversion), which would lead to wrong ids being returned in certain cases.
 
 struct Fixture
 {
@@ -49,7 +51,9 @@ bool checkEntityIndex(const GridView& gridView, EntityToIndex&& entityToIndex, E
 {
     std::size_t comp_count = 0;
     std::size_t ref_count = 0;
+    // Compile-time loop over codimensions
     Dune::Hybrid::forEach(std::make_index_sequence<GridView::dimension + 1>{}, [&](auto codim){
+        // Only check codimensions that exist in the grid, i.e, CPGrid only supports codim 0 and 3 at the moment.
         if constexpr (Dune::Capabilities::hasEntity<typename GridView::Grid, codim>::v)
             for (const Dune::cpgrid::Entity<codim>& entity : entities(gridView, Dune::Codim<codim>())) {
                 const auto& entityRep = static_cast<const Dune::cpgrid::EntityRep<codim>&>(entity);
@@ -96,7 +100,7 @@ void entityRepIndexAndEntityIndexCoincide(const Dune::CpGrid& grid)
             [&](const auto& e){ return leafIndexSet.index(e); },
             [&](const auto& er){ return leafIndexSet.index(er); },
             true /* mustCoincide */
-        ) || grid.comm().rank() != 0
+        ) || grid.comm().rank() != 0 // only rank 0 reports test failures
     );
 
     for (int level = 0; level <= grid.maxLevel(); ++level) {
@@ -109,7 +113,7 @@ void entityRepIndexAndEntityIndexCoincide(const Dune::CpGrid& grid)
                 [&](const auto& e){ return levelIndexSet.index(e); },
                 [&](const auto& er){ return levelIndexSet.index(er); },
                 true /* mustCoincide */
-            ) || grid.comm().rank() != 0
+            ) || grid.comm().rank() != 0 // only rank 0 reports test failures
         );
     }
 }
@@ -120,13 +124,17 @@ void globalIdsEntityRepAndEntityInLevelZeroGrid(const Dune::CpGrid& grid, bool c
         BOOST_TEST_MESSAGE("    └─ Comparing Entity vs EntityRep global ids - lvl 0     | Expected to " + coincideString(coincide));
     const auto levelZeroView = grid.levelGridView(0);
     const auto& levelZeroGlobalIdSet = grid.currentData()[0]->globalIdSet();
-    const auto& globalIdSet = levelZeroGlobalIdSet; // TODO -> grid.globalIdSet();
+    // TODO(SoilRos):
+    //   At the moment, grid.globalIdSet() returns an id set that does map entites on all levels as the interface requires.
+    //   Thus, we use the level specific global id set here for now.
+    // const auto& globalIdSet = grid.globalIdSet();
+    const auto& globalIdSet = levelZeroGlobalIdSet;
     BOOST_CHECK(
         checkEntityIndex(levelZeroView,
             [&](const auto& e){ return globalIdSet.template id<std::decay_t<decltype(e)>::codimension>(e); },
             [&](const auto& er){ return idRep(levelZeroGlobalIdSet, er); },
             coincide /* mustCoincide */
-        ) || grid.comm().rank() != 0
+        ) || grid.comm().rank() != 0 // only rank 0 reports test failures
     );
 }
 
@@ -136,13 +144,17 @@ void localIdsEntityRepAndEntityInLevelZeroGrid(const Dune::CpGrid& grid, bool co
         BOOST_TEST_MESSAGE("    └─ Comparing Entity vs EntityRep local ids - lvl 0      | Expected to " + coincideString(coincide));
     const auto levelZeroView = grid.levelGridView(0);
     const auto& levelZeroLocalIdSet = grid.currentData()[0]->localIdSet();
-    const auto& localIdSet = levelZeroLocalIdSet; // TODO -> grid.localIdSet();
+    // TODO(SoilRos):
+    //   At the moment, grid.localIdSet() returns an id set that does map entites on all levels as the interface requires.
+    //   Thus, we use the level specific global id set here for now.
+    // const auto& localIdSet = grid.localIdSet();
+    const auto& localIdSet = levelZeroLocalIdSet;
     BOOST_CHECK(
         checkEntityIndex(levelZeroView,
             [&](const auto& e){ return localIdSet.id(e); },
             [&](const auto& er){ return idRep(levelZeroLocalIdSet, er); },
             coincide /* mustCoincide */
-        ) || grid.comm().rank() != 0
+        ) || grid.comm().rank() != 0 // only rank 0 reports test failures
     );
 }
 
@@ -153,13 +165,17 @@ void localIdsEntityRepAndEntityInRefinedLevelGrids(const Dune::CpGrid& grid, boo
             BOOST_TEST_MESSAGE("    └─ Comparing Entity vs EntityRep local ids - lvl " + std::to_string(level) + "      | Expected to " + coincideString(coincide));
         const auto levelView = grid.levelGridView(level);
         const auto& levelLocalIdSet = grid.currentData()[level]->localIdSet();
-        const auto& localIdSet = levelLocalIdSet; // TODO -> grid.localIdSet();
+        // TODO(SoilRos):
+        //   At the moment, grid.localIdSet() returns an id set that does map entites on all levels as the interface requires.
+        //   Thus, we use the level specific global id set here for now.
+        // const auto& localIdSet = grid.localIdSet();
+        const auto& localIdSet = levelLocalIdSet;
         BOOST_CHECK(
             checkEntityIndex(levelView,
                 [&](const auto& e){ return localIdSet.id(e); },
                 [&](const auto& er){ return idRep(levelLocalIdSet, er); },
                 coincide /* mustCoincide */
-            ) || grid.comm().rank() != 0
+            ) || grid.comm().rank() != 0 // only rank 0 reports test failures
         );
     }
 }
@@ -170,13 +186,17 @@ void localIdsEntityRepAndEntityInLeafGrid(const Dune::CpGrid& grid, bool coincid
         BOOST_TEST_MESSAGE("    └─ Comparing Entity vs EntityRep local ids - lvl leaf   | Expected to " + coincideString(coincide));
     const auto leafView = grid.leafGridView();
     const auto& leafLocalIdSet = grid.currentData().back()->localIdSet();
-    const auto& localIdSet = leafLocalIdSet; // TODO -> grid.localIdSet();
+    // TODO(SoilRos):
+    //   At the moment, grid.localIdSet() returns an id set that does map entites on all levels as the interface requires.
+    //   Thus, we use the level specific global id set here for now.
+    // const auto& localIdSet = grid.localIdSet();
+    const auto& localIdSet = leafLocalIdSet;
     BOOST_CHECK(
         checkEntityIndex(leafView,
             [&](const auto& e){ return localIdSet.id(e); },
             [&](const auto& er){ return idRep(leafLocalIdSet, er); },
             coincide /* mustCoincide */
-        ) || grid.comm().rank() != 0
+        ) || grid.comm().rank() != 0 // only rank 0 reports test failures
     );
 }
 
@@ -187,13 +207,17 @@ void globalIdsEntityRepAndEntityInRefinedLevelGrids(const Dune::CpGrid& grid, bo
             BOOST_TEST_MESSAGE("    └─ Comparing Entity vs EntityRep global ids - lvl " + std::to_string(level) + "     | Expected to " + coincideString(coincide));
         const auto levelView = grid.levelGridView(level);
         const auto& levelGlobalIdSet = grid.currentData()[level]->globalIdSet();
-        const auto& globalIdSet = grid.currentData()[level]->globalIdSet(); // TODO: -> grid.globalIdSet();
+        // TODO(SoilRos):
+        //   At the moment, grid.globalIdSet() returns an id set that does map entites on all levels as the interface requires.
+        //   Thus, we use the level specific global id set here for now.
+        // const auto& globalIdSet = grid.globalIdSet();
+        const auto& globalIdSet = grid.currentData()[level]->globalIdSet();
         BOOST_CHECK(
             checkEntityIndex(levelView,
                 [&](const auto& e){ return globalIdSet.id(e); },
                 [&](const auto& er){ return idRep(levelGlobalIdSet, er); },
                 coincide /* mustCoincide */
-            ) || grid.comm().rank() != 0
+            ) || grid.comm().rank() != 0 // only rank 0 reports test failures
         );
     }
 }
@@ -204,13 +228,17 @@ void globalIdsEntityRepAndEntityInLeafGrid(const Dune::CpGrid& grid, bool coinci
         BOOST_TEST_MESSAGE("    └─ Comparing Entity vs EntityRep global ids - lvl leaf  | Expected to " + coincideString(coincide));
     const auto leafView = grid.leafGridView();
     const auto& leafGlobalIdSet = grid.currentData().back()->globalIdSet();
-    const auto& globalIdSet = leafGlobalIdSet; // TODO -> grid.globalIdSet();
+    // TODO(SoilRos):
+    //   At the moment, grid.globalIdSet() returns an id set that does map entites on all levels as the interface requires.
+    //   Thus, we use the level specific global id set here for now.
+    // const auto& globalIdSet = grid.globalIdSet();
+    const auto& globalIdSet = leafGlobalIdSet;
     BOOST_CHECK(
         checkEntityIndex(leafView,
             [&](const auto& e){ return globalIdSet.id(e); },
             [&](const auto& er){ return idRep(leafGlobalIdSet, er); },
             coincide /* mustCoincide */
-        ) || grid.comm().rank() != 0
+        ) || grid.comm().rank() != 0 // only rank 0 reports test failures
     );
 }
 
@@ -218,24 +246,23 @@ void checkEntityIds(const Dune::CpGrid& grid)
 {
     bool grid_is_distributed = grid.size(0) != grid.comm().sum(grid.size(0));
     bool grid_is_refined = grid.maxLevel() > 0;
-    std::string grid_type = grid_is_distributed ? "distributed" : "serial";
-    grid_type += grid_is_refined ? " refined" : " coarse";
+    std::string grid_type = grid_is_distributed ? "distributed" : "not distributed";
+    grid_type += grid_is_refined ? " refined" : " unrefined";
     if (grid.comm().rank() == 0)
         BOOST_TEST_MESSAGE("  └─ Checking ids of Entity and EntityRep in " + grid_type + " grid");
-
-    // All test below compare ids between Entity and EntityRep.
-    // EntityRep id represent the level zero grid ids, but their indices always coincide.
 
     // Indices ALWAYS coincide
     entityRepIndexAndEntityIndexCoincide(grid);
 
+    // All test below compare ids between Entity and EntityRep.
+    // EntityRep ids represent the level zero grid ids
+
     // local ids on level zero grid view ALWAYS coincide
     localIdsEntityRepAndEntityInLevelZeroGrid(grid, true);
 
-    // local ids on level zero grid view NEVER coincide
+    // local ids on refined grid view NEVER coincide
     localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false);
 
-    // TODO: this test currently fails
     // local ids on leaf grid view coincide ONLY if the grid is NOT refined
     localIdsEntityRepAndEntityInLeafGrid(grid, !grid_is_refined);
 
@@ -243,11 +270,11 @@ void checkEntityIds(const Dune::CpGrid& grid)
     globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true);
 
     // global ids on refined level grids view NEVER coincide
-    if (grid.comm().size() == 0) // TODO: this test currently fails in parallel
+    if (grid.comm().size() == 0) // TODO(SoilRos): this test currently fails in parallel
         globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false);
 
     // global ids on leaf grid view coincide ONLY if the grid is NOT distributed and NOT refined
-    if (grid.comm().size() == 0) // TODO: this test currently fails in parallel
+    if (grid.comm().size() == 0) // TODO(SoilRos): this test currently fails in parallel
         globalIdsEntityRepAndEntityInLeafGrid(grid, !grid_is_distributed and !grid_is_refined);
 }
 
