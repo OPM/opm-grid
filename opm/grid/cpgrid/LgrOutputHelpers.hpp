@@ -21,6 +21,7 @@
 #define OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
@@ -115,10 +116,22 @@ void extractRestartValueLevelGrids(const Grid& grid,
                                    const Opm::RestartValue& leafRestartValue,
                                    std::vector<Opm::RestartValue>& restartValue_levels);
 
+/// @brief Constructs TRANS* values for all level grids.
+///
+/// @param [in] grid
+/// @param [in] leafTrans
+/// @param [out] outputTrans_levels       A vector of data::Solution with TRANS* values,
+///                                       between cells sharing an intersection, both cells
+///                                       belonging to the same level grid. 
+/// @param [out] outputTransDiff_levels   A vector of data::Solution with TRANS* values,
+///                                       between cells sharing an intersection, cells
+///                                       belonging to the DIFFERENT level grids. 
+/// @param [in] directVerticalNeighbors   
 template <typename Grid, typename TransmissibilityType, typename DirectVerticalNeighborsFunc>
 void extractTransLevelGrids(const Grid& grid,
                             const TransmissibilityType& leafTrans,
                             std::vector<Opm::data::Solution>& outputTrans_levels,
+                            std::vector<Opm::data::Solution>& outputTransDiff_level,
                             const DirectVerticalNeighborsFunc& directVerticalNeighbors);
 
 } // namespace Lgr
@@ -146,7 +159,7 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
 
         int maxLevel = grid.maxLevel();
         restartValue_levels.resize(maxLevel+1); // level 0, 1, ..., max level
-        
+
         // To store leafRestartValue.extra data in the order expected
         // by outout files (increasing level Cartesian indices)
         std::vector<std::vector<int>> toOutput_refinedLevels{};
@@ -204,19 +217,29 @@ template <typename Grid, typename TransmissibilityType, typename DirectVecticalN
 void Opm::Lgr::extractTransLevelGrids(const Grid& grid,
                                       const TransmissibilityType& leafTrans,
                                       std::vector<Opm::data::Solution>& outputTrans_levels,
+                                      std::vector<Opm::data::Solution>& outputTransDiff_levels,
                                       const DirectVecticalNeighborsFunc& directVerticalNeighbors)
 
 {
     if constexpr (std::is_same_v<Grid, Dune::CpGrid>) {
 
-        int maxLevel = grid.maxLevel();
-        outputTrans_levels.resize(maxLevel+1); // level 0, 1, ..., max level
+        // To store transmissibility between cells sharing an intersection,
+        // both cells belonging to the same level grid.
+        outputTrans_levels.resize(grid.maxLevel()+1); // level 0, 1, ..., max level
+
+        // To store transmissibility between cells sharing an intersection,
+        // cells belonging to the DIFFERENT level grids.
+        outputTransDiff_levels.resize(grid.maxLevel()+1);
 
         const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+        // To detect direct vertical neighboring cells:
         const auto levelCartToLevelCompressed = levelCartesianToLevelCompressedMaps(grid, levelCartMapp);
 
+        const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
+        const auto& cartDims = cartMapp.cartesianDimensions();
+
         // Extract trans values for level cells that appear in the leaf grid
-        for (int level = 0; level <= maxLevel; ++level) {
+        for (int level = 0; level <= grid.maxLevel(); ++level) {
 
             const auto& levelCartDims = levelCartMapp.cartesianDimensions(level);
 
@@ -233,24 +256,31 @@ void Opm::Lgr::extractTransLevelGrids(const Grid& grid,
             outputTrans_levels[level].emplace("TRANY", createCellData());
             outputTrans_levels[level].emplace("TRANZ", createCellData());
 
+            outputTransDiff_levels[level].clear();
+            outputTransDiff_levels[level].emplace("TRANX", createCellData());
+            outputTransDiff_levels[level].emplace("TRANY", createCellData());
+            outputTransDiff_levels[level].emplace("TRANZ", createCellData());
+
             auto& tranx = outputTrans_levels[level].at("TRANX");
             auto& trany = outputTrans_levels[level].at("TRANY");
             auto& tranz = outputTrans_levels[level].at("TRANZ");
 
+            // Extract transmissibility values for intersection between cells such that
+            // intersection.inside() and intersection.outside() belong to the same level grid.
             for (const auto& element : Dune::elements(grid.levelGridView(level))) {
                 if (!element.isLeaf()) // will be considered later
                     continue;
 
                 for (const auto& intersection : Dune::intersections(grid.levelGridView(level), element)) {
                     if (!intersection.neighbor())
-                        continue; // intersection is on the level-domain boundary
+                        continue; // intersection is on the LEVEL-domain boundary
                     if (!intersection.outside().isLeaf())
                         continue; // now, we only care about pair of level cells that are leaf
-
-                    assert(intersection.inside().level() == intersection.outside().level());
+                    if (intersection.inside().level() != intersection.outside().level())
+                        continue; // this might be covered/included in "!intersection.neighbor()"
 
                     const unsigned levelIdxIn = intersection.inside().index();
-                    const unsigned levelIdxOut= intersection.outside().index();
+                    const unsigned levelIdxOut = intersection.outside().index();
 
                     if (levelIdxIn > levelIdxOut)
                         continue; // we only need to handle each connection once.
@@ -266,12 +296,12 @@ void Opm::Lgr::extractTransLevelGrids(const Grid& grid,
 
                     if (maxLevelCartIdx - minLevelCartIdx == 1 && levelCartDims[0] > 1 ) {
                         tranx.template data<double>()[minLevelCartIdx] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
-                        continue; // skip other if clauses as they are false, last one needs some computation
+                        continue;
                     }
 
                     if (maxLevelCartIdx - minLevelCartIdx == levelCartDims[0] && levelCartDims[1] > 1) {
                         trany.template data<double>()[minLevelCartIdx] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
-                        continue; // skipt next if clause as it needs some computation
+                        continue;
                     }
 
                     if ( maxLevelCartIdx - minLevelCartIdx == levelCartDims[0]*levelCartDims[1] ||
@@ -281,10 +311,86 @@ void Opm::Lgr::extractTransLevelGrids(const Grid& grid,
                                                  maxLevelCartIdx)) {
                         tranz.template data<double>()[minLevelCartIdx] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
                     }
+                } // end-intersection-loop
+            } // end-element-loop
+        } // end-for-loop-levels
+
+        /** To do: reduce code duplication*/
+        // Extract transmissibility values for intersections between leaf cells
+        // belonging to different level grids.
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            for (const auto& intersection : Dune::intersections(grid.leafGridView(), element)) {
+                if (!intersection.neighbor())  // intersection is on the domain boundary
+                    continue;
+                if (intersection.inside().level() == intersection.outside().level())
+                    continue; // considered above
+
+                const unsigned leafIdxIn = intersection.inside().index();
+                const unsigned leafIdxOut = intersection.outside().index();
+
+                if (leafIdxIn > leafIdxOut)
+                    continue; // we only need to handle each connection once.
+
+                // Leaf cells belong to different level grids, in particular,
+                // they have diffent 'origin' cell in level zero. Therefore,
+                // different Cartesian Index.
+                const int cartIdxIn_l0 = cartMapp.cartesianIndex(leafIdxIn);
+                const int cartIdxOut_l0 = cartMapp.cartesianIndex(leafIdxOut);
+
+                // We use min and max level zero Cartesian indices to distinguish
+                // X, Y, and Z transmissibility values.
+                int minCartIdx = std::min(cartIdxIn_l0, cartIdxOut_l0);
+                int maxCartIdx = std::max(cartIdxIn_l0, cartIdxOut_l0);
+
+                //    --------------------   In this situation, we only get 2 Cartesian indices:
+                //    | coarser |c4|__|__|   cartIdx_c1 and cartIdx_originRefinedCell.
+                //    | cell    |c3|__|__|   That pair of Cartesian indices will be considered
+                //    | 'c1'    |c2|__|__|   3 times:
+                //    --------------------   - intersection between c1(coarse level) and c2(refined level)
+                //                           - intersection between c1(coarse level) and c3(refined level)
+                //                           - intersection between c1(coarse level) and c4(refined level)
+                // For now, we sum up all of them, instead of rewriting the entry and keeping the last
+                // assigned value.
+
+                // To store in the two level grids (double-check if this is correct or duplicated)
+                const int levelCartIdxIn = levelCartMapp.cartesianIndex( intersection.inside().index(),
+                                                                         intersection.inside().level());
+                const int levelCartIdxOut = levelCartMapp.cartesianIndex( intersection.outside().index(),
+                                                                          intersection.outside().level());
+
+                if (maxCartIdx - minCartIdx == 1 && cartDims[0] > 1 ) {
+                    outputTransDiff_levels[levelCartIdxIn].at("TRANX").template data<double>()[levelCartIdxIn]
+                        += leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+
+                    outputTransDiff_levels[levelCartIdxOut].at("TRANX").template data<double>()[levelCartIdxOut]
+                        += leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                    continue;
                 }
-            } // end-for-loop-level
-        } // end-if-Grid=CpGrid
-    }
+
+                if (maxCartIdx - minCartIdx == cartDims[0] && cartDims[1] > 1) {
+                    outputTransDiff_levels[levelCartIdxIn].at("TRANY").template data<double>()[levelCartIdxIn]
+                        += leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+
+                    outputTransDiff_levels[levelCartIdxOut].at("TRANY").template data<double>()[levelCartIdxOut]
+                        += leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                    continue;
+                }
+
+                if (maxCartIdx - minCartIdx == cartDims[0]*cartDims[1] ||
+                    directVerticalNeighbors(cartDims,
+                                            levelCartToLevelCompressed[/*level = */0],
+                                            minCartIdx,
+                                            maxCartIdx)) {
+
+                    outputTransDiff_levels[levelCartIdxIn].at("TRANZ").template data<double>()[levelCartIdxIn]
+                        += leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+
+                    outputTransDiff_levels[levelCartIdxOut].at("TRANZ").template data<double>()[levelCartIdxOut]
+                        += leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                }
+            } // end-intersection-loop
+        } // end-element-loop
+    } // end-if-Grid==CpGrid
 }
 
 #endif // OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
