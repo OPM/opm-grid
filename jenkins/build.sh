@@ -21,9 +21,8 @@ downstreamRev[opm-simulators]=master
 downstreamRev[opm-upscaling]=master
 
 # Clone opm-common
-pushd .
 mkdir -p $WORKSPACE/deps/opm-common
-cd $WORKSPACE/deps/opm-common
+pushd $WORKSPACE/deps/opm-common
 git init .
 git remote add origin https://github.com/OPM/opm-common
 git fetch --depth 1 origin ${upstreamRev[opm-common]}:branch_to_build
@@ -35,6 +34,8 @@ source $WORKSPACE/deps/opm-common/jenkins/build-opm-module.sh
 
 parseRevisions
 printHeader opm-grid
+
+clone_repositories opm-grid
 
 # Setup opm-data
 if grep -q "with downstreams" <<< $ghprbCommentBody
