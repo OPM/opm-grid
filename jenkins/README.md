@@ -12,3 +12,6 @@ To specify a given pull request to use for upstreams and downstreams,
 trigger line needs to contain &lt;module-name&gt;=&lt;pull request number&gt;.
 
 To build with downstreams the trigger line needs to contain 'with downstreams'.
+
+**static_analysis.sh**:
+Run static analysis for opm-grid
