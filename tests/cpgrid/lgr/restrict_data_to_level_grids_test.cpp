@@ -51,15 +51,24 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+struct ParentTestData
+{
+    int index_{};
+    double double_data_{};
+    int int_data_{};
+    double extra_data_{};
+};
+
+
 // Expected double data cartesianIndex/10, expect for parent cells.
 // Expected int data cartesianIndex*10, expect for parent cells.
-// Expected double data cartesianIndex/100, expect for parent cells.
+// Expected extra data cartesianIndex/100, expect for parent cells.
 std::tuple<std::vector<std::vector<double>>,
            std::vector<std::vector<int>>,
            std::vector<std::vector<double>>>
 prepareTestData(const Dune::CpGrid& grid,
                 const std::vector<std::vector<int>>& cartesian_data_levels,
-                const std::vector<std::vector<int>>& parent_cells_levels)
+                const std::vector<std::vector<ParentTestData>>& parents_data_levels)
 {
     std::vector<std::vector<double>> expected_double_data_levels{};
     std::vector<std::vector<int>> expected_int_data_levels{};
@@ -80,11 +89,11 @@ prepareTestData(const Dune::CpGrid& grid,
             expected_extra_data_levels[level][i] = cartesian_data_levels[level][i]*0.01;
         }
 
-        // Parent cells that get "rubbish = std::numeric_limits<double>::max()"
-        for (const auto& idx : parent_cells_levels[level]) {
-            expected_double_data_levels[level][idx] = std::numeric_limits<double>::max();
-            expected_int_data_levels[level][idx] = std::numeric_limits<int>::max();
-            expected_extra_data_levels[level][idx] = std::numeric_limits<double>::max();
+        // Parent cells get average of their children cell data.
+        for (const auto& parent_data : parents_data_levels[level]) {
+            expected_double_data_levels[level][parent_data.index_] = parent_data.double_data_;
+            expected_int_data_levels[level][parent_data.index_] = parent_data.int_data_;
+            expected_extra_data_levels[level][parent_data.index_] = parent_data.extra_data_;
         }
     }
     return std::make_tuple(expected_double_data_levels,
@@ -151,7 +160,9 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
                               std::move(leafExtra));
 
     std::vector<Opm::RestartValue> restartValue_levels{};
-    Opm::Lgr::extractRestartValueLevelGrids<Dune::CpGrid>(grid, leafRestartValue, restartValue_levels);
+    Opm::Lgr::extractRestartValueLevelGrids<Dune::CpGrid>(grid,
+                                                          leafRestartValue,
+                                                          restartValue_levels);
 
 
     for (int level = 0; level <= grid.maxLevel(); ++level) {
@@ -162,30 +173,22 @@ void restrictFakeLeafDataToLevelGrids(const Dune::CpGrid& grid,
         const auto& levelDoublePropData = restartValue_levels[level].solution.data<double>("DOUPROP");
         const auto& levelIntPropData = restartValue_levels[level].solution.data<int>("INTPROP");
 
-        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
-            if (element.isLeaf())
-                continue;
-            BOOST_CHECK_EQUAL(levelDoublePropData[element.index()], std::numeric_limits<double>::max());
-            BOOST_CHECK_EQUAL(levelIntPropData[element.index()], std::numeric_limits<int>::max());
-        }
-
         BOOST_CHECK_EQUAL(levelDoublePropData.size(), grid.levelGridView(level).size(0));
         BOOST_CHECK_EQUAL(levelIntPropData.size(), grid.levelGridView(level).size(0));
 
-        BOOST_CHECK_EQUAL_COLLECTIONS(levelDoublePropData.begin(), levelDoublePropData.end(),
-                                      expected_double_data_levels[level].begin(), expected_double_data_levels[level].end());
-
-        BOOST_CHECK_EQUAL_COLLECTIONS(levelIntPropData.begin(), levelIntPropData.end(),
-                                      expected_int_data_levels[level].begin(), expected_int_data_levels[level].end());
+        for (int i = 0; i < grid.levelGridView(level).size(0); ++i) {
+            BOOST_CHECK_CLOSE(levelDoublePropData[i], expected_double_data_levels[level][i], 1e-7);
+            BOOST_CHECK_EQUAL(levelIntPropData[i], expected_int_data_levels[level][i]);
+        }
 
         for (const auto& [rst_key, levelVector] : restartValue_levels[level].extra) {
 
             BOOST_CHECK_EQUAL(rst_key.key, "EXTRA");
             BOOST_CHECK_EQUAL(levelVector.size(), grid.levelGridView(level).size(0));
-
-            BOOST_CHECK_EQUAL_COLLECTIONS(levelVector.begin(), levelVector.end(),
-                                          expected_extra_data_levels[level].begin(), expected_extra_data_levels[level].end());
-
+            
+            for (int i = 0; i < grid.levelGridView(level).size(0); ++i) {
+                BOOST_CHECK_CLOSE(levelVector[i], expected_extra_data_levels[level][i], 1e-7);
+            }
         }
     }
 }
@@ -199,14 +202,14 @@ BOOST_AUTO_TEST_CASE(restrictDataGridWithoutLgrs)
     cartesian_data_levels.resize(grid.maxLevel()+1);
     cartesian_data_levels[0] = std::vector<int>(grid.levelGridView(0).size(0));
     std::iota(cartesian_data_levels[0].begin(), cartesian_data_levels[0].end(), 0);
-
-    std::vector<std::vector<int>> parent_cells_levels = {std::vector<int>{}}; // parent cells level 0
+    
+    std::vector<std::vector<ParentTestData>> parents_data_levels = {std::vector<ParentTestData>{}};
 
     const auto [expected_double_data_levels,
                 expected_int_data_levels,
                 expected_extra_data_levels] = prepareTestData(grid,
                                                               cartesian_data_levels,
-                                                              parent_cells_levels);
+                                                              parents_data_levels);
     restrictFakeLeafDataToLevelGrids(grid,
                                      expected_double_data_levels,
                                      expected_int_data_levels,
@@ -253,15 +256,29 @@ BOOST_AUTO_TEST_CASE(restrictDataForNonNestedLgrsSharingEdges)
     cartesian_data_levels[2] = {  9, 9, 10, 10, 9, 9, 10, 10, 9, 9, 10, 10,  // layer 0
                                   9, 9, 10, 10, 9, 9, 10, 10, 9, 9, 10, 10}; // layer 1
 
-    std::vector<std::vector<int>> parent_cells_levels = { std::vector<int>{9,10,13,14,17,18,25,26,29,30}, // parent cells level 0
-                                                          std::vector<int>{}, // parent cells level 1
-                                                          std::vector<int>{}}; // parent cells level 2
+    std::vector<ParentTestData> parents_data_level0 = { ParentTestData{9 /*index*/, 0.9, 90, 0.09},
+                                                        ParentTestData{10 /*index*/, 1, 100, 0.1},
+                                                        ParentTestData{13 /*index*/, 1.3, 130, 0.13},
+                                                        ParentTestData{14 /*index*/, 1.4, 140, 0.14},
+                                                        ParentTestData{17 /*index*/, 1.7, 170, 0.17},
+                                                        ParentTestData{18 /*index*/, 1.8, 180, 0.18},
+                                                        ParentTestData{25 /*index*/, 2.5, 250, 0.25},
+                                                        ParentTestData{26 /*index*/, 2.6, 260, 0.26},
+                                                        ParentTestData{29 /*index*/, 2.9, 290, 0.29},
+                                                        ParentTestData{30 /*index*/, 3, 300, 0.3}
+    };
+
+    std::vector<std::vector<ParentTestData>> parents_data_levels = {
+        parents_data_level0,
+        std::vector<ParentTestData>{}, // no parent cells level 1 
+        std::vector<ParentTestData>{}  // no parent cells level 2 
+    };
 
     const auto [expected_double_data_levels,
                 expected_int_data_levels,
                 expected_extra_data_levels] = prepareTestData(grid,
                                                               cartesian_data_levels,
-                                                              parent_cells_levels);
+                                                              parents_data_levels);
     restrictFakeLeafDataToLevelGrids(grid,
                                      expected_double_data_levels,
                                      expected_int_data_levels,
@@ -304,17 +321,21 @@ BOOST_AUTO_TEST_CASE(restrictDataForNestedRefinementOnly)
             cartesian_data_levels[level] =  std::vector<int>(grid.levelGridView(level).size(0), 4);
         }
     }
-    std::vector<std::vector<int>> parent_cells_levels = { std::vector<int>{4}, // parent index LGR1 = {4}
-                                                          std::vector<int>{4}, // {level 1, level element index 4} parent cell (children in LGR2)
-                                                          std::vector<int>{3}, // {level 2, level element index 3} parent cell (children in LGR3)
-                                                          std::vector<int>{3}, // {level 3, level element index 3} parent cell (children in LGR4)
-                                                          std::vector<int>{}}; // no parent cells in level 4
+
+    std::vector<std::vector<ParentTestData>> parents_data_levels =
+        {
+            std::vector<ParentTestData>{ ParentTestData{4, 0.4, 40, 0.04} }, // parent index LGR1 = {4}, Cartesian index: 4
+            std::vector<ParentTestData>{ ParentTestData{4, 0.4, 40, 0.04} }, // {level 1, level element index 4} parent cell (children in LGR2), CartIdx: 4
+            std::vector<ParentTestData>{ ParentTestData{3, 0.4, 40, 0.04} }, // {level 2, level element index 3} parent cell (children in LGR3), CartIdx:4
+            std::vector<ParentTestData>{ ParentTestData{3, 0.4, 40, 0.04} }, // {level 3, level element index 3} parent cell (children in LGR4), CartIdx:4
+            std::vector<ParentTestData>{}                                    // no parent cells in level 4
+        };
 
     const auto [expected_double_data_levels,
                 expected_int_data_levels,
                 expected_extra_data_levels] = prepareTestData(grid,
                                                               cartesian_data_levels,
-                                                              parent_cells_levels);
+                                                              parents_data_levels);
     restrictFakeLeafDataToLevelGrids(grid,
                                      expected_double_data_levels,
                                      expected_int_data_levels,
@@ -363,17 +384,21 @@ BOOST_AUTO_TEST_CASE(restrictDataForMixNameOrderAndNestedRefinement)
     // cartesian index parent cell/origin cell  = 0
     cartesian_data_levels[4] =  std::vector<int>(grid.levelGridView(4).size(0));    // LGR4
 
-    std::vector<std::vector<int>> parent_cells_levels = { std::vector<int>{0,4}, // parent index LGR1 = {4}, parent index LGR3 = {0}
-                                                          std::vector<int>{0},   // {level 1, level element index 0} parent cell (children in LGR2)
-                                                          std::vector<int>{3},   // {level 2, level element index 3} parent cell (children in LGR4)
-                                                          std::vector<int>{},    // no parent cells in level 3
-                                                          std::vector<int>{}};   // no parent cells in level 4
+    std::vector<std::vector<ParentTestData>> parents_data_levels =
+        {
+            std::vector<ParentTestData>{ ParentTestData{0, 0.0, 0, 0.0},     // parent index LGR1 = {4}, Cartesian index: 4
+                                         ParentTestData{4, 0.4, 40, 0.04} }, // parent index LGR3 = {0}, Cartesian index: 0
+            std::vector<ParentTestData>{ ParentTestData{0, 0.4, 40, 0.04} }, // {level 1, level element index 0} parent cell (children in LGR2), CartIdx: 4
+            std::vector<ParentTestData>{ ParentTestData{3, 0.0, 0, 0.0} },   // {level 2, level element index 3} parent cell (children in LGR4), CartIdx: 0
+            std::vector<ParentTestData>{},                                   // no parent cells in level 3
+            std::vector<ParentTestData>{}                                    // no parent cells in level 4
+        };
 
     const auto [expected_double_data_levels,
                 expected_int_data_levels,
                 expected_extra_data_levels] = prepareTestData(grid,
                                                               cartesian_data_levels,
-                                                              parent_cells_levels);
+                                                              parents_data_levels);
     restrictFakeLeafDataToLevelGrids(grid,
                                      expected_double_data_levels,
                                      expected_int_data_levels,
@@ -478,6 +503,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgrHasAtLeastOneActiveParentCell)
                                   28,29,30,31,
                                   32,33,/*34,35,*/
                                   /*36,37,38,39*/}; // layer 1 end
+    
     // cartesian index parent cell/origin cell  = 10.
     // LGR1 dim: (3*2)x(3*2)x(1*2) = 6x6x2 -> 72  [!] grid.levelGridView(1).size(0) = 8 active cells (!= 72)
     cartesian_data_levels[1] =  std::vector<int>(8, 10); // parent cell Cartesian index 10
@@ -488,15 +514,18 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgrHasAtLeastOneActiveParentCell)
     // LGR2 dim: (2*3)x(2*3)x(1*3) = 6x6x3 -> 108 [!] grid.levelGridView(2).size(0) = 0 active cells (!= 108)
     // cartesian_data_levels[2] empty
 
-    std::vector<std::vector<int>> parent_cells_levels = { std::vector<int>{2},  // parent index LGR1 = {2} (Cartesian index: 10)
-                                                          std::vector<int>{},   // no parent cells in level 1
-                                                          std::vector<int>{}};  // no parent cells in level 2
+    std::vector<std::vector<ParentTestData>> parents_data_levels =
+        {
+            std::vector<ParentTestData>{ ParentTestData{2, 1, 100, 0.1} }, // parent index LGR1 = {2} (Cartesian index: 10)
+            std::vector<ParentTestData>{},                                 // no parent cells in level 1
+            std::vector<ParentTestData>{}                                  // no parent cells in level 2
+        };
 
     const auto [expected_double_data_levels,
                 expected_int_data_levels,
                 expected_extra_data_levels] = prepareTestData(grid,
                                                               cartesian_data_levels,
-                                                              parent_cells_levels);
+                                                              parents_data_levels);
     restrictFakeLeafDataToLevelGrids(grid,
                                      expected_double_data_levels,
                                      expected_int_data_levels,
