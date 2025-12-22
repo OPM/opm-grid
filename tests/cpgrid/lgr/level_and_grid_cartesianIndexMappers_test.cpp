@@ -413,9 +413,12 @@ void checkGloballyRefinedTestGrids(const Dune::CpGrid& grid,
 
     // For hidden-globally-refined grid via addLgrsUpdateLeafView(...), or adapt(), or explicit
     // globalRefine(...),
-    // CartesianIndexMapper::cartesianDimensions and grid.logicalCartesianSize() DO NOT coincide
+    // CartesianIndexMapper::cartesianDimensions and grid.logicalCartesianSize() coincide
     Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
-    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
+    Opm::areEqual(grid.logicalCartesianSize(), {4,3,3} /* grid gets level zero Cartesian dimensions */);
+    // For hidden-globally-refined grid via addLgrsUpdateLeafView(...), or adapt(), or explicit
+    // globalRefine(...), level zero and leaf grid view logicalCartesianSize() DO NOT coincide.
+    Opm::areEqual(grid.currentLeafData().logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
 
     checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(grid, levelCartMapp, cartMapp, isParallel);
 }

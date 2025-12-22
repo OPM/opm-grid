@@ -657,7 +657,7 @@ const std::array<int, 3>& CpGrid::logicalCartesianSize() const
 {
     // Temporary. For a grid with LGRs, we set the logical cartesian size of the LeafGridView as the one for level 0.
     //            Goal: CartesianIndexMapper well-defined for CpGrid LeafView with LGRs.
-    return current_data_->back() -> logical_cartesian_size_;
+    return current_data_->front() -> logical_cartesian_size_;
 }
 
 const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData() const

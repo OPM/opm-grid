@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(gridLogCartSize_afterStrictLocalRefinementWith_addLgrsUpdat
                   grid.logicalCartesianSize());
 }
 
-BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView_makesSense)
+BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView_isACopyOfLevelZeroLogCartSize)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -110,7 +110,10 @@ BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpda
     Opm::areEqual(/* expected logicalCartesianSize = */ {12, 9, 9},  // LGR1 dimensions {4*3, 3*3, 3*3}.
                   /* LGR1 logicalCartesianSize = */ grid.currentData()[1]->logicalCartesianSize());
 
-    Opm::areEqual(/* expected logicalCartesianSize = */ {12, 9, 9},  // LGR1 dimensions {4*3, 3*3, 3*3}.
+    Opm::areEqual(/* expected logicalCartesianSize = */ {12, 9, 9},  // leaf grid dimensions {4*3, 3*3, 3*3}.
+                  grid.currentLeafData().logicalCartesianSize());
+
+    Opm::areEqual(/* expected logicalCartesianSize = */ {4, 3, 3}, // grid gets copy of level zero logCartSize
                   grid.logicalCartesianSize());
 }
 
@@ -148,7 +151,7 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_
                   grid.logicalCartesianSize());
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt_makeSense)
+BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -171,7 +174,10 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt
     Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
                   /* LGR1 logicalCartesianSize = */ grid.currentData()[1]->logicalCartesianSize());
 
-    Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+     Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+                   grid.currentLeafData().logicalCartesianSize()); // leaf grid
+
+    Opm::areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
                   grid.logicalCartesianSize());
 }
 
@@ -187,7 +193,11 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_after_globalRefine_makeSense)
     grid.globalRefine(1); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
 
     Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+                  grid.currentLeafData().logicalCartesianSize());
+    
+    Opm::areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
                   grid.logicalCartesianSize());
+    
     // The refined level grid is a "copy" of the leaf grid view, if globalRefine has been invoked.
     // TODO: remove the refined level grid in this case.
     Opm::areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
