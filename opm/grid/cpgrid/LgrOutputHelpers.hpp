@@ -21,6 +21,7 @@
 #define OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
@@ -30,6 +31,7 @@
 
 #include <algorithm>    // for std::min/max
 #include <cstddef>      // for std::size_t
+#include <unordered_map>
 #include <utility>      // for std::move
 #include <type_traits>  // for std::is_same_v
 #include <vector>
@@ -149,6 +151,16 @@ void populateDataVectorLevelGrids(const Dune::CpGrid& grid,
                                   const std::vector<std::vector<int>>& toOutput_refinedLevels,
                                   std::vector<std::vector<ScalarType>>& levelVectors);
 
+/// @brief Map level Cartesian index to level compressed index (active cell)
+///
+/// @param [in] grid
+/// @param [in] levelCartesianIndexMapper
+/// @return Vector of unordered maps, each entry holds the map for a level grid.
+///         levelCartesianIndex (key) -> levelCompressedIndex (value).
+std::vector<std::unordered_map<int,int>>
+levelCartesianToLevelCompressedMaps(const Dune::CpGrid& grid,
+                                    const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp);
+
 /// @brief Extracts and organizes solution data for all grid refinement levels.
 ///
 /// It derives these level-specific solutions from a given leaf-solution. For cells
@@ -189,6 +201,31 @@ template <typename Grid>
 void extractRestartValueLevelGrids(const Grid& grid,
                                    const Opm::RestartValue& leafRestartValue,
                                    std::vector<Opm::RestartValue>& restartValue_levels);
+
+/// @brief Constructs TRANS* values for level zero cells, that appear on the leaf.
+///
+/// @param [in] grid
+/// @param [in] leafTrans
+/// @param [out] tranx       Opm::data::CellData for TRANX
+/// @param [out] trany       Opm::data::CellData for TRANY
+/// @param [out] tranz       Opm::data::CellData for TRANZ
+///                          tranx, trany, and tranz only contain TRANS* values,
+///                          between level zero cells sharing an intersection, i.e.,
+///                          not at the boundary of an LGR, or the grid domain.
+/// @param [in] cartMapp     CartesianIndexMapper of the grid
+/// @param [in] cartDims     Cartesian dimensions of the grid (coincide with level zero grid).
+/// @param [in] directVerticalNeighbors
+template <typename Grid, typename TransmissibilityType, typename CartesianMapper,
+          typename IsNumAquCell, typename DirectVerticalNeighborsFunc>
+void extractTransLevelZero(const Grid& grid,
+                           const TransmissibilityType& leafTrans,
+                           Opm::data::CellData& tranx,
+                           Opm::data::CellData& trany,
+                           Opm::data::CellData& tranz,
+                           const CartesianMapper& cartMapp,
+                           const std::array<int,3>& cartDims,
+                           const IsNumAquCell& isNumAquCell,
+                           const DirectVerticalNeighborsFunc& directVerticalNeighbors);
 
 } // namespace Lgr
 } // namespace Opm
@@ -283,7 +320,7 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
 
         const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
         for (int level = 1; level <= maxLevel; ++level) { // exclude level zero (does not need reordering)
-            toOutput_refinedLevels[level-1] = mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
+            toOutput_refinedLevels[level-1] = Opm::Lgr::mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
         }
 
         std::vector<Opm::data::Solution> dataSolutionLevels{};
@@ -318,6 +355,79 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
             }
         }
     }
+}
+
+template <typename Grid, typename TransmissibilityType, typename CartesianMapper,
+          typename IsNumAquCell, typename DirectVecticalNeighborsFunc>
+void Opm::Lgr::extractTransLevelZero(const Grid& grid,
+                                     const TransmissibilityType& leafTrans,
+                                     Opm::data::CellData& tranx,
+                                     Opm::data::CellData& trany,
+                                     Opm::data::CellData& tranz,
+                                     const CartesianMapper& cartMapp,
+                                     const std::array<int,3>& cartDims,
+                                     const IsNumAquCell& isNumAquCell,
+                                     const DirectVecticalNeighborsFunc& directVerticalNeighbors)
+
+{
+    if constexpr (std::is_same_v<Grid, Dune::CpGrid>) {
+        // To detect direct vertical neighboring cells:
+        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+        const auto levelCartToLevelCompressed = Opm::Lgr::levelCartesianToLevelCompressedMaps(grid, levelCartMapp);
+
+        // Extract transmissibility values for intersections between leaf cells
+        // belonging to level zero grid
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            for (const auto& intersection : Dune::intersections(grid.leafGridView(), element)) {
+                if (!intersection.neighbor())  // intersection is on the domain boundary
+                    continue;
+                if ((intersection.inside().level()>0) || (intersection.outside().level()>0))
+                    continue; // for now, we only care about level zero cells
+
+                const unsigned leafIdxIn = intersection.inside().index();
+                const unsigned leafIdxOut = intersection.outside().index();
+
+                // Leaf cells that belong to level zero grid, in particular,
+                // they have diffent 'origin' cell in level zero. Therefore,
+                // different Cartesian Index.
+                const int cartIdxIn = cartMapp.cartesianIndex(leafIdxIn);
+                const int cartIdxOut = cartMapp.cartesianIndex(leafIdxOut);
+
+                if (isNumAquCell(cartIdxIn) || isNumAquCell(cartIdxOut)) {
+                    // Connections involving numerical aquifers are always NNCs
+                    // for the purpose of file output.  This holds even for
+                    // connections between cells like (I,J,K) and (I+1,J,K)
+                    // which are nominally neighbours in the Cartesian grid.
+                    continue;
+                }
+
+                if (cartIdxIn > cartIdxOut)
+                    continue; // we only need to handle each connection once.
+
+                // We use min and max level zero Cartesian indices to distinguish
+                // X, Y, and Z transmissibility values.
+
+                if (cartIdxOut - cartIdxIn == 1 && cartDims[0] > 1 ) {
+                    tranx.template data<double>()[cartIdxIn] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                    continue;
+                }
+
+                if (cartIdxOut - cartIdxIn == cartDims[0] && cartDims[1] > 1) {
+                    trany.template data<double>()[cartIdxIn] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                    continue;
+                }
+
+                if (cartIdxOut - cartIdxIn == cartDims[0]*cartDims[1] ||
+                    directVerticalNeighbors(cartDims,
+                                            levelCartToLevelCompressed[/*level = */0],
+                                            cartIdxIn,   // min
+                                            cartIdxOut)) // max
+                {
+                    tranz.template data<double>()[cartIdxIn] = leafTrans.transmissibility(leafIdxIn, leafIdxOut);
+                }
+            } // end-intersection-loop
+        } // end-element-loop
+    } // end-if-Grid==CpGrid
 }
 
 #endif // OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
