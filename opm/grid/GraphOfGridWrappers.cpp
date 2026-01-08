@@ -45,7 +45,7 @@ void getGraphOfGridVerticesList(void* pGraph,
                [[maybe_unused]] int dimLocalID,
                                 ZOLTAN_ID_PTR gIDs,
                [[maybe_unused]] ZOLTAN_ID_PTR lIDs,
-                                int weightDim,
+               [[maybe_unused]] int weightDim,
                                 float *objWeights,
                                 int *err)
 {
@@ -99,7 +99,7 @@ void getGraphOfGridEdgeList(void *pGraph,
                             int *numEdges,
                             ZOLTAN_ID_PTR nborGIDs,
                             int *nborProc,
-                            int weightDim,
+           [[maybe_unused]] int weightDim,
                             float *edgeWeights,
                             int *err)
 {

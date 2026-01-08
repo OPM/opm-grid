@@ -675,9 +675,11 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_
                                         int parentFaceLastAppearanceIdx,
                                         const std::array<int,3>& cells_per_dim_lgr2)
 {
+#ifndef NDEBUG
     assert(newRefinedCornerLiesOnEdge(cells_per_dim_lgr1, cornerIdxLgr1));
     const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(current_data, cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
     assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
+#endif
 
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     const auto& parentCell_to_face = current_data.cellToFace(elemLgr1);
@@ -951,11 +953,12 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
 
                 assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
 
-                int lastElemIdxWithMarkedFace = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-
                 if (faceInMarkedElemAndRefinedFaces[markedFace].size() == 1) {
                     // The marked face appears only in one marked element -> then, we store this face now.
+#ifndef NDEBUG
+                    int lastElemIdxWithMarkedFace = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
                     assert(lastElemIdxWithMarkedFace == elemIdx);
+#endif
 
                     insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace, // map a_to_b
                                         refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace, // map b_to_a
@@ -1177,10 +1180,11 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& curre
     //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
     int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
     int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
+#ifndef NDEBUG
     int refined_j_faces = cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
 
     assert( faceIdxInLgr < refined_k_faces + refined_i_faces + refined_j_faces);
-
+#endif
     for (const auto& face : parentCell_to_face) {
         const auto& faceTag =  current_data.faceTag(face.index());
         if (faceIdxInLgr <  refined_k_faces ) { // It's a K_FACE
@@ -1517,11 +1521,11 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            const std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
                            const std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                           const std::vector<int>& assignRefinedLevel,
+                           [[maybe_unused]] const std::vector<int>& assignRefinedLevel,
                            const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                           const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                           const int& preAdaptMaxLevel)
+                           [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                           [[maybe_unused]] const int& preAdaptMaxLevel)
 {
     adapted_faces.resize(face_count);
     mutable_face_tags.resize(face_count);
@@ -1570,9 +1574,11 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                         lastAppearanceLgr_lgrEquivCorner =  cornerInMarkedElemWithEquivRefinedCorner[corner_candidate->second].back();
                     }
                     else {
+#ifndef NDEBUG
                         const auto& shiftedLevel = assignRefinedLevel[elemLgr] - preAdaptMaxLevel -1; // Assigned level > preAdapt maxLevel
                         bool isNewRefinedCornInInteriorLgr = isRefinedCornerInInteriorLgr(cells_per_dim_vec[shiftedLevel], elemLgrCorn);
                         assert(!isNewRefinedCornInInteriorLgr);
+#endif
                         // To locate vanished corners, we need a while-loop, since {elemLgr, elemLgrcorner} leads to
                         // {neighboringElemLgr, neighboringElemLgrCornerIdx}, which might have also vanished.
                         // Then, use the lastest appearance of the current corner, meaning, the first (and unique one - by construction) that
