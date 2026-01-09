@@ -307,12 +307,16 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
             std::vector<std::vector<double>> levelVectors{};
             levelVectors.resize(maxLevel+1);
 
+            if (rst_key.key == "OPMEXTRA") {
+                // For OPMEXTRA, leafVector has size 1 instead of
+                // grid.leafGridView().size(0)
+                continue; // skip it
+            }
             Opm::Lgr::populateDataVectorLevelGrids<double>(grid,
                                                            maxLevel,
                                                            leafVector,
                                                            toOutput_refinedLevels,
                                                            levelVectors);
-
             for (int level = 0; level <= maxLevel; ++level) {
                 restartValue_levels[level].addExtra(rst_key.key, rst_key.dim, std::move(levelVectors[level]));
             }
