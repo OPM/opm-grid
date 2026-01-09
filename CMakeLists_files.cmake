@@ -92,6 +92,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/grid_global_id_set_test.cpp
+  tests/cpgrid/lgr/id_entity_entityrep_test.cpp
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
   tests/cpgrid/lgr/lgrs_sharing_faces_test.cpp
