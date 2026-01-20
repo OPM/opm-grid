@@ -567,7 +567,6 @@ private:
     EdgeWeightMethod edgeWeightsMethod;
     int root;
     const double zoltanImbalanceTol;
-    std::string errorOnRoot;
 
     struct Zoltan_Struct* zz = nullptr;
     int changes = 0;
