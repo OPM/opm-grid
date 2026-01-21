@@ -21,8 +21,6 @@ set (opm-grid_CONFIG_VAR
 
 # dependencies
 set (opm-grid_DEPS
-  # compile with C99 support if available
-  "C99"
   # various runtime library enhancements
   "MPI"
   "dune-common REQUIRED"
