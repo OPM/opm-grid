@@ -14,7 +14,7 @@
 #                                                                         #
 ###########################################################################
 
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.23)
 
 # Mandatory call to project
 project(opm-grid C CXX)
