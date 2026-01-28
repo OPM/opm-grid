@@ -117,6 +117,16 @@ template <typename Container>
 Container reorderForOutput(const Container& simulatorContainer,
                            const std::vector<int>& toOutput);
 
+/// @brief Map level Cartesian index to level compressed index (active cell)
+///
+/// @param [in] grid
+/// @param [in] levelCartesianIndexMapper
+/// @return Vector of unordered maps, each entry holds the map for a level grid.
+///         levelCartesianIndex (key) -> levelCompressedIndex (value).
+std::vector<std::unordered_map<int,int>>
+levelCartesianToLevelCompressedMaps(const Dune::CpGrid& grid,
+                                    const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp);
+
 /// @breif Compute the parent data from the children data values
 ///
 /// @param [in] levelVectors A collection of per-level data vectors.
