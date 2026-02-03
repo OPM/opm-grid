@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(callAdaptWithoutArgsOnDistributedCoarseGrid)
         const auto& leafGridView = grid.leafGridView();
         // Mark all elements -> 'indirect' global refinement
         for (const auto& element : elements(leafGridView)){
-            grid.mark(1, element);
+            grid.mark(1, element, /* throwOnFailure = */ true);
         }
         grid.preAdapt();
         grid.adapt();

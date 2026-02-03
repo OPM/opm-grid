@@ -767,7 +767,7 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
     for (const auto& elemIdx : markedCells)
     {
         const auto& elem =  Dune::cpgrid::Entity<0>(grid.currentLeafData(), elemIdx, true);
-        grid.mark(1, elem);
+        grid.mark(1, elem, /* throwOnFailure = */ true);
         assignRefinedLevel[elemIdx] = grid.maxLevel() + 1;
         BOOST_CHECK_EQUAL( grid.getMark(elem), 1);
     }
@@ -789,7 +789,7 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
     for (const auto& elemIdx : markedCells)
     {
         const auto& elem =  Dune::cpgrid::Entity<0>(leafGridView, elemIdx, true);
-        grid.mark(1, elem);
+        grid.mark(1, elem, /* throwOnFailure = */ true);
     }
     bool preAdapt = grid.preAdapt();
     checkMarksAfterPreAdapt(grid, preAdapt);

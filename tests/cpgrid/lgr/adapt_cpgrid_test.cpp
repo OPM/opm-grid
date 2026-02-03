@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
     // Create other grid for comparison
     Dune::CpGrid equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-    equivalent_grid.globalRefine(1);
+    equivalent_grid.globalRefine(1, /* throwOnFailure = */ true);
 
     Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
 }

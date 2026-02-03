@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
 
         checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
-        grid.globalRefine(2);
+        grid.globalRefine(2, /* throwOnFailure = */ true);
 
         Opm::checkGridWithLgrs(grid,
                                /* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(callAdaptAfterAutoRefine_serial) {
         checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
         for (const auto& element : Dune::elements(grid.leafGridView())) {
-            grid.mark(1, element);
+            grid.mark(1, element, /* throwOnFailure = */ true);
         }
         grid.preAdapt();
         grid.adapt();
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(callAdaptNotAllElementsMarkedAfterAutoRefine_serial) {
             const int id = grid.globalIdSet().id(element);
             // Mark two elements
             if ( (id == maxCellId - 2) || (id == maxCellId -1)) {
-                grid.mark(1, element);
+                grid.mark(1, element, /* throwOnFailure = */ true);
             }
         }
         grid.preAdapt();

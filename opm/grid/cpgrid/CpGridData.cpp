@@ -1898,14 +1898,18 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
             child_to_parent_faces, child_to_parent_cell};
 }
 
-bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
+bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
 {
     if (refCount == -1) {
-        OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
+        if (throwOnFailure)
+            OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
+        return false; // Coarsening is not supported yet.
     }
     // Prevent refinement if the cell has a non-neighbor connection (NNC).
     if (hasNNCs({element.index()}) && (refCount == 1)) {
-        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported yet.");
+        if (throwOnFailure)
+            OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported yet.");
+        return false;
     }
     assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
     if (mark_.empty()) {

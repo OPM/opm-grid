@@ -1034,7 +1034,7 @@ const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const
     return *current_data_->back()->index_set_;
 }
 
-void CpGrid::globalRefine (int refCount)
+void CpGrid::globalRefine (int refCount, bool throwOnFailure)
 {
     if (refCount < 0) {
         OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
@@ -1061,8 +1061,8 @@ void CpGrid::globalRefine (int refCount)
 
             for(const auto& element: elements(this-> leafGridView())) {
                 // Mark all the elements of the current leaf grid view for refinement
-                mark(1, element);
-                assignRefinedLevel[element.index()] = preAdaptMaxLevel +1;
+                if (mark(1, element, throwOnFailure))
+                    assignRefinedLevel[element.index()] = preAdaptMaxLevel +1;
             }
 
             preAdapt();
@@ -1276,7 +1276,7 @@ void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<in
 {
     auto assignAndDetect = [this, &assignRefinedLevel, &lgr_with_at_least_one_active_cell](const cpgrid::Entity<0>& element, int level)
     {
-        mark(1, element);
+        mark(1, element, /* throwOnFailure = */ true);
         assignRefinedLevel[element.index()] = level+1;
         // shifted since starting grid is level 0, and refined grids levels are >= 1.
         lgr_with_at_least_one_active_cell[level] = 1;
@@ -1772,23 +1772,33 @@ template cpgrid::Entity<0> createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<3> createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp
 
-bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
+bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
 {
     // Throw if element has a neighboring cell from a different level.
     // E.g., a coarse cell touching the boundary of an LGR, or
     // a refined cell with a coarser/finner neighboring cell.
     for (const auto& intersection : Dune::intersections(leafGridView(), element)){
-        if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level()==0))
-            OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
+        if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level()==0)) {
+            // Refinement of cells at LGR boundaries is not supported, yet.
+            if (throwOnFailure)
+                OPM_THROW(std::invalid_argument, "Refinement of cells at LGR boundaries is not supported, yet.");
+            else
+                return false;
+        }
     }
     // For serial run, mark elements also in the level they were born.
+    std::optional<bool> mark0;
     if(currentData().size()>1) {
         // Mark element in its level
-        currentData()[element.level()] -> mark(refCount, element.getLevelElem());
+        mark0 = currentData()[element.level()] -> mark(refCount, element.getLevelElem(), throwOnFailure);
     }
     // Mark element (also in the serial run case) in leaf grid view. Note that if scatterGrid has been invoked, then
     // current_data_ == distributed_data_.
-    return current_data_->back()->mark(refCount, element);
+    bool mark1 = current_data_->back()->mark(refCount, element, throwOnFailure);
+    // Consistency check between level view and current view (serial run case).
+    if (mark0.value_or(mark1) != mark1)
+        OPM_THROW(std::logic_error, "Inconsistent marking state between current view and level view.");
+    return mark1;
 }
 
 int CpGrid::getMark(const cpgrid::Entity<0>& element) const
@@ -2707,7 +2717,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         break;
                 }
                 if(belongsToLevel) {
-                    this->mark(1, element);
+                    this->mark(1, element, /* throwOnFailure = */ true);
                     at_least_one_active_parent[level] = 1;
                     assignRefinedLevel[element.index()] = tmp_maxLevel + level +1;
                 }
