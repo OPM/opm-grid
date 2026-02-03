@@ -59,10 +59,6 @@ find_package(opm-common REQUIRED)
 # the build starts, so it makes sense to keep the data there then.
 include (OpmInit)
 OpmSetPolicies()
-# not the same location as most of the other projects? this hook overrides
-macro (dir_hook)
-endmacro (dir_hook)
-
 
 # list of prerequisites for this particular project; this is in a
 # separate file (in cmake/Modules sub-directory) because it is shared
@@ -76,7 +72,7 @@ include (CMakeLists_files.cmake)
 # Search opm-tests to use some of the data sets for testing
 include(Findopm-tests)
 
-macro (config_hook)
+macro(${project}_config_hook)
 	opm_need_version_of ("dune-common")
 	opm_need_version_of ("dune-geometry")
 	opm_need_version_of ("dune-grid")
@@ -94,22 +90,7 @@ macro (config_hook)
 		message(SEND_ERROR "opm-grid with MPI support requires the package ZOLTAN."
 			"Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)")
 	endif(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
-endmacro (config_hook)
-
-macro (prereqs_hook)
-endmacro (prereqs_hook)
-
-macro (sources_hook)
-endmacro (sources_hook)
-
-macro (fortran_hook)
-endmacro (fortran_hook)
-
-macro (files_hook)
-endmacro (files_hook)
-
-macro (tests_hook)
-endmacro (tests_hook)
+endmacro()
 
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
