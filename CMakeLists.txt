@@ -143,10 +143,10 @@ if(MPI_FOUND AND HAVE_OPM_TESTS AND HAVE_ECL_INPUT)
     DEPENDS opmgrid
     #ONLY_COMPILE
     PROCESSORS 4
-    CONDITION MPI_FOUND AND Boost_UNIT_TEST_FRAMEWORK_FOUND
+		CONDITION MPI_FOUND AND TARGET Boost::unit_test_framework
     DRIVER_ARGS -np 4
     TEST_ARGS -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
-    LIBRARIES opmgrid ${Boost_LIBRARIES})
+    LIBRARIES opmgrid Boost::unit_test_framework)
   add_test(NAME cpgrid_aquifer_parallel COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:cpgrid_aquifer_test> -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
 endif()
 
