@@ -1,5 +1,5 @@
-# -*- mode: cmake; tab-width: 2; indent-tabs-mode: t; truncate-lines: t; compile-command: "cmake -Wdev" -*-
-# vim: set filetype=cmake autoindent tabstop=2 shiftwidth=2 noexpandtab softtabstop=2 nowrap:
+# -*- mode: cmake; tab-width: 2; indent-tabs-mode: nil; truncate-lines: t; compile-command: "cmake -Wdev" -*-
+# vim: set filetype=cmake autoindent tabstop=2 shiftwidth=2 expandtab softtabstop=2 nowrap:
 
 ###########################################################################
 #                                                                         #
@@ -73,23 +73,28 @@ include (CMakeLists_files.cmake)
 include(Findopm-tests)
 
 macro(${project}_config_hook)
-	opm_need_version_of ("dune-common")
-	opm_need_version_of ("dune-geometry")
-	opm_need_version_of ("dune-grid")
-	find_file(_HAVE_DUNE_GRID_CHECKS checkpartition.cc HINTS ${dune-grid_INCLUDE_DIR}
-		PATH_SUFFIXES dune/grid/test)
-	if(_HAVE_DUNE_GRID_CHECKS)
-		set(HAVE_DUNE_GRID_CHECKS 1)
-	else(_HAVE_DUNE_GRID_CHECK)
-		set(HAVE_DUNE_GRID_CHECKS 0)
+  opm_need_version_of ("dune-common")
+  opm_need_version_of ("dune-geometry")
+  opm_need_version_of ("dune-grid")
+  find_file(_HAVE_DUNE_GRID_CHECKS
+    checkpartition.cc
+    HINTS
+      ${dune-grid_INCLUDE_DIR}
+    PATH_SUFFIXES
+      dune/grid/test
+  )
+  if(_HAVE_DUNE_GRID_CHECKS)
+    set(HAVE_DUNE_GRID_CHECKS 1)
+  else(_HAVE_DUNE_GRID_CHECK)
+    set(HAVE_DUNE_GRID_CHECKS 0)
   endif(_HAVE_DUNE_GRID_CHECKS)
-	list (APPEND ${project}_CONFIG_IMPL_VARS
-		HAVE_DUNE_GRID_CHECKS
-		)
-	if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
-		message(SEND_ERROR "opm-grid with MPI support requires the package ZOLTAN."
-			"Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)")
-	endif(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
+  list(APPEND ${project}_CONFIG_IMPL_VARS HAVE_DUNE_GRID_CHECKS)
+  if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
+    message(SEND_ERROR
+      "opm-grid with MPI support requires the package ZOLTAN."
+      "Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)"
+    )
+  endif()
 endmacro()
 
 # all setup common to the OPM library modules is done here
@@ -119,14 +124,30 @@ if(MPI_FOUND)
 
   if(Boost_VERSION_STRING VERSION_GREATER 1.53)
     list(APPEND test_4proc lgr_with_inactive_parent_cells_test)
-     foreach(procs 3 4)
-       add_test(NAME graphofgrid_parallel${procs} COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${procs} $<TARGET_FILE:test_graphofgrid_parallel>)
-       set_tests_properties(graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
-     endforeach()
+    foreach(procs 3 4)
+      add_test(
+        NAME
+          graphofgrid_parallel${procs}
+        COMMAND
+          ${MPIEXEC_EXECUTABLE}
+          ${MPIEXEC_NUMPROC_FLAG}
+          ${procs}
+          $<TARGET_FILE:test_graphofgrid_parallel>
+      )
+      set_tests_properties(graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
+    endforeach()
   endif()
 
   foreach(test4 ${tests_4proc})
-    add_test(NAME ${test4}_parallel COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:${test4}>)
+    add_test(
+      NAME
+        ${test4}_parallel
+      COMMAND
+        ${MPIEXEC_EXECUTABLE}
+        ${MPIEXEC_NUMPROC_FLAG}
+        4
+        $<TARGET_FILE:${test4}>
+    )
     set_tests_properties(${test4}_parallel PROPERTIES PROCESSORS 4)
   endforeach()
 endif()
@@ -139,15 +160,32 @@ if(MPI_FOUND AND HAVE_OPM_TESTS AND HAVE_ECL_INPUT)
   # to run the test in parall. ONLY_COMPILE does not work because
   # somehow -DBOOST_TEST_DYN_LINK is skipped and there is no main.
   opm_add_test(cpgrid_aquifer_test
-    SOURCES tests/cpgrid/cpgrid_aquifer_test.cpp
-    DEPENDS opmgrid
+    SOURCES
+      tests/cpgrid/cpgrid_aquifer_test.cpp
+    DEPENDS
+      opmgrid
     #ONLY_COMPILE
-    PROCESSORS 4
-		CONDITION MPI_FOUND AND TARGET Boost::unit_test_framework
-    DRIVER_ARGS -np 4
-    TEST_ARGS -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
-    LIBRARIES opmgrid Boost::unit_test_framework)
-  add_test(NAME cpgrid_aquifer_parallel COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:cpgrid_aquifer_test> -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
+    PROCESSORS
+      4
+    CONDITION
+      MPI_FOUND AND TARGET Boost::unit_test_framework
+    DRIVER_ARGS
+      -np 4
+    TEST_ARGS
+      -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
+    LIBRARIES
+      opmgrid Boost::unit_test_framework
+  )
+  add_test(
+    NAME
+      cpgrid_aquifer_parallel
+    COMMAND
+      ${MPIEXEC_EXECUTABLE}
+      ${MPIEXEC_NUMPROC_FLAG}
+      4
+      $<TARGET_FILE:cpgrid_aquifer_test>
+      -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
+  )
 endif()
 
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
