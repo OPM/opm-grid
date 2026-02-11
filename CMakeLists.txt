@@ -171,10 +171,6 @@ OpmSetPolicies()
 # with the find module
 include (${project}-prereqs)
 
-# read the list of components from this file (in the project directory);
-# it should set various lists with the names of the files to include
-include (CMakeLists_files.cmake)
-
 # Search opm-tests to use some of the data sets for testing
 include(Findopm-tests)
 
