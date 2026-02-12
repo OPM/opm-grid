@@ -105,7 +105,9 @@ macro(opm-grid_tests_hook)
         SOURCES
           tests/cpgrid/cpgrid_aquifer_test.cpp
         LIBRARIES
-          opmgrid Boost::unit_test_framework
+          opmcommon
+          opmgrid
+          Boost::unit_test_framework
       )
       add_test(
         NAME
