@@ -470,6 +470,7 @@ namespace Dune
         /// \brief  Refine the grid refCount times using the default refinement rule.
         ///         This behaves like marking all elements for refinement and then calling preAdapt, adapt and postAdapt.
         ///         The state after globalRefine is comparable to the state after postAdapt.
+        /// @param [in] refCount Refinement level
         /// @param [in] throwOnFailure If true, the function will throw an exception if the marking of any entity is invalid.
         void globalRefine (int refCount, bool throwOnFailure = false);
 
