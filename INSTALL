@@ -10,7 +10,7 @@ Getting started
 
 Suppose you have downloaded all DUNE modules of interest to your
 computer and extracted then in one common directory. See [1] for a
-list of available modules. 
+list of available modules.
 
 To compile the modules Dune has to check several components of
 your system and whether prerequisites within the modules are met. For
@@ -22,7 +22,7 @@ automake tools. Run
 to commence those tests and build all modules you have
 downloaded. Don't worry about messages telling you that libraries are
 missing: they are only needed for grid-self-checks we need for
-developing. 
+developing.
 
 You can customize the build to your specific needs by using an options file
 (see below)
@@ -74,7 +74,7 @@ dunecontrol --only=dune-common autogen --help
 (In the svn version this has to be calles after running autogen.)
 
 
-An example of an options file is 
+An example of an options file is
 
   # use a special compiler (g++ version 3.4) and install to a custom
   # directory, default is /usr/local/bin
