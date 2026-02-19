@@ -38,6 +38,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/geometry/type.hh>
 #include <opm/common/ErrorMacros.hpp>
+#include "Entity.hpp"
 #include "GlobalIdMapping.hpp"
 #include "Intersection.hpp"
 
@@ -62,11 +63,8 @@ namespace Dune
             static constexpr int dimension = 3;
 
             /** \brief Export supported entity types */
-            template <int cc>
-            struct Codim
-            {
-              typedef cpgrid::Entity< cc > Entity;
-            };
+            template <int cd>
+            using Codim = typename Impl::CodimTraits<cd>;
 
             /// @brief
             /// @todo Doc me!
@@ -208,11 +206,8 @@ namespace Dune
             static constexpr int dimension = 3;
 
             /** \brief Export supported entity types */
-            template <int cc>
-            struct Codim
-            {
-                using Entity = ::Dune::cpgrid::Entity<cc>;
-            };
+            template <int cd>
+            using Codim = typename Impl::CodimTraits<cd>;
 
             explicit IdSet(const CpGridData& grid)
                 : grid_(grid)
@@ -378,11 +373,8 @@ namespace Dune
             static constexpr int dimension = 3;
 
             /** \brief Export supported entity types */
-            template <int cc>
-            struct Codim
-            {
-                using Entity = ::Dune::cpgrid::Entity<cc>;
-            };
+            template <int cd>
+            using Codim = typename Impl::CodimTraits<cd>;
 
             void swap(std::vector<int>& cellMapping,
                       std::vector<int>& faceMapping,
@@ -497,10 +489,7 @@ namespace Dune
 
         /** \brief Export supported entity types */
         template <int cd>
-        struct Codim
-        {
-            using Entity = ::Dune::cpgrid::Entity<cd>;
-        };
+        using Codim = typename Impl::CodimTraits<cd>;
 
         explicit GlobalIdSet(const CpGridData& view);
 
