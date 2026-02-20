@@ -273,11 +273,10 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
             if (num_connections_on_proc.size() > 1) {
                 // partition with the most connections on it becomes new owner
-                int new_owner = std::max_element(num_connections_on_proc.begin(),
-                                                 num_connections_on_proc.end(),
-                                                 [](const auto& p1, const auto& p2)
-                                                 { return (p1.second < p2.second); })
-                                    ->first;
+                int new_owner =
+                    std::ranges::max_element(num_connections_on_proc,
+                                             [](const auto& p1, const auto& p2)
+                                             { return (p1.second < p2.second); })->first;
 
                 // all cells moving to new_owner. Might already contain cells from
                 // previous wells.
