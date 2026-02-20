@@ -152,9 +152,7 @@ namespace Opm
                 cell_corner_info.push_back(ci);
                 std::ranges::sort(vert_adj_faces);
                 std::vector<int> vert_nonadj_faces(cell_faces.size() - vert_adj_faces.size());
-                std::set_difference(cell_faces.begin(), cell_faces.end(),
-                                    vert_adj_faces.begin(), vert_adj_faces.end(),
-                                    vert_nonadj_faces.begin());
+                std::ranges::set_difference(cell_faces, vert_adj_faces, vert_nonadj_faces.begin());
                 nonadj_faces_.appendRow(vert_nonadj_faces.begin(), vert_nonadj_faces.end());
             }
             corner_info_.appendRow(cell_corner_info.begin(), cell_corner_info.end());
