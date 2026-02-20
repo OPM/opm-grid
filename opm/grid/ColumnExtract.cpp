@@ -95,7 +95,7 @@ void extractColumn(const UnstructuredGrid& grid, std::vector<std::vector<int> >&
 
     int num_cols = columns.size();
     for (int col = 0; col < num_cols; ++col) {
-        std::sort(columns[col].begin(), columns[col].end(), ExtractColumnCompare(grid));
+        std::ranges::sort(columns[col], ExtractColumnCompare(grid));
     }
 
     // At this point, a column may contain multiple disjoint sets of cells.

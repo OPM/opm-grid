@@ -308,7 +308,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
         }
         auto sorter = [](std::pair<const int, std::vector<int>> &pair) {
                           auto &vec = pair.second;
-                          std::sort(vec.begin(), vec.end());
+                          std::ranges::sort(vec);
                       };
         std::for_each(addCells.begin(), addCells.end(), sorter);
         std::for_each(removeCells.begin(), removeCells.end(), sorter);
@@ -564,7 +564,7 @@ computeParallelWells([[maybe_unused]] const std::vector<std::vector<int> >& well
         parallel_wells[well_index].second = true;
     }
 
-    std::sort(parallel_wells.begin(), parallel_wells.end());
+    std::ranges::sort(parallel_wells);
 #ifndef NDEBUG
     std::string last;
     for(const auto& wpair: parallel_wells)

@@ -490,9 +490,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
         if (cc.rank() == 0)
         {
-            std::sort(std::begin(procWellPairs), std::end(procWellPairs),
-                      [](const std::pair<int,int>& p1, const std::pair<int,int>& p2)
-                      { return p1.second < p2.second;});
+            std::ranges::sort(procWellPairs,
+                              [](const std::pair<int,int>& p1, const std::pair<int,int>& p2)
+                              { return p1.second < p2.second;});
             std::ostringstream ostr;
             ostr << "\nLoad balancing distributed the wells as follows:\n"
                  << "  well name            ranks with perforated cells\n"

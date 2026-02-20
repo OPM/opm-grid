@@ -563,7 +563,7 @@ namespace cpgrid
                 }
             }
 
-            std::sort(aquifer_cells_.begin(), aquifer_cells_.end());
+            std::ranges::sort(aquifer_cells_);
         }
 #endif
 
@@ -1031,7 +1031,7 @@ namespace cpgrid
                 }
             }
             // Sort face->cell mappings according to first, then second cell.
-            std::sort(face_cells.begin(), face_cells.end());
+            std::ranges::sort(face_cells);
             // For each nnc, add it to filtered_nnc only if not found in face->cell mappings.
             for (const auto& nncpair : nnc) {
                 if (nncpair.first < 0 || nncpair.second < 0 ||

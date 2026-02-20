@@ -132,7 +132,7 @@ namespace Opm
                 angle_and_pos[ii] = std::make_pair(angle, ii);
             }
             original.assign(nb[cell].begin(), nb[cell].end());
-            std::sort(angle_and_pos.begin(), angle_and_pos.end());
+            std::ranges::sort(angle_and_pos);
             for (int ii = 0; ii < num_nb; ++ii) {
                 nb[cell][ii] = original[angle_and_pos[ii].second];
             }

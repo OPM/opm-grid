@@ -101,7 +101,7 @@ struct Fixture
         BOOST_CHECK_EQUAL(elemcount, ex_elemcount);
         BOOST_CHECK_EQUAL(intercount, ex_intercount);
         BOOST_CHECK_EQUAL(bdycount, ex_bdycount);
-        std::sort(nb.begin(), nb.end());
+        std::ranges::sort(nb);
         //BOOST_TEST(nb == ex_nb, boost::test_tools::per_element());
 	BOOST_CHECK_EQUAL_COLLECTIONS(nb.begin(), nb.end(),
                                       ex_nb.begin(), ex_nb.end());

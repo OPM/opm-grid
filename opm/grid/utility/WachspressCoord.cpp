@@ -122,7 +122,7 @@ namespace Opm
                     vertex_adj_faces.insert(std::make_pair(vertex, face));
                 }
             }
-            std::sort(cell_faces.begin(), cell_faces.end()); // set_difference requires sorted ranges
+            std::ranges::sort(cell_faces); // set_difference requires sorted ranges
             std::vector<CornerInfo> cell_corner_info;
             std::set<int>::const_iterator it = cell_vertices.begin();
             for (; it != cell_vertices.end(); ++it) {
@@ -150,7 +150,7 @@ namespace Opm
                 const double corner_vol = cornerVolume(fnorm, dim);
                 ci.volume = corner_vol;
                 cell_corner_info.push_back(ci);
-                std::sort(vert_adj_faces.begin(), vert_adj_faces.end());
+                std::ranges::sort(vert_adj_faces);
                 std::vector<int> vert_nonadj_faces(cell_faces.size() - vert_adj_faces.size());
                 std::set_difference(cell_faces.begin(), cell_faces.end(),
                                     vert_adj_faces.begin(), vert_adj_faces.end(),

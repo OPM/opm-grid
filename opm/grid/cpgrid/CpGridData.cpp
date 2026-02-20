@@ -485,7 +485,7 @@ struct CellGeometryHandle
 
     ~CellGeometryHandle()
     {
-        std::sort(scatterAquiferCells_.begin(), scatterAquiferCells_.end());
+        std::ranges::sort(scatterAquiferCells_);
     }
 
     bool fixedSize(int, int)
@@ -1317,7 +1317,7 @@ std::map<int,int> computeCell2Face(const CpGrid& grid,
                          map2Global);
     grid.scatterData(handle);
     // make map2Global a map from local index to global id
-    std::sort(map2Global.begin(),map2Global.end());
+    std::ranges::sort(map2Global);
     auto newEnd = std::unique(map2Global.begin(),map2Global.end());
     map2Global.resize(newEnd - map2Global.begin());
     // Convert face ids to local ones
@@ -1398,7 +1398,7 @@ void createInterfaceList(const typename CpGridData::InterfaceMap::value_type& pr
     }
 
     // sort list and make it unique
-    std::sort(tmpPoints.begin(), tmpPoints.end());
+    std::ranges::sort(tmpPoints);
     auto newEnd = std::unique(tmpPoints.begin(), tmpPoints.end());
     tmpPoints.resize(newEnd - tmpPoints.begin());
 
@@ -1438,7 +1438,7 @@ std::map<int,int> computeCell2Point(const CpGrid& grid,
                                  additionalPoints);
     grid.scatterData(handle);
     // make map2Global a map from local index to global id
-    std::sort(map2Global.begin(),map2Global.end());
+    std::ranges::sort(map2Global);
     auto newEnd = std::unique(map2Global.begin(),map2Global.end());
     map2Global.resize(newEnd - map2Global.begin());
     // Convert point ids to local ones
