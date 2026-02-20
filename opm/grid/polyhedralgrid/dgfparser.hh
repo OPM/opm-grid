@@ -313,7 +313,7 @@ namespace Dune
               {
                 face[ j ] = elem[ refElem.subEntity(f, 1, j , dim) ];
               }
-              std::sort( face.begin(), face.end() );
+              std::ranges::sort(face);
               auto it = tmpFaces.find( face );
               int myFaceNo = -1;
               if( it == tmpFaces.end() )

@@ -297,7 +297,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
             exportedCells[rank].push_back(*pgID);
         }
     }
-    std::sort(exportList.begin(), exportList.end());
+    std::ranges::sort(exportList);
     return exportedCells;
 }
 
@@ -351,7 +351,7 @@ void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importLi
         importList.emplace_back(cell, rank, AttributeSet::owner, -1);
     }
 
-    std::sort(importList.begin(), importList.end());
+    std::ranges::sort(importList);
 }
 
 } // end namespace Impl
@@ -482,8 +482,8 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     }
     else
     {
-        std::sort(myExportList.begin(), myExportList.end());
-        std::sort(myImportList.begin(), myImportList.end());
+        std::ranges::sort(myExportList);
+        std::ranges::sort(myImportList);
     }
     return std::make_tuple( std::move(gIDtoRank),
                             std::move(parallel_wells),
@@ -621,8 +621,8 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                                    exportProcs,
                                                    importGlobalGids,
                                                    allowDistributedWells);
-            std::sort(std::get<2>(result).begin(), std::get<2>(result).end());
-            std::sort(std::get<3>(result).begin(), std::get<3>(result).end());
+            std::ranges::sort(std::get<2>(result));
+            std::ranges::sort(std::get<3>(result));
             return result;
         } else {
             // each well is guaranteed to be on a single process

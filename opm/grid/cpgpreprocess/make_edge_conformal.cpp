@@ -45,8 +45,8 @@ struct less_than_key {
     {
         std::array<int,2> sedge1 = edge1;
         std::array<int,2> sedge2 = edge2;
-        std::sort(sedge1.begin(), sedge1.end());
-        std::sort(sedge2.begin(), sedge2.end());
+        std::ranges::sort(sedge1);
+        std::ranges::sort(sedge2);
 
         if (sedge1[0] < sedge2[0]) {
             return true;

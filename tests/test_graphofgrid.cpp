@@ -715,7 +715,7 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     std::vector<float> objWeights(nVer);
     getGraphOfGridVerticesList(&gog, 1, 1, gIDs.data(), nullptr, 1, objWeights.data(), &err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
-    std::sort(gIDs.begin(),gIDs.end());
+    std::ranges::sort(gIDs);
     BOOST_REQUIRE(gIDs[0]==0 && gIDs[1]==1 && gIDs[2]==3 && gIDs[3]==7);
     std::vector<int> numEdges(nVer);
     getGraphOfGridNumEdges(&gog, 1, 1, nVer, gIDs.data(), nullptr, numEdges.data(), &err);

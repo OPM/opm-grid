@@ -49,10 +49,9 @@ std::vector<int> mapLevelIndicesToCartesianOutputOrder(const Dune::CpGrid& grid,
                                                                levelCartMapp.cartesianIndex(element.index(),level)));
     }
 
-    std::sort(sorted_levelIdxToLevelCartIdx.begin(), sorted_levelIdxToLevelCartIdx.end(),
-              [](std::pair<int,int>& a, std::pair<int,int>& b) {
-                  return a.second < b.second;
-              });
+    std::ranges::sort(sorted_levelIdxToLevelCartIdx,
+                      [](const auto& a, const auto& b)
+                      { return a.second < b.second; });
 
     std::vector<int> toOutput; // Consecutive numbers, from 0 to total elemts in LGR1 -1
     toOutput.reserve(lgr_cells);

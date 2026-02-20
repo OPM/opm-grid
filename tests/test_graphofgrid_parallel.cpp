@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(ExtendRootExportList)
             BOOST_REQUIRE(exportCells[0].size() == 0);
             BOOST_REQUIRE(exportCells[1].size() == 0);
             BOOST_REQUIRE(exportCells[2].size() == 2);
-            std::sort(exportCells[2].begin(), exportCells[2].end());
+            std::ranges::sort(exportCells[2]);
             BOOST_CHECK(exportCells[2][0] == 4);
             BOOST_CHECK(exportCells[2][1] == 7);
             break;
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(ExtendRootExportList)
             BOOST_REQUIRE(exportCells.size() == 2);
             BOOST_REQUIRE(exportCells[0].size() == 0);
             BOOST_REQUIRE(exportCells[1].size() == 2);
-            std::sort(exportCells[1].begin(), exportCells[1].end());
+            std::ranges::sort(exportCells[1]);
             BOOST_CHECK(exportCells[1][0] == 4);
             BOOST_CHECK(exportCells[1][1] == 7);
             break;
@@ -257,8 +257,8 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
             }
         }
     }
-    std::sort(importSolution.begin(), importSolution.end());
-    std::sort(exportSolution.begin(), exportSolution.end());
+    std::ranges::sort(importSolution);
+    std::ranges::sort(exportSolution);
 
     if (cc.rank() == ranks[0]) {
         // Zoltan does not include cells that remain on the rank into import and export list
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
         exportList.push_back(std::make_tuple(16, ranks[2], owner));
         exportList.push_back(std::make_tuple(9, ranks[3], owner));
         exportList.push_back(std::make_tuple(14, ranks[3], owner));
-        std::sort(exportList.begin(), exportList.end());
+        std::ranges::sort(exportList);
     } else if (cc.rank() == ranks[1]) {
         // non-root ranks have empty export list
         // import list is not sorted
@@ -327,7 +327,7 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
         if (cc.rank() == ranks[i])
             importSol.insert(importSol.end(), rankSol[i].begin(), rankSol[i].end());
     }
-    std::sort(importSol.begin(),importSol.end());
+    std::ranges::sort(importSol);
 
     // grid is nonempty only on the rank 0
     if (cc.rank() == root) {
