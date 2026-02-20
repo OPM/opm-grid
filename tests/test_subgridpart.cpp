@@ -127,7 +127,7 @@ void testGridPartitionIteration( const GridView& gridView, const int nElem)
 template <class Grid>
 auto getSeeds(const Grid& grid, const std::vector<int>& indices)
 {
-    assert(std::is_sorted(indices.begin(), indices.end()));
+    assert(std::ranges::is_sorted(indices));
     using EntitySeed = typename Grid::template Codim<0>::Entity::EntitySeed;
     std::vector<EntitySeed> seeds(indices.size());
     auto it = grid.template leafbegin<0>();
