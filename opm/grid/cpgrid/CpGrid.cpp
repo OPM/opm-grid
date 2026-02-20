@@ -473,9 +473,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         std::vector<std::pair<int,int> > procWellPairs;
 
         // range filters would be nice here. so C++20.
-        procWellPairs.reserve(std::count_if(std::begin(wells_on_proc),
-                                            std::end(wells_on_proc),
-                                            [](const std::pair<std::string, bool>& p){ return p.second; }));
+        procWellPairs.reserve(std::ranges::count_if(wells_on_proc,
+                                                    [](const auto& p)
+                                                    { return p.second; }));
         int wellIndex = 0;
         for ( const auto& well: wells_on_proc)
         {
