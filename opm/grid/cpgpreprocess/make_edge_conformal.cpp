@@ -208,7 +208,7 @@ new_tb(const std::vector<int>&  bfnodes_in,
     }
 
     if (fsigntb == 1) {
-        std::reverse(newedge.begin(), newedge.end());
+        std::ranges::reverse(newedge);
     }
 
     // add possibly modified nodes
@@ -336,7 +336,7 @@ void fix_edges_at_top(const struct processed_grid& grid,
                     ? -1 : 1;
 
                 if (fsigntb == 1) {
-                    std::reverse(bedge.begin(), bedge.end());
+                    std::ranges::reverse(bedge);
                 }
 
                 face_nodes[bface] = new_tb(bfnodes, sedge, bedge, fsigntb);
