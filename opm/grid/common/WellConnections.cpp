@@ -310,8 +310,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                           auto &vec = pair.second;
                           std::ranges::sort(vec);
                       };
-        std::for_each(addCells.begin(), addCells.end(), sorter);
-        std::for_each(removeCells.begin(), removeCells.end(), sorter);
+        std::ranges::for_each(addCells, sorter);
+        std::ranges::for_each(removeCells, sorter);
 
         // prevent memory allocation
         for (auto& well_indices : well_indices_on_proc) {
