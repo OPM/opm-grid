@@ -308,9 +308,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 {
                     errors.push_back(1);
                 }
-                if (std::any_of(existingParts.begin(), existingParts.end(),
-                                [&i](const auto& part)
-                                { return part != i++; }))
+                if (std::ranges::any_of(existingParts,
+                                        [&i](const auto& part)
+                                        { return part != i++; }))
                 {
                     errors.push_back(2);
                 }
