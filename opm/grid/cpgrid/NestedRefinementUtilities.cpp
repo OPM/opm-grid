@@ -25,7 +25,6 @@
 #include <array>
 #include <cassert>
 #include <map>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -37,8 +36,7 @@ namespace Opm
 bool isNameInTheList(const std::vector<std::string>& lgr_parent_grid_names,
                      const std::string& grid_name)
 {
-    return (std::find(lgr_parent_grid_names.begin(), lgr_parent_grid_names.end(),
-                      grid_name) != lgr_parent_grid_names.end());
+    return std::ranges::find(lgr_parent_grid_names, grid_name) != lgr_parent_grid_names.end();
 }
 
 std::vector<int> getLgrDataIndicesByParentGrid(const std::vector<std::string>& lgr_parent_grid_names,

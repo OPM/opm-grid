@@ -1368,10 +1368,11 @@ std::vector<std::set<int> > computeAdditionalFacePoints(const std::vector<std::a
         for(const auto& face: globalCell2Faces[EntityRep<0>(c, true)])
             for(const auto& point: globalFace2Points[face.index()])
             {
-                auto candidate = std::find(points.begin(), points.end(), point);
-                if(candidate == points.end())
+                const auto candidate = std::ranges::find(points, point);
+                if (candidate == points.end()) {
                     // point is not a corner of the cell
                     additionalFacePoints[c].insert(globalIds.id(EntityRep<3>(point,true)));
+                }
             }
     }
     return additionalFacePoints;

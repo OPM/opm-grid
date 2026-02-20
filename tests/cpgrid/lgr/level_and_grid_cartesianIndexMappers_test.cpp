@@ -322,8 +322,8 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
 
         if (originId == 0){
             // Check level Cartesian index is contained in {0,1,8,9, 48,49,56,57}
-            const auto it = std::find(levelCartIndicesOriginId0.begin(), levelCartIndicesOriginId0.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId0,
+                                              levelCartMapp.cartesianIndex(element.index(), 1));
             BOOST_CHECK( it !=  levelCartIndicesOriginId0.end() );
 
             // Check a few level Cartesian coordinates (e.g., one in layer k =0, and one in layer k = 1).
@@ -344,8 +344,8 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
         }
         else if (originId == 6) {
             // Check level Cartesian index is contained in {20,21,28,29, 68,69,76,77}
-            const auto it = std::find(levelCartIndicesOriginId6.begin(), levelCartIndicesOriginId6.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId6,
+                                              levelCartMapp.cartesianIndex(element.index(), 1));
             BOOST_CHECK( it !=  levelCartIndicesOriginId6.end() );
 
             // Check a few level Cartesian coordinates (e.g., one in layer k =0, and one in layer k = 1).
@@ -366,8 +366,8 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
         }
         else if (originId == 11) {
             // Check level Cartesian index is contained in {38,39,46,47, 86,87,94,95}
-            const auto it = std::find(levelCartIndicesOriginId11.begin(), levelCartIndicesOriginId11.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId11,
+                                              levelCartMapp.cartesianIndex(element.index(), 1));
             BOOST_CHECK( it !=  levelCartIndicesOriginId11.end() );
 
             // Check a few level Cartesian coordinates (e.g., one in layer k =0, and one in layer k = 1).
@@ -568,8 +568,8 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
 
         if (originId == 17){
             // Check level Cartesian index is contained in levelCartIndicesOriginId17
-            const auto it = std::find(levelCartIndicesOriginId17.begin(), levelCartIndicesOriginId17.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId17,
+                                              levelCartMapp.cartesianIndex(element.index(), 1));
             BOOST_CHECK( it !=  levelCartIndicesOriginId17.end() );
 
             // Check a few level Cartesian coordinates (e.g., one per k-layer).
@@ -626,8 +626,8 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
 
         if (originId == 35){
             // Check level Cartesian index is contained in levelCartIndicesOriginId17
-            const auto it = std::find(levelCartIndicesOriginId35.begin(), levelCartIndicesOriginId35.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 2) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId35,
+                                              levelCartMapp.cartesianIndex(element.index(), 2));
             BOOST_CHECK( it !=  levelCartIndicesOriginId35.end() );
 
             // Check a few level Cartesian coordinates (e.g., one per k-layer).
@@ -1144,8 +1144,8 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeaf
 
         if (originId == 13){
             // Check level Cartesian index is contained in levelCartIndicesOriginId17
-            const auto it = std::find(levelCartIndicesOriginId13.begin(), levelCartIndicesOriginId13.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId13,
+                                              levelCartMapp.cartesianIndex(element.index(), 1));
             BOOST_CHECK( it !=  levelCartIndicesOriginId13.end() );
 
             // Check a few level Cartesian coordinates (e.g., one per k-layer).
@@ -1203,8 +1203,8 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeaf
 
         if (originId == 26){
             // Check level Cartesian index is contained in levelCartIndicesOriginId17
-            const auto it = std::find(levelCartIndicesOriginId26.begin(), levelCartIndicesOriginId26.end(),
-                                      levelCartMapp.cartesianIndex(element.index(), 2) );
+            const auto it = std::ranges::find(levelCartIndicesOriginId26,
+                                              levelCartMapp.cartesianIndex(element.index(), 2));
 
             BOOST_CHECK( it !=  levelCartIndicesOriginId26.end() );
 
