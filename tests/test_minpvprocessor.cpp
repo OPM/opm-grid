@@ -123,6 +123,37 @@ BOOST_AUTO_TEST_CASE(Pinch4ALL)
                                fill_removed_cells, z1.data(), pinch_no_gap,
                                option4all, permz, multz);
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
+
+    std::vector<double> zcorn_collapsed1 = { 0, 0, 0, 0,
+                                             2, 2, 2, 2,
+                                             2, 2, 2, 2,
+                                             2.5, 2.5, 2.5, 2.5,
+                                             2.5, 2.5, 2.5, 2.5,
+                                             3.5, 3.5, 3.5, 3.5,
+                                             3.5, 3.5, 3.5, 3.5,
+                                             3.5, 3.5, 3.5, 3.5 };
+
+    permz = {2, 2, 1, 2.5}; // Should not create an NNC because bottom cell is collapsed and will be neglected in grid
+    minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+                               fill_removed_cells, zcorn_collapsed1.data(), pinch_no_gap,
+                               option4all, permz, multz);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
+
+    std::vector<double> zcorn_collapsed2 = { 2, 2, 2, 2,
+                                             2, 2, 2, 2,
+                                             2, 2, 2, 2,
+                                             2.5, 2.5, 2.5, 2.5,
+                                             2.5, 2.5, 2.5, 2.5,
+                                             3.5, 3.5, 3.5, 3.5,
+                                             3.5, 3.5, 3.5, 3.5,
+                                             6, 6, 6, 6 };
+
+    permz = {2, 2, 1, 2.5}; // Should not create an NNC because top cell is collapsed and will be neglected in grid
+    minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+                               fill_removed_cells, zcorn_collapsed2.data(), pinch_no_gap,
+                               option4all, permz, multz);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
+
     auto multz2 = [](int i){ if (i==2) return 0.0; else return 1.0;};
 
     minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
@@ -136,6 +167,9 @@ BOOST_AUTO_TEST_CASE(Pinch4ALL)
 			       option4all, permz, multz3);
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
 }
+
+
+
 BOOST_AUTO_TEST_CASE(Pinch)
 {
     // Set up a simple example.
