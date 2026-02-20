@@ -614,10 +614,10 @@ void CpGrid::createCartesian(const std::array<int, 3>& dims,
     double* offset = &zcorn[0];
     for (int k = 0; k < dims[2]; ++k) {
         double zlow = (k+shift[2])*cellsize[2];
-        std::fill(offset, offset + num_per_layer, zlow);
+        std::fill_n(offset, num_per_layer, zlow);
         offset += num_per_layer;
         double zhigh = (k+1+shift[2])*cellsize[2];
-        std::fill(offset, offset + num_per_layer, zhigh);
+        std::fill_n(offset, num_per_layer, zhigh);
         offset += num_per_layer;
     }
     std::vector<int> actnum(dims[0]*dims[1]*dims[2], 1);

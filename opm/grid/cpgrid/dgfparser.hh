@@ -160,10 +160,10 @@ namespace Dune
     for( int k = 0; k < interval.n[ 2 ]; ++k )
     {
       const double zlow = k*dz;
-      std::fill( offset, offset + num_per_layer, zlow );
+      std::fill_n(offset, num_per_layer, zlow);
       offset += num_per_layer;
       const double zhigh = (k+1)*dz;
-      std::fill( offset, offset + num_per_layer, zhigh );
+      std::fill_n(offset, num_per_layer, zhigh);
       offset += num_per_layer;
     }
 

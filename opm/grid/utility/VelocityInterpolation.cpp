@@ -63,7 +63,7 @@ namespace Opm
                                                     double* v) const
     {
         const int dim = grid_.dimensions;
-        std::fill(v, v + dim, 0.0);
+        std::fill_n(v, dim, 0.0);
         const double* cc = grid_.cell_centroids + cell*dim;
         for (unsigned hface = grid_.cell_facepos[cell]; hface < grid_.cell_facepos[cell+1]; ++hface) {
             const int face = grid_.cell_faces[hface];
@@ -173,7 +173,7 @@ namespace Opm
         const int dim = grid_.dimensions;
         bary_coord_.resize(n);
         bcmethod_.cartToBary(cell, x, &bary_coord_[0]);
-        std::fill(v, v + dim, 0.0);
+        std::fill_n(v, dim, 0.0);
         const SparseTable<WachspressCoord::CornerInfo>& all_ci = bcmethod_.cornerInfo();
         for (int i = 0; i < n; ++i) {
             const int cid = all_ci[cell][i].corner_id;
