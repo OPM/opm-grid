@@ -217,10 +217,9 @@ BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
 
     // change values of transmissibilities so that edge weights of the graph
     // with log transmissibilities are equal to the original, then compare them
-    std::transform(transmissibilities.begin(), transmissibilities.end(),
-                   transmissibilities.begin(),
-                   [](const auto& v)
-                   { return v > 0 ? std::exp(v-1.) : v; });
+    std::ranges::transform(transmissibilities, transmissibilities.begin(),
+                           [](const auto& v)
+                           { return v > 0 ? std::exp(v-1.) : v; });
     Opm::GraphOfGrid gog2(grid,transmissibilities.data(),Dune::EdgeWeightMethod::logTransEdgeWgt);
     int checked = 0;
     for (const auto& v : gog2)

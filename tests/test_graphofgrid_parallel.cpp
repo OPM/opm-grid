@@ -59,13 +59,13 @@ BOOST_AUTO_TEST_CASE(ExtendRootExportList)
         ranks[i] = std::min(i, cc.size() - 1);
     }
     std::vector<int> gIDtoRank { 0, 0, 0, 3, 3, 3, 2, 2, 1, 1 };
-    std::transform(gIDtoRank.begin(), gIDtoRank.end(), gIDtoRank.begin(),
-                   [&ranks](const auto& v) { return ranks[v]; });
+    std::ranges::transform(gIDtoRank, gIDtoRank.begin(),
+                           [&ranks](const auto& v) { return ranks[v]; });
     // all cells from the root (including wells) are added manually before using extendRootExportList
     std::vector<int> exportedID { 5, 0, 6, 3, 8, 2, 9, 1 };
     std::vector<int> exportedRank { 3, 0, 2, 3, 1, 0, 1, 0 };
-    std::transform(exportedRank.begin(), exportedRank.end(), exportedRank.begin(),
-                   [&ranks](const auto& v) { return ranks[v]; });
+    std::ranges::transform(exportedRank, exportedRank.begin(),
+                           [&ranks](const auto& v) { return ranks[v]; });
     std::vector<std::tuple<int, int, char>> exportList, exportList2;
     exportList.reserve(grid.size(0));
     for (int i = 0; i < 8; ++i) {
@@ -187,8 +187,8 @@ BOOST_AUTO_TEST_CASE(WellsOnThisRank)
         ranks[i] = std::min(i, cc.size() - 1);
     }
     std::vector<int> wellRanks { 3, 1, 0, 2, 1, 3 };
-    std::transform(wellRanks.begin(), wellRanks.end(), wellRanks.begin(),
-                   [&ranks](const auto& v) { return ranks[v]; });
+    std::ranges::transform(wellRanks, wellRanks.begin(),
+                           [&ranks](const auto& v) { return ranks[v]; });
 
     const auto wotr = wellsOnThisRank(wells, wellRanks, cc, 0);
 
