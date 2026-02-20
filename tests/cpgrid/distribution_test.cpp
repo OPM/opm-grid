@@ -500,8 +500,6 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
                 using namespace Dune::cpgrid;
                 auto face = grid.cellFace(eIt->index(), f);
                 auto seqFace = seqGrid.cellFace(seqEIt->index(), f);
-                BOOST_REQUIRE(idSet.id(Dune::createEntity<1>(grid, face, true)) ==
-                              seqIdSet.id(Dune::createEntity<1>(seqGrid, seqFace, true)));
                 int vertices = grid.numFaceVertices(face);
                 BOOST_REQUIRE(vertices == seqGrid.numFaceVertices(seqFace));
                 for (int v = 0; v < vertices; ++v)
@@ -579,11 +577,11 @@ BOOST_AUTO_TEST_CASE(PartitionTest)
         }
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    
+
     if (size > 2)
     {
         MPI_Comm_free(&twocom);
-    }    
+    }
 #endif
 }
 
@@ -638,7 +636,7 @@ BOOST_AUTO_TEST_CASE(PartitionTestWithCorners)
             }
             std::cout<<"done interior "<<(int)Dune::InteriorEntity<<" overlap "<<(int)Dune::OverlapEntity
                      <<" border "<<(int)Dune::BorderEntity<<" front "<<(int)Dune::FrontEntity<<std::endl;
-            
+
             BOOST_CHECK(cells_per_part_type.size() == 2);
             BOOST_CHECK(cells_per_part_type[Dune::InteriorEntity] == 4);
             BOOST_CHECK(cells_per_part_type[Dune::OverlapEntity] == 8);
@@ -659,14 +657,14 @@ BOOST_AUTO_TEST_CASE(PartitionTestWithCorners)
             BOOST_CHECK(points_per_part_type[Dune::BorderEntity] == 14);
             BOOST_CHECK(points_per_part_type[Dune::OverlapEntity] == 6);
             BOOST_CHECK(points_per_part_type[Dune::FrontEntity] == 16);
-        }         
+        }
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    
+
     if (size > 2)
     {
         MPI_Comm_free(&twocom);
-    }    
+    }
 #endif
 }
 

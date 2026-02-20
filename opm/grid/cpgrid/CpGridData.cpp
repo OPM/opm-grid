@@ -587,7 +587,7 @@ struct Cell2PointsDataHandle
         const auto& points = globalCell2Points_[i];
         std::for_each(points.begin(), points.end(),
                       [&buffer, this](const int& point){
-                          buffer.write(globalIds_.id(EntityRep<3>(point, true)));});
+                          buffer.write(globalIds_.idLevelZero(EntityRep<3>(point, true)));});
         for (const auto& point: globalAdditionalPointIds_[i])
         {
             buffer.write(point);
@@ -704,7 +704,7 @@ struct SparseTableDataHandle
     void gather(B& buffer, const T& t)
     {
         const auto& entries = global_[t.index()];
-        std::for_each(entries.begin(), entries.end(), [&buffer, this](const DataType& i){buffer.write(globalIds_.id(EntityRep<3>(i, true)));});
+        std::for_each(entries.begin(), entries.end(), [&buffer, this](const DataType& i){buffer.write(globalIds_.idLevelZero(EntityRep<3>(i, true)));});
     }
     template<class B, class T>
     void scatter(B& buffer, const T& t, std::size_t )
@@ -775,7 +775,7 @@ struct OrientedEntityTableDataHandle
         {
             std::for_each(entries.begin(), entries.end(),
                           [&buffer, this](const ToEntity& i){
-                              int id = globalIds_->id(i);
+                              int id = globalIds_->idLevelZero(i);
                               if (!i.orientation())
                                   id = ~id;
                               buffer.write(id);});
@@ -845,8 +845,9 @@ struct IndexSet2IdSet
         for (const auto& entry: indexSet)
             map_[entry.local()] = entry.global();
     }
-    template<class T>
-    int id(const T& t) const
+
+    template<int dim>
+    int idLevelZero(const EntityRep<dim>& t) const
     {
         return map_[t.index()];
     }
@@ -1363,7 +1364,7 @@ std::vector<std::set<int> > computeAdditionalFacePoints(const std::vector<std::a
                 auto candidate = std::find(points.begin(), points.end(), point);
                 if(candidate == points.end())
                     // point is not a corner of the cell
-                    additionalFacePoints[c].insert(globalIds.id(EntityRep<3>(point,true)));
+                    additionalFacePoints[c].insert(globalIds.idLevelZero(EntityRep<3>(point,true)));
             }
     }
     return additionalFacePoints;
@@ -1466,7 +1467,7 @@ std::map<int,int> computeCell2Point(const CpGrid& grid,
         createInterfaceList<true>(procCellLists, globalCell2Points,
                                   globalAdditionalPoints,
                                   [&globalIds](int i){
-                                      return globalIds.id(EntityRep<3>(i, true));
+                                      return globalIds.idLevelZero(EntityRep<3>(i, true));
                                   },
                                   globalMap2Local,
                                   pointInterfaces[procCellLists.first]);

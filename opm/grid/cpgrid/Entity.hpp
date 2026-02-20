@@ -57,6 +57,41 @@ namespace Dune
 namespace cpgrid
 {
 
+template <int codim>
+class Entity;
+
+namespace Impl {
+// Forward declaration of traits class for codimensions.
+template <int codim>
+struct CodimTraits;
+
+// Specialization of traits class for codimension 0 (cells).
+template<>
+struct CodimTraits<0>
+{
+    using Entity = ::Dune::cpgrid::Entity<0>;
+};
+
+#if DUNE_VERSION_LT(DUNE_GRID, 2, 11)
+// Specialization of traits class for codimension 1 (faces).
+// This is only needed for DUNE < 2.11, as the face entity type was needed for the VTK writer, which was fixed in DUNE 2.11.
+// See: https://gitlab.dune-project.org/core/dune-grid/-/merge_requests/793
+template<>
+struct CodimTraits<1>
+{
+    using Entity = ::Dune::cpgrid::Entity<1>;
+};
+#endif
+
+// Specialization of traits class for codimension 3 (vertices).
+template<>
+struct CodimTraits<3>
+{
+    using Entity = ::Dune::cpgrid::Entity<3>;
+};
+
+}
+
 template<int,int> class Geometry;
 template<int,PartitionIteratorType> class Iterator;
 class IntersectionIterator;
@@ -93,11 +128,7 @@ public:
 
     /** \brief Export supported entity types */
     template <int cd>
-    struct Codim
-    {
-        using Entity = ::Dune::cpgrid::Entity<cd>;
-    };
-
+    using Codim = typename Impl::CodimTraits<cd>;
 
     typedef cpgrid::Geometry<3-codim,3> Geometry;
     typedef Geometry LocalGeometry;
@@ -387,7 +418,7 @@ unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
             return 8;
         }
     }
-    return 0;
+    DUNE_THROW(NotImplemented, "subEntities not implemented for this codimension");
 }
 
 template <int codim>
