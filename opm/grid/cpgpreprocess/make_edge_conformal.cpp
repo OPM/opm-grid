@@ -159,9 +159,9 @@ sorted_outer_boundary(const processed_grid&   grid,
     edges.erase(edges.begin());
     while (!edges.empty()) {
         auto cedges = sedges.back();
-        auto nextelem = std::find_if(edges.begin(), edges.end(),
-                                     [cedges](const std::array<int,2> &s)
-                                     { return s[0] == cedges[1]; });
+        auto nextelem = std::ranges::find_if(edges,
+                                             [cedges](const std::array<int,2>& s)
+                                             { return s[0] == cedges[1]; });
 
         sedges.push_back(*nextelem);
         edges.erase(nextelem);
@@ -219,13 +219,13 @@ new_tb(const std::vector<int>&  bfnodes_in,
         auto iterend = newedge.end();
         --iterend;
 
-        auto node2 = std::find_if(bfnodes.begin(), bfnodes.end(),
-                                  [vert = newedge.back()](const int s)
-                                  { return vert == s; });
+        auto node2 = std::ranges::find_if(bfnodes,
+                                          [vert = newedge.back()](const int s)
+                                          { return vert == s; });
 
-        auto node1 = std::find_if(bfnodes.begin(), bfnodes.end(),
-                                  [vert = newedge.front()](const int s)
-                                  { return vert == s; });
+        auto node1 = std::ranges::find_if(bfnodes,
+                                          [vert = newedge.front()](const int s)
+                                          { return vert == s; });
 
         if ((node1 == std::prev(bfnodes.end())) &&
             (node2 == bfnodes.begin())) {

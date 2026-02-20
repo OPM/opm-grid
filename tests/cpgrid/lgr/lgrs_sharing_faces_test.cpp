@@ -78,10 +78,10 @@ void checkExpectedFaceCentersAndAreas(const Dune::CpGrid& grid,
                                         intersection.geometry().center()[1],
                                         intersection.geometry().center()[2]};
 
-            BOOST_CHECK( std::find_if( expected_leafFaceCenters_per_level[element.level()].begin(),
-                                       expected_leafFaceCenters_per_level[element.level()].end(),
-                                       [&](const auto& c){return Opm::areClose(c, center);}) !=
-                         expected_leafFaceCenters_per_level[element.level()].end() );
+            BOOST_CHECK(std::ranges::find_if(expected_leafFaceCenters_per_level[element.level()],
+                                             [&](const auto& c)
+                                             {return Opm::areClose(c, center); }) !=
+                        expected_leafFaceCenters_per_level[element.level()].end());
 
             // intersection.indexInInside() is
             // 0, 1 for I_FACE false, true respec.
