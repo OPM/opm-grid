@@ -916,7 +916,7 @@ namespace cpgrid
             grid.dimensions[1] = grid.dimensions[1] - 2;
             grid.dimensions[2] = grid.dimensions[2] - 2;
             grid.number_of_cells = new_index_to_new_lcart.size();
-            std::copy(new_index_to_new_lcart.begin(), new_index_to_new_lcart.end(), grid.local_cell_index);
+            std::ranges::copy(new_index_to_new_lcart, grid.local_cell_index);
         }
 
 

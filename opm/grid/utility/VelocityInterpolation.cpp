@@ -154,7 +154,7 @@ namespace Opm
                               " encountered in cell " + std::to_string(cell));
                 }
                 // The solution ends up in f, so we must copy it.
-                std::copy(f.begin(), f.end(), corner_velocity_.begin() + dim*cid);
+                std::ranges::copy(f, corner_velocity_.begin() + dim*cid);
             }
         }
     }
