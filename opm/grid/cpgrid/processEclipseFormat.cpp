@@ -263,9 +263,8 @@ namespace cpgrid
                             {
                                 auto half_trans = perm;
                                 std::array<double, 3> distance;
-                                std::transform(cell_center.begin(), cell_center.end(),
-                                               face_center.begin(),
-                                               distance.begin(), std::minus<double>());
+                                std::ranges::transform(cell_center, face_center,
+                                                       distance.begin(), std::minus<double>());
                                 half_trans *= std::abs(std::inner_product(area_normal.begin(),
                                                                           area_normal.end(),
                                                                           distance.begin(), 0.));
@@ -1456,8 +1455,7 @@ namespace cpgrid
             // Points
             point_geom.reserve(points.size());
             MakeGeometry<0> mpointg;
-            std::transform(points.begin(), points.end(),
-                           std::back_inserter(point_geom), mpointg);
+            std::ranges::transform(points, std::back_inserter(point_geom), mpointg);
             // Cells
             cell_geom.reserve(nc);
             MakeGeometry<3> mcellg(point_geom_ptr);
@@ -1470,9 +1468,8 @@ namespace cpgrid
             // Faces
             face_geom.reserve(face_centroids.size());
             MakeGeometry<2> mfaceg;
-            std::transform(face_centroids.begin(), face_centroids.end(),
-                           face_areas.begin(),
-                           std::back_inserter(face_geom), mfaceg);
+            std::ranges::transform(face_centroids, face_areas,
+                                   std::back_inserter(face_geom), mfaceg);
 #ifdef VERBOSE
             std::cout << "Transforms/copies:  " << clock.secsSinceLast() << std::endl;
 #endif
