@@ -585,9 +585,9 @@ struct Cell2PointsDataHandle
         std::size_t i = t.index();
         assert(i < globalCell2Points_.size());
         const auto& points = globalCell2Points_[i];
-        std::for_each(points.begin(), points.end(),
-                      [&buffer, this](const int& point){
-                          buffer.write(globalIds_.id(EntityRep<3>(point, true)));});
+        std::ranges::for_each(points,
+                              [&buffer, this](const int& point)
+                              { buffer.write(globalIds_.id(EntityRep<3>(point, true))); });
         for (const auto& point: globalAdditionalPointIds_[i])
         {
             buffer.write(point);
@@ -598,11 +598,12 @@ struct Cell2PointsDataHandle
     {
         auto i = t.index();
         auto& points = localCell2Points_[i];
-        std::for_each(points.begin(), points.end(),
-                      [&buffer, this](int& point){
-                          buffer.read(point);
-                          this->flatGlobalPoints_.push_back(point);
-                      });
+        std::ranges::for_each(points,
+                              [&buffer, this](int& point)
+                              {
+                                  buffer.read(point);
+                                  this->flatGlobalPoints_.push_back(point);
+                              });
         for (std::size_t p = 8; p < s; ++p)
         {
             int pi{};
@@ -704,7 +705,9 @@ struct SparseTableDataHandle
     void gather(B& buffer, const T& t)
     {
         const auto& entries = global_[t.index()];
-        std::for_each(entries.begin(), entries.end(), [&buffer, this](const DataType& i){buffer.write(globalIds_.id(EntityRep<3>(i, true)));});
+        std::ranges::for_each(entries,
+                              [&buffer, this](const DataType& i)
+                              { buffer.write(globalIds_.id(EntityRep<3>(i, true))); });
     }
     template<class B, class T>
     void scatter(B& buffer, const T& t, std::size_t )
@@ -773,16 +776,21 @@ struct OrientedEntityTableDataHandle
         const auto& entries = global_[t];
         if (globalIds_)
         {
-            std::for_each(entries.begin(), entries.end(),
-                          [&buffer, this](const ToEntity& i){
-                              int id = globalIds_->id(i);
-                              if (!i.orientation())
-                                  id = ~id;
-                              buffer.write(id);});
+            std::ranges::for_each(entries,
+                                  [&buffer, this](const ToEntity& i)
+                                  {
+                                      int id = globalIds_->id(i);
+                                      if (!i.orientation()) {
+                                          id = ~id;
+                                      }
+                                      buffer.write(id);
+                                  });
         }
         else
         {
-            std::for_each(entries.begin(), entries.end(), [&buffer](const ToEntity& i){buffer.write(i.signedIndex());});
+            std::ranges::for_each(entries,
+                                  [&buffer](const ToEntity& i)
+                                  { buffer.write(i.signedIndex()); });
         }
     }
     template<class B, class T>

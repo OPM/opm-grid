@@ -211,10 +211,16 @@ BOOST_AUTO_TEST_CASE(refineCoarseOnLgrBoundaryThrows)
     // - Examples of coarse cells touching the LGR1 on its boundary.
     // Cell 5, 14, 16, 71, 73, and 82, touching the bottom, front, left, right, back, and the top of LGR1, respectively.
     std::vector<int> throwingCells = {5, 14, 16, 71, 73, 82};
-    std::for_each( throwingCells.begin(), throwingCells.end(), [&]( int elemIdx) {
-        BOOST_CHECK_THROW( Opm::adaptGrid(grid, {elemIdx}) , std::logic_error);
-        BOOST_CHECK_THROW( Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {3,3,3}, {elemIdx}); , std::logic_error);
-    });
+    std::ranges::for_each(throwingCells,
+                          [&]( int elemIdx)
+                          {
+                              BOOST_CHECK_THROW(Opm::adaptGrid(grid, {elemIdx}),
+                                                std::logic_error);
+                              BOOST_CHECK_THROW(Opm::adaptGridWithParams(grid,
+                                                                         /* cells_per_dim = */ {3,3,3},
+                                                                         {elemIdx}),
+                                                std::logic_error);
+                          });
 }
 
 
