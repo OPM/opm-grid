@@ -754,8 +754,8 @@ struct UnpackSizeEntries{
                   MessageBuffer<typename SizeDataHandle<DataHandle>::DataType>& buffer) const
   {
     std::size_t noIndices=std::min(buffer.size(), tracker.indicesLeft());
-    std::copy(static_cast<std::size_t*>(buffer), static_cast<std::size_t*>(buffer)+noIndices,
-              handle.getSizesPointer()+tracker.offset());
+    std::copy_n(static_cast<std::size_t*>(buffer), noIndices,
+                handle.getSizesPointer()+tracker.offset());
     tracker.increment(noIndices);
     return noIndices;
   }

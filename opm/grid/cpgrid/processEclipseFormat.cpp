@@ -541,7 +541,7 @@ namespace cpgrid
                   face_to_point_, cell_to_point_,
                   face_to_output_face);
 
-        std::copy(output.dimensions, output.dimensions + 3, logical_cartesian_size_.begin());
+        std::copy_n(output.dimensions, 3, logical_cartesian_size_.begin());
 
 #ifdef VERBOSE
         std::cout << "Building geometry." << std::endl;
