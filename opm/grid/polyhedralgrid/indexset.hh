@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <dune/common/typetraits.hh>
+#include <dune/common/version.hh>
 
 #include <dune/grid/common/gridenums.hh>
 #include <dune/grid/common/indexidset.hh>
@@ -97,7 +98,13 @@ namespace Dune
         return grid().geomTypes(codim);
     }
 
+    // Dune 2.10 concept IndexSet requires same_as<IS::Types> (by value).
+    // Fixed in Dune 2.11 to convertible_to (see dune-grid MR !786).
+#if DUNE_VERSION_EQUAL(DUNE_GRID, 2, 10)
+    std::vector< GeometryType > types(int codim) const
+#else
     const std::vector< GeometryType >& types(int codim) const
+#endif
     {
         return grid().geomTypes(codim);
     }
