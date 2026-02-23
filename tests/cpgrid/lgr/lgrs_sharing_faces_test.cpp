@@ -61,12 +61,11 @@ void checkExpectedFaceCentersAndAreas(const Dune::CpGrid& grid,
         for (const auto& element : Dune::elements(grid.levelGridView(level))) {
             if (element.isLeaf()) { // not needed for these test cases (no nested refinement)
                 for (const auto& intersection : Dune::intersections(grid.levelGridView(level), element)) {
-                    BOOST_CHECK( std::find( expected_leafFaceCenters_per_level[element.level()].begin(),
-                                            expected_leafFaceCenters_per_level[element.level()].end(),
+                    BOOST_CHECK(std::ranges::find(expected_leafFaceCenters_per_level[element.level()],
                                             std::array{intersection.geometry().center()[0],
                                                        intersection.geometry().center()[1],
                                                        intersection.geometry().center()[2]}) !=
-                                 expected_leafFaceCenters_per_level[element.level()].end() );
+                                expected_leafFaceCenters_per_level[element.level()].end());
                 }
             }
         }
