@@ -47,7 +47,7 @@ double MinpvProcessor::computeGap(const std::array<double,8>& coord_above,
         vertical_gap[i] = coord_below[i] - coord_above[4 + i];
         assert(vertical_gap[i] >= 0);
     }
-    double min_val = *std::min_element(vertical_gap.begin(), vertical_gap.end());
+    const double min_val = *std::ranges::min_element(vertical_gap);
     if (min_val < 1e-6){
         return 0;
     }
