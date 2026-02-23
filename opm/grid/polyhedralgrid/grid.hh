@@ -1425,7 +1425,7 @@ namespace Dune
             assert( (*it).second.size() == dim );
             KeyType key; key.fill( 4 ); // fill with 4 which is the first z coord
 
-            std::copy( (*it).second.begin(), (*it).second.end(), key.begin() );
+            std::ranges::copy(it->second, key.begin());
             auto vx = vertexFaceTags.find( key );
             assert( vx != vertexFaceTags.end() );
             if( vx != vertexFaceTags.end() )
@@ -1464,7 +1464,7 @@ namespace Dune
           }
 
           cellVertices_[ c ].resize( cell_pts.size() );
-          std::copy(cell_pts.begin(), cell_pts.end(), cellVertices_[ c ].begin() );
+          std::ranges::copy(cell_pts, cellVertices_[c].begin());
           maxVx = std::max( maxVx, int( cell_pts.size() ) );
           minVx = std::min( minVx, int( cell_pts.size() ) );
         }

@@ -103,7 +103,7 @@ void CellQuadrature::quadPtCoord(const int index, double* coord) const
     const int dim = grid_.dimensions;
     const double* cc = grid_.cell_centroids + dim*cell_;
     if (degree_ < 2) {
-        std::copy(cc, cc + dim, coord);
+        std::copy_n(cc, dim, coord);
         return;
     }
     // Degree 2 case.
@@ -113,7 +113,7 @@ void CellQuadrature::quadPtCoord(const int index, double* coord) const
             const int hface = grid_.cell_facepos[cell_] + index/3;
             const int face = grid_.cell_faces[hface];
             const double* fc = grid_.face_centroids + dim*face;
-            std::copy(fc, fc + dim, coord);
+            std::copy_n(fc, dim, coord);
         } else {
             // Interiour midpoint. This is the average of the
             // cell centroid and a face node (they should

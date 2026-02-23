@@ -160,7 +160,7 @@ namespace Dune
     void copy ( Iterator begin, Iterator end, double *dest )
     {
       for( ; begin != end; ++begin )
-        dest = std::copy( begin->begin(), begin->end(), dest );
+        dest = std::ranges::copy(*begin, dest);
     }
 
     template< class Iterator >
@@ -171,7 +171,7 @@ namespace Dune
       {
         *(offset++) = size;
         size += begin->size();
-        dest = std::copy( begin->begin(), begin->end(), dest );
+        dest = std::ranges::copy(*begin, dest);
       }
       *offset = size;
     }
@@ -242,7 +242,7 @@ namespace Dune
           // copy values into appropriate data type
           std::vector<int>& face = faces[ i ];
           numbers.resize( face.size() );
-          std::copy( face.begin(), face.end(), numbers.begin() );
+          std::ranges::copy(face, numbers.begin());
           gridFactory.insertElement( type, numbers );
         }
 
@@ -258,7 +258,7 @@ namespace Dune
           // copy values into appropriate data type
           std::vector<int>& cell = cells[ i ];
           numbers.resize( cell.size() );
-          std::copy( cell.begin(), cell.end(), numbers.begin() );
+          std::ranges::copy(cell, numbers.begin());
           gridFactory.insertElement( type, numbers );
         }
         //cells.swap( IndexVectorType() );
@@ -272,7 +272,7 @@ namespace Dune
         {
           nodes.resize( dgf.nofvtx );
           // copy vertices
-          std::copy( dgf.vtx.begin(), dgf.vtx.end(), nodes.begin() );
+          std::ranges::copy(dgf.vtx, nodes.begin());
 
           for( const auto& node : nodes )
           {

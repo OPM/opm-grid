@@ -541,7 +541,7 @@ namespace cpgrid
                   face_to_point_, cell_to_point_,
                   face_to_output_face);
 
-        std::copy(output.dimensions, output.dimensions + 3, logical_cartesian_size_.begin());
+        std::copy_n(output.dimensions, 3, logical_cartesian_size_.begin());
 
 #ifdef VERBOSE
         std::cout << "Building geometry." << std::endl;
@@ -916,7 +916,7 @@ namespace cpgrid
             grid.dimensions[1] = grid.dimensions[1] - 2;
             grid.dimensions[2] = grid.dimensions[2] - 2;
             grid.number_of_cells = new_index_to_new_lcart.size();
-            std::copy(new_index_to_new_lcart.begin(), new_index_to_new_lcart.end(), grid.local_cell_index);
+            std::ranges::copy(new_index_to_new_lcart, grid.local_cell_index);
         }
 
 

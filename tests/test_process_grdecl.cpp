@@ -70,7 +70,7 @@ namespace {
         {
             auto input = grdecl{};
 
-            std::copy(this->dims_.begin(), this->dims_.end(), input.dims);
+            std::ranges::copy(this->dims_, input.dims);
 
             input.coord  = this->coord_.data();
             input.zcorn  = this->zcorn_.data();
