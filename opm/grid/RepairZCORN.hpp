@@ -719,19 +719,12 @@ namespace Opm { namespace UgGridHelpers {
         int first(const std::vector<int>& coll,
                   const int               ignore) const
         {
-            auto e = std::end(coll);
+            const auto p =
+                std::ranges::find_if(coll,
+                                     [ignore](const int xi)
+                                     { return xi != ignore; });
 
-            auto p = std::find_if(std::begin(coll), e,
-                                  [ignore](const int xi)
-                                  {
-                                      return xi != ignore;
-                                  });
-
-            if (p == e) {
-                return ignore;
-            }
-
-            return *p;
+            return p == coll.end() ? ignore : *p;
         }
     };
 
