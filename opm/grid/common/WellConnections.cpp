@@ -343,8 +343,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     }
 
     // setup receives for each process that owns cells of the original grid
-    auto noSource = std::count_if(cellsPerProc.begin(), cellsPerProc.end(),
-                                  [](const std::size_t &i) { return i > 0; });
+    auto noSource = std::ranges::count_if(cellsPerProc,
+                                          [](const std::size_t &i) { return i > 0; });
     std::vector<MPI_Request> requests(noSource, MPI_REQUEST_NULL);
     std::vector<std::vector<std::size_t>> sizeBuffers(cc.size());
     auto begin = cellsPerProc.begin();
@@ -378,9 +378,9 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     std::vector<MPI_Status> statuses(requests.size());
     MPI_Waitall(requests.size(), requests.data(), statuses.data());
 
-    auto messages = std::count_if(
-                                  sizeBuffers.begin(), sizeBuffers.end(),
-                                  [](const std::vector<std::size_t> &v) { return v.size() ? v[0] + v[1] : 0; });
+    auto messages = std::ranges::count_if(sizeBuffers,
+                                          [](const std::vector<std::size_t> &v)
+                                          { return v.size() ? v[0] + v[1] : 0; });
     requests.resize(messages);
     ++tag;
 

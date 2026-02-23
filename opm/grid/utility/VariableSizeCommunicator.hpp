@@ -1141,10 +1141,8 @@ void VariableSizeCommunicator<Allocator>::communicateSizes(DataHandle& handle,
   auto valid_req_func =
     [](const MPI_Request& req) { return req != MPI_REQUEST_NULL; };
 
-  auto size_to_send = std::count_if(send_requests.begin(), send_requests.end(),
-                                    valid_req_func);
-  auto size_to_recv = std::count_if(recv_requests.begin(), recv_requests.end(),
-                                    valid_req_func);
+  auto size_to_send = std::ranges::count_if(send_requests, valid_req_func);
+  auto size_to_recv = std::ranges::count_if(recv_requests, valid_req_func);
 
   while(size_to_send+size_to_recv)
   {
@@ -1190,10 +1188,8 @@ void VariableSizeCommunicator<Allocator>::communicateVariableSize(DataHandle& ha
   auto valid_req_func =
     [](const MPI_Request& req) { return req != MPI_REQUEST_NULL;};
 
-  auto no_to_send = std::count_if(send_requests.begin(), send_requests.end(),
-                             valid_req_func);
-  auto no_to_recv = std::count_if(recv_requests.begin(), recv_requests.end(),
-                             valid_req_func);
+  auto no_to_send = std::ranges::count_if(send_requests, valid_req_func);
+  auto no_to_recv = std::ranges::count_if(recv_requests, valid_req_func);
   while(no_to_send+no_to_recv)
   {
     // Check send completion and initiate other necessary sends
