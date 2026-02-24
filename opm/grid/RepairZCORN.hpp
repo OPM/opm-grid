@@ -699,11 +699,9 @@ namespace Opm { namespace UgGridHelpers {
             const auto x0 = (lookfor != ignore)
                 ? lookfor : first(coll, ignore);
 
-            return std::all_of(std::begin(coll), std::end(coll),
-                               [x0, ignore](const int xi)
-                   {
-                       return (xi == x0) || (xi == ignore);
-                   });
+            return std::ranges::all_of(coll,
+                                       [x0, ignore](const int xi)
+                                       { return (xi == x0) || (xi == ignore); });
         }
 
         /// Find first non-ignored element value in vector.
