@@ -66,7 +66,7 @@ void checkOutputOrderLevelGrids(const Dune::CpGrid& grid,
             BOOST_CHECK_EQUAL( *minToOutput, 0);
             BOOST_CHECK_EQUAL( *maxToOutput, lgr_cells-1 ); // shifted by -1 since indexing starts at 0
 
-            BOOST_CHECK( std::is_sorted(outputContainer.begin(), outputContainer.end()) );
+            BOOST_CHECK(std::ranges::is_sorted(outputContainer));
         }
     }
 }
