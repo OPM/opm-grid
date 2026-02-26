@@ -50,9 +50,6 @@
 #endif
 
 #include "../CpGrid.hpp"
-#include "LgrHelpers.hpp"
-#include "ParentToChildrenCellGlobalIdHandle.hpp"
-#include "NestedRefinementUtilities.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
