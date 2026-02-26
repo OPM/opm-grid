@@ -161,19 +161,6 @@ void CpGridLGR::globalRefine (int refCount, bool throwOnFailure)
     }
 }
 
-template <int codim>
-
-/// \brief Size of the ghost cell layer on the leaf level
-
-/// \brief Size of the overlap on a given level
-
-/// \brief Size of the ghost cell layer on a given level
-
-//
-
-/// \brief Get the number of faces.
-/// \brief Get The number of vertices.
-
 Dune::cpgrid::Intersection CpGridLGR::getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const
 {
     if ( intersection.neighbor()) {
