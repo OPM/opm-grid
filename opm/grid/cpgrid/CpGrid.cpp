@@ -1327,4 +1327,148 @@ template cpgrid::Entity<3> createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp
 
 
+
+const std::vector< Dune :: GeometryType >& CpGrid::geomTypes( const int codim ) const
+{
+    return leafIndexSet().geomTypes( codim );
+}
+cpgrid::Entity<codim> CpGrid::entity( const cpgrid::Entity< codim >& seed ) const
+{
+    return cpgrid::Entity<codim>( *(this->current_data_->back()), seed );
+}
+template cpgrid::Entity<0> CpGrid::entity<0>( const cpgrid::Entity<0>&) const;
+template cpgrid::Entity<3> CpGrid::entity<3>( const cpgrid::Entity<3>&) const;
+
+
+/// \brief Size of the overlap on the leaf level
+unsigned int CpGrid::overlapSize(int) const {
+    return 1;
+}
+unsigned int CpGrid::ghostSize(int) const {
+    return 0;
+}
+unsigned int CpGrid::overlapSize(int, int) const {
+    return 1;
+}
+unsigned int CpGrid::ghostSize(int, int) const {
+    return 0;
+}
+unsigned int CpGrid::numBoundarySegments() const
+{
+    if( uniqueBoundaryIds() )
+    {
+        return current_data_->back()->unique_boundary_ids_.size();
+    }
+    else
+    {
+        unsigned int numBndSegs = 0;
+        const int num_faces = numFaces();
+        for (int i = 0; i < num_faces; ++i) {
+            cpgrid::EntityRep<1> face(i, true);
+            if (current_data_->back()->face_to_cell_[face].size() == 1) {
+                ++numBndSegs;
+            }
+        }
+        return numBndSegs;
+    }
+}
+void CpGrid::setPartitioningParams(const std::map<std::string,std::string>& params)
+{
+    partitioningParams = params;
+}
+const typename CpGridTraits::Communication& Dune::CpGrid::comm () const
+{
+    return current_data_->back()->ccobj_;
+}
+const std::vector<double>& CpGrid::zcornData() const {
+    return current_data_->back()->zcornData();
+}
+int CpGrid::numCells(int level) const
+{
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]->cell_to_face_.size() : current_data_->back()->cell_to_face_.size();
+}
+int CpGrid::numFaces(int level) const
+{
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]->face_to_cell_.size() : current_data_->back()->face_to_cell_.size();
+}
+int CpGrid::numVertices() const
+{
+    return current_data_->back()->geomVector<3>().size();
+}
+int CpGrid::numCellFaces(int cell, int level) const
+{
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size()
+        : current_data_->back()->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
+}
+int CpGrid::cellFace(int cell, int local_index, int level) const
+{
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]-> cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index()
+        : current_data_->back()->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
+}
+const cpgrid::OrientedEntityTable<0,1>::row_type CpGrid::cellFaceRow(int cell) const
+{
+    return current_data_->back()->cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
+}
+int CpGrid::faceCell(int face, int local_index, int level) const
+{
+    // Get the correct neigbour relation (row from face->cell table).
+    const bool validLevel = (level > -1) && (level <= maxLevel());
+    const cpgrid::OrientedEntityTable<1,0>::row_type r = validLevel
+        ? data_[level]->face_to_cell_[cpgrid::EntityRep<1>(face, true)]
+        : current_data_->back()->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
+
+    // Deal with special case of single element in row.
+    if (r.size() == 1) {
+        const bool use_first = (r[0].orientation() == (local_index == 0));
+        return use_first ? r[0].index() : -1;
+    }
+
+    // In the parallel case we store non-existent cells for faces along the front region.
+    // These are marked with index std::numeric_limits<int>::max(), we will replace them
+    // with -1 for this interface's sake.
+    auto getIndexConvertMaxToNegOne = [](const cpgrid::EntityRep<0>& cell) {
+        return cell.index() == std::numeric_limits<int>::max() ? -1 : cell.index();
+    };
+
+    // We will use a helper array to store the ordered face->cell relation requested in
+    // this interface, i.e. the face (normal) is oriented from nb[0] to nb[1].
+    std::array<int, 2> nbs{ getIndexConvertMaxToNegOne(r[0]), getIndexConvertMaxToNegOne(r[1]) };
+
+    // The entities in r are in arbitrary order, and we must use the orientations to
+    // get the correct order. If the first entity has orientation true, we are fine,
+    // otherwise we must flip the order.
+    //
+    // Note that this requires that also the "other process" neighbours have proper
+    // orientations!
+    if (!r[0].orientation()) {
+        std::swap(nbs[0], nbs[1]);
+    }
+
+    return nbs[local_index];
+}
+int CpGrid::numCellFaces() const
+{
+    return current_data_->back()->cell_to_face_.dataSize();
+}
+int CpGrid::numFaceVertices(int face) const
+{
+    return current_data_->back()->face_to_point_[face].size();
+}
+int CpGrid::faceVertex(int face, int local_index) const
+{
+    return current_data_->back()->face_to_point_[face][local_index];
+}
+std::array<double,3> CpGrid::getEclCentroid(const int& elemIdx) const
+{
+    return this-> current_data_->back() -> computeEclCentroid(elemIdx);
+}
+std::array<double,3> CpGrid::getEclCentroid(const cpgrid::Entity<0>& elem) const
+{
+    return this-> getEclCentroid(elem.index());
+}
+
 } // namespace Dune
