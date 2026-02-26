@@ -32,6 +32,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Intersection.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/CpGridLGR.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
@@ -214,6 +215,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/cpgrid/NestedRefinementUtilities.hpp
   opm/grid/CpGrid.hpp
+  opm/grid/CpGridLGR.hpp
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
