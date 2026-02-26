@@ -30,6 +30,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
 #include <opm/grid/common/WellConnections.hpp>
@@ -80,7 +81,7 @@ auto createWell (const std::string& name)
 BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_cartesian_cpgrid_with_lgrs)
 {
     // Create a grid with lgrs
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dims = */ {1,2,4}, /* size = */ {1.,1.,1.});
 
     grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,1}},
@@ -190,7 +191,7 @@ END
     Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
 
     // Create CpGrid from deck and add LGRs
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,3,3}, {3,3,3}},
                                /* startIJK_vec = */ {{4,4,0}, {6,6,0}},
@@ -231,7 +232,7 @@ END
 BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_global_refined_cpgrid)
 {
     // Create grid and refine it globally.
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {2.0, 2.0, 2.0});
     grid.globalRefine(1);
 

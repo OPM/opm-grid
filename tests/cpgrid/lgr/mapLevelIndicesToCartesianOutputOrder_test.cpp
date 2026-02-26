@@ -26,6 +26,7 @@
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <algorithm> // for std::minmax_element, std::is_sorted
+#include <opm/grid/CpGridLGR.hpp>
 #include <string>
 #include <vector>
 
@@ -101,7 +102,7 @@ BOOST_AUTO_TEST_CASE(simpleTestReOrderLgr_serial)
   3*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::createGridAndAddLgrs(grid,
                               deckString,
                               /* cells_per_dim = */ {{2,2,1}},
@@ -180,7 +181,7 @@ BOOST_AUTO_TEST_CASE(aFewMoreInactiveParentCellsTestCase)
   36*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::createGridAndAddLgrs(grid,
                               deckString,
                               /* cells_per_dim = */ {{3,3,3}, {3,3,3}},

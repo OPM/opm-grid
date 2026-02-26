@@ -26,6 +26,7 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
 
 struct Fixture
@@ -102,7 +103,7 @@ BOOST_AUTO_TEST_CASE(refineCellWithFewerThanEightCornersThrows)
     const auto deck = parser.parseString(deckString);
     Opm::EclipseGrid eclGrid(deck);
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
 
     for (const auto& element : Dune::elements(grid.leafGridView())) {
@@ -145,7 +146,7 @@ void createAndRefineTestGrid(const std::string& deckString,
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
     Opm::EclipseGrid eclGrid(deck);
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
 
     for (const auto& element : Dune::elements(grid.leafGridView())) {

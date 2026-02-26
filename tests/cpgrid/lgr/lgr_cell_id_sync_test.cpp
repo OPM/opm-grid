@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/ParentToChildrenCellGlobalIdHandle.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
@@ -52,7 +53,7 @@ struct Fixture {
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 
-void createTestGrid(Dune::CpGrid& grid)
+void createTestGrid(Dune::CpGridLGR& grid)
 {
     Opm::Parser parser;
     const std::string deck_string = R"(
@@ -127,7 +128,7 @@ void checkChildGlobalIdsTest(const Dune::CpGrid& grid)
 BOOST_AUTO_TEST_CASE(cellIdSyncWhenLgrsAddedFirstInUndistributedViewThenInDistributedView)
 {
     // Create the grid and add the LGRs in the global-view (non-distributed view)
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createTestGrid(grid);
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3, 3, 3}},
                                /* startIJK_vec = */ {{1, 1, 0}},
@@ -174,7 +175,7 @@ BOOST_AUTO_TEST_CASE(cellIdSyncWhenLgrsAddedFirstInUndistributedViewThenInDistri
 BOOST_AUTO_TEST_CASE(cellIdSyncWhenLgrsAddedFirstInDistributedViewThenInUndistributedView)
 {
     // Create the grid and add the LGRs in the global-view (non-distributed view)
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createTestGrid(grid);
 
     if (grid.comm().size()>1) {

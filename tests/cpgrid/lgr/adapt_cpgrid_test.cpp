@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <algorithm>
@@ -43,7 +44,7 @@ struct Fixture
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 
-void checkAdaptedGrid(Dune::CpGrid& grid,
+void checkAdaptedGrid(Dune::CpGridLGR& grid,
                       const std::array<int,3>& cells_per_dim,
                       bool lgrsHaveBlockShape,
                       bool gridHasBeenGlobalRefined,
@@ -60,7 +61,7 @@ void checkAdaptedGrid(Dune::CpGrid& grid,
 
 BOOST_AUTO_TEST_CASE(markNoElemForRefinementDoesNothingToTheGrid)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // If no elements are marked for refinement, calling adapt(/*args*/) or adapt()
@@ -76,7 +77,7 @@ BOOST_AUTO_TEST_CASE(markNoElemForRefinementDoesNothingToTheGrid)
 
 BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinementWithOne)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     std::vector<int> markedCells(36); // 36 = 4x3x3
     std::iota(markedCells.begin(), markedCells.end(), 0);
@@ -90,7 +91,7 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
 
 
     // Create other grid for comparison
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     equivalent_grid.globalRefine(1, /* throwOnFailure = */ true);
 
@@ -99,7 +100,7 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
 
 BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLeafView)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     std::vector<int> markedCells = {17,18}; // block-shape with dimensions 2x1x1
     Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, markedCells);
@@ -111,7 +112,7 @@ BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLe
                      /* preAdaptMaxLevel = */ 0);
 
     // Create other grid for comparison
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     equivalent_grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{2,2,2}},
                                            /* startIJK = */ {{1,1,1}},
@@ -123,7 +124,7 @@ BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLe
 
 BOOST_AUTO_TEST_CASE(refinementOfCellsNotFormingABlockIsSupported)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     std::vector<int> markedCells = {0,4,5,17,18,30,31,35};
 
@@ -144,7 +145,7 @@ BOOST_AUTO_TEST_CASE(refinementOfCellsNotFormingABlockIsSupported)
 BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtLgrBoundaries)
 {
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     std::vector<int> markedCells = {1,4,6,17,22,28,32};
     Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, markedCells);
@@ -160,7 +161,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtL
     std::vector<int> markedCells3 = {63, 67}; // Equivalent cells to level 0 cells with indices {28,32};
 
     // Create a grid for comparison
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     Opm::adaptGrid(equivalent_grid, markedCells1);
     Opm::adaptGrid(equivalent_grid, markedCells2);
@@ -171,7 +172,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtL
 
 BOOST_AUTO_TEST_CASE(refineCoarseOnLgrBoundaryThrows)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // level zero grid view - cells marked for refinement are denoted with (/*index*/).
@@ -226,7 +227,7 @@ BOOST_AUTO_TEST_CASE(refineCoarseOnLgrBoundaryThrows)
 
 BOOST_AUTO_TEST_CASE(refineRefinedCellsOnLgrBoundaryIsSupported)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // level zero grid view - cells marked for refinement are denoted with (/*index*/).
@@ -281,7 +282,7 @@ BOOST_AUTO_TEST_CASE(refineRefinedCellsOnLgrBoundaryIsSupported)
 
 BOOST_AUTO_TEST_CASE(refineCoarseAwayFromLgrBondaryAndRefinedCellsIsSupported) {
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // level zero grid view - cells marked for refinement are denoted with (/*index*/).
@@ -338,7 +339,7 @@ BOOST_AUTO_TEST_CASE(refineCoarseAwayFromLgrBondaryAndRefinedCellsIsSupported) {
 
 BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondariesIsSupported) {
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // level zero grid view - cells marked for refinement are denoted with (/*index*/).

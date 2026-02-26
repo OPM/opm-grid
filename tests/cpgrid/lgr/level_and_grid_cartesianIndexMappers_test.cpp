@@ -24,6 +24,7 @@
 #include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 #include <algorithm>
 #include <array>
@@ -429,7 +430,7 @@ void checkGloballyRefinedTestGrids(const Dune::CpGrid& grid,
 // adapt(), or globalRefine(..).
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinementWith_addLgrsUpdateLeafView)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -779,7 +780,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinementWith_adapt)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -936,7 +937,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -959,7 +960,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefinementWith_adapt)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     Opm::areEqual(/* grid dimensions before refinement = */ {4,3,3},
@@ -985,7 +986,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_globalRefine)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -1058,7 +1059,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeaf
   36*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::createGridAndAddLgrs(grid,
                               deckString,
                               /* cells_per_dim = */ {{3,3,3}, {3,3,3}},

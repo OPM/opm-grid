@@ -23,6 +23,7 @@
 
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <string>
@@ -70,7 +71,7 @@ BOOST_AUTO_TEST_CASE(simpleGridWith1InactiveParentCell_serial)
   3*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::createGridAndAddLgrs(grid,
                               deckString,
                               /* cells_per_dim = */ {{2,2,1}},
@@ -179,7 +180,7 @@ BOOST_AUTO_TEST_CASE(aFewMoreInactiveParentCells_serial)
   36*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::createGridAndAddLgrs(grid,
                               deckString,
                               /* cells_per_dim = */ {{3,3,3}, {3,3,3}},

@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
@@ -40,7 +41,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {2.,1.,4.});
     //                          LGR1 parent cells
     // k = 2   32 33 34 35 |
@@ -69,7 +70,7 @@ BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
 
 BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirection)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
     //                          LGR1 parent cells       LGR2 parent cells       LGR3 parent cells
     // k = 2   32 33 34 35 |                                                                 35
@@ -98,7 +99,7 @@ BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirecti
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
     //                          LGR1 parent cells       LGR2 parent cells       LGR3 parent cells
     // k = 2   32 33 34 35 |                                                                 35
@@ -128,7 +129,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
     // Refine 3 cell-blocks, 2x2x2 subdivisions per x-,y-,z- direction.
     // LGR1 parent cell (idx = 1) and LGR2 parent cell (idx = 14) share an edge.
@@ -145,7 +146,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareFaceWithCompatibleSubdivisions)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
 
     // k = 2   32 33 34 35     LGR5 parent cells = {35}
@@ -180,7 +181,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareFaceWithCompatibleSubdivisions)
 
 BOOST_AUTO_TEST_CASE(throwIfUncompatibleSubdivisionsInSharedFaces)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}};
@@ -211,7 +212,7 @@ BOOST_AUTO_TEST_CASE(throwIfUncompatibleSubdivisionsInSharedFaces)
 BOOST_AUTO_TEST_CASE(parentCellBlockIsTheEntireGrid)
 {
     // Create a 4x3x3 grid with sizes 4x3x3
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     // Refine each cell into 2x2x2 children (2 subdivisions per x-,y-,z- direction).
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
@@ -229,7 +230,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlockIsTheEntireGrid)
 BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOne)
 {
     // Create a 4x3x3 grid with sizes 4x3x3
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1., 1., 1.});
     // Refine each cell into 1 child does nothing to the grid. ( subdivision per x-,y-,z- direction).
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}},
@@ -248,7 +249,7 @@ BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOne)
 BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOneForAllLgrs)
 {
     // Create a 4x3x3 grid with sizes 4x3x3
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1., 1., 1.});
     // Refine each cell into 1 child does nothing to the grid. ( subdivision per x-,y-,z- direction).
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}, {1,1,1}},
@@ -267,7 +268,7 @@ BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOneForAllLg
 
 BOOST_AUTO_TEST_CASE(filterLgrThatDoesNotTriggerActualRefinement)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
 
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {1,1,1}, {2,2,2}},

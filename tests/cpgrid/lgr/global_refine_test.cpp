@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <numeric>
@@ -43,7 +44,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 BOOST_AUTO_TEST_CASE(globalRefineWithParamZeroDoesNothingToTheGrid)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     grid.globalRefine(0);
 
@@ -53,13 +54,13 @@ BOOST_AUTO_TEST_CASE(globalRefineWithParamZeroDoesNothingToTheGrid)
 
 BOOST_AUTO_TEST_CASE(globalRefineWithNegativeParamThrows)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     BOOST_CHECK_THROW(grid.globalRefine(-5), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(globalRefineAgridWithCoarseAndRefinedCellsThrows)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
                                /* startIJK_vec = */ {{2,0,0}},
@@ -71,14 +72,14 @@ BOOST_AUTO_TEST_CASE(globalRefineAgridWithCoarseAndRefinedCellsThrows)
 
 BOOST_AUTO_TEST_CASE(adaptAGridThatHadBeenGlobalRefinedIsSupported)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {2,2,1}, /* cell_sizes = */ {2.0, 2.0, 2.0});
     grid.globalRefine(1);
 
     Opm::adaptGrid(grid, /* markedCells = */ {0,4,10,11});
 
     // Create equivalent grid for comparison.
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {4,4,2}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     // -> Equivalent to grid after calling globalRefine(1) and before calling adapt() with marked
     // cells {0,4,10,11}
@@ -95,7 +96,7 @@ BOOST_AUTO_TEST_CASE(adaptAGridThatHadBeenGlobalRefinedIsSupported)
 
 BOOST_AUTO_TEST_CASE(globalRefineWithPositiveParamIsSupported)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {2,2,1}, /* cell_sizes = */ {8.0, 8.0, 4.0});
     grid.globalRefine(3);
     // Note: default subdivisions per cell is 2x2x2 in globalRefine().
@@ -103,7 +104,7 @@ BOOST_AUTO_TEST_CASE(globalRefineWithPositiveParamIsSupported)
 
     // Create other grid for comparison, equivalent to "grid.globalRefine(2)". Mark all elements
     // and adapt.
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {8,8,4}, /* cell_sizes = */ {2.0, 2.0, 1.0});
     std::vector<int> markedCells(256); // 256 = 8x8x4
     std::iota(markedCells.begin(), markedCells.end(), 0);
@@ -114,7 +115,7 @@ BOOST_AUTO_TEST_CASE(globalRefineWithPositiveParamIsSupported)
 
 BOOST_AUTO_TEST_CASE(multipleGlobalRefineCallsAreSupported)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {2,2,1}, /* cell_sizes = */ {8.0, 8.0, 4.0});
     grid.globalRefine(1);
     grid.globalRefine(1);
@@ -124,7 +125,7 @@ BOOST_AUTO_TEST_CASE(multipleGlobalRefineCallsAreSupported)
 
     // Create other grid for comparison, equivalent to "grid.globalRefine(2)". Mark all elements
     // and adapt.
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {8,8,4}, /* cell_sizes = */ {2.0, 2.0, 1.0});
     std::vector<int> markedCells(256); // 256 = 8x8x4
     std::iota(markedCells.begin(), markedCells.end(), 0);
@@ -136,7 +137,7 @@ BOOST_AUTO_TEST_CASE(multipleGlobalRefineCallsAreSupported)
 
 BOOST_AUTO_TEST_CASE(multipleRefineCallsWithDifferentPositivParamsAreSupported)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {2,2,1}, /* cell_sizes = */ {8.0, 8.0, 4.0});
     grid.globalRefine(2);
     grid.globalRefine(1);
@@ -145,7 +146,7 @@ BOOST_AUTO_TEST_CASE(multipleRefineCallsWithDifferentPositivParamsAreSupported)
 
     // Create other grid for comparison, equivalent to "grid.globalRefine(2)". Mark all elements
     // and adapt.
-    Dune::CpGrid equivalent_grid;
+    Dune::CpGridLGR equivalent_grid;
     equivalent_grid.createCartesian(/* grid_dim = */ {8,8,4}, /* cell_sizes = */ {2.0, 2.0, 1.0});
     std::vector<int> markedCells(256); // 256 = 8x8x4
     std::iota(markedCells.begin(), markedCells.end(), 0);

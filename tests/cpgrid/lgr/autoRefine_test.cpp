@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <array>
@@ -41,7 +42,7 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
-void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
+void checkGridAfterAutoRefinement(const Dune::CpGridLGR& grid,
                                   const std::array<int,3>& nxnynz)
 {
     // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
@@ -62,7 +63,7 @@ void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
 
 BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // nxnynz represents the refinement factors in x-,y-,and z-direction.
@@ -73,7 +74,7 @@ BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
 
 BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // nxnynz represents the refinement factors in x-,y-,and z-direction.
@@ -84,7 +85,7 @@ BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows)
 
 BOOST_AUTO_TEST_CASE(autoRefine)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().size()>1) { // distribute level zero grid, in parallel
@@ -99,7 +100,7 @@ BOOST_AUTO_TEST_CASE(autoRefine)
 
 BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().size() == 1 ) { // serial
@@ -123,7 +124,7 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
 
 BOOST_AUTO_TEST_CASE(callAdaptAfterAutoRefine_serial) {
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().size() == 1 ) { // serial
@@ -151,7 +152,7 @@ BOOST_AUTO_TEST_CASE(callAdaptAfterAutoRefine_serial) {
 
 BOOST_AUTO_TEST_CASE(callAdaptNotAllElementsMarkedAfterAutoRefine_serial) {
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().size() == 1 ) { // serial

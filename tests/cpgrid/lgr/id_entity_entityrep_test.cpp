@@ -23,6 +23,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 #include <unordered_set>
 
@@ -280,7 +281,7 @@ void checkEntityIds(const Dune::CpGrid& grid)
 
 BOOST_AUTO_TEST_CASE(idChecks_viaAddLgrs)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().rank() == 0)
@@ -323,7 +324,7 @@ BOOST_AUTO_TEST_CASE(idChecks_viaAddLgrs)
 
 BOOST_AUTO_TEST_CASE(idChecks_viaAdapt)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().rank() == 0)
@@ -378,7 +379,7 @@ BOOST_AUTO_TEST_CASE(idChecks_viaAdapt)
 
 BOOST_AUTO_TEST_CASE(idChecks_viaGlobalRefine)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     if (grid.comm().rank() == 0)

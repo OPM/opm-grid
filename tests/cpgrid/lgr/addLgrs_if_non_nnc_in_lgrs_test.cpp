@@ -28,6 +28,7 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
@@ -45,7 +46,7 @@ struct Fixture
     }
 };
 
-void testCase(Dune::CpGrid& grid,
+void testCase(Dune::CpGridLGR& grid,
               const std::string& deckString,
               const Opm::NNC& nnc)
 {
@@ -95,7 +96,7 @@ BOOST_AUTO_TEST_CASE(addLgrsWithNNCatAnLgrThrows)
     nnc.addNNC(2, 4, 1.0); // connect cell 2 (does not belong to any LGR) and cell 4 (belongs to LGR2)
     // LGR1 parent cell indices = {0,1}.
     // LGR2 parent cell indices = {4}.
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     testCase(grid, deckString, nnc);
 
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
@@ -112,7 +113,7 @@ BOOST_AUTO_TEST_CASE(addLgrsWithNNCAtSeveralLgrsThrows)
     // LGR1 parent cell index = {0}.
     // LGR2 parent cell index = {2}.
     // LGR3 parent cell index = {4}.
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     testCase(grid, deckString, nnc);
 
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
@@ -127,7 +128,7 @@ BOOST_AUTO_TEST_CASE(LgrWithNNC_and_lgrsWithoutNNC_addLgrsThrows)
     nnc.addNNC(0, 2, 1.0); // connect cell 0 and cell 2 (both belong to LGR1). LGR2 does not have NNCs.
     // LGR1 parent cell indices = {0,1,2}.
     // LGR2 parent cell index = {4}.
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     testCase(grid, deckString, nnc);
 
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {4,4,4}},
@@ -143,7 +144,7 @@ BOOST_AUTO_TEST_CASE(addLgrsIfNNCoutsideAllLgrsIsSupported)
     // LGR1 parent cell index = {0}.
     // LGR2 parent cell index = {2}.
     // LGR3 parent cell index = {4}.
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     testCase(grid, deckString, nnc);
 
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},

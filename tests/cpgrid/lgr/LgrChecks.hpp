@@ -30,6 +30,7 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
 
@@ -72,7 +73,7 @@ void checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
                             const Dune::CpGrid& grid,
                             bool isNested);
 
-void checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
+void checkGridBasicHiearchyInfo(const Dune::CpGridLGR& grid,
                                 const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                 int preAdaptMaxLevel = 0,
                                 bool isNested = false);
@@ -85,7 +86,7 @@ void checkCellGlobalIdUniquenessForInteriorCells(const Dune::CpGrid& grid,
 void checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
                                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
-void checkLgrNameToLevel(const Dune::CpGrid& grid,
+void checkLgrNameToLevel(const Dune::CpGridLGR& grid,
                          const std::vector<std::string>& lgr_name_vec,
                          int preRefineMaxLevel);
 
@@ -94,14 +95,14 @@ void checkVertexAndFaceIndexAreNonNegative(const Dune::CpGrid& grid);
 void checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
                                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
-void createGridAndAddLgrs(Dune::CpGrid& grid,
+void createGridAndAddLgrs(Dune::CpGridLGR& grid,
                           const std::string& deck_string,
                           const std::vector<std::array<int, 3>>& cells_per_dim_vec,
                           const std::vector<std::array<int, 3>>& startIJK_vec,
                           const std::vector<std::array<int, 3>>& endIJK_vec,
                           const std::vector<std::string>& lgr_name_vec);
 
-void createGridAndAddLgrs(Dune::CpGrid& grid,
+void createGridAndAddLgrs(Dune::CpGridLGR& grid,
                           const std::array<double, 3>& cell_sizes,
                           const std::array<int, 3>& grid_dim,
                           const std::vector<std::array<int, 3>>& cells_per_dim_vec,
@@ -144,14 +145,14 @@ bool areClose(const T& cont1,
 void areEqual(const std::array<int,3>& expected_array,
               const std::array<int,3>& actual_array);
 
-void adaptGridWithParams(Dune::CpGrid& grid,
+void adaptGridWithParams(Dune::CpGridLGR& grid,
                          const std::array<int,3>& cells_per_dim,
                          const std::vector<int>& markedCells);
 
-void adaptGrid(Dune::CpGrid& grid,
+void adaptGrid(Dune::CpGridLGR& grid,
                const std::vector<int>& markedCells);
 
-void checkGridWithLgrs(const Dune::CpGrid& grid,
+void checkGridWithLgrs(const Dune::CpGridLGR& grid,
                        const std::vector<std::array<int,3>>& cells_per_dim_vec,
                        const std::vector<std::string>& lgr_name_vec,
                        bool gridHasBeenGlobalRefined = false,
@@ -164,10 +165,10 @@ int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
 void checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
                                                const std::vector<int>& expected_global_cells);
 
-void checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
+void checkMarksAfterPreAdapt(const Dune::CpGridLGR& grid,
                              bool preAdapt);
 
-void checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
+void checkMarksAfterPostAdapt(const Dune::CpGridLGR& grid,
                               int preAdaptMaxLevel);
 
 } // namespace Opm
@@ -302,7 +303,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     BOOST_CHECK_EQUAL( siblings_list.size(), expected_total_children);
 }
 
-void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
+void Opm::checkGridBasicHiearchyInfo(const Dune::CpGridLGR& grid,
                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                      int preAdaptMaxLevel,
                                      bool isNested)
@@ -491,7 +492,7 @@ void Opm::checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
     }
 }
 
-void Opm::checkLgrNameToLevel(const Dune::CpGrid& grid,
+void Opm::checkLgrNameToLevel(const Dune::CpGridLGR& grid,
                               const std::vector<std::string>& lgr_name_vec,
                               int preRefineMaxLevel)
 {
@@ -537,7 +538,7 @@ void Opm::checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
     }
 }
 
-void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
+void Opm::createGridAndAddLgrs(Dune::CpGridLGR& grid,
                                const std::string& deck_string,
                                const std::vector<std::array<int, 3>>& cells_per_dim_vec,
                                const std::vector<std::array<int, 3>>& startIJK_vec,
@@ -554,7 +555,7 @@ void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
-void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
+void Opm::createGridAndAddLgrs(Dune::CpGridLGR& grid,
                                const std::array<double, 3>& cell_sizes,
                                const std::array<int, 3>& grid_dim,
                                const std::vector<std::array<int, 3>>& cells_per_dim_vec,
@@ -757,7 +758,7 @@ void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::Cp
     checkEqualCellGeometrySet(grid, other_grid);
 }
 
-void Opm::adaptGridWithParams(Dune::CpGrid& grid,
+void Opm::adaptGridWithParams(Dune::CpGridLGR& grid,
                               const std::array<int,3>& cells_per_dim,
                               const std::vector<int>& markedCells)
 {
@@ -780,7 +781,7 @@ void Opm::adaptGridWithParams(Dune::CpGrid& grid,
     checkMarksAfterPostAdapt(grid, preAdaptMaxLevel);
 }
 
-void Opm::adaptGrid(Dune::CpGrid& grid,
+void Opm::adaptGrid(Dune::CpGridLGR& grid,
                     const std::vector<int>& markedCells)
 {
     const auto& leafGridView = grid.currentLeafData();
@@ -800,7 +801,7 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
     checkMarksAfterPostAdapt(grid, preAdaptMaxLevel);
 }
 
-void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
+void Opm::checkGridWithLgrs(const Dune::CpGridLGR& grid,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
                             const std::vector<std::string>& lgr_name_vec,
                             bool gridHasBeenGlobalRefined,
@@ -858,7 +859,7 @@ void Opm::checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
 }
 
 
-void Opm::checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
+void Opm::checkMarksAfterPreAdapt(const Dune::CpGridLGR& grid,
                                   bool preAdapt)
 {
     if (preAdapt) { // at least one element has been marked
@@ -871,7 +872,7 @@ void Opm::checkMarksAfterPreAdapt(const Dune::CpGrid& grid,
         }
     }
 }
-void Opm::checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
+void Opm::checkMarksAfterPostAdapt(const Dune::CpGridLGR& grid,
                                    int preAdaptMaxLevel)
 {
     for (const auto& element : Dune::elements(grid.leafGridView())) {

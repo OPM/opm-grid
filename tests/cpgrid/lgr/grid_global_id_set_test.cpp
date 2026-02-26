@@ -27,6 +27,7 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 #include <array>
 #include <stdexcept>
@@ -46,9 +47,9 @@ struct Fixture {
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 // Create a test grid
-Dune::CpGrid createTestGrid()
+Dune::CpGridLGR createTestGrid()
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     // Create the starting grid (before adding LGRs)
     Opm::Parser parser;
     const std::string deck_string = R"(

@@ -27,6 +27,7 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
@@ -68,7 +69,7 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
-void checkGlobalCellLgr(Dune::CpGrid& grid)
+void checkGlobalCellLgr(Dune::CpGridLGR& grid)
 {
     const Dune::CartesianIndexMapper<Dune::CpGrid> mapper{grid};
 
@@ -132,7 +133,7 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
 BOOST_AUTO_TEST_CASE(refine_one_cell)
 {
     // Create a grid
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
@@ -149,7 +150,7 @@ BOOST_AUTO_TEST_CASE(refine_one_cell)
 BOOST_AUTO_TEST_CASE(three_lgrs)
 {
     // Create a grid
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
@@ -210,7 +211,7 @@ BOOST_AUTO_TEST_CASE(inactiveCells_in_lgrs)
     const auto deck = parser.parseString(deckString);
     Opm::EclipseState es(deck);
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);

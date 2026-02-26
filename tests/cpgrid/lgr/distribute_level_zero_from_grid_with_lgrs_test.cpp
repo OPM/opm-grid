@@ -29,6 +29,7 @@
 
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
 
 #include <dune/common/version.hh>
@@ -55,9 +56,9 @@ struct Fixture {
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 // Create a grid and add one test LGR with dimension 6x6x3.
-Dune::CpGrid createGridAndAddTestLgr()
+Dune::CpGridLGR createGridAndAddTestLgr()
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     // Create the starting grid (before adding LGRs)
     Opm::Parser parser;
     const std::string deck_string = R"(

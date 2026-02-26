@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 
 #include <array>
@@ -46,7 +47,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 // adapt(), or globalRefine(..).
 BOOST_AUTO_TEST_CASE(lgrLogCartSize_afterAddLgrsUpdateLeafView_makesSense)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -69,7 +70,7 @@ BOOST_AUTO_TEST_CASE(lgrLogCartSize_afterAddLgrsUpdateLeafView_makesSense)
 
 BOOST_AUTO_TEST_CASE(gridLogCartSize_afterStrictLocalRefinementWith_addLgrsUpdateLeafView_isACopyOfLevelZeroLogCartSize)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -90,7 +91,7 @@ BOOST_AUTO_TEST_CASE(gridLogCartSize_afterStrictLocalRefinementWith_addLgrsUpdat
 
 BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView_isACopyOfLevelZeroLogCartSize)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -119,7 +120,7 @@ BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpda
 
 BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_areACopyOfLevelZeroLogCartSize)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;
@@ -153,7 +154,7 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_
 
 BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     Opm::areEqual(/* grid dimensions before refinement = */ {4,3,3},
@@ -183,7 +184,7 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt
 
 BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_after_globalRefine_makeSense)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     bool isParallel = grid.comm().size() > 1;

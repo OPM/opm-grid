@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
@@ -218,7 +219,7 @@ BOOST_AUTO_TEST_CASE(restrictDataGridWithoutLgrs)
 
 BOOST_AUTO_TEST_CASE(restrictDataForNonNestedLgrsSharingEdges)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
     //                          LGR1 parent cells          LGR2 parent cells
     // k = 2   32 33 34 35 |
@@ -302,7 +303,7 @@ BOOST_AUTO_TEST_CASE(restrictDataForNestedRefinementOnly)
     // LGR3
     //  |
     // LGR4
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec,
@@ -355,7 +356,7 @@ BOOST_AUTO_TEST_CASE(restrictDataForMixNameOrderAndNestedRefinement)
     // LGR1  LGR3                                LGR2 (child grid from LGR1),
     //   |    |                                  LGR4 (child grid from LGR3),
     // LGR2  LGR4                                leaf grid view (without name).
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec,
@@ -469,7 +470,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgrHasAtLeastOneActiveParentCell)
   40*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::createGridAndAddLgrs(grid,
                               deckString,
                               /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},

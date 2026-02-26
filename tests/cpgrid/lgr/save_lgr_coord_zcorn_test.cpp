@@ -29,6 +29,7 @@
 
 
 #include <opm/grid/cpgrid/CpGridUtilities.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 #include <dune/common/version.hh>
 #include <dune/grid/common/mcmgmapper.hh>
@@ -62,7 +63,7 @@ Opm::EclipseGrid createAndSetUpGrid(const std::string& deck_string,
                                     const std::vector<std::array<int, 3>>& endIJK_vec,
                                     const std::vector<std::string>& lgr_name_vec)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     // Create the starting grid (before adding LGRs)
     Opm::Parser parser;
     const auto deck = parser.parseString(deck_string);

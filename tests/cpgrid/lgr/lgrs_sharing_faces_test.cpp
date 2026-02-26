@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
@@ -140,7 +141,7 @@ std::vector<double> expected_leafFaceAreas_level2 = {
 
 BOOST_AUTO_TEST_CASE(lgrsSharingIFaces_easyCenterAndAreaCheck)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,1,1}, /* cell_sizes = */ {8.,8.,8.});
     // level 0 grid:  LGR1 parent cells {0,1}, refined into 1x2x2 children each
     //                LGR2 parent cell {2}, refined into 2x2x2 children
@@ -229,7 +230,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingIFaces_easyCenterAndAreaCheck)
 
 BOOST_AUTO_TEST_CASE(lgrsSharingJFaces_easyCenterAndAreaCheck)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {1,4,1}, /* cell_sizes = */ {8.,8.,8.});
     // level 0 grid:  LGR1 parent cells {0,1}, refined into 2x1x2 children each
     //                LGR2 parent cell {2}, refined into 2x2x2 children
@@ -318,7 +319,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingJFaces_easyCenterAndAreaCheck)
 
 BOOST_AUTO_TEST_CASE(lgrsSharingKFaces_easyCenterAndAreaCheck)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {1,1,4}, /* cell_sizes = */ {8.,8.,8.});
     // level 0 grid:  LGR1 parent cells {0,1}, refined into 2x2x1 children each
     //                LGR2 parent cell {2}, refined into 2x2x2 children
@@ -407,7 +408,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingKFaces_easyCenterAndAreaCheck)
 
 BOOST_AUTO_TEST_CASE(lgrsSharingIJKFaces)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
     //                          LGR1 parent cells    LGR2 parent cells   LGR3 parent cells   LGR4 parent cells
     // k = 2   32 33 34 35 |                                  33 34
@@ -444,7 +445,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingIJKFaces)
 
 BOOST_AUTO_TEST_CASE(lgrsSharingIFaces_nested)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {2,1,1}, /* cell_sizes = */ {1.,1.,1.});
 
     // I-face coincide between cells 1 (with children in level 1) and cell 2
@@ -468,7 +469,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingIFaces_nested)
 
 BOOST_AUTO_TEST_CASE(lgrSharingJFaces_nested)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {1,2,1}, /* cell_sizes = */ {1.,1.,1.});
 
     // J-face coincides between cells (0–1).
@@ -491,7 +492,7 @@ BOOST_AUTO_TEST_CASE(lgrSharingJFaces_nested)
 
 BOOST_AUTO_TEST_CASE(lgrSharingKFaces_nested)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {1,1,2}, /* cell_sizes = */ {1.,1.,1.});
 
     // K-face coincides between cells (0–1).

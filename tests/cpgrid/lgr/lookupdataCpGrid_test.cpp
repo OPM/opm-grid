@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/LookUpData.hh>
 
@@ -191,7 +192,7 @@ BOOST_AUTO_TEST_CASE(grid_without_lgrs)
 
 BOOST_AUTO_TEST_CASE(grid_with_one_lgr)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,2}},
@@ -203,7 +204,7 @@ BOOST_AUTO_TEST_CASE(grid_with_one_lgr)
 
 BOOST_AUTO_TEST_CASE(grid_with_multiple_lgrs)
 {
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
@@ -373,7 +374,7 @@ EQLNUM
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     Opm::EclipseGrid eclGrid(deck);
 
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);

@@ -26,6 +26,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <array>
@@ -52,7 +53,7 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
-void createTestGridWithLgrsSerial(Dune::CpGrid& grid,
+void createTestGridWithLgrsSerial(Dune::CpGridLGR& grid,
                                   const std::string& deckString)
 {
     Opm::createGridAndAddLgrs(grid,
@@ -65,7 +66,7 @@ void createTestGridWithLgrsSerial(Dune::CpGrid& grid,
 
 // Distribute level-zero grid and add LGRs to its distributed view,
 // of the test CpGrid with existing LGRs in the global view.
-void createTestGridWithLgrsParallel(Dune::CpGrid& grid)
+void createTestGridWithLgrsParallel(Dune::CpGridLGR& grid)
 {
     grid.loadBalance(/*overlapLayers*/ 1,
                      /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
@@ -78,7 +79,7 @@ void createTestGridWithLgrsParallel(Dune::CpGrid& grid)
                                 /* lgr_name_vec = */ {"LGR1", "LGR2"});
 }
 
-void checkGridInactiveCellsCount(const Dune::CpGrid& grid,
+void checkGridInactiveCellsCount(const Dune::CpGridLGR& grid,
                                  int expected_maxLevel,
                                  const std::vector<int>& expected_global_cells)
 {
@@ -160,7 +161,7 @@ BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
   40*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createTestGridWithLgrsSerial(grid, deckString);
     // LGR1: 9 inactive parent cells.      |   LGR2: 4 inactive parent cells.
     // i=0 i=1 i=2          layer k = 0    |   i=2 i=3             layer k = 1
@@ -247,7 +248,7 @@ BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCel
   40*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createTestGridWithLgrsSerial(grid, deckString);
     // LGR1: 1 active, 8 inactive parent cells    |   LGR2: 4 inactive parent cells.
     // i=0 i=1 i=2          layer k = 0           |   i=2 i=3             layer k = 1
@@ -334,7 +335,7 @@ BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
   40*0.15
   /)";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createTestGridWithLgrsSerial(grid, deckString);
     // LGR1: 5 active, 4 inactive parent cells    |   LGR2: 2 inactive, 2 active parent cells.
     // i=0 i=1 i=2          layer k = 0           |   i=2 i=3             layer k = 1

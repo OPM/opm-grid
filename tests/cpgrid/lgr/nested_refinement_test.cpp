@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 
@@ -55,7 +56,7 @@ BOOST_AUTO_TEST_CASE(ifNonParentGridNameProvidedDefaultIsAllChildGridsFromGlobal
     //   |    |                                  LGR1, LGR2 (child grids from GLOBAL),
     // LGR1  LGR2                                leaf grid view (without name).
 
-    Dune::CpGrid grid, equiv_grid;
+    Dune::CpGridLGR grid, equiv_grid;
     grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     equiv_grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
@@ -109,7 +110,7 @@ BOOST_AUTO_TEST_CASE(nestedRefinementOnly) {
     // LGR3
     //  |
     // LGR4
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec,
@@ -163,7 +164,7 @@ BOOST_AUTO_TEST_CASE(mixNameOrderAndNestedRefinement){
     // LGR1  LGR3                                LGR2 (child grid from LGR1),
     //   |    |                                  LGR4 (child grid from LGR3),
     // LGR2  LGR4                                leaf grid view (without name).
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec,
@@ -213,7 +214,7 @@ BOOST_AUTO_TEST_CASE(throwIfParentGridNameDoesNotExitBeforeItsLgrs){
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
     const std::vector<std::string> lgr_parent_grid_name_vec = {"GLOBAL","LGR3","GLOBAL","LGR1"};
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     grid.createCartesian(/* grid_dim = */ {3,3,1}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec,

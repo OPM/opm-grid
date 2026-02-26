@@ -29,6 +29,7 @@
 
 
 #include <opm/grid/cpgrid/CpGridUtilities.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <dune/common/version.hh>
@@ -56,7 +57,7 @@ struct Fixture {
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 // Create a grid and add one test LGR with dimension 6x6x3.
-void createGridAndAddTestLgr(Dune::CpGrid& grid,
+void createGridAndAddTestLgr(Dune::CpGridLGR& grid,
                              const std::string& deck_string)
 {
     Opm::createGridAndAddLgrs(grid,
@@ -125,7 +126,7 @@ SOLUTION
 SCHEDULE
 )";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createGridAndAddTestLgr(grid, deck_string);
 
     const auto [lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
@@ -269,7 +270,7 @@ SOLUTION
 SCHEDULE
 )";
 
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createGridAndAddTestLgr(grid, deck_string);
 
     // Note: k = 0, indicating a single-layer grid with dimensions 3x3x1.
@@ -401,7 +402,7 @@ REGIONS
 SOLUTION
 SCHEDULE
 )";
-    Dune::CpGrid grid;
+    Dune::CpGridLGR grid;
     createGridAndAddTestLgr(grid, deck_string);
 
     // Note: k = 0, indicating a single-layer grid with dimensions 3x3x1.
