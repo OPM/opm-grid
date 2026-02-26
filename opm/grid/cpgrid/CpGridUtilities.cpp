@@ -36,7 +36,7 @@ namespace Opm
 {
 
 std::pair<std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
-lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
+lgrIJK(const Dune::CpGridLGR& grid, const std::string& lgr_name)
 {
     // Check if lgr_name exists in lgr_names_
     const auto& lgr_names = grid.getLgrNameToLevel();

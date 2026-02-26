@@ -20,7 +20,7 @@
 #ifndef OPM_CPGRIDUTILITIES_HEADER_INCLUDED
 #define OPM_CPGRIDUTILITIES_HEADER_INCLUDED
 
-#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/CpGridLGR.hpp>
 
 namespace Opm
 {
@@ -36,7 +36,7 @@ namespace Opm
 ///   - A std::unordered_map<int, int> mapping Cartesian indices back to cell indices (handles inactive parent cells).
 ///   - A std::vector<std::array<int, 3>> storing the (i, j, k) Cartesian coordinates for active cells.
 std::pair<std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
-lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name);
+lgrIJK(const Dune::CpGridLGR& grid, const std::string& lgr_name);
 
 /// @brief Extracts the COORD and ZCORN values for the LGR (Local Grid Refinement) block.
 ///

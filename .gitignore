@@ -76,3 +76,4 @@ doc/EquationNotes.pdf
 # VSCode
 .vs
 .vscode
+_codeql_detected_source_root

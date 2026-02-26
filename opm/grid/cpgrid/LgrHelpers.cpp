@@ -104,7 +104,7 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
 
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
-        if (grid.getMark(element) ==  0) {
+        if (grid.currentData().back()->getMark(element) ==  0) {
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getLevelElem().index()] = cell_count;
 
             insertBidirectional(elemLgrAndElemLgrCell_to_adaptedCell,  // map a_to_b
@@ -115,7 +115,7 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
 
         // When the element is marked for refinement, we also mark its corners and faces
         // since they will get replaced by refined ones.
-        if (grid.getMark(element) ==  1) {
+        if (grid.currentData().back()->getMark(element) ==  1) {
             ++markedElem_count;
             const auto& markedElemLevel = assignRefinedLevel[element.index()];
             assert(markedElemLevel > preAdaptMaxLevel);
