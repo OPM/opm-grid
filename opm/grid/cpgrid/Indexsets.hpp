@@ -38,6 +38,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/geometry/type.hh>
 #include <opm/common/ErrorMacros.hpp>
+#include "Entity.hpp"
 #include "GlobalIdMapping.hpp"
 #include "Intersection.hpp"
 
@@ -62,11 +63,8 @@ namespace Dune
             static constexpr int dimension = 3;
 
             /** \brief Export supported entity types */
-            template <int cc>
-            struct Codim
-            {
-              typedef cpgrid::Entity< cc > Entity;
-            };
+            template <int cd>
+            using Codim = typename Impl::CodimTraits<cd>;
 
             /// @brief
             /// @todo Doc me!
@@ -208,11 +206,8 @@ namespace Dune
             static constexpr int dimension = 3;
 
             /** \brief Export supported entity types */
-            template <int cc>
-            struct Codim
-            {
-                using Entity = ::Dune::cpgrid::Entity<cc>;
-            };
+            template <int cd>
+            using Codim = typename Impl::CodimTraits<cd>;
 
             explicit IdSet(const CpGridData& grid)
                 : grid_(grid)
@@ -224,13 +219,11 @@ namespace Dune
             {
                 if constexpr (cd == 0)
                     return computeId_cell(e);
-                else if constexpr (cd == 1)
-                    return computeId(e);
                 else if constexpr (cd == 3)
                     return computeId_point(e);
                 else
                     static_assert(AlwaysFalse<index_constant<cd>>::value,
-                                  "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
+                                  "IdSet::id not implemented for codims other than 0, and 3.");
             }
 
             template<class EntityType>
@@ -240,10 +233,13 @@ namespace Dune
             }
 
             template<int codim>
-            IdType id(const cpgrid::EntityRep<codim>& e) const
+            IdType idLevelZero(const cpgrid::EntityRep<codim>& e) const
             {
                 return computeId(e);
             }
+
+            template<int codim>
+            IdType idLevelZero(const Entity<codim>& e) const = delete;
 
             /// return id of intersection (here face number)
             IdType id( const cpgrid::Intersection& intersection ) const
@@ -377,11 +373,8 @@ namespace Dune
             static constexpr int dimension = 3;
 
             /** \brief Export supported entity types */
-            template <int cc>
-            struct Codim
-            {
-                using Entity = ::Dune::cpgrid::Entity<cc>;
-            };
+            template <int cd>
+            using Codim = typename Impl::CodimTraits<cd>;
 
             void swap(std::vector<int>& cellMapping,
                       std::vector<int>& faceMapping,
@@ -414,13 +407,16 @@ namespace Dune
             }
 
             template<int codim>
-            IdType id(const EntityRep<codim>& e) const
+            IdType idLevelZero(const EntityRep<codim>& e) const
             {
                 if(idSet_)
-                    return idSet_->id(e);
+                    return idSet_->idLevelZero(e);
                 else
                     return this->template getMapping<codim>()[e.index()];
             }
+
+            template<int codim>
+            IdType idLevelZero(const Entity<codim>& e) const = delete;
 
             template<class EntityType>
             IdType id(const EntityType& e) const
@@ -493,10 +489,7 @@ namespace Dune
 
         /** \brief Export supported entity types */
         template <int cd>
-        struct Codim
-        {
-            using Entity = ::Dune::cpgrid::Entity<cd>;
-        };
+        using Codim = typename Impl::CodimTraits<cd>;
 
         explicit GlobalIdSet(const CpGridData& view);
 

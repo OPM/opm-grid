@@ -86,7 +86,7 @@ std::string coincideString(bool coincide)
 template<typename IdSet, typename EntityRep>
 auto idRep(const IdSet& idSet, const EntityRep& entityRep)
 {
-    return idSet.id(entityRep);
+    return idSet.idLevelZero(entityRep);
 }
 
 void entityRepIndexAndEntityIndexCoincide(const Dune::CpGrid& grid)
