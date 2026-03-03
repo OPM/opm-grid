@@ -56,7 +56,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <fstream>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
@@ -1114,18 +1113,16 @@ namespace cpgrid
                 buildFaceToCellNNC(output, nnc[ExplicitNNC], global_to_local, f2c, face_to_output_face);
             }
             int nf = output.number_of_faces;
-            cpgrid::EntityRep<0> cells[2];
             // int next_skip_zmin_face = -1; // Not currently used, see comments further down.
             for (int i = 0; i < nf; ++i) {
+                std::vector<cpgrid::EntityRep<0>> cells{};
+                cells.reserve(3);
                 const int* fnc = output.face_neighbors + 2*i;
-                int cellcount = 0;
                 if (fnc[0] != -1) {
-                    cells[cellcount].setValue(fnc[0], true);
-                    ++cellcount;
+                    cells.emplace_back(fnc[0], true);
                 }
                 if (fnc[1] != -1) {
-                    cells[cellcount].setValue(fnc[1], false);
-                    ++cellcount;
+                    cells.emplace_back(fnc[1], false);
                 }
                 if (output.face_tag[i] == K_FACE ) {
                     if (fnc[1] == -1 ) {
@@ -1136,8 +1133,7 @@ namespace cpgrid
                             auto it = nnc[PinchNNC].lower_bound({global_cell[fnc[0]], 0});
                             if (it != nnc[PinchNNC].end() && it->first == global_cell[fnc[0]]) {
                                 const int other_cell = global_to_local[it->second];
-                                cells[cellcount].setValue(other_cell, false);
-                                ++cellcount;
+                                cells.emplace_back(other_cell, false);
                                 // Now we must ensure that the face connecting
                                 // the second cell to the boundary is skipped,
                                 // it is considered replaced by the connection
@@ -1166,9 +1162,9 @@ namespace cpgrid
                 // Assertation below is no longer true, due to periodic_extension etc.
                 // Instead, the appendRow() is put inside an if test.
                 // assert(cellcount == 1 || cellcount == 2);
-                if (cellcount > 0) {
-                    std::sort(cells, cells + cellcount);
-                    f2c.appendRow(cells, cells + cellcount);
+                if (!cells.empty()) {
+                    std::sort(cells.begin(), cells.end());
+                    f2c.appendRow(cells.begin(), cells.end());
                     face_to_output_face.push_back(i);
                 }
             }
