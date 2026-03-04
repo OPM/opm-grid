@@ -22,9 +22,11 @@
 #endif
 #if HAVE_MPI // no code in this file without MPI. Skip includes-
 #include <opm/grid/common/ZoltanPartition.hpp>
-#include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
+
 #include <algorithm>
 #include <type_traits>
 #endif

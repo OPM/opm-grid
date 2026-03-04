@@ -26,9 +26,12 @@
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/common/version.hh>
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#endif
+
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
@@ -94,12 +97,14 @@ void checkVertexAndFaceIndexAreNonNegative(const Dune::CpGrid& grid);
 void checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
                                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
+#if HAVE_OPM_COMMON
 void createGridAndAddLgrs(Dune::CpGrid& grid,
                           const std::string& deck_string,
                           const std::vector<std::array<int, 3>>& cells_per_dim_vec,
                           const std::vector<std::array<int, 3>>& startIJK_vec,
                           const std::vector<std::array<int, 3>>& endIJK_vec,
                           const std::vector<std::string>& lgr_name_vec);
+#endif
 
 void createGridAndAddLgrs(Dune::CpGrid& grid,
                           const std::array<double, 3>& cell_sizes,
@@ -537,6 +542,7 @@ void Opm::checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
     }
 }
 
+#if HAVE_OPM_COMMON
 void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
                                const std::string& deck_string,
                                const std::vector<std::array<int, 3>>& cells_per_dim_vec,
@@ -553,6 +559,7 @@ void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
+#endif
 
 void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
                                const std::array<double, 3>& cell_sizes,

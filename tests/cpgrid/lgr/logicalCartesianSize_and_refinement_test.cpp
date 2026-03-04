@@ -22,9 +22,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 
-
-#include <array>
 #include <unordered_set>
 #include <vector>
 

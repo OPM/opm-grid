@@ -26,7 +26,8 @@
 #ifndef GRAPH_OF_GRID_WRAPPERS_HEADER
 #define GRAPH_OF_GRID_WRAPPERS_HEADER
 
-#include <opm/common/OpmLog/OpmLog.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
+
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 #include <opm/grid/common/ZoltanGraphFunctions.hpp> // defines Zoltan and null-callback-functions

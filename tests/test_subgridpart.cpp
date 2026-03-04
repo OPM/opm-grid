@@ -33,9 +33,11 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#endif
 
 #include <cmath>
 #include <iostream>
@@ -178,7 +180,7 @@ void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, cons
 }
 
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 BOOST_AUTO_TEST_CASE(FromDeck)
 {
     // ------------ Test grid from deck. ------------
@@ -208,7 +210,7 @@ TOPS
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 }
-#endif // HAVE_ECL_INPUT
+#endif // HAVE_OPM_COMMON
 
 
 BOOST_AUTO_TEST_CASE(dgf)

@@ -22,9 +22,10 @@
 #include <config.h>
 #include <opm/grid/cpgrid/GridHelpers.hpp>
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-
 #include <opm/common/utility/ActiveGridCells.hpp>
+#endif
 
 namespace Opm
 {
@@ -33,7 +34,7 @@ namespace Opm
 namespace UgGridHelpers
 {
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& inputGrid)
 {
     const int * dims = cartDims( grid );
@@ -92,7 +93,7 @@ const int*  globalCell(const Dune::CpGrid& grid)
     return &(grid.globalCell()[0]);
 }
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 std::vector<int> createACTNUM(const Dune::CpGrid& grid) {
     const int* dims = cartDims(grid);
     return ActiveGridCells(dims[0], dims[1], dims[2], globalCell(grid), numCells(grid)).actNum();

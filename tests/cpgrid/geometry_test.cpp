@@ -32,6 +32,7 @@
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 
 #include <algorithm>
 
