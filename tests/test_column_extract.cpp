@@ -8,7 +8,7 @@
 #include <opm/grid/ColumnExtract.hpp>
 #include <opm/grid/GridManager.hpp>
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(DisjointColumn)
     correct_answer[4].resize(1);
     correct_answer[9].resize(1);
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     Opm::Parser parser;
     Opm::Deck deck = parser.parseString(grdecl);
     Opm::EclipseGrid ep = Opm::EclipseGrid(deck);

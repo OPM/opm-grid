@@ -226,7 +226,7 @@ namespace Dune
 
         explicit CpGrid(MPIHelper::MPICommunicator comm);
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
         /// Read the Eclipse grid format ('grdecl').
         ///
         /// \return Vector of global indices to the cells which have been
@@ -316,7 +316,7 @@ namespace Dune
                              bool turn_normals = false,
                              bool clip_z = false,
                              bool edge_conformal = false);
-#endif // HAVE_ECL_INPUT
+#endif // HAVE_OPM_COMMON
 
         /// Read the Eclipse grid format ('grdecl').
         ///

@@ -405,7 +405,7 @@ const int* cartDims(const Dune::CpGrid& grid);
 /// in the underlying structured grid.
 const int*  globalCell(const Dune::CpGrid&);
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 /// \brief Create Eclipse style ACTNUM array.
 ///
 /// Create a vector with global cartesian number of elements,

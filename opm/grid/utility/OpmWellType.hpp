@@ -19,7 +19,7 @@
 #ifndef OPM_GRID_WELLTYPE_HEADER_INCLUDED
 #define OPM_GRID_WELLTYPE_HEADER_INCLUDED
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 
 namespace Opm {
 class Well;
@@ -30,7 +30,7 @@ namespace Dune {
         using OpmWellType = Opm::Well;
     }
 }
-#else // #if HAVE_ECL_INPUT
+#else // #if HAVE_OPM_COMMON
 
 namespace Dune {
     namespace cpgrid {
@@ -38,6 +38,6 @@ namespace Dune {
     }
 }
 
-#endif // #if HAVE_ECL_INPUT
+#endif // #if HAVE_OPM_COMMON
 
 #endif // #ifndef OPM_GRID_WELLTYPE_HEADER_INCLUDED

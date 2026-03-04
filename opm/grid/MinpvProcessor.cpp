@@ -19,9 +19,11 @@
 #include <config.h>
 #include <opm/grid/MinpvProcessor.hpp>
 
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 
 #include <algorithm>
+#include <cassert>
+#include <stdexcept>
 
 namespace Opm {
 

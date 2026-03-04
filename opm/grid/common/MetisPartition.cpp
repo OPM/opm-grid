@@ -21,14 +21,24 @@
 #endif
 
 #if HAVE_MPI // no code in this file without MPI, then skip includes.
-#include <opm/common/OpmLog/OpmLog.hpp>
+             //
+#include <opm/grid/utility/OpmLog.hpp>
+
 #include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
-#include <algorithm>
-#include <type_traits>
+
+#include <map>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #endif
 
 #if defined(HAVE_METIS) && HAVE_MPI

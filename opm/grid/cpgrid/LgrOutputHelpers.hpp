@@ -23,10 +23,12 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 #include <opm/output/data/Cells.hpp>
 #include <opm/output/data/Solution.hpp>
 #include <opm/output/eclipse/RestartValue.hpp>
+#endif
 
 #include <algorithm>    // for std::min/max
 #include <cstddef>      // for std::size_t
@@ -179,6 +181,7 @@ void populateDataVectorLevelGrids(const Dune::CpGrid& grid,
 /// @param [out]   A vector of Opm::data::Solution objects, one for each refinement level
 ///                (from level 0 to grid.maxLevel()), where each entry contains data reordered
 ///                according to increasing level Cartesian indices for output.
+#if HAVE_OPM_COMMON
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,
                                const std::vector<std::vector<int>>& toOutput_refinedLevels,
                                const Opm::data::Solution& leafSolution,
@@ -199,6 +202,7 @@ template <typename Grid>
 void extractRestartValueLevelGrids(const Grid& grid,
                                    const Opm::RestartValue& leafRestartValue,
                                    std::vector<Opm::RestartValue>& restartValue_levels);
+#endif
 
 } // namespace Lgr
 } // namespace Opm
@@ -276,6 +280,7 @@ void Opm::Lgr::populateDataVectorLevelGrids(const Dune::CpGrid& grid,
     }
 }
 
+#if HAVE_OPM_COMMON
 template <typename Grid>
 void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
                                              const Opm::RestartValue& leafRestartValue,
@@ -333,5 +338,6 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
         }
     }
 }
+#endif
 
 #endif // OPM_GRID_CPGRID_LGROUTPUTHELPERS_HEADER_INCLUDED
