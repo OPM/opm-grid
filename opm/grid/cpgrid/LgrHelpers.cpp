@@ -24,6 +24,7 @@
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 
 #include <algorithm>    // for std::max
 #include <array>

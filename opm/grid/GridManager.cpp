@@ -25,20 +25,16 @@
 #include <opm/grid/cart_grid.h>
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #endif
-
-#include <array>
-#include <algorithm>
-#include <numeric>
 
 namespace Opm
 {
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     /// Construct a 3d corner-point grid from a deck.
     GridManager::GridManager(const Opm::EclipseGrid& inputGrid,
                              const bool edge_conformal)
@@ -132,7 +128,7 @@ namespace Opm
 
 
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     // Construct corner-point grid from EclipseGrid.
     void GridManager::initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                           const std::vector<double>& poreVolumes,

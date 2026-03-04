@@ -22,8 +22,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
-
 
 #include <array>
 #include <string>

@@ -22,11 +22,10 @@
 #include "config.h"
 #include <opm/grid/GridHelpers.hpp>
 
-#include <opm/common/utility/ActiveGridCells.hpp>
-
 #include <opm/grid/common/Volumes.hpp>
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
+#include <opm/common/utility/ActiveGridCells.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #endif
 
@@ -62,7 +61,7 @@ const int* cartDims(const UnstructuredGrid& grid)
     return grid.cartdims;
 }
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 std::vector<int> createACTNUM(const UnstructuredGrid& grid) {
     const int* dims = cartDims(grid);
     return ActiveGridCells(dims[0], dims[1], dims[2], globalCell(grid), numCells(grid)).actNum();
@@ -329,7 +328,7 @@ FaceCellTraits<UnstructuredGrid>::Type faceCells(const UnstructuredGrid& grid)
 }
 
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid ) {
     const int * dims = UgGridHelpers::cartDims( grid );
 

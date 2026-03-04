@@ -44,11 +44,14 @@
 #include <dune/common/version.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
-#include <opm/grid/polyhedralgrid.hh>
 #include <opm/grid/LookUpCellCentroid.hh>
+#endif
+
+#include <opm/grid/polyhedralgrid.hh>
 
 #include <dune/common/unused.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
@@ -108,10 +111,8 @@ void createEclGridPolyhedralGrid_and_checkCentroid(const std::string& deckString
     }
 }
 
-
 BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
 {
-#if HAVE_ECL_INPUT
     const char *deckString =
         "RUNSPEC\n"
         "METRIC\n"
@@ -128,7 +129,6 @@ BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
         "16*100.0 /\n";
 
     createEclGridPolyhedralGrid_and_checkCentroid(deckString);
-#endif
 }
 
 

@@ -24,8 +24,10 @@
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
+#endif
 
 #include <dune/common/parallel/mpitraits.hh>
 #include <dune/istl/owneroverlapcopy.hh>
@@ -110,7 +112,7 @@ void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& well
                            [[maybe_unused]] const std::array<int, 3>& cartesianSize,
                            [[maybe_unused]] const std::vector<int>& cartesian_to_compressed)
 {
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     well_indices_.resize(wells.size());
 
     // We assume that we know all the wells.
@@ -204,7 +206,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // Contains for each process the indices of the wells assigned to it.
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     const auto& mpiType =  MPITraits<std::size_t>::getType();
     std::map<int, std::vector<int>> addCells, removeCells;
     std::vector<int> visited(noCells, false);
@@ -470,7 +472,7 @@ computeParallelWells([[maybe_unused]] const std::vector<std::vector<int> >& well
     // We need to use well names as only they are consistent.
     std::vector<std::pair<std::string,bool>> parallel_wells;
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     std::vector<int> my_well_indices;
     std::vector<std::string> globalWellNames;
     const int well_information_tag = 267553;

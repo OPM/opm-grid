@@ -30,18 +30,19 @@
 #define BOOST_TEST_MODULE GraphRepresentationOfGrid
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/GraphOfGrid.hpp>
+#include <opm/grid/GraphOfGridWrappers.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
+
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/grid/CpGrid.hpp>
-
-#include <opm/grid/GraphOfGrid.hpp>
-#include <opm/grid/GraphOfGridWrappers.hpp>
-
-#include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/input/eclipse/Schedule/Well/Connection.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
+#endif
 
 #include <algorithm>
 
@@ -243,6 +244,7 @@ BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
     BOOST_REQUIRE(checked==24);
 }
 
+#if HAVE_OPM_COMMON
 BOOST_AUTO_TEST_CASE(SimpleGraphWithInactiveCells)
 {
     const std::string deckString =
@@ -300,6 +302,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithInactiveCells)
     }
     BOOST_REQUIRE(checked==0+1+2);
 }
+#endif
 
 #if HAVE_MPI
 BOOST_AUTO_TEST_CASE(WrapperForZoltan)
@@ -642,6 +645,7 @@ BOOST_AUTO_TEST_CASE(WellsWithIntersectingBuffers2)
     BOOST_REQUIRE(gog.size()==1);
 }
 
+#if HAVE_OPM_COMMON
 namespace {
     // create Wells, we only use well name and cell locations
     auto createConnection (int i, int j, int k)
@@ -659,8 +663,9 @@ namespace {
                    0.,0.,false,false,0,Well::GasInflowEquation());
     };
 } // end anonymous namespace
+#endif
 
-#if HAVE_MPI
+#if HAVE_MPI && HAVE_OPM_COMMON
 // Create yet another small grid with wells and test graph properties.
 // This time wells are supplied via OpmWellType interface
 BOOST_AUTO_TEST_CASE(addWellConnections)
@@ -769,8 +774,9 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     }
 
 }
-#endif // HAVE_MPI
+#endif // HAVE_MPI && HAVE_OPM_COMMON
 
+#if HAVE_OPM_COMMON
 BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
 {
     // create a grid with wells
@@ -807,6 +813,7 @@ BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
     extendGIDtoRank(gog,gIDtoRank);
     BOOST_CHECK(gIDtoRank[8]==1);
 }
+#endif
 
 #if HAVE_MPI
 // This function is in MPI guard even though it does not use the communication.
@@ -844,6 +851,7 @@ BOOST_AUTO_TEST_CASE(ExtendAndSortImportList)
 }
 #endif // HAVE_MPI
 
+#if HAVE_OPM_COMMON
 // getWellRanks takes wellConnections and vector gIDtoRank mapping cells to their ranks
 // and returns a vector of well ranks
 BOOST_AUTO_TEST_CASE(test_getWellRanks)
@@ -882,6 +890,7 @@ BOOST_AUTO_TEST_CASE(test_getWellRanks)
     BOOST_CHECK(wellRanks[1]==3);
     BOOST_CHECK(wellRanks[2]==2);
 }
+#endif
 
 bool
 init_unit_test_func()

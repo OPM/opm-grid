@@ -15,9 +15,7 @@ set (opm-grid_CONFIG_VAR
   HAVE_PTSCOTCH
   IS_SCOTCH_METIS_HEADER
   HAVE_ZOLTAN
-  HAVE_OPM_COMMON
-  HAVE_ECL_INPUT
-  )
+)
 
 # dependencies
 set (opm-grid_DEPS
@@ -26,7 +24,6 @@ set (opm-grid_DEPS
   "dune-common REQUIRED"
   "dune-grid REQUIRED"
   "dune-istl"
-  "opm-common REQUIRED"
   "ZOLTAN"
   "PTScotch"
   "Scotch"

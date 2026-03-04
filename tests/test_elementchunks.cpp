@@ -28,11 +28,12 @@
 #define BOOST_TEST_MODULE ElementChunksTest
 #include <boost/test/unit_test.hpp>
 
-#include <opm/grid/utility/ElementChunks.hpp>
+#include <dune/grid/common/partitionset.hh>
 
 #include <opm/grid/CpGrid.hpp>
 
-#include <dune/grid/common/partitionset.hh>
+#include <opm/grid/utility/ElementChunks.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 
 struct Fixture
 {

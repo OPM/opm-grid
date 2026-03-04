@@ -19,8 +19,6 @@
 #ifndef DUNE_CPGRID_METISPARTITION_HEADER
 #define DUNE_CPGRID_METISPARTITION_HEADER
 
-#include <unordered_set>
-
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/WellConnections.hpp>
@@ -46,6 +44,14 @@ extern "C" {
 #endif // defined(HAVE_METIS) && HAVE_MPI
 
 #if defined(HAVE_METIS) && HAVE_MPI
+
+#include <map>
+#include <set>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
+
 namespace Dune
 {
 namespace cpgrid

@@ -32,7 +32,6 @@
  *
  */
 
-#if HAVE_ECL_INPUT
 #include <opm/input/eclipse/Deck/Deck.hpp>
 
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
@@ -403,10 +402,3 @@ int main(int argc, char** argv)
     mirror_celldata<double>("SOWCR", deck, direction, outfile);
     return 0;
 }
-#else
-int main () {
-    std::cerr << "Program need activated ECL input. (Configure opm-common "
-              << " with -DENABLE_ECL_INPUT=ON)"<<std::endl;
-    return 1;
-}
-#endif // #if HAVE_OPM_COMMON

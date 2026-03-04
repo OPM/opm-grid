@@ -20,9 +20,9 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef HAVE_CONFIG_H
 #include"config.h"
 #endif
-#include"Intersection.hpp"
-#include"EntityRep.hpp"
-#include"Entity.hpp"
+#include "Intersection.hpp"
+#include "EntityRep.hpp"
+#include "Entity.hpp"
 #include "CpGridData.hpp"
 
 namespace Dune

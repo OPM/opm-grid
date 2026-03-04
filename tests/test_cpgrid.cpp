@@ -11,6 +11,10 @@
 
 #include <opm/grid/cpgrid/dgfparser.hh>
 
+#if HAVE_OPM_COMMON
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#endif
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 using Dune::referenceElement; //grid check assume usage of Dune::Geometry
@@ -19,10 +23,6 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
-
-#include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <iostream>
 
@@ -142,7 +142,7 @@ int main(int argc, char** argv )
     // test CpGrid
     typedef Dune::CpGrid Grid;
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     const char *deckString =
         "RUNSPEC\n"
         "METRIC\n"

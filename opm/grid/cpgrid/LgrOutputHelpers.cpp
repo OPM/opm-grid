@@ -18,9 +18,11 @@
 */
 #include "config.h"
 
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 #include <opm/output/data/Cells.hpp>
 #include <opm/output/data/Solution.hpp>
+#endif
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
@@ -77,6 +79,7 @@ std::vector<std::unordered_map<int,int>> levelCartesianToLevelCompressedMaps(con
     return levelCartToLevelCompressed;
 }
 
+#if HAVE_OPM_COMMON
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,
                                const std::vector<std::vector<int>>& toOutput_refinedLevels,
                                const Opm::data::Solution& leafSolution,
@@ -132,6 +135,7 @@ void extractSolutionLevelGrids(const Dune::CpGrid& grid,
         });
     }
 }
+#endif
 
 } // namespace Lgr
 } // namespace Opm

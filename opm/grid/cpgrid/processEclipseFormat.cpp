@@ -39,19 +39,22 @@
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
 
-#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
-
 #include <opm/grid/common/GeometryHelpers.hpp>
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/MinpvProcessor.hpp>
 #include <opm/grid/RepairZCORN.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 #include <opm/grid/utility/StopWatch.hpp>
 
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
 #include <opm/grid/cpgrid/Indexsets.hpp>
+
+#if HAVE_OPM_COMMON
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -80,18 +83,16 @@ namespace Dune
     // Forward declarations.
     namespace
     {
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnum);
-#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
 
         cellz_t getCellZvals(const coord_t& c, const coord_t& n, const double* z);
 
-#if HAVE_ECL_INPUT
         void addOuterCellLayer(const grdecl& original,
                                std::vector<double>& new_coord,
                                std::vector<double>& new_zcorn,
@@ -127,7 +128,7 @@ namespace Dune
 namespace cpgrid
 {
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     std::vector<std::size_t>
     CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                                      Opm::EclipseState* ecl_state,
@@ -427,7 +428,7 @@ namespace cpgrid
 
         return minpv_result.removed_cells;
     }
-#endif // #if HAVE_ECL_INPUT
+#endif // #if HAVE_OPM_COMMON
 
 
     enum { NNCFace = -1 };
@@ -435,7 +436,7 @@ namespace cpgrid
 
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(const grdecl& input_data,
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
                                           Opm::EclipseState* ecl_state,
 #endif
                                           NNCMaps& nnc,
@@ -457,7 +458,7 @@ namespace cpgrid
         processed_grid output{};
         int process_ok{};
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
         if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
@@ -502,7 +503,7 @@ namespace cpgrid
             // removeUnusedNodes(output);
         }
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
         if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
@@ -548,7 +549,7 @@ namespace cpgrid
 #endif
         // here we need the cell volumes based on the active index order
         std::unordered_map<std::size_t, double> aquifer_cell_volumes_local{};
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
         if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
             const auto& aquifer_cell_volumes = ecl_state->aquifer()
                 .numericalAquifers().aquiferCellVolumes();
@@ -621,7 +622,7 @@ namespace cpgrid
 
     namespace
     {
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnumData)
@@ -668,7 +669,6 @@ namespace cpgrid
 
             return zcornData;
         }
-#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
@@ -689,8 +689,6 @@ namespace cpgrid
                                z[ix + delta[2] + delta[1]], z[ix + delta[2] + delta[1] + delta[0]] }};
             return cellz;
         }
-
-
 
         void setCellZvals(const coord_t& c, const coord_t& n, double* z, const cellz_t& cellvals)
         {
@@ -727,7 +725,6 @@ namespace cpgrid
         }
 
 
-#if HAVE_ECL_INPUT
         /// Add an outer cell layer in the (i, j) directions,
         /// repeating the cells on the other side (for periodic
         /// boundary conditions).
