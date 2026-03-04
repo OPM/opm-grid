@@ -55,6 +55,13 @@ double MinpvProcessor::computeGap(const std::array<double,8>& coord_above,
     return min_val;
 }
 
+/// \brief Whether top and bottom plane coincide
+bool isCollapsed(const std::array<double,8>& coord)
+{
+    return coord[0] == coord[4] && coord[1] == coord[5] &&
+        coord[2] == coord[6] && coord[3] == coord[7];
+}
+
 MinpvProcessor::Result
 MinpvProcessor::process(const std::vector<double>& thickness,
                         const double z_tolerance,
@@ -291,8 +298,11 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         option4ALLZero = option4ALLZero || (!permz.empty() && permz[c_above] == 0.0) || multz(c_above) == 0.0;
                         nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap) && (!pinchOption4ALL || !option4ALLZero) ;
 
+                        // Note that collapsed cells become inactive in preprocess.c
+                        // We treat them as a barrier preventing NNCs here.
                         if ( nnc_allowed &&
                              (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
+                             !isCollapsed(cz_below) && !isCollapsed(cz_above) &&
                              pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                             result.add_nnc(c_above, c_below);
                         }
@@ -321,7 +331,10 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                                     <= tolerance_unique_points;
                             }
 
-                            if (!vertically_connected && computeGap(cz, cz_below) < max_gap) {
+                            // Note that collapsed cells become inactive in preprocess.c
+                            // We treat them as a barrier preventing NNCs here.
+                            if (!vertically_connected && computeGap(cz, cz_below) < max_gap &&
+                                !isCollapsed(cz) && !isCollapsed(cz_below) ) {
                                 result.add_nnc(c, c_below);
                             }
                         }
