@@ -70,21 +70,19 @@ macro(opm-grid_tests_hook)
       id_entity_entityrep_test
     )
 
-    if(Boost_VERSION_STRING VERSION_GREATER 1.53)
-      list(APPEND test_4proc lgr_with_inactive_parent_cells_test)
-      foreach(procs 3 4)
-        add_test(
-          NAME
-            graphofgrid_parallel${procs}
-          COMMAND
-            ${MPIEXEC_EXECUTABLE}
-            ${MPIEXEC_NUMPROC_FLAG}
-            ${procs}
-            $<TARGET_FILE:test_graphofgrid_parallel>
-        )
-        set_tests_properties(graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
-      endforeach()
-    endif()
+    list(APPEND test_4proc lgr_with_inactive_parent_cells_test)
+    foreach(procs 3 4)
+      add_test(
+        NAME
+          graphofgrid_parallel${procs}
+        COMMAND
+          ${MPIEXEC_EXECUTABLE}
+          ${MPIEXEC_NUMPROC_FLAG}
+          ${procs}
+          $<TARGET_FILE:test_graphofgrid_parallel>
+      )
+      set_tests_properties(graphofgrid_parallel${procs} PROPERTIES PROCESSORS ${procs})
+    endforeach()
 
     foreach(test4 ${tests_4proc})
       add_test(
