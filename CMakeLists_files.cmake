@@ -1,5 +1,5 @@
-# -*- mode: cmake; tab-width: 2; indent-tabs-mode: t; truncate-lines: t; compile-command: "cmake -Wdev" -*-
-# vim: set filetype=cmake autoindent tabstop=2 shiftwidth=2 noexpandtab softtabstop=2 nowrap:
+# -*- mode: cmake; tab-width: 2; indent-tabs-mode: nil; truncate-lines: t; compile-command: "cmake -Wdev" -*-
+# vim: set filetype=cmake autoindent tabstop=2 shiftwidth=2 expandtab softtabstop=2 nowrap:
 
 # This file sets up six lists:
 # MAIN_SOURCE_FILES     List of compilation units which will be included in
@@ -28,7 +28,7 @@
 
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
-list (APPEND MAIN_SOURCE_FILES
+list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Intersection.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
@@ -70,12 +70,13 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/utility/cartesianToCompressed.cpp
   opm/grid/utility/StopWatch.cpp
   opm/grid/utility/WachspressCoord.cpp
-  )
+)
 
 if (opm-common_FOUND)
   list(APPEND MAIN_SOURCE_FILES
-		opm/grid/utility/VelocityInterpolation.cpp
-		opm/grid/transmissibility/trans_tpfa.c)
+    opm/grid/utility/VelocityInterpolation.cpp
+    opm/grid/transmissibility/trans_tpfa.c
+  )
 endif()
 
 # originally generated with the command:
@@ -122,7 +123,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
-  )
+)
 
 if(Boost_VERSION_STRING VERSION_GREATER 1.53)
   list(APPEND TEST_SOURCE_FILES
@@ -144,44 +145,44 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
     tests/cpgrid/shifted_cart_test.cpp
     tests/test_graphofgrid.cpp
     tests/test_graphofgrid_parallel.cpp
-    )
+  )
 endif()
 
 if(HAVE_ECL_INPUT)
   list(APPEND TEST_SOURCE_FILES
-		tests/test_regionmapping.cpp
-		tests/test_ug.cpp
-		tests/cpgrid/grid_nnc.cpp
-		tests/cpgrid/grid_pinch.cpp
-	)
+    tests/test_regionmapping.cpp
+    tests/test_ug.cpp
+    tests/cpgrid/grid_nnc.cpp
+    tests/cpgrid/grid_pinch.cpp
+  )
 endif()
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
-list (APPEND TEST_DATA_FILES
-     tests/CORNERPOINT_ACTNUM.DATA
-     tests/compressed_gridproperty.data
-     tests/FIVE.DATA
-     tests/FIVE_ACTNUM.DATA
-     tests/FIVE_PINCH.DATA
-     tests/FIVE_PINCH_NOGAP.DATA
-     tests/FIVE_PINCH_NOGAP2.DATA
-     tests/FIVE_PINCH_NOGAP3.DATA
-  )
+list(APPEND TEST_DATA_FILES
+  tests/CORNERPOINT_ACTNUM.DATA
+  tests/compressed_gridproperty.data
+  tests/FIVE.DATA
+  tests/FIVE_ACTNUM.DATA
+  tests/FIVE_PINCH.DATA
+  tests/FIVE_PINCH_NOGAP.DATA
+  tests/FIVE_PINCH_NOGAP2.DATA
+  tests/FIVE_PINCH_NOGAP3.DATA
+)
 
 # originally generated with the command:
 # find tutorials examples -name '*.c*' -printf '\t%p\n' | sort
-list (APPEND EXAMPLE_SOURCE_FILES
+list(APPEND EXAMPLE_SOURCE_FILES
   examples/finitevolume/finitevolume.cc
   examples/mirror_grid.cpp
   examples/griditer.cpp
-  )
+)
 
 # programs listed here will not only be compiled, but also marked for
 # installation
-list (APPEND PROGRAM_SOURCE_FILES
+list(APPEND PROGRAM_SOURCE_FILES
   examples/mirror_grid.cpp
-  )
+)
 if(HAVE_ECL_INPUT)
   list(APPEND EXAMPLE_SOURCE_FILES examples/grdecl2vtu.cpp)
   list(APPEND PROGRAM_SOURCE_FILES examples/grdecl2vtu.cpp)
@@ -189,7 +190,7 @@ endif()
 
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
-list (APPEND PUBLIC_HEADER_FILES
+list(APPEND PUBLIC_HEADER_FILES
   opm/grid/common/CommunicationUtils.hpp
   opm/grid/common/GeometryHelpers.hpp
   opm/grid/common/GridAdapter.hpp
@@ -289,4 +290,4 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/WachspressCoord.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h
   opm/grid/utility/platform_dependent/reenable_warnings.h
-  )
+)
