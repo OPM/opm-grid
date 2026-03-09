@@ -17,7 +17,7 @@
 cmake_minimum_required (VERSION 3.23)
 
 # Mandatory call to project
-project(opm-grid C CXX)
+project(opm-grid C CXX Fortran)
 
 # project information is in dune.module. Read this file and set variables.
 # we cannot generate dune.module since it is read by dunecontrol before
@@ -25,6 +25,11 @@ project(opm-grid C CXX)
 
 option(SIBLING_SEARCH "Search for other modules in sibling directories?" ON)
 option(REQUIRE_ZOLTAN "Require Zoltan to be found (needed for productive run" ON)
+
+macro(opm-grid_language_hook)
+  include(FortranCInterface)
+  fortrancinterface_header(${PROJECT_BINARY_DIR}/FCMacros.h MACRO_NAMESPACE FC_)
+endmacro()
 
 macro(opm-grid_config_hook)
   opm_need_version_of ("dune-common")
@@ -49,6 +54,10 @@ macro(opm-grid_config_hook)
       "Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)"
     )
   endif()
+endmacro()
+
+macro(opm-grid_targets_hook)
+  target_include_directories(opmgrid PRIVATE ${PROJECT_BINARY_DIR})
 endmacro()
 
 macro(opm-grid_tests_hook)
