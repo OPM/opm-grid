@@ -26,7 +26,10 @@
 #else
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
+
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
+
 struct Fixture
 {
     Fixture()

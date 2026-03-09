@@ -23,12 +23,12 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 
 #include <array>
 #include <memory>
 #include <stdexcept>
 #include <unordered_map>
-
 
 struct Fixture
 {

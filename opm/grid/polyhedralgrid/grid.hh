@@ -30,7 +30,7 @@
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 
 #include <opm/grid/UnstructuredGrid.h>
 #include <opm/grid/cart_grid.h>
@@ -39,7 +39,7 @@
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #endif
 
@@ -318,7 +318,7 @@ namespace Dune
     /** \name Construction and Destruction
      *  \{ */
 
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     /** \brief constructor
      *
      *  \param[in]  deck         Opm Eclipse deck
@@ -887,7 +887,7 @@ namespace Dune
     }
 
   protected:
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     UnstructuredGridType*
     createGrid(const Opm::EclipseGrid&    inputGrid,
                const std::vector<double>& poreVolumes,

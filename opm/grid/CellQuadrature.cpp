@@ -20,9 +20,12 @@
 #include <opm/grid/CellQuadrature.hpp>
 
 #include <opm/grid/UnstructuredGrid.h>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
+
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <stdexcept>
 
 namespace {
 

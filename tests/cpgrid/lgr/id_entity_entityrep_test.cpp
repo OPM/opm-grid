@@ -23,6 +23,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/utility/OpmLog.hpp>
 
 #include <unordered_set>
 

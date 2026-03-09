@@ -34,8 +34,7 @@
 
 #include <dune/grid/common/mcmgmapper.hh>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-
-
+#include <opm/grid/common/CartesianIndexMapper.hpp>
 
 #include <type_traits>
 

@@ -19,9 +19,12 @@
 #include <config.h>
 #include <opm/grid/FaceQuadrature.hpp>
 
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 #include <opm/grid/UnstructuredGrid.h>
+
+#include <cassert>
 #include <cmath>
+#include <stdexcept>
 
 namespace {
 

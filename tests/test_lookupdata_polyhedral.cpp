@@ -147,7 +147,7 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
 
 BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
 {
-#if HAVE_ECL_INPUT
+#if HAVE_OPM_COMMON
     const char *deckString =
         "RUNSPEC\n"
         "METRIC\n"
