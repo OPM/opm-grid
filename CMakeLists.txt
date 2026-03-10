@@ -39,8 +39,6 @@ macro(opm-grid_language_hook)
 endmacro()
 
 macro(opm-grid_config_hook)
-  opm_need_version_of ("dune-common")
-  opm_need_version_of ("dune-geometry")
   opm_need_version_of ("dune-grid")
   if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
     message(SEND_ERROR
