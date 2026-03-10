@@ -31,6 +31,35 @@ macro(opm-grid_prereqs_hook)
   if(USE_OPM_COMMON)
     target_link_libraries(opmgrid PUBLIC opmcommon)
   endif()
+
+  if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
+    message(SEND_ERROR
+      "opm-grid with MPI support requires the package ZOLTAN. "
+      "Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)"
+    )
+  endif()
+
+  if(MPI_FOUND)
+    target_link_libraries(opmgrid PUBLIC MPI::MPI_C MPI::MPI_CXX)
+    target_compile_definitions(opmgrid PUBLIC HAVE_MPI=1)
+  endif()
+
+  target_link_libraries(opmgrid PUBLIC dunecommon dunegrid)
+
+  if(TARGET duneistl)
+    target_link_libraries(opmgrid PUBLIC duneistl)
+    target_compile_definitions(opmgrid PUBLIC HAVE_DUNE_ISTL=1)
+  endif()
+
+  if(TARGET Zoltan::Zoltan)
+    target_link_libraries(opmgrid PUBLIC Zoltan::Zoltan)
+    target_compile_definitions(opmgrid PUBLIC HAVE_ZOLTAN=1)
+  endif()
+
+  if(TARGET METIS::METIS)
+    target_link_libraries(opmgrid PUBLIC METIS::METIS)
+    target_compile_definitions(opmgrid PUBLIC HAVE_METIS=1)
+  endif()
 endmacro()
 
 macro(opm-grid_language_hook)
@@ -40,12 +69,6 @@ endmacro()
 
 macro(opm-grid_config_hook)
   opm_need_version_of ("dune-grid")
-  if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
-    message(SEND_ERROR
-      "opm-grid with MPI support requires the package ZOLTAN. "
-      "Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)"
-    )
-  endif()
 endmacro()
 
 macro(opm-grid_targets_hook)

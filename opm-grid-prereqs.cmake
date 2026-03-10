@@ -1,23 +1,31 @@
-# defines that must be present in config.h for our headers
-set (opm-grid_CONFIG_VAR
-  HAVE_DUNE_ISTL
-  HAVE_METIS
-  HAVE_MPI
-  IS_SCOTCH_METIS_HEADER
-  HAVE_ZOLTAN
-)
+# These packages are always required
+find_package(dune-common REQUIRED)
+if(dune-common_VERSION VERSION_LESS 2.11)
+  target_include_directories(dunecommon INTERFACE ${dune-common_INCLUDE_DIRS})
+endif()
+find_package(dune-grid REQUIRED)
 
-# dependencies
-set (opm-grid_DEPS
-  # various runtime library enhancements
-  "MPI"
-  "dune-common REQUIRED"
-  "dune-grid REQUIRED"
-  "dune-istl"
-  "ZOLTAN"
-  "PTScotch"
-  "Scotch"
-  "METIS"
-  )
-
-find_package_deps(opm-grid)
+# If the target is created, it means we are used from the config file.
+# Use compile definitions to decide which packages are required.
+if(TARGET opmgrid)
+  get_property(opm-grid_COMPILE_DEFINITIONS TARGET opmgrid PROPERTY INTERFACE_COMPILE_DEFINITIONS)
+  if(opm-grid_COMPILE_DEFINITIONS MATCHES HAVE_MPI)
+    find_package(MPI REQUIRED)
+  endif()
+  if(opm-grid_COMPILE_DEFINITIONS MATCHES HAVE_DUNE_ISTL)
+    find_package(dune-istl REQUIRED)
+  endif()
+  if(opm-grid_COMPILE_DEFINITIONS MATCHES HAVE_ZOLTAN)
+    find_package(ZOLTAN REQUIRED)
+  endif()
+  if(opm-grid_COMPILE_DEFINITIONS MATCHES HAVE_METIS)
+    find_package(METIS REQUIRED)
+  endif()
+else()
+  # Used in the opm-grid build system. These are optional
+  # so no required flag here.
+  find_package(MPI)
+  find_package(dune-istl)
+  find_package(ZOLTAN)
+  find_package(METIS)
+endif()
