@@ -10,11 +10,7 @@
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
 
-#if HAVE_DUNE_GRID_CHECKS
-
 #include <dune/grid/test/checkpartition.hh>
-
-#endif
 
 template<int codim>
 void testPartitionIteratorsBasic(const Dune::CpGrid& grid, bool parallel)
@@ -97,10 +93,7 @@ BOOST_AUTO_TEST_CASE(partitionIteratorTest)
         testPartitionIteratorsOnSequentialGrid<3>(grid);
     }
 
-#if HAVE_DUNE_GRID_CHECKS
     checkPartitionType( grid.leafGridView() );
-#endif // HAVE_DUNE_GRID_CHECKS
-
 }
 
 bool
