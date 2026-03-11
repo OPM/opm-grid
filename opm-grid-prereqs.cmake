@@ -1,8 +1,5 @@
 # These packages are always required
 find_package(dune-common REQUIRED)
-if(dune-common_VERSION VERSION_LESS 2.11)
-  target_include_directories(dunecommon INTERFACE ${dune-common_INCLUDE_DIRS})
-endif()
 find_package(dune-grid REQUIRED)
 
 # If the target is created, it means we are used from the config file.
