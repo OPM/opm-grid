@@ -1773,18 +1773,8 @@ template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in 
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
 {
-    // Throw if element has a neighboring cell from a different level.
-    // E.g., a coarse cell touching the boundary of an LGR, or
-    // a refined cell with a coarser/finner neighboring cell.
-    for (const auto& intersection : Dune::intersections(leafGridView(), element)){
-        if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level()==0)) {
-            // Refinement of cells at LGR boundaries is not supported, yet.
-            if (throwOnFailure)
-                OPM_THROW(std::invalid_argument, "Refinement of cells at LGR boundaries is not supported, yet.");
-            else
-                return false;
-        }
-    }
+    Opm::Lgr::throwIfIsCoarseAtLgrBoundary(leafGridView(), element, throwOnFailure);
+
     // For serial run, mark elements also in the level they were born.
     std::optional<bool> mark0;
     if(currentData().size()>1) {
@@ -1807,6 +1797,19 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGrid::preAdapt()
 {
+    // Aquifer data is only in level zero grid
+    auto levelZeroMarkGetter = [&](const cpgrid::Entity<0>& element)
+    {
+        return current_data_->front()->getMark(element); // The mark gets propagated to all lower levels.
+    };
+
+    // Marked aquifer cells or connections will be ignored in the refinement process
+    Opm::Lgr::throwIfAquCellOrConnHasBeenMarked(/* levelZeroData = */ *currentData().front(),
+                                                /* levelZeroView = */ levelGridView(0),
+                                                /* levelZeroAquiferCells = */ currentData().front()->sortedNumAquiferCells(),
+                                                levelZeroMarkGetter,
+                                                /* throwOnFailure = */ false);
+
     // Check if elements in pre-adapt existing grids have been marked for refinment.
     // Serial run: currentData() = data_. Parallel run: currentData() = distributed_data_.
     bool isPreAdapted = false; // 0
@@ -2723,6 +2726,19 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
         tmp_maxLevel = tmp_maxLevel + startIJK_vec_parent_grid.size(); // Update the maxLevel
+
+        // Aquifer data is only in level zero grid
+        auto levelZeroMarkGetter = [&](const cpgrid::Entity<0>& element)
+        {
+            return current_data_->front()->getMark(element); // The mark gets propagated to all lower levels.
+        };
+
+        // If there are marked aquifer cells or connections, throw
+        Opm::Lgr::throwIfAquCellOrConnHasBeenMarked(/* levelZeroData = */ *currentData().front(),
+                                                    /* levelZeroView = */ levelGridView(0),
+                                                    /* levelZeroAquiferCells = */ currentData().front()->sortedNumAquiferCells(),
+                                                    levelZeroMarkGetter,
+                                                    /* throwOnFailure = */ true);
 
         //   2. Create the corresponding LGRs. and  3. Update the leaf grid view.
         refineAndUpdateGrid(cells_per_dim_vec_parent_grid,

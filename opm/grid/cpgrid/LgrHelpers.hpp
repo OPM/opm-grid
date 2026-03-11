@@ -775,6 +775,54 @@ bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_
 
 void containsEightDifferentCorners(const std::array<int,8>& cell_to_point);
 
+template <class LevelZeroData, class LevelZeroView, typename MarkGetter>
+bool throwIfAquCellOrConnHasBeenMarked(const LevelZeroData& levelZeroData,
+                                       const LevelZeroView& levelZeroView,
+                                       const std::vector<int>& levelZeroAquiferCells,
+                                       const MarkGetter& markGetter,
+                                       bool throwOnFailure)
+{
+    for (const auto& aquCellIdx : levelZeroAquiferCells) {
+        const auto& aquElem = Dune::cpgrid::Entity<0>(levelZeroData, aquCellIdx, true);
+
+        if (markGetter(aquElem) == 1) {
+            if (throwOnFailure)
+                OPM_THROW(std::invalid_argument, "Refinement of cells connected to aquifers is not supported, yet.");
+            else
+                return false;
+        }
+        
+        for (const auto& intersection : Dune::intersections(levelZeroView, aquElem)){
+            if (intersection.neighbor()) {
+                if (markGetter(intersection.outside()) == 1) {
+                    if (throwOnFailure)
+                        OPM_THROW(std::invalid_argument, "Refinement of cells connected to aquifers is not supported, yet.");
+                    else
+                        return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+template <class LeafView>
+bool throwIfIsCoarseAtLgrBoundary(const LeafView& leafView,
+                                  const Dune::cpgrid::Entity<0>& element,
+                                  bool throwOnFailure)
+{
+    for (const auto& intersection : Dune::intersections(leafView, element)){
+        if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level() == 0)) {
+            // Refinement of cells at LGR boundaries is not supported, yet.
+            if (throwOnFailure)
+                OPM_THROW(std::invalid_argument, "Refinement of cells at LGR boundaries is not supported, yet.");
+            else
+                return false;
+        }
+    }
+    return true;
+}
+
 } // namespace Lgr
 } // namespace Opm
 

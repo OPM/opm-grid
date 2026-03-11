@@ -1,5 +1,5 @@
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2026 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -18,35 +18,19 @@
 */
 #include "config.h"
 
-#define BOOST_TEST_MODULE LGRTests
+#define BOOST_TEST_MODULE LgrCartesianIndexTests
 #include <boost/test/unit_test.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
-#include <boost/test/floating_point_comparison.hpp>
-#else
-#include <boost/test/tools/floating_point_comparison.hpp>
-#endif
+
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
-#include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
-#include <opm/grid/cpgrid/EntityRep.hpp>
-#include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
-#include <opm/grid/LookUpData.hh>
 
-#include <dune/common/version.hh>
-#include <dune/grid/common/mcmgmapper.hh>
-#include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/Parser/Parser.hpp>
-#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
-#include <cassert>
-#include <sstream>
-#include <iostream>
-#include <cstdlib>
-#include <cmath>
-#include <map>
+#include <array>
+#include <stdexcept>
 
 struct Fixture
 {
@@ -71,7 +55,6 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 void checkGlobalCellLgr(Dune::CpGrid& grid)
 {
     const Dune::CartesianIndexMapper<Dune::CpGrid> mapper{grid};
-
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
 
     for (const auto& element : elements(grid.leafGridView()))
@@ -129,41 +112,19 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
     }
 }
 
-BOOST_AUTO_TEST_CASE(refine_one_cell)
+BOOST_AUTO_TEST_CASE(globalCellInAllActiveCellsGridWithLgrs)
 {
-    // Create a grid
     Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    const std::array<int, 3> startIJK = {1,0,1};
-    const std::array<int, 3> endIJK = {2,1,2};// Single Cell! (with index 13 in level zero grid), LGR dimensions 2x2x2
-    const std::string lgr_name = {"LGR1"};
-    grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+    Opm::createGridAndAddLgrs(grid, /* cell_sizes = */ {1.0, 1.0, 1.0}, /* grid_dim = */ {4,3,3},
+                              /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
+                              /* startIJK_vec = */ {{0,0,0}, {0,0,2}, {3,2,2}},
+                              /* endIJK_vec = */ {{2,1,1}, {1,1,3}, {4,3,3}},
+                              /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"});
 
     checkGlobalCellLgr(grid);
 }
 
-BOOST_AUTO_TEST_CASE(three_lgrs)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {3,2,2}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-
-    checkGlobalCellLgr(grid);
-}
-
-BOOST_AUTO_TEST_CASE(inactiveCells_in_lgrs)
+BOOST_AUTO_TEST_CASE(globalCellInGridWithLgrsWithInactiveParentCells)
 {
 
     const std::string deckString =
@@ -200,20 +161,13 @@ BOOST_AUTO_TEST_CASE(inactiveCells_in_lgrs)
         5*0.15
         /)";
 
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,2}, {1,1,5}};
-    // LGR1 cell indices = {0,1}, LGR2 cell indices = {3,4}.
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-
-    Opm::Parser parser;
-    const auto deck = parser.parseString(deckString);
-    Opm::EclipseState es(deck);
-
     Dune::CpGrid grid;
-    grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
-
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    // LGR1 cell indices = {0,1}, LGR2 cell indices = {3,4}.
+    Opm::createGridAndAddLgrs(grid, deckString,
+                              /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                              /* startIJK_vec = */ {{0,0,0}, {0,0,3}},
+                              /* endIJK_vec = */ {{1,1,2}, {1,1,5}},
+                              /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
     checkGlobalCellLgr(grid);
 }

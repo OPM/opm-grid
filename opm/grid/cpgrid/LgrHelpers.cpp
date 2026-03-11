@@ -2273,5 +2273,22 @@ void containsEightDifferentCorners(const std::array<int,8>& cell_to_point)
     }
 }
 
+bool throwIfAquiferCell(const std::vector<int>& levelAquiferCells,
+                        const Dune::cpgrid::Entity<0>& element,
+                        bool throwOnFailure)
+{
+    if (!levelAquiferCells.empty()) {
+        bool isAquifer = std::ranges::find(levelAquiferCells, element.getLevelElem().index()) != levelAquiferCells.end();
+        if (isAquifer) {
+            if (throwOnFailure)
+                OPM_THROW(std::invalid_argument, "Refinement of aquifer cells is not supported, yet.");
+            else 
+                return false;
+        }
+    }
+    return true;
+}
+
+
 } // namespace Lgr
 } // namespace Opm

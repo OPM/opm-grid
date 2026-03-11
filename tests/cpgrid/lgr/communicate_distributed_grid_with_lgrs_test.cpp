@@ -24,17 +24,15 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
 
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
+
 #include <dune/common/version.hh>
 #include <dune/grid/common/datahandleif.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 
-#include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/input/eclipse/Parser/Parser.hpp>
-
-#include <algorithm>
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Only for testing - copied from opm-simulators/opm/models/parallel/gridcommhandles.hh
@@ -114,7 +112,6 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 void createTestGrid(Dune::CpGrid& grid)
 {
-    Opm::Parser parser;
     const std::string deck_string = R"(
 RUNSPEC
 DIMENS
@@ -154,11 +151,7 @@ REGIONS
 SOLUTION
 SCHEDULE
 )";
-
-    const auto deck = parser.parseString(deck_string);
-    Opm::EclipseState ecl_state(deck);
-    Opm::EclipseGrid eclipse_grid = ecl_state.getInputGrid();
-    grid.processEclipseFormat(&eclipse_grid, &ecl_state, false, false, false);
+    Opm::createGridFromDeckString(grid, deck_string);
 }
 
 void checkChildGlobalIdsTest(const Dune::CpGrid& grid)
