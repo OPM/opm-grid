@@ -46,8 +46,8 @@ macro(opm-grid_prereqs_hook)
 
   target_link_libraries(opmgrid PUBLIC dunecommon dunegrid)
 
-  if(TARGET duneistl)
-    target_link_libraries(opmgrid PUBLIC duneistl)
+  if(TARGET Dune::ISTL)
+    target_link_libraries(opmgrid PUBLIC Dune::ISTL)
     target_compile_definitions(opmgrid PUBLIC HAVE_DUNE_ISTL=1)
   endif()
 
