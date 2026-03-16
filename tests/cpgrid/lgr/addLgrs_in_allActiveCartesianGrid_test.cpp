@@ -64,8 +64,7 @@ BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}},
-                           /* lgr_name_vec = */ {"LGR1"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */ {"LGR1"});
 }
 
 BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirection)
@@ -93,8 +92,7 @@ BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirecti
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
-                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"});
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
@@ -123,8 +121,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
-                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"});
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
@@ -140,8 +137,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}, {2,2,2}},
-                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"});
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareFaceWithCompatibleSubdivisions)
@@ -175,8 +171,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareFaceWithCompatibleSubdivisions)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{5,3,2}, {4,3,2}, {4,1,2}, {1,2,3}, {1,2,4}},
-                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3", "LGR4", "LGR5"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3", "LGR4", "LGR5"});
 }
 
 BOOST_AUTO_TEST_CASE(throwIfUncompatibleSubdivisionsInSharedFaces)
@@ -281,6 +276,5 @@ BOOST_AUTO_TEST_CASE(filterLgrThatDoesNotTriggerActualRefinement)
     // Pass filtered cells_per_dim_vec and lgr_name_vec
     Opm::checkGridWithLgrs(grid,
                            /* filtered_cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
-                           /* lgr_name_vec = */  {"LGR1", "LGR3"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */  {"LGR1", "LGR3"});
 }

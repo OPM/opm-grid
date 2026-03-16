@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(fullyInteriorLgrsHaveUniqueVertexGlobalIds)
         const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
-        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec, /* isGlobalRefined = */ false);
+        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec);
 
         // LGR1 dim 2x4x2 -> 3x5x3 = 45 points
         // LGR2 dim 3x3x3 -> 4x4x4 = 64 points
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(interiorLgrWithOverlapNeighborHasUniqueVertexGlobalIdsIfAdd
         const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
-        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec, /* isGlobalRefined = */ false);
+        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec);
 
         // LGR1 dim 2x4x2 -> 3x5x3 = 45 points
         // LGR2 dim 3x3x3 -> 4x4x4 = 64 points
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(distributedLgrHasUniqueVertexGlobalIdsIfAddCornerCellsTrue)
         // LGR1 element indices = 8,9 (rank 0), 10 (rank 2). Total 24 refined cells, 63 points (63-16 = 47 with new global id).
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
-        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec, /* isGlobalRefined = */ false);
+        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec);
 
         // Check global id is not duplicated for points for each LGR
         // LGR1 dim 6x2x2 -> 7x3x3 = 63 points
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(distributedLgrFailsVertexGlobalIdsUniquenessWithAddCornerCe
         // LGR1 element indices = {1,2,5,6,13,14,17,18} where
         // 1,5 are interior in rank 0, 13,17 in rank 1, 2,6,18 in rank 2, 14 in rank 3.
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec, /* isGlobalRefined = */ false);
+        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, lgr_name_vec);
 
         // Check global id is not duplicated for points for each LGR
         // LGR1 dim 4x4x4 -> 5x5x5 = 125 points
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(callRefineAndUpdateGridOnDistributedCoarseGrid)
                                  startIJK_vec,
                                  endIJK_vec);
 
-        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, {"LGR1"}, /* isGlobalRefined = */ false);
+        Opm::checkGridWithLgrs(grid, cells_per_dim_vec, {"LGR1"});
     }
 }
 
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(callAdaptWithoutArgsOnDistributedCoarseGrid)
         grid.adapt();
         grid.postAdapt();
 
-        Opm::checkGridWithLgrs(grid, {{2,2,2}} /*cells_per_dim_vec*/, {"GR1"} /*lgr_name_vec (GR: GLOBAL REFINEMENT)*/,  /* isGlobalRefined = */ true);
+        Opm::checkGridWithLgrs(grid, {{2,2,2}} /*cells_per_dim_vec*/, {"GR1"} /*lgr_name_vec (GR: GLOBAL REFINEMENT)*/);
     }
 }
 
@@ -251,6 +251,6 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineOnceOnDistributedCoarseGrid)
         grid.loadBalance();
         grid.globalRefine(1);
 
-        Opm::checkGridWithLgrs(grid,  {{2,2,2}} /*cells_per_dim_vec*/, {"GR1"} /*lgr_name_vec (GR: GLOBAL REFINEMENT)*/,  /* isGlobalRefined = */ true);
+        Opm::checkGridWithLgrs(grid,  {{2,2,2}} /*cells_per_dim_vec*/, {"GR1"} /*lgr_name_vec (GR: GLOBAL REFINEMENT)*/);
     }
 }

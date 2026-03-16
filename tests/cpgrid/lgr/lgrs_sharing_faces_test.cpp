@@ -159,8 +159,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingIFaces_easyCenterAndAreaCheck)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{1,2,2}, {2,2,2}},
-                           /* lgr_name_vec = */ {"LGR1", "LGR2"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
     // Level 0 grid dimension 4x1x1 -> 5x1x1 I_FACES + 4x2x1 J_FACES + 4x1x2 K_FACES = 21 faces
     // Level 1 grid dimension 2x2x2 -> 3x2x2 I_FACES + 2x3x2 J_FACES + 2x2x3 K_FACES = 36 faces
@@ -248,8 +247,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingJFaces_easyCenterAndAreaCheck)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,1,2}, {2,2,2}},
-                           /* lgr_name_vec = */ {"LGR1", "LGR2"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
     // Level 0 grid dimension 1x4x1 -> 2x4x1 I_FACES + 1x5x1 J_FACES + 1x4x2 K_FACES = 21 faces
     // Level 1 grid dimension 2x2x2 -> 3x2x2 I_FACES + 2x3x2 J_FACES + 2x2x3 K_FACES = 36 faces
@@ -337,8 +335,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingKFaces_easyCenterAndAreaCheck)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,1}, {2,2,2}},
-                           /* lgr_name_vec = */ {"LGR1", "LGR2"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
     // Level 0 grid dimension 1x1x4 -> 2x1x4 I_FACES + 1x2x4 J_FACES + 1x1x5 K_FACES = 21 faces
     // Level 1 grid dimension 2x2x2 -> 3x2x2 I_FACES + 2x3x2 J_FACES + 2x2x3 K_FACES = 36 faces
@@ -436,8 +433,7 @@ BOOST_AUTO_TEST_CASE(lgrsSharingIJKFaces)
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{4,1,2}, {4,3,2}, {4,1,3}, {5,1,2}},
-                           /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3", "LGR4"},
-                           /* isGlobalRefined = */ false);
+                           /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3", "LGR4"});
     
     checkExistenceOfIntersectionBetweenAncestors(grid);
 }
@@ -460,7 +456,6 @@ BOOST_AUTO_TEST_CASE(lgrsSharingIFaces_nested)
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{3,2,4}, {5,2,4}, {2,2,4}, {1,2,4}},
                            /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3", "LGR4"},
-                           /* isGlobalRefined = */ false,
                            /* preRefineMaxLevel = */ 0,
                            /* isNested = */ true);
     
@@ -483,7 +478,6 @@ BOOST_AUTO_TEST_CASE(lgrSharingJFaces_nested)
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{4,3,2}, {4,5,2}, {4,2,2}, {4,1,2}},
                            /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3", "LGR4"},
-                           /* isGlobalRefined = */ false,
                            /* preRefineMaxLevel = */ 0,
                            /* isNested = */ true);
     
@@ -506,7 +500,6 @@ BOOST_AUTO_TEST_CASE(lgrSharingKFaces_nested)
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{4,2,3}, {4,2,5}, {4,2,2}, {4,2,1}},
                            /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3", "LGR4"},
-                           /* isGlobalRefined = */ false,
                            /* preRefineMaxLevel = */ 0,
                            /* isNested = */ true);
 

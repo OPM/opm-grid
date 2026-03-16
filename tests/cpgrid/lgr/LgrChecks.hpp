@@ -60,9 +60,7 @@ void checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
                                         unsigned int maxLevel);
 
 void checkGlobalCellBounds(const Dune::CpGrid& grid,
-                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data,
-                           bool lgrsHaveBlockShape,
-                           bool isGlobalRefined);
+                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
 void checkGlobalCellBounds(const std::vector<int>& globalCell,
                            const std::array<int, 3>& logicalCartesianSize);
@@ -159,7 +157,6 @@ void adaptGrid(Dune::CpGrid& grid,
 void checkGridWithLgrs(const Dune::CpGrid& grid,
                        const std::vector<std::array<int,3>>& cells_per_dim_vec,
                        const std::vector<std::string>& lgr_name_vec,
-                       bool gridHasBeenGlobalRefined = false,
                        int preRefineMaxLevel = 0,
                        bool isNested = false);
 
@@ -220,9 +217,7 @@ void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it
 }
 
 void Opm::checkGlobalCellBounds(const Dune::CpGrid& grid,
-                                const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data,
-                                bool lgrsHaveBlockShape,
-                                bool isGlobalRefined)
+                                const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
 {
     const int maxLevel = grid.maxLevel();
     for (int level = 0; level < maxLevel; ++level) { // level == maxLevel -> leaf grid view
@@ -232,13 +227,9 @@ void Opm::checkGlobalCellBounds(const Dune::CpGrid& grid,
             continue;
         checkGlobalCellBounds(level_data->globalCell(), level_data->logicalCartesianSize());
     }
-
-    if(lgrsHaveBlockShape && !isGlobalRefined) {
-        checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
-    }
-    else {
-        checkGlobalCellBounds(data.back()->globalCell(), data.back()->logicalCartesianSize());
-    }
+    
+    checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
+    checkGlobalCellBounds(data.back()->globalCell(), data.back()->logicalCartesianSize());
 }
 
 void Opm::checkGlobalCellBounds(const std::vector<int>& globalCell,
@@ -810,7 +801,6 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
 void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
                             const std::vector<std::string>& lgr_name_vec,
-                            bool gridHasBeenGlobalRefined,
                             int preRefineMaxLevel,
                             bool isNested)
 {
@@ -832,7 +822,7 @@ void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
     */
     checkGridLocalAndGlobalIdConsistency(grid, data);
 
-    checkGlobalCellBounds(grid, data, /* lgrsHaveBlockShape */ true, gridHasBeenGlobalRefined);
+    checkGlobalCellBounds(grid, data);
 }
 
 int Opm::countLocalActiveInteriorCells(const Dune::CpGrid& grid,
