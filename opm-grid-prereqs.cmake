@@ -1,5 +1,6 @@
 # These packages are always required
 find_package(dune-common REQUIRED)
+find_package(dune-geometry REQUIRED)
 find_package(dune-grid REQUIRED)
 
 # If the target is created, it means we are used from the config file.
