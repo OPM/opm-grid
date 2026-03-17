@@ -41,7 +41,6 @@ macro(opm-grid_prereqs_hook)
 
   if(MPI_FOUND)
     target_link_libraries(opmgrid PUBLIC MPI::MPI_C MPI::MPI_CXX)
-    target_compile_definitions(opmgrid PUBLIC HAVE_MPI=1)
   endif()
 
   target_link_libraries(opmgrid PUBLIC dunecommon dunegrid)
