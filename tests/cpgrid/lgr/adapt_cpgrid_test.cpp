@@ -46,8 +46,6 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 void checkAdaptedGrid(Dune::CpGrid& grid,
                       const std::array<int,3>& cells_per_dim,
-                      bool lgrsHaveBlockShape,
-                      bool gridHasBeenGlobalRefined,
                       int preAdaptMaxLevel)
 {
     const auto& data = grid.currentData();
@@ -56,7 +54,7 @@ void checkAdaptedGrid(Dune::CpGrid& grid,
     Opm::checkVertexAndFaceIndexAreNonNegative(grid);
     Opm::checkGridBasicHiearchyInfo(grid, {cells_per_dim}, preAdaptMaxLevel);
     Opm::checkGridLocalAndGlobalIdConsistency(grid, data);
-    Opm::checkGlobalCellBounds(grid, data, lgrsHaveBlockShape, gridHasBeenGlobalRefined);
+    Opm::checkGlobalCellBounds(grid, data);
 }
 
 BOOST_AUTO_TEST_CASE(markNoElemForRefinementDoesNothingToTheGrid)
@@ -85,8 +83,6 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
 
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,2,2},
-                     /* lgrsHaveBlockShape = */ true,
-                     /* gridHasBeenGlobalRefined = */ true,
                      /* preAdaptMaxLevel = */ 0);
 
 
@@ -107,8 +103,6 @@ BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLe
 
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,2,2},
-                     /* lgrsHaveBlockShape = */ true,
-                     /* gridHasBeenGlobalRefined = */ false,
                      /* preAdaptMaxLevel = */ 0);
 
     // Create other grid for comparison
@@ -137,8 +131,6 @@ BOOST_AUTO_TEST_CASE(refinementOfCellsNotFormingABlockIsSupported)
 
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,3,4},
-                     /* lgrsHaveBlockShape = */ false,
-                     /* gridHasBeenGlobalRefined = */ false,
                      /* preAdaptMaxLevel = */ 0);
 }
 
@@ -275,8 +267,6 @@ BOOST_AUTO_TEST_CASE(refineRefinedCellsOnLgrBoundaryIsSupported)
     Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, markedCells);
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,2,2},
-                     /* lgrsHaveBlockShape = */ false,
-                     /* gridHasBeenGlobalRefined = */ true,
                      /* preAdaptMaxLevel = */ 1);
 }
 
@@ -331,8 +321,6 @@ BOOST_AUTO_TEST_CASE(refineCoarseAwayFromLgrBondaryAndRefinedCellsIsSupported) {
 
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,3,4},
-                     /* lgrsHaveBlockShape = */ false,
-                     /* gridHasBeenGlobalRefined = */ false,
                      /* preAdaptMaxLevel = */ 1);
 }
 
@@ -390,7 +378,5 @@ BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondariesIsSupported)
 
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,3,4},
-                     /* lgrsHaveBlockShape = */ false,
-                     /* gridHasBeenGlobalRefined = */ false,
                      /* preAdaptMaxLevel = */ 2);
 }

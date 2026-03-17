@@ -57,8 +57,7 @@ void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
     }
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {nxnynz},
-                           /* lgr_name_vec = */ lgrNames,
-                           /* gridHasBeenGlobalRefined = */ true);
+                           /* lgr_name_vec = */ lgrNames);
 }
 
 BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
@@ -115,7 +114,6 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
         Opm::checkGridWithLgrs(grid,
                                /* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
                                /* lgr_name_vec = */ {"GR2", "GR3"},
-                               /* gridHasBeenGlobalRefined = */ true,
                                /* preRefineMaxLevel = */ 1,
                                /* isNested = */ true);
     }
@@ -144,7 +142,6 @@ BOOST_AUTO_TEST_CASE(callAdaptAfterAutoRefine_serial) {
          Opm::checkGridWithLgrs(grid,
                                /* cells_per_dim_vec = */ {{2,2,2}},
                                /* lgr_name_vec = */ {"GR2"},
-                               /* gridHasBeenGlobalRefined = */ true,
                                /* preRefineMaxLevel = */ 1,
                                /* isNested = */ true);
     }
@@ -178,7 +175,6 @@ BOOST_AUTO_TEST_CASE(callAdaptNotAllElementsMarkedAfterAutoRefine_serial) {
         Opm::checkGridWithLgrs(grid,
                                /* cells_per_dim_vec = */ {{2,2,2}},
                                /* lgr_name_vec = */ {"LGR2"},
-                               /* gridHasBeenGlobalRefined = */ false,
                                /* preRefineMaxLevel = */ 1,
                                /* isNested = */ true);
     }

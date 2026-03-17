@@ -87,7 +87,6 @@ BOOST_AUTO_TEST_CASE(ifNonParentGridNameProvidedDefaultIsAllChildGridsFromGlobal
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{3,3,1}, {2,4,3}},
                            /* lgr_name_vec = */      { "LGR1",  "LGR2"},
-                           /* gridHasBeenGlobalRefined = */ false,
                            /* preRefineMaxLevel = */ 0,
                            /* isNested = */ false);
 }
@@ -145,7 +144,6 @@ BOOST_AUTO_TEST_CASE(nestedRefinementOnly) {
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{3,2,2}, {2,2,2}, {2,2,1}, {3,4,2}},
                            /* lgr_name_vec = */      { "LGR1",  "LGR2",  "LGR3",  "LGR4"},
-                           /* gridHasBeenGlobalRefined = */ false,
                            /* preRefineMaxLevel = */ 0,
                            /* isNested = */ true);
 }
@@ -184,7 +182,6 @@ BOOST_AUTO_TEST_CASE(mixNameOrderAndNestedRefinement){
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ { {3,2,2}, {2,2,1}, {2,2,2}, {3,4,2}},
                            /* lgr_name_vec = */      {  "LGR1",  "LGR3",  "LGR2",  "LGR4"},
-                           /* gridHasBeenGlobalRefined = */ false,
                            /* preRefineMaxLevel = */ 0,
                            /* isNested = */ true);
 
