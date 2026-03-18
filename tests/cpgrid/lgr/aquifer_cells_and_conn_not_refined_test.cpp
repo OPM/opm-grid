@@ -19,8 +19,6 @@
 
 #include <config.h>
 
-#define NVERBOSE
-
 #define BOOST_TEST_MODULE AquiferCellsAndConnectionsNotRefinedTests
 
 #include <boost/test/unit_test.hpp>
