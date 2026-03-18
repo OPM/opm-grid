@@ -574,6 +574,11 @@ namespace Dune
 
         /// @brief Triggers the grid refinement process, allowing to select diffrent refined level grids.
         ///
+        /// @param [in] throwOnFailure       If true, throws an error when elements are marked for refinement but not
+        ///                                  actually refined during addLgrsUpdateLeafView() or autoRefine().
+        ///                                  This can occur, for example, for aquifer cells and connections, which
+        ///                                  may be marked ("1"). For globalRefine() and adapt(), this
+        ///                                  should be false, and such elements are ignored.
         /// @param [in] cells_per_dim_vec    For each set of marked elements for refinement, that will belong to a same
         ///                                  refined level grid, number of (refined) cells in each direction that each
         ///                                  parent cell should be refined to.
@@ -585,7 +590,8 @@ namespace Dune
         ///                                  block of cells to be refined.
         /// @param [in] endIJK_vec           Default empty vector. When isCARFIN, the final ijk Cartesian index of each
         ///                                  block of cells to be refined.
-        bool refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+        bool refineAndUpdateGrid(bool throwOnFailure,
+                                 const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                  const std::vector<int>& assignRefinedLevel,
                                  const std::vector<std::string>& lgr_name_vec,
                                  const std::vector<std::array<int,3>>& startIJK_vec = std::vector<std::array<int,3>>{},

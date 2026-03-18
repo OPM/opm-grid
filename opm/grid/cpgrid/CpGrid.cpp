@@ -1065,7 +1065,7 @@ void CpGrid::globalRefine (int refCount, bool throwOnFailure)
             }
 
             preAdapt();
-            refineAndUpdateGrid(/* cells_per_dim_vec = */ {{2,2,2}}, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
+            refineAndUpdateGrid(throwOnFailure, /* cells_per_dim_vec = */ {{2,2,2}}, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
             postAdapt();
         }
     }
@@ -1797,13 +1797,6 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGrid::preAdapt()
 {
-    // Aquifer data is only in level zero grid
-    // Marked aquifer cells or connections will be ignored in the refinement process
-    Opm::Lgr::throwIfAquCellOrConnHasBeenMarked(/* levelZeroData = */ *currentData().front(),
-                                                /* levelZeroView = */ levelGridView(0),
-                                                /* levelZeroAquiferCells = */ currentData().front()->sortedNumAquiferCells(),
-                                                /* throwOnFailure = */ false);
-
     // Check if elements in pre-adapt existing grids have been marked for refinment.
     // Serial run: currentData() = data_. Parallel run: currentData() = distributed_data_.
     bool isPreAdapted = false; // 0
@@ -1843,12 +1836,14 @@ bool CpGrid::adapt()
         // Rewrite the lgr name (GR stands for GLOBAL REFINEMET)
         lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
         const std::array<int,3>& endIJK = currentLeafData().logicalCartesianSize();
-        return this->refineAndUpdateGrid(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
+
+        return this->refineAndUpdateGrid(/* throwOnFailure = */ false, cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
     }
-    return this-> refineAndUpdateGrid(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
+    return this-> refineAndUpdateGrid(/* throwOnFailure = */ false, cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
 }
 
-bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
+                                 const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                  const std::vector<int>& assignRefinedLevel,
                                  const std::vector<std::string>& lgr_name_vec,
                                  const std::vector<std::array<int,3>>& startIJK_vec,
@@ -2007,7 +2002,8 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
         // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished.
         preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(data[preAdaptLevel]->size(0), -1);
     }
-    //
+    // Ignore marked aquifer cells/connections in globalRefine()/adapt(); throw in addLgrsUpdateLeafView()/autoRef().
+    Opm::Lgr::filterMarkedAquiferCellsAndConnections(*this, throwOnFailure); 
     Opm::Lgr::refineAndProvideMarkedRefinedRelations( *this,
                                                       /* Marked elements parameters */
                                                       markedElem_to_itsLgr,
@@ -2721,14 +2717,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         tmp_maxLevel = tmp_maxLevel + startIJK_vec_parent_grid.size(); // Update the maxLevel
 
-        // If there are marked aquifer cells or connections, throw
-        Opm::Lgr::throwIfAquCellOrConnHasBeenMarked(/* levelZeroData = */ *currentData().front(),
-                                                    /* levelZeroView = */ levelGridView(0),
-                                                    /* levelZeroAquiferCells = */ currentData().front()->sortedNumAquiferCells(),
-                                                    /* throwOnFailure = */ true);
-
         //   2. Create the corresponding LGRs. and  3. Update the leaf grid view.
-        refineAndUpdateGrid(cells_per_dim_vec_parent_grid,
+        refineAndUpdateGrid(/* throwOnFailure = */ true,  // throw if there are aquifer cells or connections marked for refinement
+                            cells_per_dim_vec_parent_grid,
                             assignRefinedLevel,
                             lgr_name_vec_parent_grid,
                             startIJK_vec_parent_grid,

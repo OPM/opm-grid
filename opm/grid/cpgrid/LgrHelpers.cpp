@@ -104,7 +104,8 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
     const int& preAdaptMaxLevel = grid.maxLevel();
 
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
+        // When the element is not involved in any LGR, it will appear in the updated leaf grid
+        // with same geometrical features (center, volume).
         if (grid.getMark(element) ==  0) {
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getLevelElem().index()] = cell_count;
 
@@ -113,10 +114,7 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
                                 std::array{-1, element.index()},       // keyA
                                 cell_count);                           // counter (keyB)
         }
-
-        // When the element is marked for refinement, we also mark its corners and faces
-        // since they will get replaced by refined ones.
-        if (grid.getMark(element) ==  1) {
+        if (grid.getMark(element) ==  1) { // When the element is refined, its corners and faces will be replaced by refined ones.
             ++markedElem_count;
             const auto& markedElemLevel = assignRefinedLevel[element.index()];
             assert(markedElemLevel > preAdaptMaxLevel);
@@ -2270,6 +2268,44 @@ void containsEightDifferentCorners(const std::array<int,8>& cell_to_point)
     const std::set<int> nonRepeatedCorners(cell_to_point.begin(), cell_to_point.end());
     if (nonRepeatedCorners.size() != 8) {
         OPM_THROW(std::logic_error, "Cell has " + std::to_string(nonRepeatedCorners.size()) + " vertices, required: 8.");
+    }
+}
+
+void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
+                                            bool throwOnFailure)
+{
+    const auto& levelZeroData = *grid.currentData().front();
+    const auto& levelZeroAquiferCells = levelZeroData.sortedNumAquiferCells();
+
+    // During refinement of an already refined grid, each leaf cell is assigned a mark.
+    // However, aquifer information is only available on the level-zero grid.
+    auto handleMarkedAquCell = [&](const Dune::cpgrid::Entity<0>& elem, const std::string& errorMsg) {
+        if (levelZeroData.getMark(elem) == 1) {
+            if (throwOnFailure) { // throw for refinement via CARFIN and AUTOREF keywords
+                OPM_THROW(std::invalid_argument, errorMsg);
+            }
+            else { // reset the mark to 0, since marked aquifer cells or connections are ignored during refinement
+                if (grid.maxLevel()) {
+                    const auto leafIdx = (grid.maxLevel() > 0)  ? levelZeroData.getLeafIdxFromLevelIdx(elem.index()) : elem.index();
+                    const auto leafElem = Dune::cpgrid::Entity<0>(grid.currentLeafData(), leafIdx, true);
+                    grid.mark(0, leafElem);
+                } else {
+                    grid.mark(0, elem);
+                }
+            }  
+        }
+    };
+
+    for (const auto& aquCellIdx : levelZeroAquiferCells) {
+
+        const auto& aquElem = Dune::cpgrid::Entity<0>(levelZeroData, aquCellIdx, true);
+        handleMarkedAquCell(aquElem, "Refinement of aquifer cells is not supported, yet.");
+
+        for (const auto& intersection : Dune::intersections(grid.levelGridView(0), aquElem)){
+            if (intersection.neighbor()) {
+                handleMarkedAquCell(intersection.outside(), "Refinement of cells connected to aquifers is not supported, yet.");
+            }
+        }
     }
 }
 

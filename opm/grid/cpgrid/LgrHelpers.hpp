@@ -84,7 +84,7 @@ namespace Lgr
 ///     Maps pre-adapt grid cells to adapted cells (−1 if vanished).
 ///
 /// --- Additional ---
-/// @param [in]  cells_per_dim_vec       Refinement factors per dimension for each refined level grid.
+/// @param [in] cells_per_dim_vec       Refinement factors per dimension for each refined level grid.
 void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid,/* Marked elements parameters */
                                             std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                             int& markedElem_count,
@@ -775,36 +775,16 @@ bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_
 
 void containsEightDifferentCorners(const std::array<int,8>& cell_to_point);
 
-template <class LevelZeroView>
-bool throwIfAquCellOrConnHasBeenMarked(const Dune::cpgrid::CpGridData& levelZeroData,
-                                       const LevelZeroView& levelZeroView,
-                                       const std::vector<int>& levelZeroAquiferCells,
-                                       bool throwOnFailure)
-{
-    for (const auto& aquCellIdx : levelZeroAquiferCells) {
-        const auto& aquElem = Dune::cpgrid::Entity<0>(levelZeroData, aquCellIdx, true);
-
-        if (levelZeroData.getMark(aquElem) == 1) {
-            if (throwOnFailure)
-                OPM_THROW(std::invalid_argument, "Refinement of cells connected to aquifers is not supported, yet.");
-            else
-                return false;
-        }
-        
-        for (const auto& intersection : Dune::intersections(levelZeroView, aquElem)){
-            if (intersection.neighbor()) {
-                if (levelZeroData.getMark(intersection.outside()) == 1) {
-                    if (throwOnFailure)
-                        OPM_THROW(std::invalid_argument, "Refinement of cells connected to aquifers is not supported, yet.");
-                    else
-                        return false;
-                }
-            }
-        }
-    }
-    return true;
-}
-
+/// Filter aquifer cells and connections that are marked for refinement.
+///
+/// Aquifer cells and their connections may be marked for refinement ("1")
+/// but are ignored during refinement via globalRefine() or adapt().
+/// This method filters such elements resetting the marks to 0, indicating
+/// aquifer cells and connections will actually NOT be refined. For other
+/// refinement methods (addLgrsUpdateLeafView() and autoRefine() based on
+/// CARFIN and AUTOREF keywords), it throws.
+void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
+                                            bool throwOnFailure);
 template <class LeafView>
 bool throwIfIsCoarseAtLgrBoundary(const LeafView& leafView,
                                   const Dune::cpgrid::Entity<0>& element,

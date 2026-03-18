@@ -183,15 +183,36 @@ PERMZ
 // The grid has an aquifer connection:
 // connected grid cells with ijk_1 = {0,0,0} and ijk_2 = {0,1,0}
 //                     (IJK_deck_1 = {1,1,1} and IJK_deck_2 = {1,2,1})
-// with J-
+// with J+
 //
 //         Cartesian level zero indices
 // k = 0    16  17  18  19
 //          12  13  14  15
 //          |8|  9  10  11       Cell with index 8 is aquifer cell (ijk = {0,2,0}).
 //          |4|  5   6   7       Cells 0 (ijk = {0,0,0}) and 4 (ijk= {0,1,0}) connect
-//          |0|  1   2   3       with aquifer cell in J-.
+//          |0|  1   2   3       with aquifer cell in J+.
 // -----------------------
+
+void aquiferCellsAndConnsIgnoredInRefinement(const Dune::CpGrid& grid)
+{
+    const auto& levelZeroData = *grid.currentData().front();
+    const auto& levelZeroAquCells = levelZeroData.sortedNumAquiferCells();
+
+    for (const auto& aquCellIdx : levelZeroAquCells) {
+
+        const auto& aquElem = Dune::cpgrid::Entity<0>(levelZeroData, aquCellIdx, true);
+        BOOST_CHECK( aquElem.isLeaf()); // aquifer cells are not involved in refinement
+
+        const auto& leafAquCellIdx = levelZeroData.getLeafIdxFromLevelIdx(aquCellIdx);
+        const auto& leafAquElem = Dune::cpgrid::Entity<0>(grid.currentLeafData(), leafAquCellIdx, true);
+
+        for (const auto& intersection : Dune::intersections(grid.leafGridView(), leafAquElem)){
+            if (intersection.neighbor()) {
+                BOOST_CHECK(intersection.outside().isLeaf()); // connections to aquifers not involved in refinement
+            }
+        }
+    }
+}
 
 BOOST_AUTO_TEST_CASE(addLgrsUpdateLeafViewThrowsIfLgrHasAquiferCellOrConnention)
 {
@@ -244,6 +265,8 @@ BOOST_AUTO_TEST_CASE(refinementViaAddLgrsUpdateLeafViewOccursIfLgrHasNoAquiferCe
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}},
                            /* lgr_name_vec = */ {"LGR1"});
+
+    aquiferCellsAndConnsIgnoredInRefinement(grid); // grid has aquifer data but outside LGRs
 }
 
 BOOST_AUTO_TEST_CASE(autoRefineThrowsIfGridHasAquiferCellOrConnections)
@@ -266,6 +289,8 @@ BOOST_AUTO_TEST_CASE(refinemenViaGlobalRefineOccursIgnoringAquiferCellsAndConnec
                            /* lgr_name_vec = */ {"GR1", "GR2"}, // aquifer cells and connections are ignored
                            /* preRefinedMaxLevel = */ 0,
                            /* isNested = */ true);
+
+    aquiferCellsAndConnsIgnoredInRefinement(grid);
 }
 
 
@@ -285,4 +310,6 @@ BOOST_AUTO_TEST_CASE(refinementViaAdaptOccursIgnoringAquiferCellsAndConnections)
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}},
                            /* lgr_name_vec = */ {"GR1"}); // aquifer cells and connections are ignored
+
+    aquiferCellsAndConnsIgnoredInRefinement(grid);
 }
