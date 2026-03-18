@@ -47,7 +47,6 @@ macro(opm-grid_prereqs_hook)
 
   if(TARGET Dune::ISTL)
     target_link_libraries(opmgrid PUBLIC Dune::ISTL)
-    target_compile_definitions(opmgrid PUBLIC HAVE_DUNE_ISTL=1)
   endif()
 
   if(TARGET duneuggrid)
@@ -56,12 +55,10 @@ macro(opm-grid_prereqs_hook)
 
   if(TARGET Zoltan::Zoltan)
     target_link_libraries(opmgrid PUBLIC Zoltan::Zoltan)
-    target_compile_definitions(opmgrid PUBLIC HAVE_ZOLTAN=1)
   endif()
 
   if(TARGET METIS::METIS)
     target_link_libraries(opmgrid PUBLIC METIS::METIS)
-    target_compile_definitions(opmgrid PUBLIC HAVE_METIS=1)
   endif()
 endmacro()
 
