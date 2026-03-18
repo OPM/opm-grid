@@ -549,7 +549,6 @@ void Opm::createGridFromDeckString(Dune::CpGrid& grid,
 
     grid.processEclipseFormat(&eclipse_grid, &ecl_state, false, false, false);
 }
-#endif
 
 void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
                                const std::string& deck_string,
@@ -561,6 +560,7 @@ void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
     Opm::createGridFromDeckString(grid, deck_string);
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
+#endif
 
 void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
                                const std::array<double, 3>& cell_sizes,
