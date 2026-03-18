@@ -51,6 +51,10 @@ macro(opm-grid_prereqs_hook)
     target_compile_definitions(opmgrid PUBLIC HAVE_DUNE_ISTL=1)
   endif()
 
+  if(TARGET duneuggrid)
+    target_link_libraries(opmgrid PUBLIC duneuggrid)
+  endif()
+
   if(TARGET Zoltan::Zoltan)
     target_link_libraries(opmgrid PUBLIC Zoltan::Zoltan)
     target_compile_definitions(opmgrid PUBLIC HAVE_ZOLTAN=1)
