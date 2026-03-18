@@ -775,17 +775,16 @@ bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_
 
 void containsEightDifferentCorners(const std::array<int,8>& cell_to_point);
 
-template <class LevelZeroData, class LevelZeroView, typename MarkGetter>
-bool throwIfAquCellOrConnHasBeenMarked(const LevelZeroData& levelZeroData,
+template <class LevelZeroView>
+bool throwIfAquCellOrConnHasBeenMarked(const Dune::cpgrid::CpGridData& levelZeroData,
                                        const LevelZeroView& levelZeroView,
                                        const std::vector<int>& levelZeroAquiferCells,
-                                       const MarkGetter& markGetter,
                                        bool throwOnFailure)
 {
     for (const auto& aquCellIdx : levelZeroAquiferCells) {
         const auto& aquElem = Dune::cpgrid::Entity<0>(levelZeroData, aquCellIdx, true);
 
-        if (markGetter(aquElem) == 1) {
+        if (levelZeroData.getMark(aquElem) == 1) {
             if (throwOnFailure)
                 OPM_THROW(std::invalid_argument, "Refinement of cells connected to aquifers is not supported, yet.");
             else
@@ -794,7 +793,7 @@ bool throwIfAquCellOrConnHasBeenMarked(const LevelZeroData& levelZeroData,
         
         for (const auto& intersection : Dune::intersections(levelZeroView, aquElem)){
             if (intersection.neighbor()) {
-                if (markGetter(intersection.outside()) == 1) {
+                if (levelZeroData.getMark(intersection.outside()) == 1) {
                     if (throwOnFailure)
                         OPM_THROW(std::invalid_argument, "Refinement of cells connected to aquifers is not supported, yet.");
                     else

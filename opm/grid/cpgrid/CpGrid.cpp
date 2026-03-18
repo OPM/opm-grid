@@ -1798,16 +1798,10 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 bool CpGrid::preAdapt()
 {
     // Aquifer data is only in level zero grid
-    auto levelZeroMarkGetter = [&](const cpgrid::Entity<0>& element)
-    {
-        return current_data_->front()->getMark(element); // The mark gets propagated to all lower levels.
-    };
-
     // Marked aquifer cells or connections will be ignored in the refinement process
     Opm::Lgr::throwIfAquCellOrConnHasBeenMarked(/* levelZeroData = */ *currentData().front(),
                                                 /* levelZeroView = */ levelGridView(0),
                                                 /* levelZeroAquiferCells = */ currentData().front()->sortedNumAquiferCells(),
-                                                levelZeroMarkGetter,
                                                 /* throwOnFailure = */ false);
 
     // Check if elements in pre-adapt existing grids have been marked for refinment.
@@ -2727,17 +2721,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         tmp_maxLevel = tmp_maxLevel + startIJK_vec_parent_grid.size(); // Update the maxLevel
 
-        // Aquifer data is only in level zero grid
-        auto levelZeroMarkGetter = [&](const cpgrid::Entity<0>& element)
-        {
-            return current_data_->front()->getMark(element); // The mark gets propagated to all lower levels.
-        };
-
         // If there are marked aquifer cells or connections, throw
         Opm::Lgr::throwIfAquCellOrConnHasBeenMarked(/* levelZeroData = */ *currentData().front(),
                                                     /* levelZeroView = */ levelGridView(0),
                                                     /* levelZeroAquiferCells = */ currentData().front()->sortedNumAquiferCells(),
-                                                    levelZeroMarkGetter,
                                                     /* throwOnFailure = */ true);
 
         //   2. Create the corresponding LGRs. and  3. Update the leaf grid view.
