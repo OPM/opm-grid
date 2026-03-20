@@ -209,7 +209,8 @@ BOOST_AUTO_TEST_CASE(callRefineAndUpdateGridOnDistributedCoarseGrid)
         for (const auto& idx : marked_elemIdx)
             assignRefinedLevel[idx] = 1;
 
-        grid.refineAndUpdateGrid(cells_per_dim_vec,
+        grid.refineAndUpdateGrid(/* throwOnFailure = */ true,
+                                 cells_per_dim_vec,
                                  assignRefinedLevel,
                                  {"LGR1"} /*lgr_name_vec*/,
                                  startIJK_vec,

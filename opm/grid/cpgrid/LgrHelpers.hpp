@@ -84,7 +84,7 @@ namespace Lgr
 ///     Maps pre-adapt grid cells to adapted cells (−1 if vanished).
 ///
 /// --- Additional ---
-/// @param [in]  cells_per_dim_vec       Refinement factors per dimension for each refined level grid.
+/// @param [in] cells_per_dim_vec       Refinement factors per dimension for each refined level grid.
 void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid,/* Marked elements parameters */
                                             std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                             int& markedElem_count,
@@ -774,6 +774,33 @@ bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_
                             const std::array<int,3>& logicalCartesianSize);
 
 void containsEightDifferentCorners(const std::array<int,8>& cell_to_point);
+
+/// Filter aquifer cells and connections that are marked for refinement.
+///
+/// Aquifer cells and their connections may be marked for refinement ("1")
+/// but are ignored during refinement via globalRefine() or adapt().
+/// This method filters such elements resetting the marks to 0, indicating
+/// aquifer cells and connections will actually NOT be refined. For other
+/// refinement methods (addLgrsUpdateLeafView() and autoRefine() based on
+/// CARFIN and AUTOREF keywords), it throws.
+void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
+                                            bool throwOnFailure);
+template <class LeafView>
+bool throwIfIsCoarseAtLgrBoundary(const LeafView& leafView,
+                                  const Dune::cpgrid::Entity<0>& element,
+                                  bool throwOnFailure)
+{
+    for (const auto& intersection : Dune::intersections(leafView, element)){
+        if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level() == 0)) {
+            // Refinement of cells at LGR boundaries is not supported, yet.
+            if (throwOnFailure)
+                OPM_THROW(std::invalid_argument, "Refinement of cells at LGR boundaries is not supported, yet.");
+            else
+                return false;
+        }
+    }
+    return true;
+}
 
 } // namespace Lgr
 } // namespace Opm
