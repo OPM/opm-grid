@@ -27,11 +27,13 @@
 #include "GraphOfGridWrappers.hpp"
 #include <opm/grid/common/CommunicationUtils.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp> // function scatterExportInformation
+#if HAVE_ZOLTAN
 #include <opm/grid/common/ZoltanGraphFunctions.hpp> // makeImportAndExportLists when allowDistributedWells==true
+#endif
 
 namespace Opm {
 
-#if HAVE_MPI
+#if HAVE_MPI && HAVE_ZOLTAN
 int getGraphOfGridNumVertices(void* pGraph, int *err)
 {
     const GraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const GraphOfGrid<Dune::CpGrid>*>(pGraph);
@@ -152,7 +154,7 @@ void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
         Zoltan_Set_Edge_List_Multi_Fn(zz, getGraphOfGridEdgeList, pGraph);
     }
 }
-#endif // HAVE_MPI
+#endif // HAVE_MPI && HAVE_ZOLTAN
 
 void addFutureConnectionWells(GraphOfGrid<Dune::CpGrid>& gog,
                               const std::unordered_map<std::string, std::set<int>>& wells,
@@ -491,6 +493,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                             std::move(myImportList) );
 }
 
+#if HAVE_ZOLTAN
 namespace {
 void setDefaultZoltanParameters(Zoltan_Struct* zz)
 {
@@ -653,6 +656,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 
     return importExportLists;
 }
+#endif // HAVE_ZOLTAN
 
 std::vector<std::vector<int> >
 makeExportListsFromGIDtoRank(const std::vector<int>& gIDtoRank, int ccsize)
@@ -669,6 +673,7 @@ makeExportListsFromGIDtoRank(const std::vector<int>& gIDtoRank, int ccsize)
     return exportedCells;
 }
 
+#if HAVE_ZOLTAN
 namespace {
 std::tuple<int, std::vector<int>>
 applySerialZoltan (const Dune::CpGrid& grid,
@@ -849,6 +854,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                            std::move(myImportList),
                            std::move(wellConnections));
 }
+#endif // HAVE_ZOLTAN
 #endif // HAVE_MPI
 
 // explicit template instantiations
