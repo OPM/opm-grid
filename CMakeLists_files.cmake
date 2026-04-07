@@ -112,7 +112,6 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/adapt_cpgrid_test.cpp
   tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
   tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
-  tests/cpgrid/lgr/aquifer_cells_and_conn_not_refined_test.cpp
   tests/cpgrid/lgr/autoRefine_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/id_entity_entityrep_test.cpp
@@ -130,8 +129,10 @@ if(USE_OPM_COMMON)
     tests/test_ug.cpp
     tests/test_cellCentroid_polyhedralGrid.cpp
     tests/test_lookupdata_polyhedral.cpp
+    tests/cpgrid/eclCentroid_test.cpp
     tests/cpgrid/grid_nnc.cpp
     tests/cpgrid/grid_pinch.cpp
+    tests/cpgrid/lgr/aquifer_cells_and_conn_not_refined_test.cpp
     tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
     tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
     tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
@@ -140,7 +141,6 @@ if(USE_OPM_COMMON)
     tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
     tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
     tests/cpgrid/lgr/restrict_data_to_level_grids_test.cpp
-    tests/cpgrid/eclCentroid_test.cpp
     tests/cpgrid/lgr/addLgrs_if_non_nnc_in_lgrs_test.cpp
     tests/cpgrid/lgr/lgrIJK_test.cpp
     tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
