@@ -58,6 +58,8 @@
 
 #include <set>
 
+struct UnstructuredGrid;
+
 namespace Opm
 {
 struct NNCdata;
@@ -225,6 +227,20 @@ namespace Dune
         CpGrid();
 
         explicit CpGrid(MPIHelper::MPICommunicator comm);
+
+        /// Construct grid from serialized UnstructuredGrid file.
+        explicit CpGrid(const std::string& filename);
+
+        /// Read a serialized UnstructuredGrid file into an already-constructed grid.
+        ///
+        /// In an MPI run this method must be called on all ranks.  Only rank 0
+        /// actually reads the file and calls processUnstructuredGrid(); the other
+        /// ranks keep an empty global-view grid ready for scatterGrid / loadBalance.
+        /// After this call the logical_cartesian_size is broadcast to all ranks so
+        /// every rank knows the total cell count.
+        ///
+        /// \param filename  Path to the Sintef legacy unstructured-grid file.
+        void readUnstructuredGridFile(const std::string& filename);
 
 #if HAVE_OPM_COMMON
         /// Read the Eclipse grid format ('grdecl').
