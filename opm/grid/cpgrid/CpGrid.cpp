@@ -2601,10 +2601,21 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
     Opm::Lgr::validStartEndIJKs(startIJK_vec, endIJK_vec);
 
+    bool hasBeenGloballyRefined =  Opm::hasBeenGloballyRefined(*this);
+    hasBeenGloballyRefined = comm().min(hasBeenGloballyRefined);
+    // 0 means false: at least one process holds a grid partition
+    // containing cells from multiple refinement levels.
+    bool leafDiffersFromLevelZero = comm().max(this->maxLevel());
+
     // If no parent grid name vector has been provided, then default "GLOBAL" for all (new) level grids.
     std::vector<std::string> parent_grid_names = lgr_parent_grid_name_vec;
     if (parent_grid_names.size() == 0){ // No parent grid name given->default "GLOBAL" parent grid
-        parent_grid_names.resize(cells_per_dim_vec.size(), "GLOBAL");
+        if (!leafDiffersFromLevelZero) {
+            parent_grid_names.resize(cells_per_dim_vec.size(), "GLOBAL");
+        }
+        else if (hasBeenGloballyRefined && leafDiffersFromLevelZero) { // Assume parent grid is maxLevel grid
+            parent_grid_names.resize(cells_per_dim_vec.size(), Opm::getLevelGridName(*this, this->maxLevel()));
+        }
     }
 
     // Sizes of provided vectors (number of subivisions per cells and lgrs name) should coincide.
@@ -2753,11 +2764,13 @@ void CpGrid::autoRefine(const std::array<int,3>& nxnynz)
             OPM_THROW(std::invalid_argument, "Refinement factor must be odd and positive.\n");
         }
     }
-    const auto endIJK = this->logicalCartesianSize();
+    assert(Opm::hasBeenGloballyRefined(*this));
+    const auto endIJK = this->currentLeafData().logicalCartesianSize();
+    const auto newLevelGridName = "GLOBAL_REFINED"+std::to_string(this->maxLevel()+1);
     addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {nxnynz},
                           /* startIJK_vec = */ {{0,0,0}},
                           /* endIJK_vec = */ {endIJK},
-                          /* lgr_name_vec = */ {"GLOBAL_REFINED"});
+                          /* lgr_name_vec = */ {newLevelGridName});
 }
 
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
