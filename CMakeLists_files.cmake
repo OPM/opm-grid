@@ -42,7 +42,6 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/NestedRefinementUtilities.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
-  opm/grid/common/GeometryHelpers.cpp
   opm/grid/common/GridPartitioning.cpp
   opm/grid/common/MetisPartition.cpp
   opm/grid/common/WellConnections.cpp
