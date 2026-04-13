@@ -531,10 +531,15 @@ namespace Dune
         // @return                   'eclipse centroid'
         std::array<double,3> getEclCentroid(const cpgrid::Entity<0>& elem) const;
 
-        // @brief Return parent (coarse) intersection (face) of a refined face on the leaf grid view, whose neighboring cells
-        //        are two: one coarse cell (equivalent to its origin cell from level 0), and one refined cell
-        //        from certain LGR.
-        //        Used in Transmissibility_impl.hpp
+        /// @brief Returns the coarse-level-zero ("parent/origin") intersection of a
+        ///        refined intersection (face) in the leaf grid view.
+        ///
+        ///        The refined intersection in the leaf represents the interface between:
+        ///        - a coarse cell (equivalent to its level-0 origin), and
+        ///        - a refined cell from a local grid refinement (LGR).
+        ///        It may belong to either the coarse or refined cell.
+        ///
+        ///        Used in Transmissibility_impl.hpp.
         Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
         /// --------------- Adaptivity (begin) ---------------

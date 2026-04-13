@@ -136,6 +136,7 @@ if(USE_OPM_COMMON)
     tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
     tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
     tests/cpgrid/lgr/grid_global_id_set_test.cpp
+    tests/cpgrid/lgr/getParentIntersectionFromLgrBoundaryFace_test.cpp
     tests/cpgrid/lgr/levelCartToLevelCompressed_test.cpp
     tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
     tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
