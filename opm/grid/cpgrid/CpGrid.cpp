@@ -1237,33 +1237,26 @@ int CpGrid::faceVertex(int face, int local_index) const
 Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const
 {
     if ( intersection.neighbor()) {
-        if ((intersection.inside().level() != intersection.outside().level())) {
-            // one coarse and one refined neighboring cell
-            /** Now, it could also be two refined cells. In that case, any of them will fit to search for the parent face */
-            const auto& cellIn = intersection.inside();
-            const auto& cellOut = intersection.outside();
-
-            // Identify the coarse and the refined neighboring cell
-            const auto coarseCell =  (cellIn.level() == 0) ? cellIn : cellOut;
-            const auto refinedCell =  (coarseCell == cellIn) ? cellOut : cellIn;
-            assert(coarseCell.level() != refinedCell.level());
-
-            // Get parent cell of the refined cell
-            const auto& parentCell = refinedCell.father();
-
-            // Get the index inside and orientation from the leaf grid (refined) face
-            const auto& intersectionIdxInInside = intersection.indexInInside();
-
-            for(const auto& parentIntersection : intersections(this->levelGridView(0), parentCell)){
-                // Get the inInsideIdx and orientation from the parent intersection
-                const auto& parentIdxInInside = parentIntersection.indexInInside();
-                if (parentIdxInInside == intersectionIdxInInside) {
-                    return parentIntersection;
+        // Only handle intersections between cells at different levels where one of them
+        // is at level 0 (coarse/fine boundary). Skip same-level intersections and
+        // intersections between two different refined level grids (neither at level 0).
+        if (intersection.inside().level() != intersection.outside().level() &&
+            intersection.inside().level() * intersection.outside().level() == 0) {
+            // Get the equivalent level-0 cell if intersection.inside() is already at level 0,
+            // or the coarsest ancestor at level 0 if it is a refined cell.
+            // In both cases, intersection.indexInInside() is the correct face index to match:
+            // - coarse inside (level 0): indexInInside() is already the level-0 face index.
+            // - refined inside: fine cells inherit face directions from their parent, so
+            //   indexInInside() equals the parent's face index.
+            const auto insideOrigin = intersection.inside().getOrigin();
+            for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
+                if (originIntersection.indexInInside() == intersection.indexInInside()) {
+                    return originIntersection;
                 }
             }
+            OPM_THROW(std::invalid_argument, "Parent intersection not found for face with index: " + std::to_string(intersection.id()) +
+                      " and index in inside: " + std::to_string(intersection.indexInInside()));
         }
-        OPM_THROW(std::invalid_argument, "Parent intersection not found for face with index: " + std::to_string(intersection.id()) +
-                  " and index in inside: " + std::to_string(intersection.indexInInside()));
     }
     OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
