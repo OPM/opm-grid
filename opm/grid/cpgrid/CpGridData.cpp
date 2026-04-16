@@ -1782,11 +1782,8 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
 }
 
 std::tuple< const std::shared_ptr<CpGridData>,
-            const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
-            const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
-            const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
-            const std::vector<std::array<int,2>>,                // child_to_parent_faces
-            const std::vector<std::array<int,2>>>                // child_to_parent_cells
+            const std::vector<std::array<int,2>>,                 // parent_to_refined_corners(~boundary_old_to_new_corners)
+            const std::vector<std::tuple<int,std::vector<int>>> > // parent_to_children_faces (~boundary_old_to_new_faces)
 CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const
 {
     // To store the LGR/refined-grid.
@@ -1833,13 +1830,10 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     // To store relation old-face to new-born-faces (children faces).
     std::vector<std::tuple<int,std::vector<int>>>  parent_to_children_faces;
     parent_to_children_faces.reserve(6);
-    // To store child-to-parent-face relation. Child-faces ordered with the criteria introduced in refine()(Geometry.hpp)K,I,Jfaces.
-    std::vector<std::array<int,2>> child_to_parent_faces;
-    child_to_parent_faces.reserve(refined_face_to_cell.size());
     // Auxiliary integers to simplify new-born-face-index notation.
     const int& k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
     const int& i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
-    // Populate parent_to_children_faces and child_to_parent_faces.
+    // Populate parent_to_children_faces
     for (const auto& face : parent_cell_to_face) {
         // Check face tag to identify the type of face (bottom, top, left, right, front, or back).
         const auto& parent_face_tag = (this-> face_tag_[Dune::cpgrid::EntityRep<1>(face.index(), true)]);
@@ -1856,7 +1850,6 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
                     else // true -> TOP FACE -> k=cells_per_dim[2]
                         child_face = (cells_per_dim[2]*cells_per_dim[0]*cells_per_dim[1]) +(j*cells_per_dim[0]) + i;
                     children_faces.push_back(child_face);
-                    child_to_parent_faces.push_back({child_face, face.index()});
                 } // i-for-lopp
             } //j-for-loop
         } // if-K_FACE
@@ -1871,7 +1864,6 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
                     else // true -> RIGHT FACE -> i=cells_per_dim[0]
                         child_face = k_faces + (cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j;
                     children_faces.push_back(child_face);
-                    child_to_parent_faces.push_back({child_face, face.index()});
                 } // j-for-loop
             } // k-for-loop
         } // if-I_FACE
@@ -1887,25 +1879,12 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
                         child_face = k_faces + i_faces  + (cells_per_dim[1]*cells_per_dim[0]*cells_per_dim[2])
                             + (i*cells_per_dim[2]) + k;
                     children_faces.push_back(child_face);
-                    child_to_parent_faces.push_back({child_face, face.index()});
                 } // k-for-loop
             } // i-for-loop
         } // if-J_FACE
         parent_to_children_faces.push_back(std::make_tuple(face.index(), children_faces));
     }
-    std::tuple<int, std::vector<int>> parent_to_children_cells; // {parent cell index (in level0), {child0,...,childN (in level1)}}
-    auto& [ parent_index, children_cells ] = parent_to_children_cells;
-    children_cells.reserve(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
-    // To store the child to parent cell relation.
-    std::vector<std::array<int,2>> child_to_parent_cell; // {child index (in level1), parent cell index (in level0)}
-    child_to_parent_cell.reserve(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
-    // Populate children_cells and child_to_parent_cell.
-    for (int cell = 0; cell < cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]; ++cell) {
-        children_cells.push_back(cell);
-        child_to_parent_cell.push_back({cell, parent_idx});
-    }
-    return {refined_grid_ptr, parent_to_refined_corners, parent_to_children_faces, parent_to_children_cells,
-            child_to_parent_faces, child_to_parent_cell};
+    return {refined_grid_ptr, parent_to_refined_corners, parent_to_children_faces};
 }
 
 bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)

@@ -123,10 +123,7 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
             // Build auxiliary LGR for the refinement of this element
             const auto& [elemLgr_ptr,
                          parentCorners_to_equivalentRefinedCorners,
-                         parentFace_to_itsRefinedFaces,
-                         parentCell_to_itsRefinedCells,
-                         refinedFace_to_itsParentFace,
-                         refinedCell_to_itsParentCell]
+                         parentFace_to_itsRefinedFaces]
                 = grid.currentLeafData().refineSingleCell(cells_per_dim_vec[shiftedLevel], element.index());
             markedElem_to_itsLgr[ element.index() ] = elemLgr_ptr;
 
