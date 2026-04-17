@@ -522,7 +522,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         if (procsWithZeroCells) {
             std::string msg = "At least one process has zero cells. Aborting. \n"
                 " Try decreasing the imbalance tolerance with the argument \n"
-                " --imbalance-tolerance. The current value is "
+                " --imbalance-tol. The current value is "
                 + std::to_string(imbalanceTol);
             if (cc.rank()==0)
             {
