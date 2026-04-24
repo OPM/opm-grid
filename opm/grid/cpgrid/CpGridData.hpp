@@ -498,8 +498,11 @@ public:
     /// parent-to-new-born entities are buil, as well as, new-born-to-parent. Maps(<int,bool>) to detect parent
     /// faces or cells are also provided. (Cell with 6 faces required).
     ///
-    /// @param [in] cells_per_dim                 Number of (refined) cells in each direction that each parent cell should be refined to.
-    /// @param [in] parent_idx                    Parent cell index, cell to be refined.
+    /// @param [in] cells_per_dim                      Number of (refined) cells in each direction that each parent cell should be refined to.
+    /// @param [in] parent_idx                         Parent cell index, cell to be refined.
+    /// @param [out] faceInMarkedElemAndRefinedFaces   For each original (parent grid) face, stores marked element indices where it appears
+    ///                                                (<=2) and their refined face indices in each single-cell-refinement (of each parent
+    ///                                                cell where the face/intersection appears).
     ///
     /// @return refined_grid_ptr                  Shared pointer pointing at refined_grid.
     /// @return parent_to_refined_corners         For each corner of the parent cell, we store the index of the
@@ -509,12 +512,11 @@ public:
     ///                                                      2---3   |   | TOP FACE
     ///                                                      |   |   4---5
     ///                                                      0---1 BOTTOM FACE
-    /// @return parent_to_children_faces          For each parent face, we store its child-face indices.
-    ///                                           {parent face index in coarse level, {indices of its children in refined level}}
     std::tuple< const std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>,                  // parent_to_refined_corners(~boundary_old_to_new_corners)
-                const std::vector<std::tuple<int,std::vector<int>>> >  // parent_to_children_faces (~boundary_old_to_new_faces)
-    refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const;
+                const std::vector<std::array<int,2>>>                  // parent_to_refined_corners(~boundary_old_to_new_corners)
+    refineSingleCell(const std::array<int,3>& cells_per_dim,
+                     const int& parent_idx,
+                     std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const;
 
     // @breif Compute center of an entity/element/cell in the Eclipse way:
     //        - Average of the 4 corners of the bottom face.
