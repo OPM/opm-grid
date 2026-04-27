@@ -112,6 +112,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
   tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
   tests/cpgrid/lgr/autoRefine_test.cpp
+  tests/cpgrid/lgr/consistent_vertex_order_in_face_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/id_entity_entityrep_test.cpp
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
