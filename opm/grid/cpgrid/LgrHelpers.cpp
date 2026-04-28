@@ -122,9 +122,10 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
             const auto& shiftedLevel = markedElemLevel - preAdaptMaxLevel-1;
             // Build auxiliary LGR for the refinement of this element
             const auto& [elemLgr_ptr,
-                         parentCorners_to_equivalentRefinedCorners,
-                         parentFace_to_itsRefinedFaces]
-                = grid.currentLeafData().refineSingleCell(cells_per_dim_vec[shiftedLevel], element.index());
+                         parentCorners_to_equivalentRefinedCorners]
+                = grid.currentLeafData().refineSingleCell(cells_per_dim_vec[shiftedLevel],
+                                                          element.index(),
+                                                          faceInMarkedElemAndRefinedFaces);
             markedElem_to_itsLgr[ element.index() ] = elemLgr_ptr;
 
             const int childrenCount = cells_per_dim_vec[shiftedLevel][0]*cells_per_dim_vec[shiftedLevel][1]*cells_per_dim_vec[shiftedLevel][2];
@@ -149,9 +150,6 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({element.index(), lgrEquivCorner});
                 markedElemAndEquivRefinedCorn_to_corner[ {element.index(), lgrEquivCorner}] = markedCorner;
-            }
-            for (const auto& [markedFace, itsRefinedFaces] : parentFace_to_itsRefinedFaces) {
-                faceInMarkedElemAndRefinedFaces[markedFace].push_back({element.index(), itsRefinedFaces});
             }
         } // end-if-elemMark==1
     } // end-elem-for-loop

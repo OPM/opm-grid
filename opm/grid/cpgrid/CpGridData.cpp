@@ -1782,9 +1782,10 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
 }
 
 std::tuple< const std::shared_ptr<CpGridData>,
-            const std::vector<std::array<int,2>>,                 // parent_to_refined_corners(~boundary_old_to_new_corners)
-            const std::vector<std::tuple<int,std::vector<int>>> > // parent_to_children_faces (~boundary_old_to_new_faces)
-CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const
+            const std::vector<std::array<int,2>>>               // parent_to_refined_corners(~boundary_old_to_new_corners)
+CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
+                             const int& parent_idx,
+                             std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const
 {
     // To store the LGR/refined-grid.
     std::vector<std::shared_ptr<CpGridData>> refined_data;
@@ -1797,15 +1798,17 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     cpgrid::OrientedEntityTable<1,0>& refined_face_to_cell = refined_grid.face_to_cell_;
     cpgrid::EntityVariable<enum face_tag,1>& refined_face_tags = refined_grid.face_tag_;
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& refined_face_normals = refined_grid.face_normals_;
-    // Get parent cell
-    const cpgrid::Geometry<3,3>& parent_cell = (*(geometry_.geomVector(std::integral_constant<int,0>())))[EntityRep<0>(parent_idx, true)];
-    // Get parent cell corners.
+   
     const auto& parent_to_point = this->cell_to_point_[parent_idx];
-    Opm::Lgr::containsEightDifferentCorners(parent_to_point);
+    Opm::Lgr::containsEightDifferentCorners(parent_to_point); // refinement supported only for hexahedron
+    
     // Refine parent cell
-    parent_cell.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
-                                     refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
-                                     {1,1,1}, /*widthX, lengthY, heightZ*/ {1.}, {1.}, {1.});
+    const auto parentCellElem = Entity<0>(*this, parent_idx, true);
+    const cpgrid::Geometry<3,3>& parentCellGeom = (*(geometry_.geomVector(std::integral_constant<int,0>())))[parentCellElem];
+    parentCellGeom.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
+                                        refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
+                                        {1,1,1}, /*widthX, lengthY, heightZ*/ {1.}, {1.}, {1.});
+    
     const std::vector<std::array<int,2>>& parent_to_refined_corners{
         // corIdx (J*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (I*(cells_per_dim[2]+1)) +K
         // replacing parent-cell corner '0' {0,0,0}
@@ -1825,8 +1828,8 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
         // replacing parent-cell corner '7' {cells_per_dim[0], cells_per_dim[1], cells_per_dim[2]}
         {parent_to_point[7], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))
          + cells_per_dim[2]}};
-    // Get parent_cell_to_face = { {face, orientation}, {another face, its orientation}, ...}.
-    const auto& parent_cell_to_face = (this-> cell_to_face_[EntityRep<0>(parent_idx, true)]);
+   
+    const auto& parent_cell_to_face = (this-> cell_to_face_[parentCellElem]);
     // To store relation old-face to new-born-faces (children faces).
     std::vector<std::tuple<int,std::vector<int>>>  parent_to_children_faces;
     parent_to_children_faces.reserve(6);
@@ -1882,9 +1885,9 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
                 } // k-for-loop
             } // i-for-loop
         } // if-J_FACE
-        parent_to_children_faces.push_back(std::make_tuple(face.index(), children_faces));
+        faceInMarkedElemAndRefinedFaces[face.index()].push_back(std::make_pair(parentCellElem.index(), children_faces));
     }
-    return {refined_grid_ptr, parent_to_refined_corners, parent_to_children_faces};
+    return {refined_grid_ptr, parent_to_refined_corners};
 }
 
 bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
