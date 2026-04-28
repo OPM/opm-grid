@@ -37,6 +37,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
+  opm/grid/cpgrid/LgrFaultHelpers.cpp
   opm/grid/cpgrid/LgrHelpers.cpp
   opm/grid/cpgrid/LgrOutputHelpers.cpp
   opm/grid/cpgrid/NestedRefinementUtilities.cpp
@@ -112,14 +113,13 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
   tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
   tests/cpgrid/lgr/autoRefine_test.cpp
+  tests/cpgrid/lgr/compute_new_vertices_of_overlapping_intersections_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/id_entity_entityrep_test.cpp
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/lgrs_sharing_faces_test.cpp
   tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
   tests/cpgrid/lgr/nested_refinement_test.cpp
-  tests/cpgrid/lgr/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
-  tests/cpgrid/lgr/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
 )
 
 if(USE_OPM_COMMON)
@@ -211,6 +211,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/cpgrid/LgrFaultHelpers.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/ElementMarkHandle.hpp
