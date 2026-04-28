@@ -113,6 +113,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
   tests/cpgrid/lgr/autoRefine_test.cpp
   tests/cpgrid/lgr/consistent_vertex_order_in_face_test.cpp
+  tests/cpgrid/lgr/compute_new_vertices_of_overlapping_intersections_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/id_entity_entityrep_test.cpp
   tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp

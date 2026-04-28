@@ -20,14 +20,20 @@
 #ifndef OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
 #define OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
 
-#include <dune/grid/common/mcmgmapper.hh>
+
+#include <dune/common/dotproduct.hh>
+#include <dune/common/fmatrixev.hh>
+#include <dune/common/fvector.hh>
 #include <dune/common/version.hh>
+#include <dune/grid/common/mcmgmapper.hh>
+
 
 #include <opm/grid/CpGrid.hpp>
 
 #include <array>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -801,6 +807,129 @@ bool throwIfIsCoarseAtLgrBoundary(const LeafView& leafView,
     }
     return true;
 }
+
+template<typename Coordinate>
+std::optional<Coordinate> computeSegmentIntersection(const Coordinate& startSegmentA, const Coordinate& endSegmentA,
+                                                     const Coordinate& startSegmentB, const Coordinate& endSegmentB,
+                                                     bool& isInteriorInSegmentA,
+                                                     bool& isInteriorInSegmentB)
+{
+    const auto directionA = endSegmentA - startSegmentA;
+    const auto directionB = endSegmentB - startSegmentB;
+
+    const auto c = Dune::FMatrixHelp::Impl::crossProduct(directionA, directionB);
+    // dot(c, directionA) = 0, dot(c, directionB) = 0
+
+    // Segment A: startSegmentA + t*directionA, t in [0,1]
+    // Segment B: startSegmentB + s*directionB, s in [0,1]
+
+    // Discard skew segments
+    const auto coplanar = Dune::dot(startSegmentB - startSegmentA, c);
+    if (coplanar > 1e-8){ // segments are skew (no intersection)
+        return std::nullopt;
+    }
+    else { // Discard parallel segments
+        if (c.two_norm() < 1e-8) {
+            return std::nullopt;
+        }
+        else { // X denotes the crossProduct and <,> the dot:
+            // startA + t*dirA = startB + s*dirB
+            //          t*dirA = startB - startA + s*dirB
+            //  (t*dirA)X dirB = (startB - startA  + s*dirB)X dirB
+            // t*(dirA X dirB) = (startSegmentB - startSegmentA)X dirB + s*(dirB X dirB)
+            //             t*c = (startSegmentB - startSegmentA)X dirB + s*0
+            //        <t*c, c> = <(startSegmentB - startSegmentA)X dirB, c>
+            //         t <c,c> = <(startSegmentB - startSegmentA)X dirB, c>
+            double t = Dune::dot(Dune::FMatrixHelp::Impl::crossProduct(startSegmentB - startSegmentA, directionB), c) / Dune::dot(c,c);
+            // Analogously, for s:
+            double s = Dune::dot(Dune::FMatrixHelp::Impl::crossProduct(startSegmentB - startSegmentA, directionA), c) / Dune::dot(c,c);
+
+            if ((t >= 0) && (t <= 1) && (s >= 0) && (s <= 1)) { // segments intersect
+                isInteriorInSegmentA = (t > 0) && (t < 1);
+                isInteriorInSegmentB = (s > 0) && (s < 1);
+                return std::make_optional<Coordinate>(startSegmentA + (t*directionA));
+            } else { // lines intersect, but not the segments
+                return std::nullopt;
+            }
+        }
+    }
+}
+
+std::vector<std::array<int,2>> createEdges(const auto& faceToPoint)
+{
+    return std::vector<std::array<int,2>>{ {faceToPoint[0], faceToPoint[1]},
+                                           {faceToPoint[1], faceToPoint[2]},
+                                           {faceToPoint[2], faceToPoint[3]},
+                                           {faceToPoint[3], faceToPoint[0]} };
+}
+
+struct FieldVectorLess {
+    bool operator()(const Dune::FieldVector<double, 3>& v0,
+                    const Dune::FieldVector<double, 3>& v1) const
+    {
+        for (int i = 0; i < 3; ++i) {
+            if (v0[i] < v1[i]) return true;
+            if (v0[i] > v1[i]) return false;
+        }
+        return false;
+    }
+};
+
+template<typename Coordinate>
+std::set<Coordinate,FieldVectorLess> collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // (refinement of the parent cell)
+                                                        const Dune::cpgrid::Entity<0>& refinedElem,
+                                                        const Dune::cpgrid::CpGridData& parentGridData,
+                                                        const Dune::cpgrid::Entity<0>& parentElem)
+{
+    std::set<Coordinate,FieldVectorLess> missingVertices{};
+
+    const auto& refinedCellToFace = singleCellRefinementData.cellToFace(refinedElem.index());
+    const auto& parentCellToFace = parentGridData.cellToFace(parentElem.index());
+
+    for (const auto& face : parentCellToFace) {
+
+        const auto edges = createEdges(parentGridData.faceToPoint(face.index()));
+
+        const auto& faceTag = parentGridData.faceTag(face.index());
+        const auto& faceOrientation = face.orientation();
+
+        for (const auto& refinedFace : refinedCellToFace) {
+            // Skip face if it is not on the boundary of the single cell refinement grid
+            if (singleCellRefinementData.faceToCellSize(refinedFace.index()) != 1)
+                continue;
+
+            const auto edges_rf = createEdges(singleCellRefinementData.faceToPoint(refinedFace.index()));
+
+            const auto& refinedFaceTag = singleCellRefinementData.faceTag(refinedFace.index());
+            const auto& refinedFaceOrientation = refinedFace.orientation();
+
+            if ((refinedFaceTag == faceTag) && (refinedFaceOrientation == faceOrientation)) {
+
+                for (const auto& edge : edges) {
+                    for (const auto& edge_rf : edges_rf) {
+
+                        bool isInteriorInEdge{};
+                        bool isInteriorInEdgeRf{};
+
+                        const auto segmentInter = computeSegmentIntersection(Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center(),
+                                                                             Dune::cpgrid::Entity<3>(parentGridData, edge[1], true).geometry().center(),
+                                                                             Dune::cpgrid::Entity<3>(singleCellRefinementData, edge_rf[0], true).geometry().center(),
+                                                                             Dune::cpgrid::Entity<3>(singleCellRefinementData, edge_rf[1], true).geometry().center(),
+                                                                             isInteriorInEdge,
+                                                                             isInteriorInEdgeRf);
+
+                        if (segmentInter.has_value() && isInteriorInEdge && isInteriorInEdgeRf){
+                            missingVertices.insert(segmentInter.value());
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+    return missingVertices;
+}
+
 
 } // namespace Lgr
 } // namespace Opm
