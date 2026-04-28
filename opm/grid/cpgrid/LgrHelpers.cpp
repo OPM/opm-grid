@@ -503,9 +503,9 @@ std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::c
     assert(newRefinedCornerLiesOnEdge(cells_per_dim, cornerIdxInLgr));
 
     const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
-    if(parentCell_to_face.size()>6){
+    /* if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
-    }
+        }*/
     // Corners Order defined in Geometry::refine  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
     // Edges laying on bottom face
@@ -587,9 +587,9 @@ int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::cpgrid::CpGridData& cur
     assert(isRefinedNewBornCornerOnLgrBoundary(cells_per_dim, cornerIdxInLgr));
 
     const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
-    if(parentCell_to_face.size()>6){
+    /* if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
-    }
+        }*/
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
 
     bool isOnParentCell_I_FACEfalse_and_newBornCorn = ( (ijk[0] == 0) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
@@ -1160,9 +1160,9 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& curre
     const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
     // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current leaf data is level zero
 
-    if(parentCell_to_face.size()>6){
+    /* if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.");
-    }
+        }*/
 
     // Order defined in Geometry::refine (to be used for distinguishing if faceIdxInLgr is K, I, or J face)
     //
