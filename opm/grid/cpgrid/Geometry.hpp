@@ -811,9 +811,9 @@ namespace Dune
                                 // with the {edge_indix[0], edge_index[1]} for each edge of the refined face.
                                 std::vector<std::array<int,2>> refined_face_to_edges = {
                                     { face_to_point[0], face_to_point[1] },
-                                    { face_to_point[0], face_to_point[2] },
-                                    { face_to_point[1], face_to_point[3] },
-                                    { face_to_point[2], face_to_point[3] }
+                                    { face_to_point[1], face_to_point[2] },
+                                    { face_to_point[2], face_to_point[3] },
+                                    { face_to_point[3], face_to_point[0] }
                                 };
                                 // Calculate the AREA of each face of a global refined face,
                                 // by adding the 4 areas of the triangles partitioning each face.
@@ -1058,6 +1058,10 @@ namespace Dune
             /// @param [out] refined_face_tag            I_FACE, J_FACE, K_FACE
             /// @param [out] refined_face_index          Face index of a refined cell 'lmn' generated with "refine()".
             /// @param [out] refined_face_to_point       Four corner indices of the corners of the refined face 'lmn'.
+            ///                                          Vertex order 
+            ///                                          for I_FACE:  jk, (j+1)k, (j+1)(k+1), j(k+1)
+            ///                                          for J_FACE:  (i+1)k, ik,  i(k+1), (i+1)(k+1)
+            ///                                          for K_FACE:  ij, (i+1)j, (i+1)(j+1), (i+1)(j+1)
             /// @param [out] refined_face_to_cell        For each face, the (at most 2) neighboring cells (used in "face_to_cell").
             /// @param [out] refined_face_centroid       Local centroid of the face of refined cell 'lmn' of the unit cube.
             const std::tuple< enum face_tag, int,
@@ -1079,11 +1083,12 @@ namespace Dune
                         neighboring_cells_of_one_face.push_back({ (l*cells_per_dim[0]*cells_per_dim[1])
                                 + (m*cells_per_dim[0]) + n, false});
                     }
-                    return { face_tag::K_FACE, (l*cells_per_dim[0]*cells_per_dim[1]) + (m*cells_per_dim[0]) + n,
+                    return { face_tag::K_FACE,
+                             (l*cells_per_dim[0]*cells_per_dim[1]) + (m*cells_per_dim[0]) + n,
                              {(m*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (n*(cells_per_dim[2]+1)) +l,
                               (m*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((n+1)*(cells_per_dim[2]+1)) +l,
-                              ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (n*(cells_per_dim[2]+1)) +l,
-                              ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((n+1)*(cells_per_dim[2]+1)) +l},
+                              ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((n+1)*(cells_per_dim[2]+1)) +l,
+                               ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (n*(cells_per_dim[2]+1)) +l},
                              neighboring_cells_of_one_face,
                              {(.5 + n)/cells_per_dim[0], (.5 + m)/cells_per_dim[1], double(l)/cells_per_dim[2]}};
                 case 1:  // {l,m,n} = {i,k,j}, constant in the x-direction
@@ -1097,12 +1102,13 @@ namespace Dune
                         neighboring_cells_of_one_face.push_back({ (m*cells_per_dim[0]*cells_per_dim[1])
                                 + (n*cells_per_dim[0]) + l, false});
                     }
-                    return { face_tag::I_FACE, (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
+                    return { face_tag::I_FACE,
+                             (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
                         + (l*cells_per_dim[1]*cells_per_dim[2]) + (m*cells_per_dim[1]) + n,
                              {(n*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m,
                               ((n+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m,
-                              (n*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1,
-                              ((n+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1},
+                              ((n+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1,
+                              (n*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1},
                              neighboring_cells_of_one_face,
                              { double(l)/cells_per_dim[0], (.5 + n)/cells_per_dim[1], (.5 + m)/cells_per_dim[2]}};
                 case 2: // {l,m,n} = {j,i,k}, constant in the y-direction
@@ -1116,13 +1122,14 @@ namespace Dune
                         neighboring_cells_of_one_face.push_back({(n*cells_per_dim[0]*cells_per_dim[1])
                                 + (l*cells_per_dim[0]) + m, false});
                     }
-                    return { face_tag::J_FACE, (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
+                    return { face_tag::J_FACE,
+                             (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
                         + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
                         + (l*cells_per_dim[0]*cells_per_dim[2]) + (m*cells_per_dim[2]) + n,
                              {(l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n,
                               (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n,
-                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n+1,
-                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n+1},
+                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n+1,
+                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n+1},
                              neighboring_cells_of_one_face,
                              {(.5 + m)/cells_per_dim[0], double(l)/cells_per_dim[1], (.5 + n)/cells_per_dim[2]}};
                 default:
