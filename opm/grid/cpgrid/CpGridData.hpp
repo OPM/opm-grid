@@ -79,7 +79,13 @@
 namespace Opm
 {
 class EclipseState;
+
+namespace Lgr{
+struct GeomData;
+struct CellRefinementBoundaryInfo;
 }
+}
+
 namespace Dune
 {
 class CpGrid;
@@ -122,6 +128,7 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
     friend class Dune::cpgrid::IdSet;
     friend class Dune::cpgrid::LevelGlobalIdSet;
+    friend struct Opm::Lgr::GeomData;
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
@@ -347,6 +354,11 @@ public:
         return face_to_cell_[faceRep].size();
     }
 
+    auto faceToCell(int face) const {
+        Dune::cpgrid::EntityRep<1> faceRep(face, true);
+        return face_to_cell_[faceRep];
+    }
+
     auto faceTag(int faceIdx) const
     {
         Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
@@ -491,31 +503,22 @@ public:
         return level_to_leaf_cells_[level_cell_idx];
     }
 
-    /// @brief Refine a single cell and return a shared pointer of CpGridData type.
+    /// @brief Refine a single cell into a structured set of cells.
     ///
-    /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the
-    /// geometries, topological relations, etc. Stored in a CpGridData object. Additionally, containers for
-    /// parent-to-new-born entities are buil, as well as, new-born-to-parent. Maps(<int,bool>) to detect parent
-    /// faces or cells are also provided. (Cell with 6 faces required).
+    /// Refines the specified parent cell according to cells_per_dim and constructs
+    /// the corresponding geometry and topology in a new CpGridData object. 
     ///
-    /// @param [in] cells_per_dim                      Number of (refined) cells in each direction that each parent cell should be refined to.
-    /// @param [in] parent_idx                         Parent cell index, cell to be refined.
-    /// @param [out] faceInMarkedElemAndRefinedFaces   For each original (parent grid) face, stores marked element indices where it appears
-    ///                                                (<=2) and their refined face indices in each single-cell-refinement (of each parent
-    ///                                                cell where the face/intersection appears).
+    /// @param[in]  cells_per_dim    Number of subdivisions in each coordinate direction.
+    /// @param[in]  parentCellIdx    Index of the parent cell to refine. The cell must have six faces.
+    /// @param[out] faceInMarkedElemAndRefinedFaces
+    ///     For each parent-grid face, stores the marked parent-element indices where
+    ///     the face occurs (at most two) and the corresponding refined face indices
+    ///     for each affected parent cell.
     ///
-    /// @return refined_grid_ptr                  Shared pointer pointing at refined_grid.
-    /// @return parent_to_refined_corners         For each corner of the parent cell, we store the index of the
-    ///                                           refined corner that coincides with the old one.
-    ///                                           We assume they are ordered 0,1,..7
-    ///                                                              6---7
-    ///                                                      2---3   |   | TOP FACE
-    ///                                                      |   |   4---5
-    ///                                                      0---1 BOTTOM FACE
-    std::tuple< const std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>>                  // parent_to_refined_corners(~boundary_old_to_new_corners)
-    refineSingleCell(const std::array<int,3>& cells_per_dim,
-                     const int& parent_idx,
+    /// @return A pair containing the refined grid data and the boundary information
+    ///     relating the parent cell to its refined entities.
+    std::pair<std::shared_ptr<CpGridData>, Opm::Lgr::CellRefinementBoundaryInfo>
+    refineSingleCell(const std::array<int,3>& cells_per_dim, int parentCellIdx,
                      std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const;
 
     // @breif Compute center of an entity/element/cell in the Eclipse way:
