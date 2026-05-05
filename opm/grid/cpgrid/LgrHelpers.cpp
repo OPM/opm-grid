@@ -2360,5 +2360,54 @@ void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
     }
 }
 
+std::array<std::vector<int>, 6> classifyAndCollectFaceIndices(const Dune::cpgrid::CpGridData& gridData,
+                                                              const Dune::cpgrid::Entity<0>& element)
+{
+    std::array<std::vector<int>, 6> classified_face_idxs{};
+    // clasified_face_idxs[0] stores I false face indices
+    // clasified_face_idxs[1] stores I true  face indices
+    // clasified_face_idxs[2] stores J false face indices
+    // clasified_face_idxs[3] stores J true  face indices
+    // clasified_face_idxs[4] stores K false face indices
+    // clasified_face_idxs[5] stores K true  face indices
+
+    const auto& cellToFace = gridData.cellToFace(element.index());
+
+    for (int i = 0; i < 6; ++i){
+        classified_face_idxs[i].reserve(cellToFace.size()); // more than needed
+    }
+    
+   
+    for (const auto& face : cellToFace) {
+        
+        const auto tag = gridData.faceTag(face.index());
+        const bool orientation = face.orientation();
+        
+        if ((tag == I_FACE) && !orientation) {
+            classified_face_idxs[0].push_back(face.index());
+        }
+        else if ((tag == I_FACE) && orientation) {
+            classified_face_idxs[1].push_back(face.index());
+        }
+        else if ((tag == J_FACE) && !orientation) {
+            classified_face_idxs[2].push_back(face.index());
+        }
+        else if ((tag == J_FACE) && orientation) {
+            classified_face_idxs[3].push_back(face.index());
+        }
+        else if ((tag == K_FACE) && !orientation) {
+            classified_face_idxs[4].push_back(face.index());
+        }
+        else if ((tag == K_FACE) && orientation) {
+            classified_face_idxs[5].push_back(face.index());
+        }
+        else {
+            std::cout<< "why are we here?" << std::endl;
+        }
+    }
+    return classified_face_idxs;
+}
+
+
 } // namespace Lgr
 } // namespace Opm
