@@ -142,14 +142,38 @@ PORO
         if (refinedElem.index() ==  1){
             expectedVertices = {{6., 2., 1.}};
             BOOST_CHECK_EQUAL( collectedVertices.size(), 1);
+
+            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
+            //      (6,0,4) **(6,2,4)              
+            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
+            //         |         *      
+            //      (6,0,1) --(6,2,1)
+            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
+            //      (6,0,0) --(6,2,0)
         }
         else if (refinedElem.index() ==  3){
             expectedVertices = {{6., 2., 1.}, {6., 4.,1.}};
             BOOST_CHECK_EQUAL( collectedVertices.size(), 2);
+
+            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
+            //      (6,0,4) **(6,2,4)              
+            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
+            //         |         *      
+            //      (6,0,1) --(6,2,1)
+            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
+            //      (6,0,0) --(6,2,0)
         }
         else if (refinedElem.index() ==  5){
             expectedVertices = {{6., 4.,1.}};
             BOOST_CHECK_EQUAL( collectedVertices.size(), 1);
+
+            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
+            //      (6,0,4) **(6,2,4)              
+            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
+            //         |         *      
+            //      (6,0,1) --(6,2,1)
+            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
+            //      (6,0,0) --(6,2,0)
         }
 
         for (const auto& expectedVertex : expectedVertices) { // empty if refinedElem.index() != 1, 3, or 5
@@ -159,7 +183,7 @@ PORO
     }
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
