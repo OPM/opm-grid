@@ -18,7 +18,7 @@
 */
 #include "config.h"
 
-#define BOOST_TEST_MODULE FaultFullyInLgrTest
+#define BOOST_TEST_MODULE ParentCellWithMoreThanOneFacePerTypeTests
 #include <boost/test/unit_test.hpp>
 
 #include <dune/common/fvector.hh>
@@ -45,7 +45,39 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_I_FACE)
+using Coordinate = Dune::FieldVector<double, 3>;
+
+void checkNewVertices(const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& collectedVertices,
+                      const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& expectedVertices)
+{
+    BOOST_CHECK_EQUAL( collectedVertices.size(), expectedVertices.size());
+
+    for (const auto& expectedVertex : expectedVertices) {
+        auto it = collectedVertices.find(expectedVertex);
+        BOOST_CHECK(it != collectedVertices.end());
+    }
+}
+
+void checkOverlapNewFace(const std::map<int,std::set<Coordinate,Opm::Lgr::FieldVectorLess>>& overlapNewFaces,
+                         int parentFaceIndex,
+                         const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& expectedNewFace)
+{
+    auto it = overlapNewFaces.find( parentFaceIndex );
+    BOOST_CHECK(it != overlapNewFaces.end());
+
+    const auto& newFace = overlapNewFaces.at( parentFaceIndex );
+    BOOST_CHECK_EQUAL(newFace.size(), 4);
+
+    BOOST_CHECK_EQUAL(newFace.size(), expectedNewFace.size());
+
+    for (const auto& expectedFaceVertex : expectedNewFace) {
+        auto iit = newFace.find(expectedFaceVertex);
+        BOOST_CHECK(iit != newFace.end());
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_true)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -115,12 +147,12 @@ PORO
     //                 |                      |          |     |         *       *        |                  |     *     *     |
     //                 |                      |          |     |         *       *        |                  |  7  *  9  *  11 |
     //                 |                      |          |     |         *       *        |                  |     *     *     |
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |      face idx 2      |          |     |         *       *        |                  |     *     *     |
     //                 |                      |          |  (6,0,4) **(6,2,4)*(6,4,4)**(6,6,4)               x*****x*****x*****x
     //                 |                      |          |     |         *       *        |                  |     *     *     |
     //                 |                      |          |     |         *       *        |                  |     *     *     |
     //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(?,?,?)-(?,?,?)--(6,6,1)               x- 1 -x- 3 -x- 5 -x
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |      face idx 1      |          |     |         *       *        |                  |     *     *     |
     //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,2,0)-(6,4,0)--(6,6,0)               x-----x-----x-----x
     //                                                   |
     //                                                   | The missing vertices are (6,2,1) and (6,4,1), appering in elements 1,3, or 5 in LGR1.
@@ -132,58 +164,236 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
 
-    using Coordinate = Dune::FieldVector<double, 3>;
-
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData, refinedElem, parentGridData, parentElem);
+        const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
+                                                                                                   refinedElem,
+                                                                                                   parentGridData,
+                                                                                                   parentElem);
+
         std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace1{};
 
         if (refinedElem.index() ==  1){
             expectedVertices = {{6., 2., 1.}};
-            BOOST_CHECK_EQUAL( collectedVertices.size(), 1);
-
             // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
-            //      (6,0,4) **(6,2,4)              
+            //      (6,0,4) **(6,2,4)
             //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
-            //         |         *      
+            //         |         *
             //      (6,0,1) --(6,2,1)
             //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
             //      (6,0,0) --(6,2,0)
+            expectedNewFaceInFace2 = {{6,0,1},{6,2,1},{6,2,4},{6,0,4}};
+            expectedNewFaceInFace1 = {{6,0,0},{6,2,0},{6,2,1},{6,0,1}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 1, expectedNewFaceInFace1);
         }
         else if (refinedElem.index() ==  3){
             expectedVertices = {{6., 2., 1.}, {6., 4.,1.}};
-            BOOST_CHECK_EQUAL( collectedVertices.size(), 2);
 
             // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
-            //      (6,0,4) **(6,2,4)              
-            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
-            //         |         *      
-            //      (6,0,1) --(6,2,1)
-            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
-            //      (6,0,0) --(6,2,0)
+            //      (6,2,4) **(6,4,4)
+            //         |         *        I_FACE, true with vertices (6,2,1),(6,4,1),(6,4,4),(6,2,4)
+            //         |         *
+            //      (6,2,1) --(6,4,1)
+            //         |         *        I_FACE, true with vertices (6,2,0),(6,4,0),(6,4,1),(6,2,4)
+            //      (6,2,0) --(6,4,0)
+            expectedNewFaceInFace2 = {{6,2,1},{6,4,1},{6,4,4},{6,2,4}};
+            expectedNewFaceInFace1 = {{6,2,0},{6,4,0},{6,4,1},{6,2,1}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 1, expectedNewFaceInFace1);
         }
         else if (refinedElem.index() ==  5){
             expectedVertices = {{6., 4.,1.}};
-            BOOST_CHECK_EQUAL( collectedVertices.size(), 1);
 
             // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
-            //      (6,0,4) **(6,2,4)              
-            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
-            //         |         *      
-            //      (6,0,1) --(6,2,1)
-            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
-            //      (6,0,0) --(6,2,0)
+            //      (6,4,4) **(6,6,4)
+            //         |         *        I_FACE, true with vertices (6,4,1),(6,6,1),(6,6,4),(6,4,4)
+            //         |         *
+            //      (6,4,1) --(6,6,1)
+            //         |         *        I_FACE, true with vertices (6,4,0),(6,6,0),(6,6,1),(6,4,1)
+            //      (6,4,0) --(6,6,0)
+            expectedNewFaceInFace2 = {{6,4,1},{6,6,1},{6,6,4},{6,4,4}};
+            expectedNewFaceInFace1 = {{6,4,0},{6,6,0},{6,6,1},{6,4,1}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 1, expectedNewFaceInFace1);
         }
 
-        for (const auto& expectedVertex : expectedVertices) { // empty if refinedElem.index() != 1, 3, or 5
-            auto it = collectedVertices.find(expectedVertex);
-            BOOST_CHECK(it != collectedVertices.end());
-        }
+        checkNewVertices(collectedVertices, expectedVertices); // expectedVertices is empty if refinedElem.index() != 1, 3, or 5
     }
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE)//, *boost::unit_test::disabled())
+
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)
+{
+    // Level zero grid dims = 2x1x1
+    //
+    // cell 0
+    // bottom face corners (0,0,0), (6,0,0), (0,6,0), (6,6,0)
+    //    top face corners (0,0,8), (6,0,8), (0,6,8), (6,6,8)
+    //
+    // cell 1
+    // bottom face corners (6,0,1), (12,0,1), (6,6,1),  (12,6,1)
+    //    top face corners (6,0,9), (12,0,9), (12,6,9), (12,6,9)
+    const std::string deckString =
+        R"(RUNSPEC
+DIMENS
+ 2 1 1 /
+
+GRID
+
+COORD
+ 0 0 0     0 0 9
+ 6 0 0     6 0 9
+12 0 0    12 0 9
+
+ 0 6 0    0 6 9
+ 6 6 0    6 6 9
+12 6 0   12 6 9
+/
+
+ZCORN
+0 0 1 1  0 0 1 1
+8 8 9 9  8 8 9 9
+/
+
+ACTNUM
+2*1
+/
+
+PORO
+2*0.15
+/
+)";
+
+    Dune::CpGrid grid;
+    Opm::createGridAndAddLgrs(grid,
+                              deckString,
+                              /* cells_per_dim_vec */ {{2,3,2}},
+                              /* startIJK_vec */      {{1,0,0}},
+                              /* endIJK_vec */        {{2,1,1}},
+                              /* lgr_name_vec */      {"LGR1"});
+
+    // LGR1 dimensions = {2,3,2}
+    // LGR1 indices
+    //
+    // k = 1      |10    11|
+    //            | 8     9|
+    //            | 6     7|
+    //            ----------
+    // k = 0      | 4     5|
+    //            | 2     3|
+    //            | 0     1|
+    //            ----------
+
+    // Element 1 in level zero grid has two faces of type {I_FACE, false}
+    //
+    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in       LGR1 cell indices
+    //                                                   | y- and z- directions:
+    //              (6,0,9) -----------------(6,6,9)     |  (6,0,9) --(6,2,9)-(6,4,9)--(6,6,9)               x*****x*****x*****x
+    //                 |      face idx 3      |          |     |         *       *        |                  |     *     *     |
+    //              (6,0,8) -----------------(6,6,8)     |  (6,0,8) --(?,?,?)-(?,?,?)--(6,6,8)               x- 6 -x- 8 -x-10--x
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |      face idx 2      |          |  (6,0,5) **(6,2,5)*(6,4,5)**(6,6,5)               x*****x*****x*****x
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |  0  *  2  *  4  |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //              (6,0,1) ---------------- (6,6,1)     |  (6,0,1) --(6,2,1)-(6,4,1)--(6,6,1)               x-----x-----x-----x
+    //                                                   |
+    //                                                   | The missing vertices are (6,2,8) and (6,4,8), appering in elements 6,8, or 10 in LGR1.
+    //                                                   | In LGR1 element  6: (6,2,8)
+    //                                                   | In LGR1 element  8: (6,2,8) and (6,4,8)
+    //                                                   | In LGR1 element 10: (6,4,8)
+
+    const auto& refinedGridData = *grid.currentData()[1];
+    const auto& parentGridData = *grid.currentData()[0];
+    const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
+
+    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
+
+        const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
+                                                                                                   refinedElem,
+                                                                                                   parentGridData,
+                                                                                                   parentElem);
+
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace3{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{};
+
+        if (refinedElem.index() ==  6){
+            expectedVertices = {{6., 2., 8.}};
+
+            // this element has to have 7 faces: 1 I+,J-,J+,K-,K+, and 2 I-:
+            //      (6,0,9) --(6,2,9)
+            //         |         *        I_FACE, false with vertices (6,0,8),(6,2,8),(6,2,9),(6,0,9)
+            //      (6,0,8) **(6,2,8)
+            //         |         *        I_FACE, false with vertices (6,0,5),(6,2,5),(6,2,8),(6,0,8)
+            //         |         *
+            //      (6,0,5) --(6,2,5)
+            expectedNewFaceInFace3 = {{6,0,8},{6,2,8},{6,2,9},{6,0,9}};
+            expectedNewFaceInFace2 = {{6,0,5},{6,2,5},{6,2,8},{6,0,8}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 3, expectedNewFaceInFace3);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  8){
+            expectedVertices = {{6., 2., 8.}, {6., 4.,8.}};
+
+            // this element has to have 7 faces: 1 I+,J-,J+,K-,K+, and 2 I-:
+            //      (6,2,9) --(6,4,9)
+            //         |         *        I_FACE, false with vertices (6,2,8),(6,4,8),(6,4,9),(6,2,9)
+            //      (6,2,8) **(6,4,8)
+            //         |         *        I_FACE, false with vertices (6,2,5),(6,4,5),(6,4,8),(6,2,8)
+            //         |         *
+            //      (6,2,5) --(6,4,5)
+            expectedNewFaceInFace3 = {{6,2,8},{6,4,8},{6,4,9},{6,2,9}};
+            expectedNewFaceInFace2 = {{6,2,5},{6,4,5},{6,4,8},{6,2,8}};
+
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 3, expectedNewFaceInFace3);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  10){
+            expectedVertices = {{6., 4.,8.}};
+
+            // this element has to have 7 faces: 1 I+,J-,J+,K-,K+, and 2 I-:
+            //      (6,4,9) --(6,6,9)
+            //         |         *        I_FACE, false with vertices (6,4,8),(6,6,8),(6,6,9),(6,4,9)
+            //      (6,4,8) **(6,6,8)
+            //         |         *        I_FACE, false with vertices (6,4,5),(6,6,5),(6,6,8),(6,4,8)
+            //         |         *
+            //      (6,4,5) --(6,6,5)
+            expectedNewFaceInFace3 = {{6,4,8},{6,6,8},{6,6,9},{6,4,9}};
+            expectedNewFaceInFace2 = {{6,4,5},{6,6,5},{6,6,8},{6,4,8}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 3, expectedNewFaceInFace3);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+
+        checkNewVertices(collectedVertices, expectedVertices); // expectedVertices empty if refinedElem.index() != 6,8, or 10
+        // BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 0);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)
 {
     // Level zero grid dims = 1x2x1
     //
@@ -254,12 +464,12 @@ PORO
     //                 |                      |          |     |         *       *        |                  |     *     *     |
     //                 |                      |          |     |         *       *        |                  |  9  * 10  *  11 |
     //                 |                      |          |     |         *       *        |                  |     *     *     |
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |       face idx 6     |          |     |         *       *        |                  |     *     *     |
     //                 |                      |          |  (0,6,4) **(2,6,4)*(4,6,4)**(6,6,4)               x*****x*****x*****x
     //                 |                      |          |     |         *       *        |                  |     *     *     |
     //                 |                      |          |     |         *       *        |                  |     *     *     |
     //              (0,6,1) -----------------(6,6,1)     |  (0,6,1) --(?,?,?)-(?,?,?)--(6,6,1)               x- 3 -x- 4 -x- 5 -x
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |       face idx 5     |          |     |         *       *        |                  |     *     *     |
     //              (0,6,0) -----------------(6,6,0)     |  (0,6,0) --(2,6,0)-(4,6,0)--(6,6,0)               x-----x-----x-----x
     //                                                   |
     //                                                   | The missing vertices are (2,6,1) and (4,6,1), appering in elements 3,4 or 5 in LGR1.
@@ -271,29 +481,224 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
 
-    using Coordinate = Dune::FieldVector<double, 3>;
-
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData, refinedElem, parentGridData, parentElem);
+        const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData, refinedElem, parentGridData, parentElem);
+
         std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace6{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace5{};
 
         if (refinedElem.index() ==  3){
             expectedVertices = {{2., 6., 1.}};
-            BOOST_CHECK_EQUAL( collectedVertices.size(), 1);
+
+            // this element has to have 7 faces: 1 I-,I+,J-,K-,K+, and 2 J+:
+            //      (0,6,4) **(2,6,4)
+            //         |         *        J_FACE, true with vertices (0,6,1),(2,6,1),(2,6,4),(,6,4)
+            //         |         *
+            //      (0,6,1) --(2,6,1)
+            //         |         *        J_FACE, true with vertices (0,6,0),(2,6,0),(2,6,1),(0,6,1)
+            //      (0,6,0) --(2,6,0)
+            expectedNewFaceInFace6 = {{0,6,1},{2,6,1},{2,6,4},{0,6,4}};
+            expectedNewFaceInFace5 = {{0,6,0},{2,6,0},{2,6,1},{0,6,1}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 5, expectedNewFaceInFace5);
         }
         else if (refinedElem.index() == 4){
             expectedVertices = {{2., 6., 1.}, {4., 6., 1.}};
-            BOOST_CHECK_EQUAL( collectedVertices.size(), 2);
+
+            // this element has to have 7 faces: 1 I-,I+,J-,K-,K+, and 2 J+:
+            //      (2,6,4) **(4,6,4)
+            //         |         *        J_FACE, true with vertices (2,6,1),(4,6,1),(4,6,4),(2,6,4)
+            //         |         *
+            //      (2,6,1) --(4,6,1)
+            //         |         *        J_FACE, true with vertices (2,6,0),(4,6,0),(4,6,1),(2,6,1)
+            //      (2,6,0) --(4,6,0)
+            expectedNewFaceInFace6 = {{2,6,1},{4,6,1},{4,6,4},{2,6,4}};
+            expectedNewFaceInFace5 = {{2,6,0},{4,6,0},{4,6,1},{2,6,1}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 5, expectedNewFaceInFace5);
         }
         else if (refinedElem.index() == 5){
             expectedVertices = {{4., 6.,1.}};
-            BOOST_CHECK_EQUAL( collectedVertices.size(), 1);
+
+            // this element has to have 7 faces: 1 I-,I+,J-,K-,K+, and 2 J+:
+            //      (4,6,4) **(6,6,4)
+            //         |         *        J_FACE, true with vertices (4,6,1),(6,6,1),(6,6,4),(4,6,4)
+            //         |         *
+            //      (4,6,1) --(6,6,1)
+            //         |         *        J_FACE, true with vertices (4,6,0),(6,6,0),(6,6,1),(4,6,1)
+            //      (4,6,0) --(6,6,0)
+            expectedNewFaceInFace6 = {{4,6,1},{6,6,1},{6,6,4},{4,6,4}};
+            expectedNewFaceInFace5 = {{4,6,0},{6,6,0},{6,6,1},{4,6,1}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 5, expectedNewFaceInFace5);
         }
 
-        for (const auto& expectedVertex : expectedVertices) { // empty if refinedElem.index() != 3,4, or 5
-            auto it = collectedVertices.find(expectedVertex);
-            BOOST_CHECK(it != collectedVertices.end());
+        checkNewVertices(collectedVertices, expectedVertices);  // expectedVertices is empty if refinedElem.index() != 3,4, or 5
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)
+{
+    // Level zero grid dims = 1x2x1
+    //
+    // cell 0
+    // bottom face corners (0,0,0), (6,0,0), (0,6,0), (6,6,0)
+    //    top face corners (0,0,8), (6,0,8), (0,6,8), (6,6,8)
+    //
+    // cell 1
+    // bottom face corners (0,6,1), (6,6,1), (0,12,1), (6,12,1)
+    //    top face corners (0,6,9), (6,6,9), (0,12,9), (6,12,9)
+
+    const std::string deckString =
+        R"(RUNSPEC
+DIMENS
+ 1 2 1 /
+
+GRID
+
+COORD
+ 0 0 0    0 0 9
+ 6 0 0    6 0 9
+
+ 0 6 0    0 6 9
+ 6 6 0    6 6 9
+
+ 0 12 0   0 12 9
+ 6 12 0   6 12 9
+/
+
+ZCORN
+0 0 0 0  1 1 1 1
+8 8 8 8  9 9 9 9
+/
+
+ACTNUM
+2*1
+/
+
+PORO
+2*0.15
+/
+)";
+
+    Dune::CpGrid grid;
+    Opm::createGridAndAddLgrs(grid,
+                              deckString,
+                              /* cells_per_dim_vec */ {{3,2,2}},
+                              /* startIJK_vec */      {{0,1,0}},
+                              /* endIJK_vec */        {{1,2,1}},
+                              /* lgr_name_vec */      {"LGR1"});
+
+    // LGR1 dimensions = {3,2,2}
+    // LGR1 indices
+    //
+    // k = 1      | 9  10  11|
+    //            | 6   7   8|
+    //            ----------
+    // k = 0      | 3   4   5|
+    //            | 0   1   2|
+    //            ------------
+
+    // Element 1 in level zero grid has two faces of type {J_FACE, false}
+    //
+    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in       LGR1 cell indices
+    //                                                   | y- and z- directions:
+    //              (0,6,9) -----------------(6,6,9)     |  (0,6,9) --(2,6,9)-(4,6,9)--(6,6,9)               x*****x*****x*****x
+    //                 |      face idx 7      |          |     |         *       *        |                  |     *     *     |
+    //              (0,6,8) -----------------(6,6,8)     |  (0,6,8) --(?,?,?)-(?,?,?)--(6,6,8)               x- 6 -x- 7 -x- 8--x
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |      face idx 6      |          |  (0,6,5) **(2,6,5)*(4,6,5)**(6,6,5)               x*****x*****x*****x
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |  0  *  1  *  2  |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //              (0,6,1) ---------------- (6,6,1)     |  (0,6,1) --(2,6,1)-(4,6,1)--(6,6,1)               x-----x-----x-----x
+    //                                                   |
+    //                                                   | The missing vertices are (2,6,8) and (4,6,8), appering in elements 6,7, or 8 in LGR1.
+    //                                                   | In LGR1 element  6: (2,6,8)
+    //                                                   | In LGR1 element  7: (2,6,8) and (4,6,8)
+    //                                                   | In LGR1 element  8: (4,6,8)
+
+    const auto& refinedGridData = *grid.currentData()[1];
+    const auto& parentGridData = *grid.currentData()[0];
+    const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
+
+    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
+
+        const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData, refinedElem, parentGridData, parentElem);
+
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace7{};
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace6{};
+
+        if (refinedElem.index() ==  6){
+            expectedVertices = {{2., 6., 8.}};
+
+            // this element has to have 7 faces: 1 I-,I+,J+,K-,K+, and 2 J-:
+            //      (0,6,9) --(2,6,9)
+            //         |         *        J_FACE, false with vertices (0,6,8),(2,6,8),(2,6,9),(0,6,9)
+            //      (0,6,8) **(2,6,8)
+            //         |         *        J_FACE, false with vertices (0,6,5),(2,6,5),(2,6,8),(0,6,8)
+            //         |         *
+            //      (0,6,5) --(2,6,5)
+            expectedNewFaceInFace7 = {{0,6,8},{2,6,8},{2,6,9},{0,6,9}};
+            expectedNewFaceInFace6 = {{0,6,5},{2,6,5},{2,6,8},{0,6,8}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 7, expectedNewFaceInFace7);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
+        else if (refinedElem.index() == 7){
+            expectedVertices = {{2., 6., 8.}, {4., 6., 8.}};
+
+            // this element has to have 7 faces: 1 I-,I+,J+,K-,K+, and 2 J-:
+            //      (2,6,9) --(4,6,9)
+            //         |         *        J_FACE, false with vertices (2,6,8),(4,6,8),(4,6,9),(2,6,9)
+            //      (2,6,8) **(4,6,8)
+            //         |         *        J_FACE, false with vertices (2,6,5),(4,6,5),(4,6,8),(2,6,8)
+            //         |         *
+            //      (2,6,5) --(4,6,5)
+            expectedNewFaceInFace7 = {{2,6,8},{4,6,8},{4,6,9},{2,6,9}};
+            expectedNewFaceInFace6 = {{2,6,5},{4,6,5},{4,6,8},{2,6,8}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 7, expectedNewFaceInFace7);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+        else if (refinedElem.index() == 8){
+            expectedVertices = {{4., 6., 8.}};
+
+            // this element has to have 7 faces: 1 I-,I+,J+,K-,K+, and 2 J-:
+            //      (4,6,9) --(6,6,9)
+            //         |         *        J_FACE, false with vertices (4,6,8),(6,6,8),(6,6,9),(4,6,9)
+            //      (4,6,8) **(6,6,8)
+            //         |         *        J_FACE, false with vertices (4,6,5),(6,6,5),(6,6,8),(4,6,8)
+            //         |         *
+            //      (4,6,5) --(6,6,5)
+            expectedNewFaceInFace7 = {{4,6,8},{6,6,8},{6,6,9},{4,6,9}};
+            expectedNewFaceInFace6 = {{4,6,5},{6,6,5},{6,6,8},{4,6,8}};
+
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
+
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 7, expectedNewFaceInFace7);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+
+        checkNewVertices(collectedVertices, expectedVertices);  // expectedVertices is empty if refinedElem.index() != 3,4, or 5
     }
 }
