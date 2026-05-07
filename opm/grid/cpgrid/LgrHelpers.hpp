@@ -887,7 +887,7 @@ std::optional<std::pair<Coordinate, Coordinate>> computeSegmentIntersection(cons
         if (lenA <  1e-8  || lenB < 1e-8) {
             return std::nullopt; // degenerate segment
         }
-        if (lenA > lenB) {
+        if (lenA > lenB) { 
             auto project= [&](const Coordinate& p) {
                 return  Dune::dot(p - startA, directionA) / lenA;
             };
@@ -900,7 +900,7 @@ std::optional<std::pair<Coordinate, Coordinate>> computeSegmentIntersection(cons
             double t_min = std::max(0.0, t0);
             double t_max = std::min(1.0, t1);
 
-            if (t_min > t_max + 1e-8) {
+            if (t_min > t_max /*+ 1e-8*/) {
                 return std::nullopt; // disjoint
             }
 
@@ -918,12 +918,12 @@ std::optional<std::pair<Coordinate, Coordinate>> computeSegmentIntersection(cons
             Coordinate p0 = startA + t_min * directionA;
             Coordinate p1 = startA + t_max * directionA;
 
-            isInteriorInA = true;
-            isInteriorInB = true;
+            isInteriorInA =  (t_min > 0  && t_min < 1.0);
+            isInteriorInB = true;// (t_max > 0  && t_max < 1.0); // recall segmentB overlap in segmentA
 
             return std::make_optional<std::pair<Coordinate,Coordinate>>(p0,p1);
         }
-        else {
+        else { 
 
             auto project= [&](const Coordinate& p) {
                 return  Dune::dot(p - startB, directionB) / lenB;
@@ -937,7 +937,7 @@ std::optional<std::pair<Coordinate, Coordinate>> computeSegmentIntersection(cons
             double t_min = std::max(0.0, t0);
             double t_max = std::min(1.0, t1);
 
-            if (t_min > t_max + 1e-8) {
+            if (t_min > t_max /*+ 1e-8*/) {
                 return std::nullopt; // disjoint
             }
 
@@ -945,7 +945,7 @@ std::optional<std::pair<Coordinate, Coordinate>> computeSegmentIntersection(cons
             if (std::abs(t_min - t_max) < 1e-8) {
                 auto p = startB + t_min * directionB;
 
-                isInteriorInA = true; // approximate 
+                isInteriorInA = true; // // recall segmentB overlap in segmentA
                 isInteriorInB = (t_min > 0  && t_min < 1.0);
 
                 return std::make_optional<std::pair<Coordinate,Coordinate>>(p,p);
@@ -1050,37 +1050,26 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
     std::set<Coordinate,FieldVectorLess> newFace{};
     
     const auto& faceNormal = parentGridData.faceNormals(coarseFace.index());
-
-    std::cout<< edges.size() << " edges size?? " << std::endl;
         
     for (const auto& edge : edges) {
-        std::cout<< "Begin for edge " << edge[0] <<  " " << edge[1] << std::endl;
+        
+        const auto edge0 = Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center();
+        const auto edge1 = Dune::cpgrid::Entity<3>(parentGridData, edge[1], true).geometry().center();
+        
         for (std::size_t i = 0; i < refinedFaceToPoint.size(); ++i) {
 
-            const auto& currentPoint = Dune::cpgrid::Entity<3>(singleCellRefinementData, refinedFaceToPoint[i], true).geometry().center();
-            const auto& previousPoint = Dune::cpgrid::Entity<3>(singleCellRefinementData, refinedFaceToPoint[(i-1)%refinedFaceToPoint.size()], true).geometry().center();
+            const auto currentPoint = Dune::cpgrid::Entity<3>(singleCellRefinementData, refinedFaceToPoint[i], true).geometry().center();
+            const auto previousPoint = Dune::cpgrid::Entity<3>(singleCellRefinementData, refinedFaceToPoint[(i-1)%refinedFaceToPoint.size()], true).geometry().center();
 
             bool isInteriorInEdge{};
             bool isInteriorInEdgeRf{};
             
-            const auto segmentInter = computeSegmentIntersection(Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center(),
-                                                                 Dune::cpgrid::Entity<3>(parentGridData, edge[1], true).geometry().center(),
-                                                                 previousPoint,
-                                                                 currentPoint,
-                                                                 isInteriorInEdge,
-                                                                 isInteriorInEdgeRf);
+            const auto segmentInter = computeSegmentIntersection(edge0, edge1,
+                                                                 previousPoint, currentPoint,
+                                                                 isInteriorInEdge, isInteriorInEdgeRf);
             
-            bool currentPointInSemiplaneEdge =  inSemiplane(currentPoint,
-                                                            Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center(),
-                                                            faceNormal,      // plane normal
-                                                            Dune::cpgrid::Entity<3>(parentGridData, edge[1], true).geometry().center()
-                                                            -  Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center());
-
-            bool previousPointInSemiplaneEdge =  inSemiplane(previousPoint,
-                                                             Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center(),
-                                                             faceNormal,   // plane normal
-                                                             Dune::cpgrid::Entity<3>(parentGridData, edge[1], true).geometry().center()
-                                                             -  Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center());
+            bool currentPointInSemiplaneEdge = inSemiplane(currentPoint, edge0, faceNormal, edge1-edge0);
+            bool previousPointInSemiplaneEdge = inSemiplane(previousPoint, edge0, faceNormal, edge1-edge0);
             
             if (currentPointInSemiplaneEdge) {
                 if (!previousPointInSemiplaneEdge) {
@@ -1092,9 +1081,6 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
                         }
                         newFace.insert(p0);
                         newFace.insert(p1);
-                        std::cout<< "Adding intersection p0: " <<  p0[0] << " " << p0[1] << " " << p0[2]  << std::endl;
-                        std::cout<< "Adding intersection p1: " <<  p1[0] << " " << p1[1] << " " << p1[2]  << std::endl;
-                        std::cout<< std::endl; 
                     }
                     newFace.insert(currentPoint);
                 }   
@@ -1106,27 +1092,27 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
                         missingVertices.insert(p0);
                         missingVertices.insert(p1);
                     }
-                    std::cout<< "Adding intersection p0: " <<  p0[0] << " " << p0[1] << " " << p0[2]  << std::endl;
-                    std::cout<< "Adding intersection p1: " <<  p1[0] << " " << p1[1] << " " << p1[2]  << std::endl;
                     newFace.insert(p0);
                     newFace.insert(p1);
                 }
                 newFace.insert(previousPoint);
             }
         } // end-for-refinedFaceToPoint-loop
-        std::cout<< "End for edge " << edge[0] <<  " " << edge[1] << std::endl;
-        std::cout<< std::endl;
     } // end-for-edges-loop
     return std::make_optional<std::set<Coordinate,FieldVectorLess>>(newFace);
 }
 
 template<typename Coordinate>
-std::set<Coordinate,FieldVectorLess> collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // (refinement of the parent cell)
-                                                        const Dune::cpgrid::Entity<0>& refinedElem,
-                                                        const Dune::cpgrid::CpGridData& parentGridData,
-                                                        const Dune::cpgrid::Entity<0>& parentElem)
+std::pair<std::set<Coordinate,FieldVectorLess>,
+          std::map<int,std::set<Coordinate,FieldVectorLess>>>
+collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // (refinement of the parent cell)
+                   const Dune::cpgrid::Entity<0>& refinedElem,
+                   const Dune::cpgrid::CpGridData& parentGridData,
+                   const Dune::cpgrid::Entity<0>& parentElem)
 {
     std::set<Coordinate,FieldVectorLess> missingVertices{};
+
+    //Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>> 
 
     const auto& refinedCellToFace = singleCellRefinementData.cellToFace(refinedElem.index());
     const auto& parentCellToFace = parentGridData.cellToFace(parentElem.index());
@@ -1144,16 +1130,15 @@ std::set<Coordinate,FieldVectorLess> collectNewVertices(const Dune::cpgrid::CpGr
         {{1,/*false*/0}, 2}, {{1, /*true*/1}, 3},
         {{2,/*false*/0}, 4}, {{2, /*true*/1}, 5}
     };
-    
-        
+
+
+    std::map<int,std::set<Coordinate,FieldVectorLess>> parentFaceToNewRefinedFace{};
 
     for (const auto& face : parentCellToFace) {
-        // add a skip if face type is not repeated
+        // skip if face type is not repeated (i.e. there is only one face of type {face_tag, face_orientation})
         if (classifiedFaces[faceTypeToIdx.at({parentGridData.faceTag(face.index()),face.orientation()})].size() == 1)
             continue;
-
-        std::vector<std::set<Coordinate,FieldVectorLess>> newRefinedFaces{}; // reserve max parent cell same type?
-
+        
         for (const auto& refinedFace : refinedCellToFace) {
             // Skip face if it is not on the boundary of the single cell refinement grid
             if (singleCellRefinementData.faceToCellSize(refinedFace.index()) != 1)
@@ -1165,19 +1150,12 @@ std::set<Coordinate,FieldVectorLess> collectNewVertices(const Dune::cpgrid::CpGr
                                                           singleCellRefinementData,
                                                           missingVertices);
             if (newFace.has_value()) {
-                newRefinedFaces.push_back(newFace.value());
+                parentFaceToNewRefinedFace[face.index()] = newFace.value();
             }
         }
-        for (const auto& newRefinedFace : newRefinedFaces){
-            std::cout<< "New face! " << std::endl;
-            for (const auto& v : newRefinedFace) {
-                std::cout<< v[0] << " " << v[1] << " " << v[2] << std::endl;
-            }
-            std::cout<< std::endl;
-        }
-
     }
-    return missingVertices;
+    return std::make_pair<std::set<Coordinate,FieldVectorLess>,
+                          std::map<int,std::set<Coordinate,FieldVectorLess>>>(std::move(missingVertices), std::move(parentFaceToNewRefinedFace));
 }
 
 

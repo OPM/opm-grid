@@ -1828,7 +1828,15 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         // replacing parent-cell corner '7' {cells_per_dim[0], cells_per_dim[1], cells_per_dim[2]}
         {parent_to_point[7], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))
          + cells_per_dim[2]}};
-   
+
+    //for () {
+    //  Opm::Lgr::collectNewVertices(/* singleCellRefinementData */ refined_grid,
+    //                            refinedElem,
+    //                            /* parentGridData */ *this,
+    //                               parentCellElem);
+    //}
+
+    
     const auto& parent_cell_to_face = (this-> cell_to_face_[parentCellElem]);
     // To store relation old-face to new-born-faces (children faces).
     std::vector<std::tuple<int,std::vector<int>>>  parent_to_children_faces;
