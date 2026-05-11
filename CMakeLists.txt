@@ -145,6 +145,7 @@ macro(opm-grid_tests_hook)
           $<TARGET_FILE:cpgrid_aquifer_test>
           -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
       )
+      set_tests_properties(cpgrid_aquifer_parallel PROPERTIES PROCESSORS 4)
     endif()
   endif()
 endmacro()
