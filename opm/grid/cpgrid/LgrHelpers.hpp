@@ -31,6 +31,7 @@
 #include <opm/grid/CpGrid.hpp>
 
 #include <array>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -1112,8 +1113,6 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
 {
     std::set<Coordinate,FieldVectorLess> missingVertices{};
 
-    //Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>> 
-
     const auto& refinedCellToFace = singleCellRefinementData.cellToFace(refinedElem.index());
     const auto& parentCellToFace = parentGridData.cellToFace(parentElem.index());
 
@@ -1158,6 +1157,114 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
                           std::map<int,std::set<Coordinate,FieldVectorLess>>>(std::move(missingVertices), std::move(parentFaceToNewRefinedFace));
 }
 
+template<typename Coordinate>
+std::vector<Coordinate> sortBasedOnFaceTag(int faceTag, const std::set<Coordinate,FieldVectorLess>& faceVertices)
+{
+    assert(faceTag>=0 && faceTag < 3);
+
+    std::vector<Coordinate> sortedVertices{};
+    assert(faceVertices.size() == 4); // for general face, ...
+    
+    sortedVertices.resize(/* faceVertices.size() */ 4);
+
+    if (faceTag == 0) { //  Vertex order
+        // I_FACE: jk, (j+1)k, (j+1)(k+1), j(k+1)
+        double minY = std::numeric_limits<double>::max();
+        double maxY = std::numeric_limits<double>::lowest();
+
+        double minZ = std::numeric_limits<double>::max();
+        double maxZ = std::numeric_limits<double>::lowest();
+
+        for (const auto& vertex : faceVertices) {
+            minY = std::min(minY, vertex[1]);
+            maxY = std::max(maxY, vertex[1]);
+            minZ = std::min(minZ, vertex[2]);
+            maxZ = std::max(maxZ, vertex[2]);
+        }
+
+        for (const auto& vertex : faceVertices) {
+            const auto& z = vertex[2];
+            const auto& y = vertex[1];
+            if (z-minZ<1e-8) {
+                if (y-minY<1e-8)
+                    sortedVertices[0] = vertex;
+                else 
+                    sortedVertices[1] = vertex;
+            }
+            else if (maxZ-z<1e-8) {
+                if (y-minY<1e-8)
+                    sortedVertices[3] = vertex;
+                else 
+                    sortedVertices[2] = vertex;
+            }
+        }
+    }
+    else if (faceTag == 1) { //  Vertex order
+        // J_FACE: (i+1)k, ik, i(k+1), (i+1)(k+1) 
+        double minX = std::numeric_limits<double>::max();
+        double maxX = std::numeric_limits<double>::lowest();
+
+        double minZ = std::numeric_limits<double>::max();
+        double maxZ = std::numeric_limits<double>::lowest();
+
+        for (const auto& vertex : faceVertices) {
+            minX = std::min(minX, vertex[0]);
+            maxX = std::max(maxX, vertex[0]);
+            minZ = std::min(minZ, vertex[2]);
+            maxZ = std::max(maxZ, vertex[2]);
+        }
+        
+        for (const auto& vertex : faceVertices) {
+            const auto& x = vertex[0];
+            const auto& z = vertex[2];
+            if (z-minZ < 1e-8) {
+                if (x-minX < 1e-8)
+                    sortedVertices[1] = vertex;
+                else
+                    sortedVertices[0] = vertex;
+            }
+            else if (maxZ-z < 1e-8) {
+                if (x-minX < 1e-8)
+                    sortedVertices[2] = vertex;
+                else
+                    sortedVertices[3] = vertex;
+            }
+        }
+    }
+    else if (faceTag == 2) { //  Vertex order
+        // K_FACE: ij, (i+1)j, (i+1)(j+1), (i+1)(j+1)
+        double minX = std::numeric_limits<double>::max();;
+        double maxX = std::numeric_limits<double>::lowest();
+
+        double minY = std::numeric_limits<double>::max();;
+        double maxY = std::numeric_limits<double>::lowest();
+
+        for (const auto& vertex : faceVertices) {
+            minX = std::min(minX, vertex[0]);
+            maxX = std::max(maxX, vertex[0]);
+            minY = std::min(minY, vertex[1]);
+            maxY = std::max(maxY, vertex[1]);
+        }
+        
+        for (const auto& vertex : faceVertices) {
+            const auto& x = vertex[0];
+            const auto& y = vertex[1];
+            if (y-minY<1e-8) {
+                if (x-minX<1e-8)
+                    sortedVertices[0] = vertex;
+                else
+                    sortedVertices[1] = vertex;
+            }
+            else if (maxY-y<1e-8) {
+                if (x-minX<1e-8)
+                    sortedVertices[3] = vertex;
+                else
+                    sortedVertices[2] = vertex;
+            }
+        }
+    }
+    return sortedVertices;
+}
 
 } // namespace Lgr
 } // namespace Opm
