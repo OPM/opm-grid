@@ -245,14 +245,14 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
 #endif
 }
 template<typename ID, typename weightType>
-void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts) {
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts, const weightType& weWeight) {
     const Dune::CpGrid&  grid = graph.getGrid();
     // First the strong edges of the well completions.
     auto wellEdges = graph.getWellsGraph()[localCellId];
     for( auto edge : wellEdges)
     {
         nborGID[neighborCounter] = edge;
-        ewgts[neighborCounter++] = std::numeric_limits<weightType>::max();
+        ewgts[neighborCounter++] = weWeight;
     }
 
     // Now the ones of the grid that are not handled by the well completions
@@ -308,9 +308,19 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 #endif
     int neighborCounter = 0;
 
+    // well edge weight for partitioning, big enough that wells should not get split
+    float weWeight = 0; // type of ewgts even though transmissibility is double
+    for (int edge=0; edge<grid.numFaces(); ++edge) {
+        // assumes that transmissibility is positive (too obvious to leave an assert)
+        weWeight += graph.transmissibility(edge);
+    }
+    if (weWeight == std::numeric_limits<float>::infinity()) {
+        weWeight = std::numeric_limits<float>::max();
+    }
+
     for( int cell = 0; cell < numCells;  cell++ )
     {
-        fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(graph, localID[cell], globalID, neighborCounter, nborGID, ewgts);
+        fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(graph, localID[cell], globalID, neighborCounter, nborGID, ewgts, weWeight);
 #ifndef NDEBUG
         assert(neighborCounter-oldNeighborCounter==numEdges[cell]);
         oldNeighborCounter = neighborCounter;
@@ -416,12 +426,12 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
 template
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid&, int, int*, int&, int*& nborGID);
 template
-void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph&, const int, int*, int&, int*&, int*);
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph&, const int, int*, int&, int*&, int*, const int&);
 
 template
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(Dune::CpGrid const&, int, long*, int&, long*&);
 template
-void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(Dune::cpgrid::CombinedGridWellGraph const&, int, long*, int&, long*&, long*);
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(Dune::cpgrid::CombinedGridWellGraph const&, int, long*, int&, long*&, long*, const long&);
 
 #endif
 

@@ -246,7 +246,7 @@ int getNumberOfEdgesForSpecificCellForGridWithWells(const CombinedGridWellGraph&
 
 /// \brief Get the list of edges and weights for one cell of a grid with wells
 template<typename ID, typename weightType>
-void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts);
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts, const weightType& weWeight);
 
 #ifdef HAVE_ZOLTAN
 /// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.
