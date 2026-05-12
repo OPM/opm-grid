@@ -1051,7 +1051,30 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
     std::set<Coordinate,FieldVectorLess> newFace{};
     
     const auto& faceNormal = parentGridData.faceNormals(coarseFace.index());
+
+    // Refined face fully contained in parent face
+    std::set<Coordinate,FieldVectorLess> fullyContained{};
+    
+    for (std::size_t i = 0; i < refinedFaceToPoint.size(); ++i) {
+        const auto currentPoint = Dune::cpgrid::Entity<3>(singleCellRefinementData, refinedFaceToPoint[i], true).geometry().center();
+        bool isInParentFace = true;
+        for (const auto& edge : edges) {
         
+            const auto edge0 = Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center();
+            const auto edge1 = Dune::cpgrid::Entity<3>(parentGridData, edge[1], true).geometry().center();
+            
+            isInParentFace = isInParentFace && inSemiplane(currentPoint, edge0, faceNormal, edge1-edge0);
+        }
+        if (isInParentFace) {
+            fullyContained.insert(currentPoint);
+        }
+    }
+    if (fullyContained.size() == refinedFaceToPoint.size()) {
+        newFace = fullyContained;
+    }
+
+    // Intersection/overlap area between refined and parent faces is not the entire refined face
+    // In this case, new vertices and new faces appear
     for (const auto& edge : edges) {
         
         const auto edge0 = Dune::cpgrid::Entity<3>(parentGridData, edge[0], true).geometry().center();
@@ -1084,7 +1107,7 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
                         newFace.insert(p1);
                     }
                     newFace.insert(currentPoint);
-                }   
+                }
             }
             else if (previousPointInSemiplaneEdge){
                 if (segmentInter.has_value()) {
@@ -1148,7 +1171,7 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
                                                           parentGridData,
                                                           singleCellRefinementData,
                                                           missingVertices);
-            if (newFace.has_value()) {
+            if (newFace.has_value() && !newFace.value().empty()) {
                 parentFaceToNewRefinedFace[face.index()] = newFace.value();
             }
         }

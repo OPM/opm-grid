@@ -282,7 +282,24 @@ PORO
             const auto& sortedInFace1 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace1);
             checkExpectedOrder(expectedSortedInFace1, sortedInFace1);
         }
-
+        else if (refinedElem.index() ==  7) { 
+            expectedNewFaceInFace2 = {{6,0,4}, {6,2,4}, {6,2,8}, {6,0,8}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  9) { 
+            expectedNewFaceInFace2 = {{6,2,4}, {6,4,4}, {6,4,8}, {6,2,8}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  11) { 
+            expectedNewFaceInFace2 = {{6,4,4}, {6,6,4}, {6,6,8}, {6,4,8}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else {
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 0);
+        }
         checkNewVertices(collectedVertices, expectedVertices); // expectedVertices is empty if refinedElem.index() != 1, 3, or 5
     }
 }
@@ -486,9 +503,25 @@ PORO
             const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace2);
             checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
         }
-
+        else if (refinedElem.index() ==  0) { 
+            expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,5}, {6,0,5}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  2) { 
+            expectedNewFaceInFace2 = {{6,2,1}, {6,4,1}, {6,4,5}, {6,2,5}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  4) { 
+            expectedNewFaceInFace2 = {{6,4,1}, {6,6,1}, {6,6,5}, {6,4,5}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+        }
+        else {
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 0);
+        }
         checkNewVertices(collectedVertices, expectedVertices); // expectedVertices empty if refinedElem.index() != 6,8, or 10
-        // BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 0);
     }
 }
 
@@ -687,7 +720,24 @@ PORO
             const auto& sortedInFace5 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace5);
             checkExpectedOrder(expectedSortedInFace5, sortedInFace5);
         }
-
+        else if (refinedElem.index() ==  9) { 
+            expectedNewFaceInFace6 = {{0,6,4}, {2,6,4}, {2,6,8}, {0,6,8}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+        else if (refinedElem.index() ==  10) { 
+            expectedNewFaceInFace6 = {{2,6,4}, {4,6,4}, {4,6,8}, {2,6,8}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+        else if (refinedElem.index() ==  11) { 
+            expectedNewFaceInFace6 = {{4,6,4}, {6,6,4}, {6,6,8}, {4,6,8}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+        else {
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 0);
+        }
         checkNewVertices(collectedVertices, expectedVertices);  // expectedVertices is empty if refinedElem.index() != 3,4, or 5
     }
 }
@@ -886,6 +936,24 @@ PORO
             std::vector<Coordinate> expectedSortedInFace6 = {{6,6,5}, {4,6,5}, {4,6,8}, {6,6,8}};
             const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace6);
             checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
+        }
+        else if (refinedElem.index() ==  0) { 
+            expectedNewFaceInFace6 = {{0,6,1}, {2,6,1}, {2,6,5}, {0,6,5}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+         else if (refinedElem.index() ==  1) { 
+            expectedNewFaceInFace6 = {{2,6,1}, {4,6,1}, {4,6,5}, {2,6,5}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+         else if (refinedElem.index() ==  2) { 
+            expectedNewFaceInFace6 = {{4,6,1}, {6,6,1}, {6,6,5}, {4,6,5}};
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
+            checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        }
+        else {
+            BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 0);
         }
 
         checkNewVertices(collectedVertices, expectedVertices);  // expectedVertices is empty if refinedElem.index() != 3,4, or 5
