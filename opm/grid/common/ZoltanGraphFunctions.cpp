@@ -251,9 +251,11 @@ void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithW
     auto wellEdges = graph.getWellsGraph()[localCellId];
     for( auto edge : wellEdges)
     {
-        nborGID[neighborCounter] = edge;
-        ewgts[neighborCounter++] = std::numeric_limits<weightType>::max();
+        nborGID[neighborCounter++] = edge;
     }
+    // fill edge weights of wells later when we know the sum of other grid faces
+    int nrWellEdges = neighborCounter;
+    weightType edgeSum = 0;
 
     // Now the ones of the grid that are not handled by the well completions
     for ( int local_face = 0 ; local_face < grid.numCellFaces(localCellId); ++local_face )
@@ -274,6 +276,7 @@ void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithW
                 {
                     nborGID[neighborCounter] = globalID[otherCell];
                     ewgts[neighborCounter++] = graph.edgeWeight(face);
+                    edgeSum += graph.edgeWeight(face);
                 }
                 continue;
             }
@@ -282,8 +285,15 @@ void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithW
         {
             nborGID[neighborCounter] = globalID[otherCell];
             ewgts[neighborCounter++] = graph.edgeWeight(face);
+            edgeSum += graph.edgeWeight(face);
         }
     }
+
+    // set well edge weight to the weight of the whole grid
+    if (edgeSum == std::numeric_limits<weightType>::infinity()) {
+        edgeSum = std::numeric_limits<weightType>::max();
+    }
+    std::for_each(ewgts, ewgts + nrWellEdges, [&edgeSum](weightType& e) { e = edgeSum; });
 }
 
 void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
