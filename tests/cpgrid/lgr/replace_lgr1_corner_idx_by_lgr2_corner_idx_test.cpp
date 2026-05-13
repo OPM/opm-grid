@@ -71,7 +71,9 @@ const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(co
 
     // Single-cell-refinement for the only cell contained in lgr grid.
     const auto& [lgr_ptr,
-                 lgr_parentCorners_to_equivalentRefinedCorners]
+                 lgr_parentCorners_to_equivalentRefinedCorners,
+                 extraRefinedCornIdx_to_parentFaceIdx,
+                 refinedFaceIdx_to_parentFaceIdx]
         = lgr.currentLeafData().refineSingleCell(lgr_dim, 0, faceInMarkedElemAndRefinedFaces);
     return lgr_ptr;
 }

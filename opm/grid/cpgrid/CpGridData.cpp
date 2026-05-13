@@ -1782,8 +1782,10 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
 }
 
 std::tuple< const std::shared_ptr<CpGridData>,
-            const std::vector<std::array<int,2>>>               // parent_to_refined_corners(~boundary_old_to_new_corners)
-CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
+            const std::vector<std::array<int,2>>,
+            std::unordered_map<int,int>, // extraRefCornIdx_to_parentFaceIdx
+            std::unordered_map<int,std::vector<int>>>   
+            CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                              const int& parent_idx,
                              std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const
 {
@@ -1808,7 +1810,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
     parentCellGeom.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                                         refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
                                         {1,1,1}, /*widthX, lengthY, heightZ*/ {1.}, {1.}, {1.});
-    
+
     const std::vector<std::array<int,2>>& parent_to_refined_corners{
         // corIdx (J*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (I*(cells_per_dim[2]+1)) +K
         // replacing parent-cell corner '0' {0,0,0}
@@ -1829,73 +1831,136 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         {parent_to_point[7], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))
          + cells_per_dim[2]}};
 
-    //for () {
-    //  Opm::Lgr::collectNewVertices(/* singleCellRefinementData */ refined_grid,
-    //                            refinedElem,
-    //                            /* parentGridData */ *this,
-    //                               parentCellElem);
-    //}
-
-    
     const auto& parent_cell_to_face = (this-> cell_to_face_[parentCellElem]);
     // To store relation old-face to new-born-faces (children faces).
     std::vector<std::tuple<int,std::vector<int>>>  parent_to_children_faces;
-    parent_to_children_faces.reserve(6);
+    parent_to_children_faces.reserve(parent_cell_to_face.size());
+
     // Auxiliary integers to simplify new-born-face-index notation.
     const int& k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
     const int& i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
-    // Populate parent_to_children_faces
+
+
+    const auto classifiedFaces = Opm::Lgr::classifyAndCollectFaceIndices(*this, parentCellElem);
+    // clasified_face_idxs[0] stores I false face indices
+    // clasified_face_idxs[1] stores I true  face indices
+    // clasified_face_idxs[2] stores J false face indicesx
+    // clasified_face_idxs[3] stores J true  face indices
+    // clasified_face_idxs[4] stores K false face indices
+    // clasified_face_idxs[5] stores K true  face indices
+
+    std::map<std::array<int,2>, int> faceTypeToIdx = {
+        {{0,/*false*/0}, 0}, {{0, /*true*/1}, 1},
+        {{1,/*false*/0}, 2}, {{1, /*true*/1}, 3},
+        {{2,/*false*/0}, 4}, {{2, /*true*/1}, 5}
+    };
+
+
+    std::unordered_map<int,int> refinedCornIdx_to_parentFaceIdx{}; // empty for the naive case
+    std::unordered_map<int,std::vector<int>> refinedFaceIdx_to_parentFaceIdx{}; // 
+        
     for (const auto& face : parent_cell_to_face) {
-        // Check face tag to identify the type of face (bottom, top, left, right, front, or back).
+        
         const auto& parent_face_tag = (this-> face_tag_[Dune::cpgrid::EntityRep<1>(face.index(), true)]);
-        // To store the new born faces for each face.
         std::vector<int> children_faces; // Cannot reserve/resize "now", it depends of the type of face.
-        // K_FACES
-        if (parent_face_tag == face_tag::K_FACE) {
-            children_faces.reserve(cells_per_dim[0]*cells_per_dim[1]);
-            for (int j = 0; j < cells_per_dim[1]; ++j) {
-                for (int i = 0; i < cells_per_dim[0]; ++i) {
-                    int child_face;
-                    if (!face.orientation()) // false -> BOTTOM FACE -> k=0
-                        child_face = (j*cells_per_dim[0]) + i;
-                    else // true -> TOP FACE -> k=cells_per_dim[2]
-                        child_face = (cells_per_dim[2]*cells_per_dim[0]*cells_per_dim[1]) +(j*cells_per_dim[0]) + i;
-                    children_faces.push_back(child_face);
-                } // i-for-lopp
-            } //j-for-loop
-        } // if-K_FACE
-        // I_FACES
-        if (parent_face_tag == face_tag::I_FACE) {
-            children_faces.reserve(cells_per_dim[1]*cells_per_dim[2]);
-            for (int k = 0; k < cells_per_dim[2]; ++k) {
+        
+        if (classifiedFaces[faceTypeToIdx.at({parent_face_tag, face.orientation()})].size() == 1) {
+            
+            if (parent_face_tag == face_tag::K_FACE) {
+                children_faces.reserve(cells_per_dim[0]*cells_per_dim[1]);
                 for (int j = 0; j < cells_per_dim[1]; ++j) {
-                    int child_face;
-                    if (!face.orientation()) // false -> LEFT FACE -> i=0
-                        child_face = k_faces + (k*cells_per_dim[1]) + j;
-                    else // true -> RIGHT FACE -> i=cells_per_dim[0]
-                        child_face = k_faces + (cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j;
-                    children_faces.push_back(child_face);
-                } // j-for-loop
-            } // k-for-loop
-        } // if-I_FACE
-        // J_FACES
-        if (parent_face_tag == face_tag::J_FACE) {
-            children_faces.reserve(cells_per_dim[0]*cells_per_dim[2]);
-            for (int i = 0; i < cells_per_dim[0]; ++i) {
+                    for (int i = 0; i < cells_per_dim[0]; ++i) {
+                        int child_face;
+                        if (!face.orientation()) // false -> BOTTOM FACE -> k=0
+                            child_face = (j*cells_per_dim[0]) + i;
+                        else // true -> TOP FACE -> k=cells_per_dim[2]
+                            child_face = (cells_per_dim[2]*cells_per_dim[0]*cells_per_dim[1]) +(j*cells_per_dim[0]) + i;
+                        children_faces.push_back(child_face);
+                        refinedFaceIdx_to_parentFaceIdx[child_face] = std::vector{face.index()};
+                    } // i-for-lopp
+                } //j-for-loop
+            } // if-K_FACE
+            else if (parent_face_tag == face_tag::I_FACE) {
+                children_faces.reserve(cells_per_dim[1]*cells_per_dim[2]);
                 for (int k = 0; k < cells_per_dim[2]; ++k) {
-                    int child_face;
-                    if (!face.orientation()) // false -> FRONT FACE -> j=0
-                        child_face = k_faces + i_faces + (i*cells_per_dim[2]) + k;
-                    else  // true -> BACK FACE -> j=cells_per_dim[1]
-                        child_face = k_faces + i_faces  + (cells_per_dim[1]*cells_per_dim[0]*cells_per_dim[2])
-                            + (i*cells_per_dim[2]) + k;
-                    children_faces.push_back(child_face);
+                    for (int j = 0; j < cells_per_dim[1]; ++j) {
+                        int child_face;
+                        if (!face.orientation()) // false -> LEFT FACE -> i=0
+                            child_face = k_faces + (k*cells_per_dim[1]) + j;
+                        else // true -> RIGHT FACE -> i=cells_per_dim[0]
+                            child_face = k_faces + (cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j;
+                        children_faces.push_back(child_face);
+                        refinedFaceIdx_to_parentFaceIdx[child_face] = std::vector{face.index()};
+                    } // j-for-loop
                 } // k-for-loop
-            } // i-for-loop
-        } // if-J_FACE
-        faceInMarkedElemAndRefinedFaces[face.index()].push_back(std::make_pair(parentCellElem.index(), children_faces));
+            } // if-I_FACE
+            else if (parent_face_tag == face_tag::J_FACE) {
+                children_faces.reserve(cells_per_dim[0]*cells_per_dim[2]);
+                for (int i = 0; i < cells_per_dim[0]; ++i) {
+                    for (int k = 0; k < cells_per_dim[2]; ++k) {
+                        int child_face;
+                        if (!face.orientation()) // false -> FRONT FACE -> j=0
+                            child_face = k_faces + i_faces + (i*cells_per_dim[2]) + k;
+                        else  // true -> BACK FACE -> j=cells_per_dim[1]
+                            child_face = k_faces + i_faces  + (cells_per_dim[1]*cells_per_dim[0]*cells_per_dim[2])
+                                + (i*cells_per_dim[2]) + k;
+                        children_faces.push_back(child_face);
+                        refinedFaceIdx_to_parentFaceIdx[child_face] = std::vector{face.index()};
+                    } // k-for-loop
+                } // i-for-loop
+            } // if-J_FACE
+
+            std::cout<< " hola face.index(): " << face.index() << std::endl;
+            faceInMarkedElemAndRefinedFaces[face.index()].push_back(std::make_pair(parentCellElem.index(), children_faces));
+        }// end-classify..  
+    }// end-parent_cell_to_face for-loop
+
+    if(Opm::Lgr::hasOnlyOneFacePerFaceType(*this, parentCellElem)) { // no further corrections needed in the single-cell-refinement CpGridData object
+        return {refined_grid_ptr,
+                parent_to_refined_corners,
+                refinedCornIdx_to_parentFaceIdx,
+                refinedFaceIdx_to_parentFaceIdx};
     }
-    return {refined_grid_ptr, parent_to_refined_corners};
+    else { // Correct the single-cell-refinement grid and faceInMarkedElemAndRefinedFaces
+        std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
+         
+        // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
+        std::vector<std::array<int,2>> extended_parent_to_refined_corners = parent_to_refined_corners;
+
+        Opm::Lgr::collectNewVerticesAndFacesInfo(/* singleCellRefinementData */ refined_grid,
+                                                 /* parentGridData */ *this,
+                                                 parentCellElem,
+                                                 extended_parent_to_refined_corners,
+                                                 refined_geometries,
+                                                 faceInMarkedElemAndRefinedFaces,
+                                                 refined_cell_to_face,
+                                                 refined_face_to_point,
+                                                 refined_face_to_cell,
+                                                 refined_face_tags,
+                                                 refined_face_normals,
+                                                 refinedCornIdx_to_parentFaceIdx,
+                                                 refinedFaceIdx_to_parentFaceIdx);
+
+        std::cout<< faceInMarkedElemAndRefinedFaces[2].size() << " size for face 2"<< std::endl;
+
+
+        for (const auto& [idx, children] :faceInMarkedElemAndRefinedFaces[2])
+        {
+            std::cout<< "hola!, print stuff  "<< idx  <<std::endl;
+
+            for (const auto& child : children)
+            {
+                std::cout<< child << std::endl;
+            }
+            
+        }
+        
+        
+        return {refined_grid_ptr,
+                extended_parent_to_refined_corners,
+                refinedCornIdx_to_parentFaceIdx,
+                refinedFaceIdx_to_parentFaceIdx};
+    }
 }
 
 bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
