@@ -277,7 +277,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         {
             idx_t weWeight = 0;
             for (int edge = 0; edge<cpgrid.numFaces(); ++edge) {
-                weWeight += gridAndWells.transmissibility[edge];
+                weWeight += gridAndWells->transmissibility(edge);
             }
             if (weWeight == std::numeric_limits<idx_t>::infinity()) {
                 weWeight = std::numeric_limits<idx_t>::max();
