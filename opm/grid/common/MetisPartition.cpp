@@ -275,10 +275,18 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
         if( wells )
         {
+            idx_t weWeight = 0;
+            for (int edge = 0; edge<cpgrid.numFaces(); ++edge) {
+                weWeight += gridAndWells.transmissibility[edge];
+            }
+            if (weWeight == std::numeric_limits<idx_t>::infinity()) {
+                weWeight = std::numeric_limits<idx_t>::max();
+            }
+
             int neighborCounter = 0;
             for( int cell = 0; cell < n;  cell++ )
             {
-                fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(*gridAndWells, lids[cell], gids, neighborCounter, adjncy, adjwgt);
+                fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(*gridAndWells, lids[cell], gids, neighborCounter, adjncy, adjwgt, weWeight);
             }
         }
         else
