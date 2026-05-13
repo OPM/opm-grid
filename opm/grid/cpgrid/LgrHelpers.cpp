@@ -2409,5 +2409,40 @@ std::array<std::vector<int>, 6> classifyAndCollectFaceIndices(const Dune::cpgrid
 }
 
 
+void collectNewVerticesAndFacesInfo(const Dune::cpgrid::CpGridData& singleCellRefinementData,
+                                    const Dune::cpgrid::CpGridData& parentGridData,
+                                    const Dune::cpgrid::Entity<0>& parentElem)
+{
+    int newVertexIdx = singleCellRefinementData.size(3);
+    int newFaceIdx = singleCellRefinementData.numFaces();
+
+    std::set<Dune::FieldVector<double, 3>,FieldVectorLess> missingVertices{};
+    std::map<Dune::FieldVector<double, 3>, int, FieldVectorLess> newVertexToIdx{};
+
+    for (int i = 0; i < singleCellRefinementData.size(0); ++i) {
+
+        const auto refinedElem = Dune::cpgrid::Entity<0>(singleCellRefinementData, i, true);
+        const auto [collectedVertices, overlapNewFaces] = collectNewVertices<Dune::FieldVector<double,3>>(singleCellRefinementData,
+                                                                      refinedElem,
+                                                                      parentGridData,
+                                                                      parentElem);
+        missingVertices.insert(collectedVertices.begin(), collectedVertices.end());
+    }
+    for (const auto& vertex : missingVertices) {
+        newVertexToIdx[vertex] = newVertexIdx;
+        ++newVertexIdx;
+    }
+
+
+
+    for (const auto& [v, idx] : newVertexToIdx)
+    {
+        std::cout<< v[0] << " " << v[1] << " " << v[2] << " new vertex with new idx: " << idx << std::endl;
+    }
+    
+}
+
+
+
 } // namespace Lgr
 } // namespace Opm
