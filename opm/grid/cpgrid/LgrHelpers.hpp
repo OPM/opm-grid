@@ -1030,11 +1030,11 @@ struct FieldVectorLess {
 };
 
 template<typename Face, typename Coordinate>
-std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(const Face& coarseFace,
-                                                                             const Face& refinedFace,
-                                                                             const Dune::cpgrid::CpGridData& parentGridData,
-                                                                             const Dune::cpgrid::CpGridData& singleCellRefinementData,
-                                                                             std::set<Coordinate,FieldVectorLess>& missingVertices)
+std::optional<std::vector<Coordinate>> getVerticesOfOverlapArea(const Face& coarseFace,
+                                                                const Face& refinedFace,
+                                                                const Dune::cpgrid::CpGridData& parentGridData,
+                                                                const Dune::cpgrid::CpGridData& singleCellRefinementData,
+                                                                std::set<Coordinate,FieldVectorLess>& missingVertices)
 {
     const auto& faceTag = parentGridData.faceTag(coarseFace.index());
     const auto& faceOrientation = coarseFace.orientation();
@@ -1101,7 +1101,7 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
                         const auto& [p0,p1] = segmentInter.value();
                         if (isInteriorInEdge && isInteriorInEdgeRf) {
                             missingVertices.insert(p0); 
-                            missingVertices.insert(p1); 
+                            missingVertices.insert(p1);
                         }
                         newFace.insert(p0);
                         newFace.insert(p1);
@@ -1123,12 +1123,13 @@ std::optional<std::set<Coordinate,FieldVectorLess>> getVerticesOfOverlapArea(con
             }
         } // end-for-refinedFaceToPoint-loop
     } // end-for-edges-loop
-    return std::make_optional<std::set<Coordinate,FieldVectorLess>>(newFace);
+    const auto sorted = sortBasedOnFaceTag(faceTag, newFace);
+    return std::make_optional<std::vector<Coordinate>>(sorted);
 }
 
 template<typename Coordinate>
 std::pair<std::set<Coordinate,FieldVectorLess>,
-          std::map<int,std::set<Coordinate,FieldVectorLess>>>
+          std::map<int,std::vector<Coordinate>>>
 collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // (refinement of the parent cell)
                    const Dune::cpgrid::Entity<0>& refinedElem,
                    const Dune::cpgrid::CpGridData& parentGridData,
@@ -1142,7 +1143,7 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
     const auto classifiedFaces = classifyAndCollectFaceIndices(parentGridData, parentElem);
     // clasified_face_idxs[0] stores I false face indices
     // clasified_face_idxs[1] stores I true  face indices
-    // clasified_face_idxs[2] stores J false face indices
+    // clasified_face_idxs[2] stores J false face indicesx
     // clasified_face_idxs[3] stores J true  face indices
     // clasified_face_idxs[4] stores K false face indices
     // clasified_face_idxs[5] stores K true  face indices
@@ -1153,8 +1154,7 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
         {{2,/*false*/0}, 4}, {{2, /*true*/1}, 5}
     };
 
-
-    std::map<int,std::set<Coordinate,FieldVectorLess>> parentFaceToNewRefinedFace{};
+    std::map<int,std::vector<Coordinate>> parentFaceToNewRefinedFace{};
 
     for (const auto& face : parentCellToFace) {
         // skip if face type is not repeated (i.e. there is only one face of type {face_tag, face_orientation})
@@ -1177,7 +1177,7 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
         }
     }
     return std::make_pair<std::set<Coordinate,FieldVectorLess>,
-                          std::map<int,std::set<Coordinate,FieldVectorLess>>>(std::move(missingVertices), std::move(parentFaceToNewRefinedFace));
+                          std::map<int,std::vector<Coordinate>>>(std::move(missingVertices), std::move(parentFaceToNewRefinedFace));
 }
 
 template<typename Coordinate>
@@ -1186,108 +1186,116 @@ std::vector<Coordinate> sortBasedOnFaceTag(int faceTag, const std::set<Coordinat
     assert(faceTag>=0 && faceTag < 3);
 
     std::vector<Coordinate> sortedVertices{};
-    assert(faceVertices.size() == 4); // for general face, ...
+    if (!faceVertices.empty()) {
+        assert(faceVertices.size() == 4); // for general face, do sth else
     
-    sortedVertices.resize(/* faceVertices.size() */ 4);
+        sortedVertices.resize(faceVertices.size());
 
-    if (faceTag == 0) { //  Vertex order
-        // I_FACE: jk, (j+1)k, (j+1)(k+1), j(k+1)
-        double minY = std::numeric_limits<double>::max();
-        double maxY = std::numeric_limits<double>::lowest();
+        if (faceTag == 0) { //  Vertex order
+            // I_FACE: jk, (j+1)k, (j+1)(k+1), j(k+1)
+            double minY = std::numeric_limits<double>::max();
+            double maxY = std::numeric_limits<double>::lowest();
 
-        double minZ = std::numeric_limits<double>::max();
-        double maxZ = std::numeric_limits<double>::lowest();
+            double minZ = std::numeric_limits<double>::max();
+            double maxZ = std::numeric_limits<double>::lowest();
 
-        for (const auto& vertex : faceVertices) {
-            minY = std::min(minY, vertex[1]);
-            maxY = std::max(maxY, vertex[1]);
-            minZ = std::min(minZ, vertex[2]);
-            maxZ = std::max(maxZ, vertex[2]);
-        }
-
-        for (const auto& vertex : faceVertices) {
-            const auto& z = vertex[2];
-            const auto& y = vertex[1];
-            if (z-minZ<1e-8) {
-                if (y-minY<1e-8)
-                    sortedVertices[0] = vertex;
-                else 
-                    sortedVertices[1] = vertex;
+            for (const auto& vertex : faceVertices) {
+                minY = std::min(minY, vertex[1]);
+                maxY = std::max(maxY, vertex[1]);
+                minZ = std::min(minZ, vertex[2]);
+                maxZ = std::max(maxZ, vertex[2]);
             }
-            else if (maxZ-z<1e-8) {
-                if (y-minY<1e-8)
-                    sortedVertices[3] = vertex;
-                else 
-                    sortedVertices[2] = vertex;
+
+            for (const auto& vertex : faceVertices) {
+                const auto& z = vertex[2];
+                const auto& y = vertex[1];
+                if (z-minZ<1e-8) {
+                    if (y-minY<1e-8)
+                        sortedVertices[0] = vertex;
+                    else 
+                        sortedVertices[1] = vertex;
+                }
+                else if (maxZ-z<1e-8) {
+                    if (y-minY<1e-8)
+                        sortedVertices[3] = vertex;
+                    else 
+                        sortedVertices[2] = vertex;
+                }
             }
         }
-    }
-    else if (faceTag == 1) { //  Vertex order
-        // J_FACE: (i+1)k, ik, i(k+1), (i+1)(k+1) 
-        double minX = std::numeric_limits<double>::max();
-        double maxX = std::numeric_limits<double>::lowest();
+        else if (faceTag == 1) { //  Vertex order
+            // J_FACE: (i+1)k, ik, i(k+1), (i+1)(k+1) 
+            double minX = std::numeric_limits<double>::max();
+            double maxX = std::numeric_limits<double>::lowest();
 
-        double minZ = std::numeric_limits<double>::max();
-        double maxZ = std::numeric_limits<double>::lowest();
+            double minZ = std::numeric_limits<double>::max();
+            double maxZ = std::numeric_limits<double>::lowest();
 
-        for (const auto& vertex : faceVertices) {
-            minX = std::min(minX, vertex[0]);
-            maxX = std::max(maxX, vertex[0]);
-            minZ = std::min(minZ, vertex[2]);
-            maxZ = std::max(maxZ, vertex[2]);
-        }
+            for (const auto& vertex : faceVertices) {
+                minX = std::min(minX, vertex[0]);
+                maxX = std::max(maxX, vertex[0]);
+                minZ = std::min(minZ, vertex[2]);
+                maxZ = std::max(maxZ, vertex[2]);
+            }
         
-        for (const auto& vertex : faceVertices) {
-            const auto& x = vertex[0];
-            const auto& z = vertex[2];
-            if (z-minZ < 1e-8) {
-                if (x-minX < 1e-8)
-                    sortedVertices[1] = vertex;
-                else
-                    sortedVertices[0] = vertex;
-            }
-            else if (maxZ-z < 1e-8) {
-                if (x-minX < 1e-8)
-                    sortedVertices[2] = vertex;
-                else
-                    sortedVertices[3] = vertex;
+            for (const auto& vertex : faceVertices) {
+                const auto& x = vertex[0];
+                const auto& z = vertex[2];
+                if (z-minZ < 1e-8) {
+                    if (x-minX < 1e-8)
+                        sortedVertices[1] = vertex;
+                    else
+                        sortedVertices[0] = vertex;
+                }
+                else if (maxZ-z < 1e-8) {
+                    if (x-minX < 1e-8)
+                        sortedVertices[2] = vertex;
+                    else
+                        sortedVertices[3] = vertex;
+                }
             }
         }
-    }
-    else if (faceTag == 2) { //  Vertex order
-        // K_FACE: ij, (i+1)j, (i+1)(j+1), (i+1)(j+1)
-        double minX = std::numeric_limits<double>::max();;
-        double maxX = std::numeric_limits<double>::lowest();
+        else if (faceTag == 2) { //  Vertex order
+            // K_FACE: ij, (i+1)j, (i+1)(j+1), (i+1)(j+1)
+            double minX = std::numeric_limits<double>::max();;
+            double maxX = std::numeric_limits<double>::lowest();
 
-        double minY = std::numeric_limits<double>::max();;
-        double maxY = std::numeric_limits<double>::lowest();
+            double minY = std::numeric_limits<double>::max();;
+            double maxY = std::numeric_limits<double>::lowest();
 
-        for (const auto& vertex : faceVertices) {
-            minX = std::min(minX, vertex[0]);
-            maxX = std::max(maxX, vertex[0]);
-            minY = std::min(minY, vertex[1]);
-            maxY = std::max(maxY, vertex[1]);
-        }
+            for (const auto& vertex : faceVertices) {
+                minX = std::min(minX, vertex[0]);
+                maxX = std::max(maxX, vertex[0]);
+                minY = std::min(minY, vertex[1]);
+                maxY = std::max(maxY, vertex[1]);
+            }
         
-        for (const auto& vertex : faceVertices) {
-            const auto& x = vertex[0];
-            const auto& y = vertex[1];
-            if (y-minY<1e-8) {
-                if (x-minX<1e-8)
-                    sortedVertices[0] = vertex;
-                else
-                    sortedVertices[1] = vertex;
-            }
-            else if (maxY-y<1e-8) {
-                if (x-minX<1e-8)
-                    sortedVertices[3] = vertex;
-                else
-                    sortedVertices[2] = vertex;
+            for (const auto& vertex : faceVertices) {
+                const auto& x = vertex[0];
+                const auto& y = vertex[1];
+                if (y-minY<1e-8) {
+                    if (x-minX<1e-8)
+                        sortedVertices[0] = vertex;
+                    else
+                        sortedVertices[1] = vertex;
+                }
+                else if (maxY-y<1e-8) {
+                    if (x-minX<1e-8)
+                        sortedVertices[3] = vertex;
+                    else
+                        sortedVertices[2] = vertex;
+                }
             }
         }
     }
     return sortedVertices;
 }
+
+void collectNewVerticesAndFacesInfo(const Dune::cpgrid::CpGridData& singleCellRefinementData,
+                                    const Dune::cpgrid::CpGridData& parentGridData,
+                                    const Dune::cpgrid::Entity<0>& parentElem);
+
+
 
 } // namespace Lgr
 } // namespace Opm

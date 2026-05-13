@@ -58,31 +58,19 @@ void checkNewVertices(const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& coll
     }
 }
 
-void checkOverlapNewFace(const std::map<int,std::set<Coordinate,Opm::Lgr::FieldVectorLess>>& overlapNewFaces,
+void checkOverlapNewFace(const std::map<int,std::vector<Coordinate>>& overlapNewFaces,
                          int parentFaceIndex,
-                         const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& expectedNewFace)
+                         const std::vector<Coordinate>& expectedSortedNewFace)
 {
     auto it = overlapNewFaces.find( parentFaceIndex );
     BOOST_CHECK(it != overlapNewFaces.end());
 
     const auto& newFace = overlapNewFaces.at( parentFaceIndex );
-    BOOST_CHECK_EQUAL(newFace.size(), 4);
+    
+    BOOST_CHECK_EQUAL(newFace.size(), expectedSortedNewFace.size());
 
-    BOOST_CHECK_EQUAL(newFace.size(), expectedNewFace.size());
-
-    for (const auto& expectedFaceVertex : expectedNewFace) {
-        auto iit = newFace.find(expectedFaceVertex);
-        BOOST_CHECK(iit != newFace.end());
-    }
-}
-
-void checkExpectedOrder(const std::vector<Coordinate>& expectedSorted,
-                        const std::vector<Coordinate>& sorted)
-{
-    BOOST_CHECK_EQUAL( expectedSorted.size(), sorted.size());
-
-    for (std::size_t i = 0; i < sorted.size(); ++i) {
-        BOOST_CHECK_EQUAL(expectedSorted[i], sorted[i]);
+    for (std::size_t i = 0; i < expectedSortedNewFace.size(); ++i) {
+        BOOST_CHECK_EQUAL(newFace[i], expectedSortedNewFace[i]);
     }
 }
 
@@ -173,6 +161,8 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
 
+    Opm::Lgr::collectNewVerticesAndFacesInfo(refinedGridData, parentGridData, parentElem);
+
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
         const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
@@ -181,8 +171,14 @@ PORO
                                                                                                    parentElem);
 
         std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace1{};
+        std::vector<Coordinate> expectedNewFaceInFace2{}; // {vertex '0', vertex '1', vertex '2', vertex '3'}
+        std::vector<Coordinate> expectedNewFaceInFace1{};
+        // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
+        //
+        //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
+        //                   |             |                        
+        //                   |             |
+        //             jk <-'0' --------- '1'-> (j+1)k
 
         if (refinedElem.index() ==  1){
             expectedVertices = {{6., 2., 1.}};
@@ -193,28 +189,13 @@ PORO
             //      (6,0,1) --(6,2,1)
             //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
             //      (6,0,0) --(6,2,0)
-            expectedNewFaceInFace2 = {{6,0,1},{6,2,1},{6,2,4},{6,0,4}};
-            expectedNewFaceInFace1 = {{6,0,0},{6,2,0},{6,2,1},{6,0,1}};
+            expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,4}, {6,0,4}}; 
+            expectedNewFaceInFace1 = {{6,0,0}, {6,2,0}, {6,2,1}, {6,0,1}};
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 1, expectedNewFaceInFace1);
-
-            // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-            //
-            //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             jk <-'0' --------- '1'-> (j+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace2 = {{6,0,1}, {6,2,1}, {6,2,4}, {6,0,4}};
-            const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 0,  expectedNewFaceInFace2);
-            checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
-
-            std::vector<Coordinate> expectedSortedInFace1 = {{6,0,0}, {6,2,0}, {6,2,1}, {6,0,1}};
-            const auto& sortedInFace1 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace1);
-            checkExpectedOrder(expectedSortedInFace1, sortedInFace1);
         }
         else if (refinedElem.index() ==  3){
             expectedVertices = {{6., 2., 1.}, {6., 4.,1.}};
@@ -233,21 +214,6 @@ PORO
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 1, expectedNewFaceInFace1);
-
-            // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-            //
-            //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             jk <-'0' --------- '1'-> (j+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace2 = {{6,2,1}, {6,4,1}, {6,4,4}, {6,2,4}};
-            const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 0,  expectedNewFaceInFace2);
-            checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
-
-            std::vector<Coordinate> expectedSortedInFace1 = {{6,2,0}, {6,4,0}, {6,4,1}, {6,2,1}};
-            const auto& sortedInFace1 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace1);
-            checkExpectedOrder(expectedSortedInFace1, sortedInFace1);
         }
         else if (refinedElem.index() ==  5){
             expectedVertices = {{6., 4.,1.}};
@@ -266,21 +232,6 @@ PORO
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 1, expectedNewFaceInFace1);
-
-            // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-            //
-            //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             jk <-'0' --------- '1'-> (j+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace2 = {{6,4,1}, {6,6,1}, {6,6,4}, {6,4,4}};
-            const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 0,  expectedNewFaceInFace2);
-            checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
-
-            std::vector<Coordinate> expectedSortedInFace1 = {{6,4,0}, {6,6,0}, {6,6,1}, {6,4,1}};
-            const auto& sortedInFace1 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace1);
-            checkExpectedOrder(expectedSortedInFace1, sortedInFace1);
         }
         else if (refinedElem.index() ==  7) { 
             expectedNewFaceInFace2 = {{6,0,4}, {6,2,4}, {6,2,8}, {6,0,8}};
@@ -400,8 +351,14 @@ PORO
                                                                                                    parentElem);
 
         std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace3{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{};
+        std::vector<Coordinate> expectedNewFaceInFace3{};
+        std::vector<Coordinate> expectedNewFaceInFace2{};
+        // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
+        //
+        //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
+        //                   |             |                        
+        //                   |             |
+        //             jk <-'0' --------- '1'-> (j+1)k
 
         if (refinedElem.index() ==  6){
             expectedVertices = {{6., 2., 8.}};
@@ -420,21 +377,6 @@ PORO
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 3, expectedNewFaceInFace3);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
-
-            // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-            //
-            //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             jk <-'0' --------- '1'-> (j+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace3 = {{6,0,8}, {6,2,8}, {6,2,9}, {6,0,9}};
-            const auto& sortedInFace3 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 0,  expectedNewFaceInFace3);
-            checkExpectedOrder(expectedSortedInFace3, sortedInFace3);
-
-            std::vector<Coordinate> expectedSortedInFace2 = {{6,0,5}, {6,2,5}, {6,2,8}, {6,0,8}};
-            const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace2);
-            checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
         }
         else if (refinedElem.index() ==  8){
             expectedVertices = {{6., 2., 8.}, {6., 4.,8.}};
@@ -454,21 +396,6 @@ PORO
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 3, expectedNewFaceInFace3);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
-
-            // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-            //
-            //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             jk <-'0' --------- '1'-> (j+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace3 = {{6,2,8}, {6,4,8}, {6,4,9}, {6,2,9}};
-            const auto& sortedInFace3 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 0,  expectedNewFaceInFace3);
-            checkExpectedOrder(expectedSortedInFace3, sortedInFace3);
-
-            std::vector<Coordinate> expectedSortedInFace2 = {{6,2,5}, {6,4,5}, {6,4,8}, {6,2,8}};
-            const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace2);
-            checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
         }
         else if (refinedElem.index() ==  10){
             expectedVertices = {{6., 4.,8.}};
@@ -487,21 +414,6 @@ PORO
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 3, expectedNewFaceInFace3);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 2, expectedNewFaceInFace2);
-
-            // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-            //
-            //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             jk <-'0' --------- '1'-> (j+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace3 = {{6,4,8}, {6,6,8}, {6,6,9}, {6,4,9}};
-            const auto& sortedInFace3 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 0,  expectedNewFaceInFace3);
-            checkExpectedOrder(expectedSortedInFace3, sortedInFace3);
-
-            std::vector<Coordinate> expectedSortedInFace2 = {{6,4,5}, {6,6,5}, {6,6,8}, {6,4,8}};
-            const auto& sortedInFace2 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 0,  expectedNewFaceInFace2);
-            checkExpectedOrder(expectedSortedInFace2, sortedInFace2);
         }
         else if (refinedElem.index() ==  0) { 
             expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,5}, {6,0,5}};
@@ -618,8 +530,14 @@ PORO
         const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData, refinedElem, parentGridData, parentElem);
 
         std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace6{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace5{};
+        std::vector<Coordinate> expectedNewFaceInFace6{};
+        std::vector<Coordinate> expectedNewFaceInFace5{};
+        // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
+        //
+        //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
+        //                   |             |                        
+        //                   |             |
+        //             ik <-'1' --------- '0'-> (i+1)k
 
         if (refinedElem.index() ==  3){
             expectedVertices = {{2., 6., 1.}};
@@ -631,28 +549,13 @@ PORO
             //      (0,6,1) --(2,6,1)
             //         |         *        J_FACE, true with vertices (0,6,0),(2,6,0),(2,6,1),(0,6,1)
             //      (0,6,0) --(2,6,0)
-            expectedNewFaceInFace6 = {{0,6,1},{2,6,1},{2,6,4},{0,6,4}};
-            expectedNewFaceInFace5 = {{0,6,0},{2,6,0},{2,6,1},{0,6,1}};
+            expectedNewFaceInFace6 = {{2,6,1}, {0,6,1}, {0,6,4}, {2,6,4}}; 
+            expectedNewFaceInFace5 = {{2,6,0}, {0,6,0}, {0,6,1}, {2,6,1}}; 
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 5, expectedNewFaceInFace5);
-
-            // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
-            //
-            //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             ik <-'1' --------- '0'-> (i+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace6 = {{2,6,1}, {0,6,1}, {0,6,4}, {2,6,4}};
-            const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 1,  expectedNewFaceInFace6);
-            checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
-
-            std::vector<Coordinate> expectedSortedInFace5 = {{2,6,0}, {0,6,0}, {0,6,1}, {2,6,1}};
-            const auto& sortedInFace5 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace5);
-            checkExpectedOrder(expectedSortedInFace5, sortedInFace5);
         }
         else if (refinedElem.index() == 4){
             expectedVertices = {{2., 6., 1.}, {4., 6., 1.}};
@@ -664,28 +567,13 @@ PORO
             //      (2,6,1) --(4,6,1)
             //         |         *        J_FACE, true with vertices (2,6,0),(4,6,0),(4,6,1),(2,6,1)
             //      (2,6,0) --(4,6,0)
-            expectedNewFaceInFace6 = {{2,6,1},{4,6,1},{4,6,4},{2,6,4}};
-            expectedNewFaceInFace5 = {{2,6,0},{4,6,0},{4,6,1},{2,6,1}};
+            expectedNewFaceInFace6 = {{4,6,1}, {2,6,1}, {2,6,4}, {4,6,4}}; 
+            expectedNewFaceInFace5 = {{4,6,0}, {2,6,0}, {2,6,1}, {4,6,1}};
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 5, expectedNewFaceInFace5);
-
-            // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
-            //
-            //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             ik <-'1' --------- '0'-> (i+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace6 = {{4,6,1}, {2,6,1}, {2,6,4}, {4,6,4}};
-            const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 1,  expectedNewFaceInFace6);
-            checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
-
-            std::vector<Coordinate> expectedSortedInFace5 = {{4,6,0}, {2,6,0}, {2,6,1}, {4,6,1}};
-            const auto& sortedInFace5 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace5);
-            checkExpectedOrder(expectedSortedInFace5, sortedInFace5);
         }
         else if (refinedElem.index() == 5){
             expectedVertices = {{4., 6.,1.}};
@@ -697,41 +585,26 @@ PORO
             //      (4,6,1) --(6,6,1)
             //         |         *        J_FACE, true with vertices (4,6,0),(6,6,0),(6,6,1),(4,6,1)
             //      (4,6,0) --(6,6,0)
-            expectedNewFaceInFace6 = {{4,6,1},{6,6,1},{6,6,4},{4,6,4}};
-            expectedNewFaceInFace5 = {{4,6,0},{6,6,0},{6,6,1},{4,6,1}};
+            expectedNewFaceInFace6 = {{6,6,1}, {4,6,1}, {4,6,4}, {6,6,4}}; 
+            expectedNewFaceInFace5 = {{6,6,0}, {4,6,0}, {4,6,1}, {6,6,1}};
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 5, expectedNewFaceInFace5);
-
-            // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
-            //
-            //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             ik <-'1' --------- '0'-> (i+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace6 = {{6,6,1}, {4,6,1}, {4,6,4}, {6,6,4}};
-            const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 1,  expectedNewFaceInFace6);
-            checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
-
-            std::vector<Coordinate> expectedSortedInFace5 = {{6,6,0}, {4,6,0}, {4,6,1}, {6,6,1}};
-            const auto& sortedInFace5 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace5);
-            checkExpectedOrder(expectedSortedInFace5, sortedInFace5);
         }
         else if (refinedElem.index() ==  9) { 
-            expectedNewFaceInFace6 = {{0,6,4}, {2,6,4}, {2,6,8}, {0,6,8}};
+            expectedNewFaceInFace6 = {{2,6,4}, {0,6,4}, {0,6,8}, {2,6,8}};
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
         else if (refinedElem.index() ==  10) { 
-            expectedNewFaceInFace6 = {{2,6,4}, {4,6,4}, {4,6,8}, {2,6,8}};
+            expectedNewFaceInFace6 = {{4,6,4}, {2,6,4}, {2,6,8}, {4,6,8}};
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
         else if (refinedElem.index() ==  11) { 
-            expectedNewFaceInFace6 = {{4,6,4}, {6,6,4}, {6,6,8}, {4,6,8}};
+            expectedNewFaceInFace6 = {{6,6,4}, {4,6,4}, {4,6,8}, {6,6,8}};
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
@@ -835,8 +708,14 @@ PORO
         const auto [collectedVertices, overlapNewFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData, refinedElem, parentGridData, parentElem);
 
         std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace7{};
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace6{};
+        std::vector<Coordinate> expectedNewFaceInFace7{};
+        std::vector<Coordinate> expectedNewFaceInFace6{};
+        // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
+        //
+        //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
+        //                   |             |                        
+        //                   |             |
+        //             ik <-'1' --------- '0'-> (i+1)k
 
         if (refinedElem.index() ==  6){
             expectedVertices = {{2., 6., 8.}};
@@ -848,28 +727,13 @@ PORO
             //         |         *        J_FACE, false with vertices (0,6,5),(2,6,5),(2,6,8),(0,6,8)
             //         |         *
             //      (0,6,5) --(2,6,5)
-            expectedNewFaceInFace7 = {{0,6,8},{2,6,8},{2,6,9},{0,6,9}};
-            expectedNewFaceInFace6 = {{0,6,5},{2,6,5},{2,6,8},{0,6,8}};
+            expectedNewFaceInFace7 = {{2,6,8}, {0,6,8}, {0,6,9}, {2,6,9}}; 
+            expectedNewFaceInFace6 = {{2,6,5}, {0,6,5}, {0,6,8}, {2,6,8}};
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 7, expectedNewFaceInFace7);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
-
-            // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
-            //
-            //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             ik <-'1' --------- '0'-> (i+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace7 = {{2,6,8}, {0,6,8}, {0,6,9}, {2,6,9}};
-            const auto& sortedInFace7 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 1,  expectedNewFaceInFace7);
-            checkExpectedOrder(expectedSortedInFace7, sortedInFace7);
-
-            std::vector<Coordinate> expectedSortedInFace6 = {{2,6,5}, {0,6,5}, {0,6,8}, {2,6,8}};
-            const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace6);
-            checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
         }
         else if (refinedElem.index() == 7){
             expectedVertices = {{2., 6., 8.}, {4., 6., 8.}};
@@ -881,28 +745,13 @@ PORO
             //         |         *        J_FACE, false with vertices (2,6,5),(4,6,5),(4,6,8),(2,6,8)
             //         |         *
             //      (2,6,5) --(4,6,5)
-            expectedNewFaceInFace7 = {{2,6,8},{4,6,8},{4,6,9},{2,6,9}};
-            expectedNewFaceInFace6 = {{2,6,5},{4,6,5},{4,6,8},{2,6,8}};
+            expectedNewFaceInFace7 = {{4,6,8}, {2,6,8}, {2,6,9}, {4,6,9}}; 
+            expectedNewFaceInFace6 = {{4,6,5}, {2,6,5}, {2,6,8}, {4,6,8}};
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 7, expectedNewFaceInFace7);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
-
-            // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
-            //
-            //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             ik <-'1' --------- '0'-> (i+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace7 = {{4,6,8}, {2,6,8}, {2,6,9}, {4,6,9}};
-            const auto& sortedInFace7 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 1,  expectedNewFaceInFace7);
-            checkExpectedOrder(expectedSortedInFace7, sortedInFace7);
-
-            std::vector<Coordinate> expectedSortedInFace6 = {{4,6,5}, {2,6,5}, {2,6,8}, {4,6,8}};
-            const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace6);
-            checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
         }
         else if (refinedElem.index() == 8){
             expectedVertices = {{4., 6., 8.}};
@@ -914,41 +763,26 @@ PORO
             //         |         *        J_FACE, false with vertices (4,6,5),(6,6,5),(6,6,8),(4,6,8)
             //         |         *
             //      (4,6,5) --(6,6,5)
-            expectedNewFaceInFace7 = {{4,6,8},{6,6,8},{6,6,9},{4,6,9}};
-            expectedNewFaceInFace6 = {{4,6,5},{6,6,5},{6,6,8},{4,6,8}};
+            expectedNewFaceInFace7 = {{6,6,8}, {4,6,8}, {4,6,9}, {6,6,9}};
+            expectedNewFaceInFace6 = {{6,6,5}, {4,6,5}, {4,6,8}, {6,6,8}};
 
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 2);
 
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 7, expectedNewFaceInFace7);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
-
-            // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
-            //
-            //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-            //                   |             |                        
-            //                   |             |
-            //             ik <-'1' --------- '0'-> (i+1)k
-            
-            std::vector<Coordinate> expectedSortedInFace7 = {{6,6,8}, {4,6,8}, {4,6,9}, {6,6,9}};
-            const auto& sortedInFace7 =  Opm::Lgr::sortBasedOnFaceTag(/* faceTag */ 1,  expectedNewFaceInFace7);
-            checkExpectedOrder(expectedSortedInFace7, sortedInFace7);
-
-            std::vector<Coordinate> expectedSortedInFace6 = {{6,6,5}, {4,6,5}, {4,6,8}, {6,6,8}};
-            const auto& sortedInFace6 =  Opm::Lgr::sortBasedOnFaceTag(/*faceTag */ 1,  expectedNewFaceInFace6);
-            checkExpectedOrder(expectedSortedInFace6, sortedInFace6);
         }
         else if (refinedElem.index() ==  0) { 
-            expectedNewFaceInFace6 = {{0,6,1}, {2,6,1}, {2,6,5}, {0,6,5}};
+            expectedNewFaceInFace6 = {{2,6,1}, {0,6,1}, {0,6,5}, {2,6,5}};
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
          else if (refinedElem.index() ==  1) { 
-            expectedNewFaceInFace6 = {{2,6,1}, {4,6,1}, {4,6,5}, {2,6,5}};
+             expectedNewFaceInFace6 = {{4,6,1}, {2,6,1}, {2,6,5}, {4,6,5}};
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
-         else if (refinedElem.index() ==  2) { 
-            expectedNewFaceInFace6 = {{4,6,1}, {6,6,1}, {6,6,5}, {4,6,5}};
+         else if (refinedElem.index() ==  2) {
+             expectedNewFaceInFace6 = {{6,6,1},{4,6,1}, {4,6,5}, {6,6,5}};
             BOOST_CHECK_EQUAL( overlapNewFaces.size(), /*expectedNewFacesSize */ 1);
             checkOverlapNewFace(overlapNewFaces, /* parent face index */ 6, expectedNewFaceInFace6);
         }
