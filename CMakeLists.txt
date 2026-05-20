@@ -126,8 +126,9 @@ macro(opm-grid_tests_hook)
     endforeach()
 
     if(HAVE_OPM_TESTS AND USE_OPM_COMMON)
-      opm_add_test(cpgrid_aquifer_test
-        ONLY_COMPILE
+      opm_add_executable(
+        TARGET
+          cpgrid_aquifer_test
         SOURCES
           tests/cpgrid/cpgrid_aquifer_test.cpp
         LIBRARIES
