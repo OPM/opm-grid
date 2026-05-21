@@ -175,10 +175,6 @@ list(APPEND EXAMPLE_SOURCE_FILES
 )
 
 if(USE_OPM_COMMON)
-  list(APPEND EXAMPLE_SOURCE_FILES
-    examples/grdecl2vtu.cpp
-    examples/mirror_grid.cpp
-  )
   list(APPEND PROGRAM_SOURCE_FILES
     examples/grdecl2vtu.cpp
     examples/mirror_grid.cpp
