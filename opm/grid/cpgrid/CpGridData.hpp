@@ -347,6 +347,11 @@ public:
         return face_to_cell_[faceRep].size();
     }
 
+    auto faceToCell(int face) const {
+        Dune::cpgrid::EntityRep<1> faceRep(face, true);
+        return face_to_cell_[faceRep];
+    }
+
     auto faceTag(int faceIdx) const
     {
         Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
@@ -515,7 +520,7 @@ public:
     std::tuple< const std::shared_ptr<CpGridData>,
                 const std::vector<std::array<int,2>>,  // parent_to_refined_corners(~boundary_old_to_new_corners)
                 std::unordered_map<int,int>,
-                std::unordered_map<int,std::vector<int>>>                 
+                std::vector<std::vector<int>>>                 
     refineSingleCell(const std::array<int,3>& cells_per_dim,
                      const int& parent_idx,
                      std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const;

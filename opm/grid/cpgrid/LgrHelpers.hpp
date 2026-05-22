@@ -115,7 +115,7 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid,/* Marked e
                                             /* Additional parameters */
                                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
-                                            std::vector<std::unordered_map<int,std::vector<int>>>& singleCellRef_refinedFaceIdx_to_parentFaceIdx);
+                                            std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
 
 /// @brief Establish child–parent relations for refined cells:
 ///        - Maps each refined cell (in new refined grids) to its parent cell in the pre-adapt grid(s).
@@ -448,7 +448,7 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                                   const std::vector<int>& assignRefinedLevel,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                  const std::vector<std::unordered_map<int,std::vector<int>>>& singleCellRef_refinedFaceIdx_to_parentFaceIdx);
+                                  const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
 
 /// @brief Identify faces on the leaf (adapted) grid and establish face mappings.
 ///
@@ -473,7 +473,7 @@ void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<int>& assignRefinedLevel,
                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                           const std::vector<std::unordered_map<int,std::vector<int>>>& singleCellRef_refinedFace_to_parentFaceIdx);
+                           const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
 
 /// @brief Compute the {i,j,k} index of a refined face from its linear index in a single-cell refinement.
 ///
@@ -498,31 +498,25 @@ std::array<int,3> getRefinedFaceIJK(const std::array<int,3>& cells_per_dim, int 
 /// @param [in] faceIdxInLgr   Face index in the single-cell refinement.
 /// @param [in] elemLgr_ptr    Pointer to the single-cell refinement grid.
 /// @return true if the face is interior, false otherwise.
-bool isRefinedFaceInInteriorLgr(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
-                                const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr);
+/*bool isRefinedFaceInInteriorLgr(int faceIdxInLgr,
+  const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr);*/
 
 /// @brief Check if a refined face lies on the boundary of a single-cell refinement.
 ///
-/// @param [in] cells_per_dim  Number of child cells in {x,y,z} directions.
 /// @param [in] faceIdxInLgr   Face index in the single-cell refinement.
 /// @param [in] elemLgr_ptr    Pointer to the single-cell refinement grid.
 /// @return true if the face is on the boundary, false otherwise.
-bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+bool isRefinedFaceOnLgrBoundary(int faceIdxInLgr,
                                 const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr);
 
 /// @brief Get the parent face containing a new refined face.
 ///
-/// @param [in] cells_per_dim  Number of child cells in {x,y,z} directions.
 /// @param [in] faceIdxInLgr   Face index in the single-cell refinement.
 /// @param [in] elemLgr_ptr    Pointer to the single-cell refinement grid.
-/// @param [in] elemLgr        Parent cell index from the original grid.
 /// @return Index of the parent face containing the refined face.
-std::vector<int> getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& current_data,
-                                                        const std::array<int,3>& cells_per_dim,
-                                                        int faceIdxInLgr,
+std::vector<int> getParentFaceWhereNewRefinedFaceLiesOn(int faceIdxInLgr,
                                                         const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
-                                                        int elemLgr,
-                                                        const std::unordered_map<int,std::vector<int>>& refinedFaceIdx_to_parentFaceIdx);
+                                                        const std::vector<std::vector<int>>& refinedFace_to_parentFaces);
 
 /// @brief Define the corners (geometry) for each refined level grid.
 void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
@@ -566,7 +560,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::vector<std::array<int,3>>&  cells_per_dim_vec,
-                          const std::vector<std::unordered_map<int,std::vector<int>>>& singleCellRef_refinedFaceIdx_to_parentFaceIdx);
+                          const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
 
 /// @brief Map a refined boundary face from one single-cell refinement to a neighboring refinement.
 ///
@@ -625,7 +619,7 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const int& preAdaptMaxLevel,
-                           const std::vector<std::unordered_map<int,std::vector<int>>>& singleCellRef_refinedFaceIdx_to_parentFaceIdx);
+                           const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFaceIdx_to_parentFaces);
 
 /// @brief Auxilliary function to compute one or more properties on selected block of parent cells.
 ///
@@ -1168,15 +1162,17 @@ getVerticesOfOverlapArea(const Face& coarseFace,
 }
 
 template<typename Coordinate>
-std::pair<std::set<Coordinate,FieldVectorLess>, std::vector<int>>
+std::set<Coordinate,FieldVectorLess>
 collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // (refinement of the parent cell)
                    const Dune::cpgrid::Entity<0>& refinedElem,
                    const Dune::cpgrid::CpGridData& parentGridData,
                    const Dune::cpgrid::Entity<0>& parentElem,
                    std::map<Dune::FieldVector<double, 3>, int, FieldVectorLess>& vertexToIdx,
                    std::map<Dune::FieldVector<double, 3>, int, FieldVectorLess>& existingVtxInCoarseGridToItsIdx,
-                   int& newFaceIdx,
-                   std::map<int,std::vector<std::pair<int,std::vector<Coordinate>>>>& overlapFaces)
+                   std::vector<std::vector<int>>&  vanishedFace_to_parentFaces,
+                   std::map<int,std::vector<std::vector<Coordinate>>>& overlapFaces,
+                   std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>>& vanishedRefinedFaceToNewRefinedFaces,
+                   std::vector<int>& fullyContainedInParentFace)
 {
     std::set<Coordinate,FieldVectorLess> missingVertices{};
 
@@ -1199,9 +1195,6 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
 
     // overlapFaces[parent cell face idx] = { refined face index, {Coord0, ..., Coord3} }
 
-    std::vector<int> vanishedRefinedFaces(singleCellRefinementData.numFaces());
-    // 0 ->false, 1-> true (refined face overlap parent cell face not trivially - not fully contained in it)
-
     for (const auto& face : parentCellToFace) {
         // skip if face type is not repeated (i.e. there is only one face of type {face_tag, face_orientation})
         if (classifiedFaces[faceTypeToIdx.at({parentGridData.faceTag(face.index()),face.orientation()})].size() == 1)
@@ -1222,28 +1215,31 @@ collectNewVertices(const Dune::cpgrid::CpGridData& singleCellRefinementData, // 
                                                           existingVtxInCoarseGridToItsIdx,
                                                           refinedFaceFullyContained);
             
+            if (refinedFaceFullyContained){
+                fullyContainedInParentFace[refinedFace.index()] = face.index();
+            }
+            
             if (newFace.has_value() && !newFace.value().empty()) {
-                int overlapFaceIdx =  refinedFaceFullyContained? refinedFace.index() : newFaceIdx;
                 
+                // Save face coordinates as one of the overlapping refined faces with the parent cell
                 auto it  = overlapFaces.find(face.index());
                 if (it != overlapFaces.end()) {
-                    auto& collectedFaces = overlapFaces.at(face.index());
-                    collectedFaces.push_back(std::make_pair( overlapFaceIdx, newFace.value()));
+                    auto& collectedFaces = *it; //overlapFaces.at(face.index());
+                    collectedFaces.second.push_back(newFace.value());
                 }
                 else {
                     auto& collectedFaces = overlapFaces[face.index()];
-                    collectedFaces.push_back(std::make_pair( overlapFaceIdx, newFace.value()));
+                    collectedFaces.push_back(newFace.value());
                 }
+                 
                 if (!refinedFaceFullyContained) {
-                    vanishedRefinedFaces[refinedFace.index()] = 1; // true
-                    ++newFaceIdx;
+                    vanishedRefinedFaceToNewRefinedFaces[refinedFace.index()].push_back(std::make_pair(face.index(), newFace.value()));
+                    vanishedFace_to_parentFaces[refinedFace.index()].push_back(face.index());
                 }
             }
         }
     }
-    return std::make_pair<std::set<Coordinate,FieldVectorLess>,
-                          std::vector<int>>(std::move(missingVertices),
-                                            std::move(vanishedRefinedFaces));
+    return missingVertices;
 }
 
 template<typename Coordinate>
@@ -1358,21 +1354,21 @@ std::vector<Coordinate> sortBasedOnFaceTag(int faceTag, const std::set<Coordinat
 }
 
 template <typename Coordinate>
-std::pair<Coordinate, double> computeFaceCenterAndArea(const std::vector<Coordinate>& faceToPoint)
+std::tuple<Coordinate, double, Coordinate> computeFaceCenterAreaNormal(const std::vector<Coordinate>& faceToCoord)
 {
-    assert(faceToPoint.size() == 4);
+    assert(faceToCoord.size() == 4);
 
     Coordinate faceCenter = {0., 0.,0.};
-    for (const auto& point : faceToPoint) {
-        faceCenter += point;
+    for (const auto& coord : faceToCoord) {
+        faceCenter += coord;
     }
     faceCenter /= 4.;
 
     const std::vector<std::array<Coordinate,2>> edges = {
-        { faceToPoint[0], faceToPoint[1] },
-        { faceToPoint[1], faceToPoint[2] },
-        { faceToPoint[2], faceToPoint[3] },
-        { faceToPoint[3], faceToPoint[0] }
+        { faceToCoord[0], faceToCoord[1] },
+        { faceToCoord[1], faceToCoord[2] },
+        { faceToCoord[2], faceToCoord[3] },
+        { faceToCoord[3], faceToCoord[0] }
     };
     // Calculate face area by adding the 4 areas of the triangles partitioning the face.
     double faceArea = 0.0;
@@ -1383,7 +1379,17 @@ std::pair<Coordinate, double> computeFaceCenterAndArea(const std::vector<Coordin
         Dune::cpgrid::Geometry<0,3>::GlobalCoordinate trianCorners[3] = { edge[0], edge[1], faceCenter};
         faceArea += std::fabs(Dune::area(trianCorners));
     }
-    return std::make_pair<Coordinate,double>(std::move(faceCenter), std::move(faceArea));
+    // Calculate face normal
+    Coordinate faceNormal = {0., 0.,0.};
+    // Construct two vectors in the face, e.g. difference of two conners with the centroid,
+    // then obtain an orthogonal vector to both of them. Finally, normalize.
+    // Auxuliary vectors on the face:
+    Dune::cpgrid::Geometry<0,3>::GlobalCoordinate v0 = faceToCoord[0] - faceCenter;
+    Dune::cpgrid::Geometry<0,3>::GlobalCoordinate v1 = faceToCoord[1] - faceCenter;
+    faceNormal = Dune::FMatrixHelp::Impl::crossProduct(v0, v1);
+    faceNormal /= faceNormal.two_norm();
+    
+    return std::make_tuple<Coordinate,double,Coordinate>(std::move(faceCenter), std::move(faceArea), std::move(faceNormal));
 }
 
 void collectNewVerticesAndFacesInfo(Dune::cpgrid::CpGridData& singleCellRefinementData,
@@ -1392,13 +1398,16 @@ void collectNewVerticesAndFacesInfo(Dune::cpgrid::CpGridData& singleCellRefineme
                                     std::vector<std::array<int,2>>& extended_parent_to_refined_corners,
                                     Dune::cpgrid::DefaultGeometryPolicy& refined_geometries,
                                     std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                    Dune::cpgrid::OrientedEntityTable<0,1>& refined_cell_to_face,
-                                    Opm::SparseTable<int>& refined_face_to_point,
-                                    Dune::cpgrid::OrientedEntityTable<1,0>& refined_face_to_cell,
-                                    Dune::cpgrid::EntityVariable<enum face_tag,1>& refined_face_tags,
-                                    Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& refined_face_normals,
                                     std::unordered_map<int,int>& refinedCornIdx_to_parentFaceIdx,
-                                    std::unordered_map<int,std::vector<int>>& refinedFaceIdx_to_parentFaceIdx);
+                                    std::vector<std::vector<int>>& refinedFace_to_parentFaces,
+                                    Dune::cpgrid::CpGridData& correctedRefinementData,
+                                    Dune::cpgrid::DefaultGeometryPolicy& corrected_refined_geometries,
+                                    std::vector<std::array<int,8>>&                              corrected_refined_cell_to_point,
+                                    Dune::cpgrid::OrientedEntityTable<0,1>& corrected_refined_cell_to_face,
+                                    Opm::SparseTable<int>& corrected_refined_face_to_point,
+                                    Dune::cpgrid::OrientedEntityTable<1,0>& corercted_refined_face_to_cell,
+                                    Dune::cpgrid::EntityVariable<enum face_tag,1>& corrected_refined_face_tags,
+                                    Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_refined_face_normals);
 
 
 } // namespace Lgr

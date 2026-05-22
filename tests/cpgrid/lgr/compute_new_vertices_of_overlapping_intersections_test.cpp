@@ -163,8 +163,16 @@ PORO
 
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> allOverlapFaces{};
-   
+    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
+    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
+    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+
+    vanishedRefinedFaceToNewRefinedFaces.resize(52);
+    std::vector<bool> wrongRefinedCells(refinedGridData.size(0));
+
+
+    std::vector<int> fullyContainedInParentFace{};
+    fullyContainedInParentFace.resize(refinedGridData.numFaces());
                                    
     std::cout<< refinedGridData.size(3) << " vertices in LGR1 " << std::endl;
     BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
@@ -172,51 +180,7 @@ PORO
     
     std::cout<< refinedGridData.numFaces() << " faces in LGR1 " << std::endl;
     //BOOST_CHECK_EQUAL( refinedGridData.numFaces(), ); // 52-3+6 = 55 faces
-
-    int numFaces = 52;
-    
-    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
-
-        const auto [collectedVertices,
-                    vanishedRefinedFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                     refinedElem,
-                                                                                     parentGridData,
-                                                                                     parentElem,
-                                                                                     vertexToIdx,
-                                                                                     existingVtxInCoarseGridToItsIdx,
-                                                                                     numFaces,
-                                                                                     allOverlapFaces);
-    }
-
-    auto it2 = allOverlapFaces.find( /* parent face index */ 2);
-    BOOST_CHECK( it2 != allOverlapFaces.end());
-
-    auto it1 = allOverlapFaces.find( /* parent face index */ 1);
-    BOOST_CHECK( it1 != allOverlapFaces.end());
-
-    const auto& overlapFacesAtFace2 = allOverlapFaces.at( /* parent face index */ 2);
-    const auto& overlapFacesAtFace1 = allOverlapFaces.at( /* parent face index */ 1);
-    std::cout<< overlapFacesAtFace2.size() << " size face 2" << std::endl; // it should be 6
-    std::cout<< overlapFacesAtFace1.size() << " size face 1" << std::endl; // it should be 3
-    
-
-    //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-
-    for (const auto& [parentFaceIdx, overlapFacesInfo] : allOverlapFaces) {
-     
-        
-        for (const auto& [refinedFaceIdx, refinedFaceToCoord] : overlapFacesInfo) {
-         
-            for (const auto& v : refinedFaceToCoord) {
-                std::cout<< v[0] << " " << v[1] << " " << v[2]<< ", vertex index: "<< vertexToIdx[v] << std::endl;
-            }
-            std::cout<< refinedFaceIdx << " Refined face idx " << std::endl;
-        }
-    }
-
-
-    
+      
     
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
      
@@ -399,19 +363,28 @@ PORO
 
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> allOverlapFaces{};
+    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
+    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
+    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+
+    std::vector<int> fullyContainedInParentFace{};
+    fullyContainedInParentFace.resize(refinedGridData.numFaces());
+
+    vanishedRefinedFaceToNewRefinedFaces.resize(52);
+  
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        const auto [collectedVertices,
-                    vanishedRefinedFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                     refinedElem,
-                                                                                     parentGridData,
-                                                                                     parentElem,
-                                                                                     vertexToIdx,
-                                                                                     existingVtxInCoarseGridToItsIdx,
-                                                                                     numFaces,
-                                                                                     allOverlapFaces);
+        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
+                                                                                refinedElem,
+                                                                                parentGridData,
+                                                                                parentElem,
+                                                                                vertexToIdx,
+                                                                                existingVtxInCoarseGridToItsIdx,
+                                                                                refinedFaceIdx_to_parentFaceIdx,
+                                                                                allOverlapFaces,
+                                                                                vanishedRefinedFaceToNewRefinedFaces,
+                                                                                fullyContainedInParentFace);
     }
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
@@ -595,19 +568,27 @@ PORO
     
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> allOverlapFaces{};
+    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
+    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
+    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+
+    std::vector<int> fullyContainedInParentFace{};
+    fullyContainedInParentFace.resize(refinedGridData.numFaces());
+
+    vanishedRefinedFaceToNewRefinedFaces.resize(52);
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        const auto [collectedVertices,
-                    vanishedRefinedFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                     refinedElem,
-                                                                                     parentGridData,
-                                                                                     parentElem,
-                                                                                     vertexToIdx,
-                                                                                     existingVtxInCoarseGridToItsIdx,
-                                                                                     numFaces,
-                                                                                     allOverlapFaces);
+        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
+                                                                                refinedElem,
+                                                                                parentGridData,
+                                                                                parentElem,
+                                                                                vertexToIdx,
+                                                                                existingVtxInCoarseGridToItsIdx,
+                                                                                refinedFaceIdx_to_parentFaceIdx,
+                                                                                allOverlapFaces,
+                                                                                vanishedRefinedFaceToNewRefinedFaces,
+                                                                                fullyContainedInParentFace);
     }
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
@@ -790,19 +771,29 @@ PORO
     
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
     std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> allOverlapFaces{};
+    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
+    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
+    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+
+    std::vector<int> fullyContainedInParentFace{};
+    fullyContainedInParentFace.resize(refinedGridData.numFaces());
+
+
+    vanishedRefinedFaceToNewRefinedFaces.resize(52);
+    std::vector<bool> wrongRefinedCells(refinedGridData.size(0));
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        const auto [collectedVertices,
-                    vanishedRefinedFaces] = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                     refinedElem,
-                                                                                     parentGridData,
-                                                                                     parentElem,
-                                                                                     vertexToIdx,
-                                                                                     existingVtxInCoarseGridToItsIdx,
-                                                                                     numFaces,
-                                                                                     allOverlapFaces);
+        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
+                                                                                refinedElem,
+                                                                                parentGridData,
+                                                                                parentElem,
+                                                                                vertexToIdx,
+                                                                                existingVtxInCoarseGridToItsIdx,
+                                                                                refinedFaceIdx_to_parentFaceIdx,
+                                                                                allOverlapFaces,
+                                                                                vanishedRefinedFaceToNewRefinedFaces,
+                                                                                fullyContainedInParentFace);
     }
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
