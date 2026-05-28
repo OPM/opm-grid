@@ -2139,7 +2139,6 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                            markedElem_to_itsLgr,
                                            assignRefinedLevel,
                                            faceInMarkedElemAndRefinedFaces,
-                                           cells_per_dim_vec,
                                            singleCellRef_refinedFace_to_parentFaces);
 
     // --- Adapted faces and PreAdapt faces relations ---
@@ -2148,14 +2147,12 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
     // Integer to count adapted faces (mixed between faces from pre-refined-leaf faces not involved in LGRs and new-born refined faces).
     int face_count = 0;
     Opm::Lgr::identifyLeafGridFaces(currentLeafData(),
-                                    preAdaptMaxLevel,
                                     elemLgrAndElemLgrFace_to_adaptedFace,
                                     adaptedFace_to_elemLgrAndElemLgrFace,
                                     face_count,
                                     markedElem_to_itsLgr,
                                     assignRefinedLevel,
                                     faceInMarkedElemAndRefinedFaces,
-                                    cells_per_dim_vec,
                                     singleCellRef_refinedFace_to_parentFaces);
 
     // Set refined level grids geometries
