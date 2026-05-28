@@ -47,30 +47,106 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 using Coordinate = Dune::FieldVector<double, 3>;
 
-void checkNewVertices(const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& collectedVertices,
-                      const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& expectedVertices)
-{
-    BOOST_CHECK_EQUAL( collectedVertices.size(), expectedVertices.size());
 
-    for (const auto& expectedVertex : expectedVertices) {
-        auto it = collectedVertices.find(expectedVertex);
-        BOOST_CHECK(it != collectedVertices.end());
+void checkFaceCountPerType(int repeatedFaceType,
+                           int expectedRepeatedFaceTypeCount,
+                           const std::array<std::vector<int>,6>& classifiedFaces)
+{
+    for (int faceType = 0; faceType < 6; ++faceType) {// I- has faceType 0
+        int expectedFaceTypeCount = (faceType == repeatedFaceType) ? expectedRepeatedFaceTypeCount : 1;
+        BOOST_CHECK_EQUAL( classifiedFaces[faceType].size(), expectedFaceTypeCount);
     }
 }
 
-void checkOverlapNewFace(const std::map<int,std::pair<int,std::vector<Coordinate>>>& overlapFaces,
-                         int parentFaceIndex,
-                         const std::vector<Coordinate>& expectedSortedNewFace)
+
+// The test cases consist in a grid with only 2 cells in level zero.
+// Only one of them gets refined, the other appears on the leaf with
+// same volume and center, but more faces.
+void checkFaceCountInLeafCoarseElem(const Dune::CpGrid& grid,
+                                    int expectedTotalFaceCount,
+                                    int repeatedFaceType,
+                                    int expectedRepeatedFaceTypeCount)
 {
-    auto it = overlapFaces.find( parentFaceIndex );
-    BOOST_CHECK(it != overlapFaces.end());
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        if (element.level() == 0) {
 
-    const auto& [refinedFaceIDx, refinedFaceToCoord] = overlapFaces.at( parentFaceIndex );
+            const auto& cellToFace = grid.currentLeafData().cellToFace(element.index());
+            BOOST_CHECK_EQUAL( cellToFace.size(), expectedTotalFaceCount);
+
+            const auto classifiedFaces =  Opm::Lgr::classifyAndCollectFaceIndices(grid.currentLeafData(),
+                                                                                  element);
+
+            checkFaceCountPerType(repeatedFaceType,
+                                  expectedRepeatedFaceTypeCount,
+                                  classifiedFaces);
+        }
+    }
+}
+
+void checkFaceToCoord(const Dune::cpgrid::CpGridData& refinedGridData,
+                      const std::vector<int>& selectedFaces,
+                      const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& expectedFaceToCoord1,
+                      const std::set<Coordinate,Opm::Lgr::FieldVectorLess>& expectedFaceToCoord2)
+{
+     
+    for (const auto& faceIdx : selectedFaces) {
+                
+        const auto& faceToPoint = refinedGridData.faceToPoint(faceIdx);
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> faceToCoord{};
+        for (const auto& point : faceToPoint) {
+            const auto pointEntity = Dune::cpgrid::Entity<3>(refinedGridData, point, true);
+            faceToCoord.insert(pointEntity.geometry().center());
+        }
+        BOOST_CHECK( (faceToCoord == expectedFaceToCoord1) || (faceToCoord == expectedFaceToCoord2) );        
+    }
+}
+
+void checkNewRefinedFaces(const Dune::CpGrid& grid,
+                          const Dune::cpgrid::CpGridData& refinedGridData,
+                          const std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>>& selectedFaceToCoord,
+                          int repeatedFaceType)
+{
     
-    BOOST_CHECK_EQUAL(refinedFaceToCoord.size(), expectedSortedNewFace.size());
+    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-    for (std::size_t i = 0; i < expectedSortedNewFace.size(); ++i) {
-        BOOST_CHECK_EQUAL(refinedFaceToCoord[i], expectedSortedNewFace[i]);
+        const auto& cellToFace = refinedGridData.cellToFace(refinedElem.index());
+        const auto classifiedFaces = Opm::Lgr::classifyAndCollectFaceIndices(refinedGridData, refinedElem);
+
+        if (selectedFaceToCoord[refinedElem.index()].size() == 2) {
+
+            BOOST_CHECK_EQUAL( cellToFace.size(), 7);
+
+            checkFaceCountPerType(repeatedFaceType,
+                                  /* expectedRepeatedFaceTypeCount = */ 2,
+                                  classifiedFaces);
+
+            checkFaceToCoord(refinedGridData,
+                             classifiedFaces[repeatedFaceType], 
+                             selectedFaceToCoord[refinedElem.index()][0],
+                             selectedFaceToCoord[refinedElem.index()][1]);
+            
+        }
+        else if (selectedFaceToCoord[refinedElem.index()].size() == 1){
+            
+            BOOST_CHECK_EQUAL( cellToFace.size(), 6);
+            
+            checkFaceCountPerType(/* repeatedFaceType = */ -1, // invalid face type
+                                  /* expectedRepeatedFaceTypeCount = */ 0, 
+                                  classifiedFaces);
+
+            checkFaceToCoord(refinedGridData,
+                             classifiedFaces[repeatedFaceType], 
+                             selectedFaceToCoord[refinedElem.index()][0],
+                             selectedFaceToCoord[refinedElem.index()][0]); // same, here there is no repeaetd face
+        }
+        else {
+            BOOST_CHECK(selectedFaceToCoord[refinedElem.index()].empty());
+            BOOST_CHECK_EQUAL( cellToFace.size(), 6);
+            
+            checkFaceCountPerType(/* repeatedFaceType = */ -1, // invalid face type
+                                  /* expectedRepeatedFaceTypeCount = */ 0, 
+                                  classifiedFaces);
+        }
     }
 }
 
@@ -161,41 +237,41 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
 
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
-    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
-    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    vanishedRefinedFaceToNewRefinedFaces.resize(52);
-    std::vector<bool> wrongRefinedCells(refinedGridData.size(0));
-
-
-    std::vector<int> fullyContainedInParentFace{};
-    fullyContainedInParentFace.resize(refinedGridData.numFaces());
-                                   
-    std::cout<< refinedGridData.size(3) << " vertices in LGR1 " << std::endl;
     BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
-    // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,1) --(6,2,1)-(6,4,1)--(6,6,1)
-    
-    std::cout<< refinedGridData.numFaces() << " faces in LGR1 " << std::endl;
-    //BOOST_CHECK_EQUAL( refinedGridData.numFaces(), ); // 52-3+6 = 55 faces
-      
-    
+    // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,1), (6,2,1), (6,4,1), and (6,6,1).
+    BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
+    // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
+    // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
+
+
+    // Originally, the element not involved in refinement
+    // had  7 faces. It's neihgbor in level zero
+    // got refined and the I_FACE that they shared has been
+    // replaced by 6 refined faces. Then, the leaf element has
+    // one of each I+,J-,J+, K-, K+, and 1 coarse + 6 refined I-.
+    checkFaceCountInLeafCoarseElem(grid,
+                                   /* expectedTotalFaceCount = */ 12,
+                                   /* repeatedFaceType = */ 0, // 0->I-
+                                   /* expoectedRepeatedFaceTypeCount = */ 7);
+
+    // Collect the expected data to later on check
+    std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
+    selectedFaceToCoord.resize(grid.levelGridView(1).size(0));
+
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
-     
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::vector<Coordinate> expectedNewFaceInFace2{}; // {vertex '0', vertex '1', vertex '2', vertex '3'}
-        std::vector<Coordinate> expectedNewFaceInFace1{};
+        
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{}; // {vertex '0', vertex '1', vertex '2', vertex '3'}
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace1{};
         // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
         //
         //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-        //                   |             |                        
+        //                   |             |
         //                   |             |
         //             jk <-'0' --------- '1'-> (j+1)k
 
         if (refinedElem.index() ==  1){
-            expectedVertices = {{6.,0.,1.}, {6., 2., 1.}};
             // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
             //      (6,0,4) **(6,2,4)
             //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
@@ -203,19 +279,13 @@ PORO
             //      (6,0,1) --(6,2,1)
             //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
             //      (6,0,0) --(6,2,0)
-            expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,4}, {6,0,4}}; 
+            expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,4}, {6,0,4}};
             expectedNewFaceInFace1 = {{6,0,0}, {6,2,0}, {6,2,1}, {6,0,1}};
 
-            // const auto& overlapFaces = allOverlapFaces.at( /* parent face index */ 2);
-
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, 2, expectedNewFaceInFace2);
-            //checkOverlapNewFace(overlapFaces,  1, expectedNewFaceInFace1);
+            selectedFaceToCoord[1].push_back(expectedNewFaceInFace2);
+            selectedFaceToCoord[1].push_back(expectedNewFaceInFace1);
         }
         else if (refinedElem.index() ==  3){
-            expectedVertices = {{6., 2., 1.}, {6., 4.,1.}};
-
             // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
             //      (6,2,4) **(6,4,4)
             //         |         *        I_FACE, true with vertices (6,2,1),(6,4,1),(6,4,4),(6,2,4)
@@ -226,14 +296,10 @@ PORO
             expectedNewFaceInFace2 = {{6,2,1},{6,4,1},{6,4,4},{6,2,4}};
             expectedNewFaceInFace1 = {{6,2,0},{6,4,0},{6,4,1},{6,2,1}};
 
-            //            BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            //checkOverlapNewFace(overlapFaces, 2, expectedNewFaceInFace2);
-            // checkOverlapNewFace(overlapFaces, 1, expectedNewFaceInFace1);
+            selectedFaceToCoord[3].push_back(expectedNewFaceInFace2);
+            selectedFaceToCoord[3].push_back(expectedNewFaceInFace1);
         }
         else if (refinedElem.index() ==  5){
-            expectedVertices = {{6., 4.,1.}, {6.,6.,1.}};
-
             // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
             //      (6,4,4) **(6,6,4)
             //         |         *        I_FACE, true with vertices (6,4,1),(6,6,1),(6,6,4),(6,4,4)
@@ -244,35 +310,28 @@ PORO
             expectedNewFaceInFace2 = {{6,4,1},{6,6,1},{6,6,4},{6,4,4}};
             expectedNewFaceInFace1 = {{6,4,0},{6,6,0},{6,6,1},{6,4,1}};
 
-            //            BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            //checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 1, expectedNewFaceInFace1);
+            selectedFaceToCoord[5].push_back(expectedNewFaceInFace2);
+            selectedFaceToCoord[5].push_back(expectedNewFaceInFace1);
         }
-        else if (refinedElem.index() ==  7) { 
+        else if (refinedElem.index() ==  7) {
             expectedNewFaceInFace2 = {{6,0,4}, {6,2,4}, {6,2,8}, {6,0,8}};
-            //  BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[7].push_back(expectedNewFaceInFace2);
         }
-        else if (refinedElem.index() ==  9) { 
+        else if (refinedElem.index() ==  9) {
             expectedNewFaceInFace2 = {{6,2,4}, {6,4,4}, {6,4,8}, {6,2,8}};
-            //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            //checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[9].push_back(expectedNewFaceInFace2);
         }
-        else if (refinedElem.index() ==  11) { 
+        else if (refinedElem.index() ==  11) {
             expectedNewFaceInFace2 = {{6,4,4}, {6,6,4}, {6,6,8}, {6,4,8}};
-            //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[11].push_back(expectedNewFaceInFace2);
         }
-        else {
-            //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 0);
-        }
-        // checkNewVertices(collectedVertices, expectedVertices); // expectedVertices is empty if refinedElem.index() != 1, 3, or 5
     }
+    checkNewRefinedFaces(grid, refinedGridData,
+                         selectedFaceToCoord, /* repeatedFaceType = */ 1); // 1-> I+
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -359,49 +418,40 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
 
-    int numFaces = 52;
+    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
-    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
-    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,8), (6,2,8), (6,4,8), and (6,6,8).
+    BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
+    // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
+    // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
 
-    std::vector<int> fullyContainedInParentFace{};
-    fullyContainedInParentFace.resize(refinedGridData.numFaces());
+    // Originally, the element not involved in refinement
+    // had  7 faces. It's neihgbor in level zero
+    // got refined and the I_FACE that they shared has been
+    // replaced by 6 refined faces. Then, the leaf element has
+    // 1 of each I-,J-,J+, K-, K+, and 1 coarse + 6 refined I+.
+    checkFaceCountInLeafCoarseElem(grid,
+                                   /* expectedTotalFaceCount = */ 12,
+                                   /* repeatedFaceType = */ 1, // 1->I+
+                                   /* expoectedRepeatedFaceTypeCount = */ 7);
 
-    vanishedRefinedFaceToNewRefinedFaces.resize(52);
-  
+    // Collect the expected data to later on check
+    std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
+    selectedFaceToCoord.resize(grid.levelGridView(1).size(0));
 
-    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
+    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) { 
 
-        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                refinedElem,
-                                                                                parentGridData,
-                                                                                parentElem,
-                                                                                vertexToIdx,
-                                                                                existingVtxInCoarseGridToItsIdx,
-                                                                                refinedFaceIdx_to_parentFaceIdx,
-                                                                                allOverlapFaces,
-                                                                                vanishedRefinedFaceToNewRefinedFaces,
-                                                                                fullyContainedInParentFace);
-    }
-
-    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
-
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::vector<Coordinate> expectedNewFaceInFace3{};
-        std::vector<Coordinate> expectedNewFaceInFace2{};
+        std::set<Coordinate, Opm::Lgr::FieldVectorLess> expectedNewFaceInFace3{};
+        std::set<Coordinate, Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{};
         // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
         //
         //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-        //                   |             |                        
+        //                   |             |
         //                   |             |
         //             jk <-'0' --------- '1'-> (j+1)k
 
         if (refinedElem.index() ==  6){
-            expectedVertices = {{6.,0.,8.}, {6., 2., 8.}};
-
             // this element has to have 7 faces: 1 I+,J-,J+,K-,K+, and 2 I-:
             //      (6,0,9) --(6,2,9)
             //         |         *        I_FACE, false with vertices (6,0,8),(6,2,8),(6,2,9),(6,0,9)
@@ -412,14 +462,10 @@ PORO
             expectedNewFaceInFace3 = {{6,0,8},{6,2,8},{6,2,9},{6,0,9}};
             expectedNewFaceInFace2 = {{6,0,5},{6,2,5},{6,2,8},{6,0,8}};
 
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 3, expectedNewFaceInFace3);
-            //checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[6].push_back(expectedNewFaceInFace3);
+            selectedFaceToCoord[6].push_back(expectedNewFaceInFace2);
         }
         else if (refinedElem.index() ==  8){
-            expectedVertices = {{6., 2., 8.}, {6., 4.,8.}};
-
             // this element has to have 7 faces: 1 I+,J-,J+,K-,K+, and 2 I-:
             //      (6,2,9) --(6,4,9)
             //         |         *        I_FACE, false with vertices (6,2,8),(6,4,8),(6,4,9),(6,2,9)
@@ -430,15 +476,10 @@ PORO
             expectedNewFaceInFace3 = {{6,2,8},{6,4,8},{6,4,9},{6,2,9}};
             expectedNewFaceInFace2 = {{6,2,5},{6,4,5},{6,4,8},{6,2,8}};
 
-
-            //            BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 3, expectedNewFaceInFace3);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[8].push_back(expectedNewFaceInFace3);
+            selectedFaceToCoord[8].push_back(expectedNewFaceInFace2);
         }
         else if (refinedElem.index() ==  10){
-            expectedVertices = {{6., 4.,8.}, {6.,6.,8.}};
-
             // this element has to have 7 faces: 1 I+,J-,J+,K-,K+, and 2 I-:
             //      (6,4,9) --(6,6,9)
             //         |         *        I_FACE, false with vertices (6,4,8),(6,6,8),(6,6,9),(6,4,9)
@@ -449,34 +490,27 @@ PORO
             expectedNewFaceInFace3 = {{6,4,8},{6,6,8},{6,6,9},{6,4,9}};
             expectedNewFaceInFace2 = {{6,4,5},{6,6,5},{6,6,8},{6,4,8}};
 
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 3, expectedNewFaceInFace3);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[10].push_back(expectedNewFaceInFace3);
+            selectedFaceToCoord[10].push_back(expectedNewFaceInFace2);
         }
-        else if (refinedElem.index() ==  0) { 
+        else if (refinedElem.index() ==  0) {
             expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,5}, {6,0,5}};
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[0].push_back(expectedNewFaceInFace2);
         }
-        else if (refinedElem.index() ==  2) { 
+        else if (refinedElem.index() ==  2) {
             expectedNewFaceInFace2 = {{6,2,1}, {6,4,1}, {6,4,5}, {6,2,5}};
-            //  BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[2].push_back(expectedNewFaceInFace2);
         }
-        else if (refinedElem.index() ==  4) { 
+        else if (refinedElem.index() ==  4) {
             expectedNewFaceInFace2 = {{6,4,1}, {6,6,1}, {6,6,5}, {6,4,5}};
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 2, expectedNewFaceInFace2);
+            selectedFaceToCoord[4].push_back(expectedNewFaceInFace2);
         }
-        else {
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 0);
-        }
-        // checkNewVertices(collectedVertices, expectedVertices); // expectedVertices empty if refinedElem.index() != 6,8, or 10
     }
+    checkNewRefinedFaces(grid, refinedGridData,
+                         selectedFaceToCoord, /* repeatedFaceType = */ 0); // 0-> I-
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true,*boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)
 {
     // Level zero grid dims = 1x2x1
     //
@@ -564,48 +598,40 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
 
-    int numFaces = 52;
+    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
+
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    // LGR1 dims 3x2x2 -> 4x3x3 vertices + 4 extra missing vertices  (0,6,1), (2,6,1), (4,6,1), and (6,6,1).
+    BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
+    // LGR1 dims 3x2x2 -> 52 faces (before correction due to missing points)
+    // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
+
+    // Originally, the element not involved in refinement
+    // had  7 faces. It's neihgbor in level zero
+    // got refined and the I_FACE that they shared has been
+    // replaced by 6 refined faces. Then, the leaf element has
+    // one of each I-,I+,J+, K-, K+, and 1 coarse + 6 refined J-.
+    checkFaceCountInLeafCoarseElem(grid,
+                                   /* expectedTotalFaceCount = */ 12,
+                                   /* repeatedFaceType = */ 2, // 2->J-
+                                   /* expoectedRepeatedFaceTypeCount = */ 7);
     
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
-    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
-    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
-
-    std::vector<int> fullyContainedInParentFace{};
-    fullyContainedInParentFace.resize(refinedGridData.numFaces());
-
-    vanishedRefinedFaceToNewRefinedFaces.resize(52);
-
+    // Collect the expected data to later on check
+    std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
+    selectedFaceToCoord.resize(grid.levelGridView(1).size(0));
+    
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                refinedElem,
-                                                                                parentGridData,
-                                                                                parentElem,
-                                                                                vertexToIdx,
-                                                                                existingVtxInCoarseGridToItsIdx,
-                                                                                refinedFaceIdx_to_parentFaceIdx,
-                                                                                allOverlapFaces,
-                                                                                vanishedRefinedFaceToNewRefinedFaces,
-                                                                                fullyContainedInParentFace);
-    }
-
-    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
-
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::vector<Coordinate> expectedNewFaceInFace6{};
-        std::vector<Coordinate> expectedNewFaceInFace5{};
+        std::set<Coordinate, Opm::Lgr::FieldVectorLess> expectedNewFaceInFace6{};
+        std::set<Coordinate, Opm::Lgr::FieldVectorLess> expectedNewFaceInFace5{};
         // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
         //
         //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-        //                   |             |                        
+        //                   |             |
         //                   |             |
         //             ik <-'1' --------- '0'-> (i+1)k
 
         if (refinedElem.index() ==  3){
-            expectedVertices = {{0.,6.,1.}, {2., 6., 1.}};
-
             // this element has to have 7 faces: 1 I-,I+,J-,K-,K+, and 2 J+:
             //      (0,6,4) **(2,6,4)
             //         |         *        J_FACE, true with vertices (0,6,1),(2,6,1),(2,6,4),(,6,4)
@@ -613,17 +639,13 @@ PORO
             //      (0,6,1) --(2,6,1)
             //         |         *        J_FACE, true with vertices (0,6,0),(2,6,0),(2,6,1),(0,6,1)
             //      (0,6,0) --(2,6,0)
-            expectedNewFaceInFace6 = {{2,6,1}, {0,6,1}, {0,6,4}, {2,6,4}}; 
-            expectedNewFaceInFace5 = {{2,6,0}, {0,6,0}, {0,6,1}, {2,6,1}}; 
+            expectedNewFaceInFace6 = {{2,6,1}, {0,6,1}, {0,6,4}, {2,6,4}};
+            expectedNewFaceInFace5 = {{2,6,0}, {0,6,0}, {0,6,1}, {2,6,1}};
 
-            //   BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
-            /// checkOverlapNewFace(overlapFaces, /* parent face index */ 5, expectedNewFaceInFace5);
+            selectedFaceToCoord[3].push_back(expectedNewFaceInFace6);
+            selectedFaceToCoord[3].push_back(expectedNewFaceInFace5);
         }
         else if (refinedElem.index() == 4){
-            expectedVertices = {{2., 6., 1.}, {4., 6., 1.}};
-
             // this element has to have 7 faces: 1 I-,I+,J-,K-,K+, and 2 J+:
             //      (2,6,4) **(4,6,4)
             //         |         *        J_FACE, true with vertices (2,6,1),(4,6,1),(4,6,4),(2,6,4)
@@ -631,17 +653,13 @@ PORO
             //      (2,6,1) --(4,6,1)
             //         |         *        J_FACE, true with vertices (2,6,0),(4,6,0),(4,6,1),(2,6,1)
             //      (2,6,0) --(4,6,0)
-            expectedNewFaceInFace6 = {{4,6,1}, {2,6,1}, {2,6,4}, {4,6,4}}; 
+            expectedNewFaceInFace6 = {{4,6,1}, {2,6,1}, {2,6,4}, {4,6,4}};
             expectedNewFaceInFace5 = {{4,6,0}, {2,6,0}, {2,6,1}, {4,6,1}};
 
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 5, expectedNewFaceInFace5);
+            selectedFaceToCoord[4].push_back(expectedNewFaceInFace6);
+            selectedFaceToCoord[4].push_back(expectedNewFaceInFace5);
         }
         else if (refinedElem.index() == 5){
-            expectedVertices = {{4., 6.,1.}, {6.,6.,1.}};
-
             // this element has to have 7 faces: 1 I-,I+,J-,K-,K+, and 2 J+:
             //      (4,6,4) **(6,6,4)
             //         |         *        J_FACE, true with vertices (4,6,1),(6,6,1),(6,6,4),(4,6,4)
@@ -649,38 +667,31 @@ PORO
             //      (4,6,1) --(6,6,1)
             //         |         *        J_FACE, true with vertices (4,6,0),(6,6,0),(6,6,1),(4,6,1)
             //      (4,6,0) --(6,6,0)
-            expectedNewFaceInFace6 = {{6,6,1}, {4,6,1}, {4,6,4}, {6,6,4}}; 
+            expectedNewFaceInFace6 = {{6,6,1}, {4,6,1}, {4,6,4}, {6,6,4}};
             expectedNewFaceInFace5 = {{6,6,0}, {4,6,0}, {4,6,1}, {6,6,1}};
 
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 5, expectedNewFaceInFace5);
+            selectedFaceToCoord[5].push_back(expectedNewFaceInFace6);
+            selectedFaceToCoord[5].push_back(expectedNewFaceInFace5);
         }
-        else if (refinedElem.index() ==  9) { 
+        else if (refinedElem.index() ==  9) {
             expectedNewFaceInFace6 = {{2,6,4}, {0,6,4}, {0,6,8}, {2,6,8}};
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[9].push_back(expectedNewFaceInFace6);
         }
-        else if (refinedElem.index() ==  10) { 
+        else if (refinedElem.index() ==  10) {
             expectedNewFaceInFace6 = {{4,6,4}, {2,6,4}, {2,6,8}, {4,6,8}};
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[10].push_back(expectedNewFaceInFace6);
         }
-        else if (refinedElem.index() ==  11) { 
+        else if (refinedElem.index() ==  11) {
             expectedNewFaceInFace6 = {{6,6,4}, {4,6,4}, {4,6,8}, {6,6,8}};
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[11].push_back(expectedNewFaceInFace6);
         }
-        else {
-            //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 0);
-        }
-        // checkNewVertices(collectedVertices, expectedVertices);  // expectedVertices is empty if refinedElem.index() != 3,4, or 5
     }
+    checkNewRefinedFaces(grid, refinedGridData,
+                         selectedFaceToCoord, /* repeatedFaceType = */ 3); // 3-> J+
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)
 {
     // Level zero grid dims = 1x2x1
     //
@@ -767,50 +778,40 @@ PORO
     const auto& parentGridData = *grid.currentData()[0];
     const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
 
-    int numFaces = 52;
-    
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
-    std::map<int, std::vector<std::vector<Dune::FieldVector<double,3>>>> allOverlapFaces{};
-    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
-    std::vector<std::vector<int>> refinedFaceIdx_to_parentFaceIdx{};
+    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    std::vector<int> fullyContainedInParentFace{};
-    fullyContainedInParentFace.resize(refinedGridData.numFaces());
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    // LGR1 dims 3x2x2 -> 4x3x3 vertices + 4 extra missing vertices  (0,6,8), (2,6,8), (4,6,8), and (6,6,8).
+    BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
+    // LGR1 dims 3x2x2 -> 52 faces (before correction due to missing points)
+    // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
 
+    // Originally, the element not involved in refinement
+    // had  7 faces. It's neihgbor in level zero
+    // got refined and the I_FACE that they shared has been
+    // replaced by 6 refined faces. Then, the leaf element has
+    // one of each I-,I+,J-, K-, K+, and 1 coarse + 6 refined J+.
+    checkFaceCountInLeafCoarseElem(grid,
+                                   /* expectedTotalFaceCount = */ 12,
+                                   /* repeatedFaceType = */ 3, // 3->J+
+                                   /* expoectedRepeatedFaceTypeCount = */ 7);
 
-    vanishedRefinedFaceToNewRefinedFaces.resize(52);
-    std::vector<bool> wrongRefinedCells(refinedGridData.size(0));
-
-    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
-
-        const auto collectedVertices = Opm::Lgr::collectNewVertices<Coordinate>(refinedGridData,
-                                                                                refinedElem,
-                                                                                parentGridData,
-                                                                                parentElem,
-                                                                                vertexToIdx,
-                                                                                existingVtxInCoarseGridToItsIdx,
-                                                                                refinedFaceIdx_to_parentFaceIdx,
-                                                                                allOverlapFaces,
-                                                                                vanishedRefinedFaceToNewRefinedFaces,
-                                                                                fullyContainedInParentFace);
-    }
+    // Collect the expected data to later on check
+    std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
+    selectedFaceToCoord.resize(grid.levelGridView(1).size(0));
 
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices{};
-        std::vector<Coordinate> expectedNewFaceInFace7{};
-        std::vector<Coordinate> expectedNewFaceInFace6{};
+        std::set<Coordinate, Opm::Lgr::FieldVectorLess> expectedNewFaceInFace7{};
+        std::set<Coordinate, Opm::Lgr::FieldVectorLess> expectedNewFaceInFace6{};
         // Vertex order in J_FACE: 0->(i+1)k, 1-> ik, 2->i(k+1), 3->(i+1)(k+1)
         //
         //         i(k+1) <-'2' --------- '3'-> (i+1)(k+1)
-        //                   |             |                        
+        //                   |             |
         //                   |             |
         //             ik <-'1' --------- '0'-> (i+1)k
 
-        if (refinedElem.index() ==  6){
-            expectedVertices = {{0.,6.,8.}, {2., 6., 8.}};
-
+        if (refinedElem.index() ==  6) {
             // this element has to have 7 faces: 1 I-,I+,J+,K-,K+, and 2 J-:
             //      (0,6,9) --(2,6,9)
             //         |         *        J_FACE, false with vertices (0,6,8),(2,6,8),(2,6,9),(0,6,9)
@@ -818,17 +819,13 @@ PORO
             //         |         *        J_FACE, false with vertices (0,6,5),(2,6,5),(2,6,8),(0,6,8)
             //         |         *
             //      (0,6,5) --(2,6,5)
-            expectedNewFaceInFace7 = {{2,6,8}, {0,6,8}, {0,6,9}, {2,6,9}}; 
+            expectedNewFaceInFace7 = {{2,6,8}, {0,6,8}, {0,6,9}, {2,6,9}};
             expectedNewFaceInFace6 = {{2,6,5}, {0,6,5}, {0,6,8}, {2,6,8}};
 
-            //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 7, expectedNewFaceInFace7);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[6].push_back(expectedNewFaceInFace7);
+            selectedFaceToCoord[6].push_back(expectedNewFaceInFace6);
         }
-        else if (refinedElem.index() == 7){
-            expectedVertices = {{2., 6., 8.}, {4., 6., 8.}};
-
+        else if (refinedElem.index() == 7) {
             // this element has to have 7 faces: 1 I-,I+,J+,K-,K+, and 2 J-:
             //      (2,6,9) --(4,6,9)
             //         |         *        J_FACE, false with vertices (2,6,8),(4,6,8),(4,6,9),(2,6,9)
@@ -836,17 +833,13 @@ PORO
             //         |         *        J_FACE, false with vertices (2,6,5),(4,6,5),(4,6,8),(2,6,8)
             //         |         *
             //      (2,6,5) --(4,6,5)
-            expectedNewFaceInFace7 = {{4,6,8}, {2,6,8}, {2,6,9}, {4,6,9}}; 
+            expectedNewFaceInFace7 = {{4,6,8}, {2,6,8}, {2,6,9}, {4,6,9}};
             expectedNewFaceInFace6 = {{4,6,5}, {2,6,5}, {2,6,8}, {4,6,8}};
 
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 7, expectedNewFaceInFace7);
-           // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[7].push_back(expectedNewFaceInFace7);
+            selectedFaceToCoord[7].push_back(expectedNewFaceInFace6);
         }
-        else if (refinedElem.index() == 8){
-            expectedVertices = {{4., 6., 8.}, {6.,6.,8.}};
-
+        else if (refinedElem.index() == 8) {
             // this element has to have 7 faces: 1 I-,I+,J+,K-,K+, and 2 J-:
             //      (4,6,9) --(6,6,9)
             //         |         *        J_FACE, false with vertices (4,6,8),(6,6,8),(6,6,9),(4,6,9)
@@ -857,30 +850,22 @@ PORO
             expectedNewFaceInFace7 = {{6,6,8}, {4,6,8}, {4,6,9}, {6,6,9}};
             expectedNewFaceInFace6 = {{6,6,5}, {4,6,5}, {4,6,8}, {6,6,8}};
 
-            //BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 2);
-
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 7, expectedNewFaceInFace7);
-            // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[8].push_back(expectedNewFaceInFace7);
+            selectedFaceToCoord[8].push_back(expectedNewFaceInFace6);
         }
-        else if (refinedElem.index() ==  0) { 
+        else if (refinedElem.index() ==  0) {
             expectedNewFaceInFace6 = {{2,6,1}, {0,6,1}, {0,6,5}, {2,6,5}};
-            //   BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-            //  checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+            selectedFaceToCoord[0].push_back(expectedNewFaceInFace6);
         }
-         else if (refinedElem.index() ==  1) { 
-             expectedNewFaceInFace6 = {{4,6,1}, {2,6,1}, {2,6,5}, {4,6,5}};
-             // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-             // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        else if (refinedElem.index() ==  1) {
+            expectedNewFaceInFace6 = {{4,6,1}, {2,6,1}, {2,6,5}, {4,6,5}};
+            selectedFaceToCoord[1].push_back(expectedNewFaceInFace6);
         }
-         else if (refinedElem.index() ==  2) {
-             expectedNewFaceInFace6 = {{6,6,1},{4,6,1}, {4,6,5}, {6,6,5}};
-             // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 1);
-             // checkOverlapNewFace(overlapFaces, /* parent face index */ 6, expectedNewFaceInFace6);
+        else if (refinedElem.index() ==  2) {
+            expectedNewFaceInFace6 = {{6,6,1},{4,6,1}, {4,6,5}, {6,6,5}};
+            selectedFaceToCoord[2].push_back(expectedNewFaceInFace6);
         }
-        else {
-            // BOOST_CHECK_EQUAL( overlapFaces.size(), /*expectedNewFacesSize */ 0);
-        }
-
-        // checkNewVertices(collectedVertices, expectedVertices);  // expectedVertices is empty if refinedElem.index() != 3,4, or 5
     }
+    checkNewRefinedFaces(grid, refinedGridData,
+                         selectedFaceToCoord, /* repeatedFaceType = */ 2); // 2-> J-
 }
