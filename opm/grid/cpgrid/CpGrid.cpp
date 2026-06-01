@@ -2007,6 +2007,9 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
 
     std::vector<std::vector<std::vector<int>>> singleCellRef_refinedFace_to_parentFaces{};
     singleCellRef_refinedFace_to_parentFaces.resize(currentLeafData().size(0));
+
+    std::vector<std::vector<bool>> singleCellRef_coincideWithCoarseCorner{};
+    singleCellRef_coincideWithCoarseCorner.resize(currentLeafData().size(0));
     
     // Ignore marked aquifer cells/connections in globalRefine()/adapt(); throw in addLgrsUpdateLeafView()/autoRef().
     Opm::Lgr::filterMarkedAquiferCellsAndConnections(*this, throwOnFailure); 
@@ -2031,7 +2034,8 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                                       /* Additional parameters */
                                                       cells_per_dim_vec,
                                                       singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
-                                                      singleCellRef_refinedFace_to_parentFaces);
+                                                      singleCellRef_refinedFace_to_parentFaces,
+                                                      singleCellRef_coincideWithCoarseCorner);
 
 #if HAVE_MPI
     auto global_markedElem_count = comm().sum(markedElem_count);
@@ -2102,7 +2106,8 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                              cornerInMarkedElemWithEquivRefinedCorner,
                                              faceInMarkedElemAndRefinedFaces,
                                              cells_per_dim_vec,
-                                             singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
+                                             singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                                             singleCellRef_coincideWithCoarseCorner);
 
     // --- Adapted corners and PreAdapt corners relations ---
     std::map<std::array<int,2>,int>           elemLgrAndElemLgrCorner_to_adaptedCorner;
@@ -2122,7 +2127,8 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                       vanishedRefinedCorner_to_itsLastAppearance,
                                       faceInMarkedElemAndRefinedFaces,
                                       cells_per_dim_vec,
-                                      singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
+                                      singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                                      singleCellRef_coincideWithCoarseCorner);
 
     // FACES
     // Stablish relationships between PreAdapt faces and refined or adapted ones ---
