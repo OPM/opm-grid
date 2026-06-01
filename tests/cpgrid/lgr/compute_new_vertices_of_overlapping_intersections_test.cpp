@@ -239,7 +239,7 @@ PORO
 
     BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
     // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,1), (6,2,1), (6,4,1), and (6,6,1).
     BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
     // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
@@ -328,6 +328,14 @@ PORO
     }
     checkNewRefinedFaces(grid, refinedGridData,
                          selectedFaceToCoord, /* repeatedFaceType = */ 1); // 1-> I+
+
+    std::cout<< grid.levelGridView(0).size(3) << " level 0 vertices " <<std::endl;
+    std::cout<< grid.levelGridView(1).size(3) << " level 1 vertices " <<std::endl;
+    std::cout<< grid.leafGridView().size(3) << " leaf vertices " <<std::endl;
+
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{2,3,2}},
+                           /* lgr_name_vec = */ {"LGR1"});
 }
 
 
@@ -420,7 +428,7 @@ PORO
 
     BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
     // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,8), (6,2,8), (6,4,8), and (6,6,8).
     BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
     // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
@@ -508,6 +516,10 @@ PORO
     }
     checkNewRefinedFaces(grid, refinedGridData,
                          selectedFaceToCoord, /* repeatedFaceType = */ 0); // 0-> I-
+    
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{2,3,2}},
+                           /* lgr_name_vec = */ {"LGR1"});
 }
 
 BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)
@@ -600,7 +612,7 @@ PORO
 
     BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
     // LGR1 dims 3x2x2 -> 4x3x3 vertices + 4 extra missing vertices  (0,6,1), (2,6,1), (4,6,1), and (6,6,1).
     BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
     // LGR1 dims 3x2x2 -> 52 faces (before correction due to missing points)
@@ -688,6 +700,10 @@ PORO
     }
     checkNewRefinedFaces(grid, refinedGridData,
                          selectedFaceToCoord, /* repeatedFaceType = */ 3); // 3-> J+
+
+     Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{3,2,2}},
+                           /* lgr_name_vec = */ {"LGR1"});
 }
 
 
@@ -780,7 +796,7 @@ PORO
 
     BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
 
-    BOOST_CHECK_EQUAL( refinedGridData.size(3), 42);
+    BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
     // LGR1 dims 3x2x2 -> 4x3x3 vertices + 4 extra missing vertices  (0,6,8), (2,6,8), (4,6,8), and (6,6,8).
     BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
     // LGR1 dims 3x2x2 -> 52 faces (before correction due to missing points)
@@ -868,4 +884,8 @@ PORO
     }
     checkNewRefinedFaces(grid, refinedGridData,
                          selectedFaceToCoord, /* repeatedFaceType = */ 2); // 2-> J-
+    
+     Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{3,2,2}},
+                           /* lgr_name_vec = */ {"LGR1"});
 }

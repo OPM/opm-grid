@@ -115,7 +115,8 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid,/* Marked e
                                             /* Additional parameters */
                                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
-                                            std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
+                                            std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces,
+                                            std::vector<std::vector<bool>>& singleCellRef_coincideWithCoarseCorner);
 
 /// @brief Establish child–parent relations for refined cells:
 ///        - Maps each refined cell (in new refined grids) to its parent cell in the pre-adapt grid(s).
@@ -206,7 +207,8 @@ void identifyRefinedCornersPerLevel(const Dune::cpgrid::CpGridData& current_data
                                     const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                     const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                     const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                    const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
+                                    const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                                    const std::vector<std::vector<bool>>& singleCellRef_coinicideWithCoarseCorner);
 
 /// @brief Check if a refined corner lies in the interior of a single-cell refinement.
 ///
@@ -247,7 +249,8 @@ bool newRefinedCornerLiesOnEdge(const std::array<int,3>& cells_per_dim, int corn
 std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::cpgrid::CpGridData& current_data,
                                                                    const std::array<int,3>& cells_per_dim,
                                                                    int cornerIdxInLgr,
-                                                                   int elemLgr);
+                                                                   int elemLgr,
+                                                                   const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
 
 /// @brief Check if a refined corner lies on the boundary of the single-cell refinement
 ///        and is not a pre-adapt (original) corner.
@@ -296,7 +299,8 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_l
 int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_data,
                                         const std::array<int,3>& cells_per_dim_lgr1,
                                         int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx,
-                                        const std::array<int,3>& cells_per_dim_lgr2);
+                                        const std::array<int,3>& cells_per_dim_lgr2,
+                                        const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
 
 /// @brief Identify corners on the leaf (adapted) grid and establish corner mappings.
 ///
@@ -314,6 +318,21 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_
 /// @param [in] vanishedRefinedCorner_to_itsLastAppearance
 /// @param [in] faceInMarkedElemAndRefinedFaces
 /// @param [in] cells_per_dim_vec
+/*void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
+                             int preAdaptMaxLevel,
+                             std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                             std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                             int& corner_count,
+                             const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                             const std::vector<int>& assignRefinedLevel,
+                             const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                             std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                             const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                             const std::vector<std::vector<bool>>& singleCellRef_coincideWithCoarseCorner);*/
+
+
 void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
                              int preAdaptMaxLevel,
                              std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
@@ -325,7 +344,8 @@ void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
                              std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
                              const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                              const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                             const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
+                             const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                             const std::vector<std::vector<bool>>& singleCellRef_coincideWithCoarseCorner);
 
 void markVanishedCorner(const std::array<int,2>& vanished,
                         const std::array<int,2>& lastAppearance,
@@ -359,7 +379,9 @@ void processEdgeCorners(int elemIdx,
                         int preAdaptMaxLevel,
                         const std::vector<int>& assignRefinedLevel,
                         const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                        const std::vector<std::array<int,3>>& cells_per_dim_vec);
+                        const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                        const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                        const std::vector<bool>& coincideWithCoarseCorner);
 
 void processEdgeCorners(int elemIdx,
                         int shiftedLevel,
@@ -372,7 +394,9 @@ void processEdgeCorners(int elemIdx,
                         int preAdaptMaxLevel,
                         const std::vector<int>& assignRefinedLevel,
                         const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                        const std::vector<std::array<int,3>>& cells_per_dim_vec);
+                        const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                        const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
+                        const std::vector<bool>& coincideWithCoarseCorner);
 
 
 void processBoundaryCorners(int elemIdx,
@@ -388,7 +412,8 @@ void processBoundaryCorners(int elemIdx,
                             const std::vector<int>& assignRefinedLevel,
                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                            const std::vector<std::unordered_map<int,int>>& extraRefCornIdx_to_parentFaceIdx);
+                            const std::vector<std::unordered_map<int,int>>& extraRefCornIdx_to_parentFaceIdx,
+                            const std::vector<bool>& coincideWithCoarseCorner);
 
 void processBoundaryCorners(int elemIdx, int shiftedLevel,
                             const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
@@ -401,7 +426,8 @@ void processBoundaryCorners(int elemIdx, int shiftedLevel,
                             const std::vector<int>& assignRefinedLevel,
                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                            const std::vector<std::unordered_map<int,int>>& extraRefCornIdx_to_parentFaceIdx);
+                            const std::vector<std::unordered_map<int,int>>& extraRefCornIdx_to_parentFaceIdx,
+                            const std::vector<bool>& coincideWithCoarseCorner);
 
 // To insert bidirectional mapping and increment counter
 // keyB is equal to counter, before it gets increased by one.
@@ -1389,6 +1415,9 @@ void assignCorrectChildFace(bool                                             noC
                             const std::unordered_map<int, std::vector<int>>& vanishedFaceToNewFaces,
                             const std::vector<std::vector<int>>&             parentFace_to_correctRefinedFaces,
                             const std::vector<int>&                          fullyContainedInParentFace);
+
+std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> getAllVerticesOfCellFaces(const Dune::cpgrid::CpGridData& gridData,
+                                                                                      const Dune::cpgrid::Entity<0>& element);
 
 void provideRefinementParentFaceIdxRelations(bool                                                        noCorrectionNeeded,
                                              const std::array<std::vector<int>, 6>&                      classifiedFaces,

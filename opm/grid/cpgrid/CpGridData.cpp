@@ -1786,7 +1786,8 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
 std::tuple< const std::shared_ptr<CpGridData>,
             const std::vector<std::array<int,2>>,
             std::unordered_map<int,int>, // extraRefCornIdx_to_parentFaceIdx
-            std::vector<std::vector<int>>>   
+            std::vector<std::vector<int>>,
+            std::vector<bool>>   
 CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                              const int& parent_idx,
                              std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const
@@ -1859,11 +1860,20 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                                                           cells_per_dim,
                                                           // parentFace_to_refinedFaces,
                                                           refinedFace_to_parentFaces,
-                                                          faceInMarkedElemAndRefinedFaces); 
+                                                          faceInMarkedElemAndRefinedFaces);
+        
+        std::vector<bool> coincideWithCoarseCorner{};
+        coincideWithCoarseCorner.resize(refined_grid_ptr->size(3));
+
+        for (const auto& [coarseCornIdx, equivRefCornIdx] : parent_to_refined_corners) {
+            coincideWithCoarseCorner[equivRefCornIdx] = true;
+        }
+        
         return {refined_grid_ptr,
                 parent_to_refined_corners,
                 refinedCornIdx_to_parentFaceIdx,
-                refinedFace_to_parentFaces};
+                refinedFace_to_parentFaces,
+                coincideWithCoarseCorner};
     }
     else {
         // To store the corrected single-cell-refinement data
@@ -1902,10 +1912,25 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                                                           corrected_refined_face_tags,
                                                           corrected_refined_face_normals,
                                                           cells_per_dim);
+
+        std::cout<< corrected_refined_grid.size(3) << " after correction points " << std::endl;
+        for (const auto& [coarseIdx, refinedIdx] : extended_parent_to_refined_corners)
+        {
+            std::cout<< coarseIdx << " coarseIdx, to refinedIdx: " << refinedIdx << std::endl;
+        }
+        
+        std::vector<bool> coincideWithCoarseCorner{};
+        coincideWithCoarseCorner.resize(corrected_refined_grid_ptr->size(3));
+
+        for (const auto& [coarseCornIdx, equivRefCornIdx] : extended_parent_to_refined_corners) {
+            coincideWithCoarseCorner[equivRefCornIdx] = true;
+        }
+        
         return {corrected_refined_grid_ptr,
                 extended_parent_to_refined_corners,
                 refinedCornIdx_to_parentFaceIdx,
-                refinedFace_to_parentFaces};
+                refinedFace_to_parentFaces,
+                coincideWithCoarseCorner};
     }
 }
 
