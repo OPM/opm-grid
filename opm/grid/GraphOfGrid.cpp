@@ -356,6 +356,37 @@ void GraphOfGrid<Grid>::addNeighboringCellsToWells ()
     }
 }
 
+template<typename Grid>
+void GraphOfGrid<Grid>::multiplyWellConnectivity (const std::set<int>& well, const WeightType& factor)
+{
+    // check neighbors of the vertex and
+    // multiply the edges that lead to other well connections
+    for (const auto& conn : well) {
+        if (graph.contains(conn)) {
+            auto& edges = graph[conn].edges;
+            for (auto& edge : edges) {
+                // process only higher IDs, do not search through well twice
+                if (edge.first < conn) {
+                    if (well.find(edge.first) != well.end()) {
+                        edge.second *= factor;
+                        assert(graph.contains(edge.first));
+                        auto& otherEdges = graph[edge.first].edges;
+                        assert(otherEdges.contains(conn));
+                        otherEdges[conn] *= factor;
+                    }
+                }
+            }
+        } else if (wellID(conn)==-1) {
+            OPM_THROW(std::domain_error, "Vertex is not present in the graph of grid.");
+        } else {
+            // conn got contracted into other vertex
+            // note: if conn is the smallest (=identifying) ID of a well,
+            //       graph contains it and everything works fine...
+            OPM_THROW(std::domain_error, "Mixing vertex contraction (addWell) and multiplyWellConnectivity is not supported.");
+        }
+    }
+}
+
 template class GraphOfGrid<Dune::CpGrid>;
 
 } // namespace Opm
