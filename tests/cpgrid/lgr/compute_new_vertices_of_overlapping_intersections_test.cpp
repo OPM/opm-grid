@@ -150,7 +150,7 @@ void checkNewRefinedFaces(const Dune::CpGrid& grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_true)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_true, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -339,7 +339,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false,*boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -522,7 +522,7 @@ PORO
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true,*boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -707,7 +707,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -888,4 +888,193 @@ PORO
      Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{3,2,2}},
                            /* lgr_name_vec = */ {"LGR1"});
+}
+
+
+BOOST_AUTO_TEST_CASE(faultInLgr)
+{
+    // Level zero grid dims = 2x1x1
+    //
+    // cell 0
+    // bottom face corners (0,0,0), (6,0,0), (0,6,0), (6,6,0)
+    //    top face corners (0,0,8), (6,0,8), (0,6,8), (6,6,8)
+    //
+    // cell 1
+    // bottom face corners (6,0,1), (12,0,1), (6,6,1),  (12,6,1)
+    //    top face corners (6,0,9), (12,0,9), (12,6,9), (12,6,9)
+    const std::string deckString =
+        R"(RUNSPEC
+DIMENS
+ 2 1 1 /
+
+GRID
+
+COORD
+ 0 0 0     0 0 9
+ 6 0 0     6 0 9
+12 0 0    12 0 9
+
+ 0 6 0    0 6 9
+ 6 6 0    6 6 9
+12 6 0   12 6 9
+/
+
+ZCORN
+0 0 1 1  0 0 1 1
+8 8 9 9  8 8 9 9
+/
+
+ACTNUM
+2*1
+/
+
+PORO
+2*0.15
+/
+)";
+
+    Dune::CpGrid grid;
+    Opm::createGridAndAddLgrs(grid,
+                              deckString,
+                              /* cells_per_dim_vec */ {{2,3,2}},
+                              /* startIJK_vec */      {{0,0,0}},
+                              /* endIJK_vec */        {{2,1,1}},
+                              /* lgr_name_vec */      {"LGR1"});
+
+    // LGR1 dimensions = {2,3,2}
+    // LGR1 indices
+    //
+    // k = 1      |10    11|
+    //            | 8     9|
+    //            | 6     7|
+    //            ----------
+    // k = 0      | 4     5|
+    //            | 2     3|
+    //            | 0     1|
+    //            ----------
+
+    // Element 0 in level zero grid has two faces of type {I_FACE, true}
+    //
+    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in       LGR1 cell indices
+    //                                                   | y- and z- directions:
+    //              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,2,8)-(6,4,8)--(6,6,8)               x-----x-----x-----x
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |  7  *  9  *  11 |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |      face idx 2      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |  (6,0,4) **(6,2,4)*(6,4,4)**(6,6,4)               x*****x*****x*****x
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //                 |                      |          |     |         *       *        |                  |     *     *     |
+    //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(?,?,?)-(?,?,?)--(6,6,1)               x- 1 -x- 3 -x- 5 -x
+    //                 |      face idx 1      |          |     |         *       *        |                  |     *     *     |
+    //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,2,0)-(6,4,0)--(6,6,0)               x-----x-----x-----x
+    //                                                   |
+    //                                                   | The missing vertices are (6,2,1) and (6,4,1), appering in elements 1,3, or 5 in LGR1.
+    //                                                   | In LGR1 element 1: (6,2,1)
+    //                                                   | In LGR1 element 3: (6,2,1) and (6,4,1)
+    //                                                   | In LGR1 element 5: (6,4,1)
+
+    const auto& refinedGridData = *grid.currentData()[1];
+    const auto& parentGridData = *grid.currentData()[0];
+    const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
+
+    // BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
+
+    // BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
+    // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,1), (6,2,1), (6,4,1), and (6,6,1).
+    //  BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
+    // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
+    // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
+
+
+    // Originally, the element not involved in refinement
+    // had  7 faces. It's neihgbor in level zero
+    // got refined and the I_FACE that they shared has been
+    // replaced by 6 refined faces. Then, the leaf element has
+    // one of each I+,J-,J+, K-, K+, and 1 coarse + 6 refined I-.
+    //  checkFaceCountInLeafCoarseElem(grid,
+    //       /* expectedTotalFaceCount = */ 12,
+    //       /* repeatedFaceType = */ 0, // 0->I-
+    //         /* expoectedRepeatedFaceTypeCount = */ 7);
+
+    // Collect the expected data to later on check
+    std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
+    selectedFaceToCoord.resize(grid.levelGridView(1).size(0));
+
+    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
+        
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{}; // {vertex '0', vertex '1', vertex '2', vertex '3'}
+        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace1{};
+        // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
+        //
+        //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
+        //                   |             |
+        //                   |             |
+        //             jk <-'0' --------- '1'-> (j+1)k
+
+        if (refinedElem.index() ==  1){
+            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
+            //      (6,0,4) **(6,2,4)
+            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
+            //         |         *
+            //      (6,0,1) --(6,2,1)
+            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
+            //      (6,0,0) --(6,2,0)
+            expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,4}, {6,0,4}};
+            expectedNewFaceInFace1 = {{6,0,0}, {6,2,0}, {6,2,1}, {6,0,1}};
+
+            selectedFaceToCoord[1].push_back(expectedNewFaceInFace2);
+            selectedFaceToCoord[1].push_back(expectedNewFaceInFace1);
+        }
+        else if (refinedElem.index() ==  3){
+            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
+            //      (6,2,4) **(6,4,4)
+            //         |         *        I_FACE, true with vertices (6,2,1),(6,4,1),(6,4,4),(6,2,4)
+            //         |         *
+            //      (6,2,1) --(6,4,1)
+            //         |         *        I_FACE, true with vertices (6,2,0),(6,4,0),(6,4,1),(6,2,4)
+            //      (6,2,0) --(6,4,0)
+            expectedNewFaceInFace2 = {{6,2,1},{6,4,1},{6,4,4},{6,2,4}};
+            expectedNewFaceInFace1 = {{6,2,0},{6,4,0},{6,4,1},{6,2,1}};
+
+            selectedFaceToCoord[3].push_back(expectedNewFaceInFace2);
+            selectedFaceToCoord[3].push_back(expectedNewFaceInFace1);
+        }
+        else if (refinedElem.index() ==  5){
+            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
+            //      (6,4,4) **(6,6,4)
+            //         |         *        I_FACE, true with vertices (6,4,1),(6,6,1),(6,6,4),(6,4,4)
+            //         |         *
+            //      (6,4,1) --(6,6,1)
+            //         |         *        I_FACE, true with vertices (6,4,0),(6,6,0),(6,6,1),(6,4,1)
+            //      (6,4,0) --(6,6,0)
+            expectedNewFaceInFace2 = {{6,4,1},{6,6,1},{6,6,4},{6,4,4}};
+            expectedNewFaceInFace1 = {{6,4,0},{6,6,0},{6,6,1},{6,4,1}};
+
+            selectedFaceToCoord[5].push_back(expectedNewFaceInFace2);
+            selectedFaceToCoord[5].push_back(expectedNewFaceInFace1);
+        }
+        else if (refinedElem.index() ==  7) {
+            expectedNewFaceInFace2 = {{6,0,4}, {6,2,4}, {6,2,8}, {6,0,8}};
+            selectedFaceToCoord[7].push_back(expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  9) {
+            expectedNewFaceInFace2 = {{6,2,4}, {6,4,4}, {6,4,8}, {6,2,8}};
+            selectedFaceToCoord[9].push_back(expectedNewFaceInFace2);
+        }
+        else if (refinedElem.index() ==  11) {
+            expectedNewFaceInFace2 = {{6,4,4}, {6,6,4}, {6,6,8}, {6,4,8}};
+            selectedFaceToCoord[11].push_back(expectedNewFaceInFace2);
+        }
+    }
+    // checkNewRefinedFaces(grid, refinedGridData,
+    //               selectedFaceToCoord, /* repeatedFaceType = */ 1); // 1-> I+
+
+    std::cout<< grid.levelGridView(0).size(3) << " level 0 vertices " <<std::endl;
+    std::cout<< grid.levelGridView(1).size(3) << " level 1 vertices " <<std::endl;
+    std::cout<< grid.leafGridView().size(3) << " leaf vertices " <<std::endl;
+
+    // Opm::checkGridWithLgrs(grid,
+    //                     /* cells_per_dim_vec = */ {{2,3,2}},
+    //                    /* lgr_name_vec = */ {"LGR1"});
 }

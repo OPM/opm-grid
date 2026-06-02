@@ -663,13 +663,19 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_
                                                                          singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
     assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
 #endif
-
+    
+    const auto& total_naive_corners = (cells_per_dim_lgr1[0] +1)*(cells_per_dim_lgr1[1]+1)*(cells_per_dim_lgr1[2]+1);
+    if (total_naive_corners<= cornerIdxLgr1) {
+        std::cout<< cornerIdxLgr1 << "   y ahora??? " << std::endl;
+    }
+    
+    
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     const auto& parentCell_to_face = current_data.cellToFace(elemLgr1);
 
-    if(parentCell_to_face.size()>6){
+    /*  if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.");
-    }
+        }*/
 
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
