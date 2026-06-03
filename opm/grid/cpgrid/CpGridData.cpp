@@ -1846,13 +1846,13 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
     std::unordered_map<int,int> refinedCornIdx_to_parentFaceIdx{}; // empty for the naive case
     std::vector<std::vector<int>> refinedFace_to_parentFaces{};
 
-    bool noCorrectionNeeded = Opm::Lgr::hasOnlyOneFacePerFaceType(*this, parentCellElem,
+    bool hasOnlyOneFacePerType = Opm::Lgr::hasOnlyOneFacePerFaceType(*this, parentCellElem,
                                                                   classifiedFaces, faceTypeToIdx);
 
-    if(noCorrectionNeeded) { // no further corrections needed in the single-cell-refinement CpGridData object
+    if(hasOnlyOneFacePerType) { // no further corrections needed in the single-cell-refinement CpGridData object
 
         refinedFace_to_parentFaces.resize(refined_grid.numFaces());
-        Opm::Lgr::provideRefinementParentFaceIdxRelations(noCorrectionNeeded,
+        Opm::Lgr::provideRefinementParentFaceIdxRelations(hasOnlyOneFacePerType,
                                                           classifiedFaces,
                                                           faceTypeToIdx,
                                                           *this,
@@ -1892,7 +1892,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         std::vector<std::array<int,2>> extended_parent_to_refined_corners = parent_to_refined_corners;
          // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
 
-        Opm::Lgr::makeSingleCellRefinementParentFaceAware(noCorrectionNeeded,
+        Opm::Lgr::makeSingleCellRefinementParentFaceAware(hasOnlyOneFacePerType,
                                                           classifiedFaces,
                                                           faceTypeToIdx,
                                                           /* singleCellRefinementData */ refined_grid,

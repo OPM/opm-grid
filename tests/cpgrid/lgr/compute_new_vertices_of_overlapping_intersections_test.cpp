@@ -934,12 +934,16 @@ PORO
 )";
 
     Dune::CpGrid grid;
-    Opm::createGridAndAddLgrs(grid,
-                              deckString,
-                              /* cells_per_dim_vec */ {{2,3,2}},
-                              /* startIJK_vec */      {{0,0,0}},
-                              /* endIJK_vec */        {{2,1,1}},
-                              /* lgr_name_vec */      {"LGR1"});
+    Opm::createGridFromDeckString(grid,
+                                  deckString);
+
+
+    // Opm::createGridAndAddLgrs(grid,
+    //                        deckString,
+    //                       /* cells_per_dim_vec */ {{2,3,2}},
+    //                        /* startIJK_vec */      {{0,0,0}},
+    //                            /* endIJK_vec */        {{2,1,1}},
+    //                         /* lgr_name_vec */      {"LGR1"});
 
     // LGR1 dimensions = {2,3,2}
     // LGR1 indices
@@ -974,107 +978,94 @@ PORO
     //                                                   | In LGR1 element 3: (6,2,1) and (6,4,1)
     //                                                   | In LGR1 element 5: (6,4,1)
 
-    const auto& refinedGridData = *grid.currentData()[1];
+    // const auto& refinedGridData = *grid.currentData()[1];
     const auto& parentGridData = *grid.currentData()[0];
-    const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
+    const auto parent0 = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
+    const auto parent1 = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
 
-    // BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
+    int numCoarseFaces = grid.numFaces();
+    BOOST_CHECK_EQUAL( numCoarseFaces, 13);
 
-    // BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
-    // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,1), (6,2,1), (6,4,1), and (6,6,1).
-    //  BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
-    // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
-    // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
+    std::vector<std::vector<std::pair<int, std::vector<int>>>> faceInMarkedElemAndRefinedFaces{};
+    faceInMarkedElemAndRefinedFaces.resize(numCoarseFaces);
+
+    // Single-cell-refinement for parent with index 0
+    const auto& [singleCellRef0_ptr,
+                 singleCellRef0_parentCorners_to_equivalentRefinedCorners,
+                 singleCellRef0_extraRefinedCornIdx_to_parentFaceIdx,
+                 singleCellRef0_refinedFaceIdx_to_parentFaceIdx,
+                 singleCellRef0_coincideWithCoarseCorner]
+        = grid.currentLeafData().refineSingleCell( std::array<int,3>{2,3,2}, // cells_per_dim 
+                                                   0, // parent cell index 
+                                                   faceInMarkedElemAndRefinedFaces);
+
+    // Single-cell-refinement for parent cell with index 1
+    const auto& [singleCellRef1_ptr,
+                 singleCellRef1_parentCorners_to_equivalentRefinedCorners,
+                 singleCellRef1_extraRefinedCornIdx_to_parentFaceIdx,
+                 singleCellRef1_refinedFaceIdx_to_parentFaceIdx,
+                 singleCellRef1_coincideWithCoarseCorner]
+        = grid.currentLeafData().refineSingleCell(std::array<int,3>{2,3,2}, // cells_per_dim
+                                                  1, // parent cell index
+                                                  faceInMarkedElemAndRefinedFaces);
 
 
-    // Originally, the element not involved in refinement
-    // had  7 faces. It's neihgbor in level zero
-    // got refined and the I_FACE that they shared has been
-    // replaced by 6 refined faces. Then, the leaf element has
-    // one of each I+,J-,J+, K-, K+, and 1 coarse + 6 refined I-.
-    //  checkFaceCountInLeafCoarseElem(grid,
-    //       /* expectedTotalFaceCount = */ 12,
-    //       /* repeatedFaceType = */ 0, // 0->I-
-    //         /* expoectedRepeatedFaceTypeCount = */ 7);
 
-    // Collect the expected data to later on check
-    std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
-    selectedFaceToCoord.resize(grid.levelGridView(1).size(0));
+    std::vector<int> singleCellRef0_to_singleCellRef1_cornerIdx{};
+    singleCellRef0_to_singleCellRef1_cornerIdx.resize(singleCellRef0_ptr->size(3), -1/* invalid index */);
+    
+    std::vector<int> singleCellRef1_to_singleCellRef0_cornerIdx{};
+    singleCellRef1_to_singleCellRef0_cornerIdx.resize(singleCellRef1_ptr->size(3), -1 /*invalid index */);
 
-    for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
+
+    std::set<Coordinate,Opm::Lgr::FieldVectorLess> missingVertices{};
+    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
+    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
+
+    for (std::size_t i = 0; i < faceInMarkedElemAndRefinedFaces.size(); ++i) {
+        if (faceInMarkedElemAndRefinedFaces[i].size() == 1)
+            continue;
         
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace2{}; // {vertex '0', vertex '1', vertex '2', vertex '3'}
-        std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedNewFaceInFace1{};
-        // Vertex order in I_FACE: 0->jk, 1-> (j+1)k, 2->(j+1)(k+1), 3->j(k+1)
-        //
-        //         j(k+1) <-'3' --------- '2'-> (j+1)(k+1)
-        //                   |             |
-        //                   |             |
-        //             jk <-'0' --------- '1'-> (j+1)k
+        assert(faceInMarkedElemAndRefinedFaces[i].size() == 2);
 
-        if (refinedElem.index() ==  1){
-            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
-            //      (6,0,4) **(6,2,4)
-            //         |         *        I_FACE, true with vertices (6,0,1),(6,2,1),(6,2,4),(6,0,4)
-            //         |         *
-            //      (6,0,1) --(6,2,1)
-            //         |         *        I_FACE, true with vertices (6,0,0),(6,2,0),(6,2,1),(6,0,1)
-            //      (6,0,0) --(6,2,0)
-            expectedNewFaceInFace2 = {{6,0,1}, {6,2,1}, {6,2,4}, {6,0,4}};
-            expectedNewFaceInFace1 = {{6,0,0}, {6,2,0}, {6,2,1}, {6,0,1}};
+        const auto& [p0, refinedFaces0] = faceInMarkedElemAndRefinedFaces[i][0];
+        const auto& [p1, refinedFaces1] = faceInMarkedElemAndRefinedFaces[i][1];
 
-            selectedFaceToCoord[1].push_back(expectedNewFaceInFace2);
-            selectedFaceToCoord[1].push_back(expectedNewFaceInFace1);
-        }
-        else if (refinedElem.index() ==  3){
-            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
-            //      (6,2,4) **(6,4,4)
-            //         |         *        I_FACE, true with vertices (6,2,1),(6,4,1),(6,4,4),(6,2,4)
-            //         |         *
-            //      (6,2,1) --(6,4,1)
-            //         |         *        I_FACE, true with vertices (6,2,0),(6,4,0),(6,4,1),(6,2,4)
-            //      (6,2,0) --(6,4,0)
-            expectedNewFaceInFace2 = {{6,2,1},{6,4,1},{6,4,4},{6,2,4}};
-            expectedNewFaceInFace1 = {{6,2,0},{6,4,0},{6,4,1},{6,2,1}};
 
-            selectedFaceToCoord[3].push_back(expectedNewFaceInFace2);
-            selectedFaceToCoord[3].push_back(expectedNewFaceInFace1);
-        }
-        else if (refinedElem.index() ==  5){
-            // this element has to have 7 faces: 1 I-,J-,J+,K-,K+, and 2 I+:
-            //      (6,4,4) **(6,6,4)
-            //         |         *        I_FACE, true with vertices (6,4,1),(6,6,1),(6,6,4),(6,4,4)
-            //         |         *
-            //      (6,4,1) --(6,6,1)
-            //         |         *        I_FACE, true with vertices (6,4,0),(6,6,0),(6,6,1),(6,4,1)
-            //      (6,4,0) --(6,6,0)
-            expectedNewFaceInFace2 = {{6,4,1},{6,6,1},{6,6,4},{6,4,4}};
-            expectedNewFaceInFace1 = {{6,4,0},{6,6,0},{6,6,1},{6,4,1}};
+        
+        std::cout<< i << " handling coarse face " << std::endl;
+        for (const auto& refinedFace0 : refinedFaces0) {  
+            const auto face0 = Dune::cpgrid::EntityRep<1>(refinedFace0, true);
+            
+            for (const auto& refinedFace1 : refinedFaces1) {
+                const auto face1 = Dune::cpgrid::EntityRep<1>(refinedFace1, true);
+                 
+                bool face1FullyContainedInFace0 = false;
+                const auto newFaceInFace0 = Opm::Lgr::getVerticesOfOverlapArea(face0,
+                                                                               face1,
+                                                                               *singleCellRef0_ptr,
+                                                                               *singleCellRef1_ptr,
+                                                                               missingVertices,
+                                                                               vertexToIdx,
+                                                                               existingVtxInCoarseGridToItsIdx,
+                                                                               face1FullyContainedInFace0);
 
-            selectedFaceToCoord[5].push_back(expectedNewFaceInFace2);
-            selectedFaceToCoord[5].push_back(expectedNewFaceInFace1);
-        }
-        else if (refinedElem.index() ==  7) {
-            expectedNewFaceInFace2 = {{6,0,4}, {6,2,4}, {6,2,8}, {6,0,8}};
-            selectedFaceToCoord[7].push_back(expectedNewFaceInFace2);
-        }
-        else if (refinedElem.index() ==  9) {
-            expectedNewFaceInFace2 = {{6,2,4}, {6,4,4}, {6,4,8}, {6,2,8}};
-            selectedFaceToCoord[9].push_back(expectedNewFaceInFace2);
-        }
-        else if (refinedElem.index() ==  11) {
-            expectedNewFaceInFace2 = {{6,4,4}, {6,6,4}, {6,6,8}, {6,4,8}};
-            selectedFaceToCoord[11].push_back(expectedNewFaceInFace2);
+                if (face1FullyContainedInFace0){
+                    std::cout<< "face0 " << refinedFace0 << " contains in face1: " << refinedFace1 << std::endl;
+                    std::cout<< " save it" <<std::endl;
+                }    
+            
+                if (newFaceInFace0.has_value() && !newFaceInFace0.value().empty()) {
+                    std::cout<< "Begin new face in face0! "<< refinedFace0 << std::endl;
+                    for (const auto& coord : newFaceInFace0.value()) {
+                        std::cout<< coord[0] << " " << coord[1] << " " << coord[2] <<std::endl;
+                    }
+                    std::cout << std::endl;
+                }
+                // Create a method to track/relate refined corners at the boundary of neighboring
+                // single cell refinements
+            }
         }
     }
-    // checkNewRefinedFaces(grid, refinedGridData,
-    //               selectedFaceToCoord, /* repeatedFaceType = */ 1); // 1-> I+
-
-    std::cout<< grid.levelGridView(0).size(3) << " level 0 vertices " <<std::endl;
-    std::cout<< grid.levelGridView(1).size(3) << " level 1 vertices " <<std::endl;
-    std::cout<< grid.leafGridView().size(3) << " leaf vertices " <<std::endl;
-
-    // Opm::checkGridWithLgrs(grid,
-    //                     /* cells_per_dim_vec = */ {{2,3,2}},
-    //                    /* lgr_name_vec = */ {"LGR1"});
 }
+
