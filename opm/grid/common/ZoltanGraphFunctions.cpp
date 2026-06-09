@@ -179,6 +179,23 @@ void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
     *err = ZOLTAN_OK;
 }
 
+template <typename EdgeWeightType>
+EdgeWeightType sumOfGridEdges(const Dune::CpGrid& grid,
+                              const CombinedGridWellGraph& graph)
+{
+    EdgeWeightType weWeight = 0;
+    for (int edge=0; edge<grid.numFaces(); ++edge) {
+        // assumes that transmissibility is positive (too obvious to leave an assert)
+        const auto& addend = graph.transmissibility(edge);
+        if (weWeight >= std::numeric_limits<EdgeWeightType>::max()-addend) {
+            weWeight = std::numeric_limits<EdgeWeightType>::max();
+            break;
+        }
+        weWeight += graph.transmissibility(edge);
+    }
+    return weWeight;
+}
+
 template<typename ID>
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid& grid, int localCellId, ID globalID, int& neighborCounter, ID& nborGID) {
     for ( int local_face = 0 ; local_face < grid.numCellFaces(localCellId); ++local_face )
@@ -309,14 +326,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
     int neighborCounter = 0;
 
     // well edge weight for partitioning, big enough that wells should not get split
-    float weWeight = 0; // type of ewgts even though transmissibility is double
-    for (int edge=0; edge<grid.numFaces(); ++edge) {
-        // assumes that transmissibility is positive (too obvious to leave an assert)
-        weWeight += graph.transmissibility(edge);
-    }
-    if (weWeight == std::numeric_limits<float>::infinity()) {
-        weWeight = std::numeric_limits<float>::max();
-    }
+    float weWeight = sumOfGridEdges<float>(grid, graph);
 
     for( int cell = 0; cell < numCells;  cell++ )
     {
@@ -427,11 +437,15 @@ template
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid&, int, int*, int&, int*& nborGID);
 template
 void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph&, const int, int*, int&, int*&, int*, const int&);
+template
+int sumOfGridEdges(const Dune::CpGrid& grid, const CombinedGridWellGraph& graph);
 
 template
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(Dune::CpGrid const&, int, long*, int&, long*&);
 template
 void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(Dune::cpgrid::CombinedGridWellGraph const&, int, long*, int&, long*&, long*, const long&);
+template
+long sumOfGridEdges(const Dune::CpGrid& grid, const CombinedGridWellGraph& graph);
 
 #endif
 

@@ -275,16 +275,8 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
         if( wells )
         {
-            // weight of edges between well connections is set to the sum of all grid edges
-            idx_t weWeight = 0;
-            for (int edge = 0; edge<cpgrid.numFaces(); ++edge) {
-                const auto& addend = gridAndWells->transmissibility(edge);
-                if (weWeight >= std::numeric_limits<idx_t>::max()-addend) {
-                    weWeight = std::numeric_limits<idx_t>::max();
-                    break;
-                }
-                weWeight += addend;
-            }
+            // well edge weight for partitioning, big enough that wells should not get split
+            idx_t weWeight = sumOfGridEdges<idx_t>(cpgrid, *gridAndWells);
 
             int neighborCounter = 0;
             for( int cell = 0; cell < n;  cell++ )
