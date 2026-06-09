@@ -12,6 +12,7 @@
 #include"ElementMarkHandle.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
+#include "LgrFaultHelpers.hpp"
 #include "LgrHelpers.hpp"
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
@@ -1834,27 +1835,19 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         {parent_to_point[7], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))
          + cells_per_dim[2]}};
 
-    const auto classifiedFaces = Opm::Lgr::classifyAndCollectFaceIndices(*this, parentCellElem);
-    // { {I- indices}, {I+ indices}, {J- indices}, {J+ indices}, {K- indices}, {K+ indices}}
-
-    std::map<std::array<int,2>, int> faceTypeToIdx = {
-        {{0,/*false*/0}, 0}, {{0, /*true*/1}, 1},
-        {{1,/*false*/0}, 2}, {{1, /*true*/1}, 3},
-        {{2,/*false*/0}, 4}, {{2, /*true*/1}, 5}
-    };
+    
 
     std::unordered_map<int,int> refinedCornIdx_to_parentFaceIdx{}; // empty for the naive case
     std::vector<std::vector<int>> refinedFace_to_parentFaces{};
 
-    bool hasOnlyOneFacePerType = Opm::Lgr::hasOnlyOneFacePerFaceType(*this, parentCellElem,
-                                                                  classifiedFaces, faceTypeToIdx);
+    const auto classifiedFaces = Opm::Lgr::groupFaceIndicesByType(*this, parentCellElem);
+    bool hasOnlyOneFacePerType = Opm::Lgr::hasAtMostOneFacePerGroup(classifiedFaces);
 
     if(hasOnlyOneFacePerType) { // no further corrections needed in the single-cell-refinement CpGridData object
 
         refinedFace_to_parentFaces.resize(refined_grid.numFaces());
         Opm::Lgr::provideRefinementParentFaceIdxRelations(hasOnlyOneFacePerType,
                                                           classifiedFaces,
-                                                          faceTypeToIdx,
                                                           *this,
                                                           parentCellElem,
                                                           cells_per_dim,
@@ -1887,14 +1880,12 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         cpgrid::OrientedEntityTable<1,0>&                            corrected_refined_face_to_cell = corrected_refined_grid.face_to_cell_;
         cpgrid::EntityVariable<enum face_tag,1>&                     corrected_refined_face_tags = corrected_refined_grid.face_tag_;
         cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_refined_face_normals = corrected_refined_grid.face_normals_;
-
-        //std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
+        
         std::vector<std::array<int,2>> extended_parent_to_refined_corners = parent_to_refined_corners;
          // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
 
         Opm::Lgr::makeSingleCellRefinementParentFaceAware(hasOnlyOneFacePerType,
                                                           classifiedFaces,
-                                                          faceTypeToIdx,
                                                           /* singleCellRefinementData */ refined_grid,
                                                           /* parentGridData */ *this,
                                                           parentCellElem,
