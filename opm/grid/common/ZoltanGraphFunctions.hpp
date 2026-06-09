@@ -244,9 +244,16 @@ private:
 /// \brief Get the number of edges of the graph of the grid and the wells for one cell
 int getNumberOfEdgesForSpecificCellForGridWithWells(const CombinedGridWellGraph& graph, int localCellId);
 
+/// \brief Iterate over the grid and get the sum of all edge weights
+///
+/// Used as a weight for edges between cells of a well
+template <typename EdgeWeightType>
+EdgeWeightType sumOfGridEdges(const Dune::CpGrid& grid,
+                              const CombinedGridWellGraph& graph);
+
 /// \brief Get the list of edges and weights for one cell of a grid with wells
 template<typename ID, typename weightType>
-void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts);
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts, const weightType& weWeight);
 
 #ifdef HAVE_ZOLTAN
 /// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.

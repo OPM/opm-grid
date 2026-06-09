@@ -275,10 +275,13 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
         if( wells )
         {
+            // well edge weight for partitioning, big enough that wells should not get split
+            idx_t weWeight = sumOfGridEdges<idx_t>(cpgrid, *gridAndWells);
+
             int neighborCounter = 0;
             for( int cell = 0; cell < n;  cell++ )
             {
-                fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(*gridAndWells, lids[cell], gids, neighborCounter, adjncy, adjwgt);
+                fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(*gridAndWells, lids[cell], gids, neighborCounter, adjncy, adjwgt, weWeight);
             }
         }
         else
