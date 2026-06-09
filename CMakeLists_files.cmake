@@ -37,6 +37,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
+  opm/grid/cpgrid/LgrFaultHelpers.cpp
   opm/grid/cpgrid/LgrHelpers.cpp
   opm/grid/cpgrid/LgrOutputHelpers.cpp
   opm/grid/cpgrid/NestedRefinementUtilities.cpp
@@ -212,6 +213,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/cpgrid/LgrFaultHelpers.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/ElementMarkHandle.hpp

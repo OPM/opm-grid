@@ -23,6 +23,7 @@
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
+#include <opm/grid/cpgrid/LgrFaultHelpers.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp>
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
@@ -169,6 +170,12 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
         } // end-if-elemMark==1
     } // end-elem-for-loop
 }
+
+
+/*void makeSingleCellRefinementsNeighborsAware(const Dune::CpGrid& grid, 
+                                            std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr)
+{
+}*/
 
 std::tuple<std::vector<std::vector<std::array<int,2>>>, std::vector<std::vector<int>>, std::vector<std::array<int,2>>, std::vector<int>>
 defineChildToParentAndIdxInParentCell(const Dune::cpgrid::CpGridData& current_data,
@@ -439,119 +446,6 @@ std::array<int,3> getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, in
     return ijk;
 }
 
-bool newRefinedCornerLiesOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr)
-{
-    // if parent cell has only one face of each type (I-, I+, J-, J+, K-, K+)
-    const auto& total_naive_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
-    if (total_naive_corners<= cornerIdxInLgr) {
-        return false; // "extra corners lying on boundary of single-cell-refinement have larger indices"
-    }
-    
-    const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
-    // Edges laying on bottom face
-    bool isNewBornOnEdge01 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == 0) && (ijk[2] == 0);
-    bool isNewBornOnEdge23 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == cells_per_dim[1]) && ( ijk[2] == 0);
-    bool isNewBornOnEdge02 = (ijk[0] == 0) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == 0);
-    bool isNewBornOnEdge13 = (ijk[0] == cells_per_dim[0]) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == 0);
-
-    // Edges connecting bottom and top faces
-    bool isNewBornOnEdge04 = (ijk[0] == 0) && (ijk[1] == 0) && (ijk[2] % cells_per_dim[2] != 0);
-    bool isNewBornOnEdge26 = (ijk[0] == 0) && (ijk[1] == cells_per_dim[1]) && (ijk[2] % cells_per_dim[2] != 0);
-    bool isNewBornOnEdge15 = (ijk[0] == cells_per_dim[0]) && (ijk[1] == 0) && (ijk[2] % cells_per_dim[2] != 0);
-    bool isNewBornOnEdge37 = (ijk[0] == cells_per_dim[0]) && (ijk[1] == cells_per_dim[1]) && (ijk[2] % cells_per_dim[2] != 0);
-
-    // Edges laying on top face
-    bool isNewBornOnEdge45 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == 0) && (ijk[2] == cells_per_dim[2]);
-    bool isNewBornOnEdge67 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == cells_per_dim[1]) && ( ijk[2] == cells_per_dim[2]);
-    bool isNewBornOnEdge46 = (ijk[0] == 0) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == cells_per_dim[2]);
-    bool isNewBornOnEdge57 = (ijk[0] == cells_per_dim[0]) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == cells_per_dim[2]);
-
-    bool isOnEdge = isNewBornOnEdge01 || isNewBornOnEdge23 || isNewBornOnEdge02 || isNewBornOnEdge13 ||
-        isNewBornOnEdge04 || isNewBornOnEdge26 || isNewBornOnEdge15 || isNewBornOnEdge37 ||
-        isNewBornOnEdge45 || isNewBornOnEdge67 || isNewBornOnEdge46 || isNewBornOnEdge57;
-
-    return isOnEdge;
-}
-
-std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::cpgrid::CpGridData& current_data,
-                                                                   const std::array<int,3>& cells_per_dim,
-                                                                   int cornerIdxInLgr,
-                                                                   int elemLgr,
-                                                                   const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx)
-{
-    assert(newRefinedCornerLiesOnEdge(cells_per_dim, cornerIdxInLgr));
-
-    
-     const auto& total_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
-     if (cornerIdxInLgr >= total_corners) {
-         auto it = singleCellRef_extraRefinedCornIdx_to_parentFaceIdx[cornerIdxInLgr].find(elemLgr);
-         assert(it !=  singleCellRef_extraRefinedCornIdx_to_parentFaceIdx[cornerIdxInLgr].end());
-         return std::array<int,2>{it->first, it->second};
-     }
-     else {
-    
-
-    const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
-  
-    // Corners Order defined in Geometry::refine  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
-    // Edges laying on bottom face
-    bool isNewBornOnEdge01 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == 0) && (ijk[2] == 0);
-    bool isNewBornOnEdge23 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == cells_per_dim[1]) && ( ijk[2] == 0);
-    bool isNewBornOnEdge02 = (ijk[0] == 0) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == 0);
-    bool isNewBornOnEdge13 = (ijk[0] == cells_per_dim[0]) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == 0);
-
-    // Edges connecting bottom and top faces
-    bool isNewBornOnEdge04 = (ijk[0] == 0) && (ijk[1] == 0) && (ijk[2] % cells_per_dim[2] != 0);
-    bool isNewBornOnEdge26 = (ijk[0] == 0) && (ijk[1] == cells_per_dim[1]) && (ijk[2] % cells_per_dim[2] != 0);
-    bool isNewBornOnEdge15 = (ijk[0] == cells_per_dim[0]) && (ijk[1] == 0) && (ijk[2] % cells_per_dim[2] != 0);
-    bool isNewBornOnEdge37 = (ijk[0] == cells_per_dim[0]) && (ijk[1] == cells_per_dim[1]) && (ijk[2] % cells_per_dim[2] != 0);
-
-    // Edges laying on top face
-    bool isNewBornOnEdge45 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == 0) && (ijk[2] == cells_per_dim[2]);
-    bool isNewBornOnEdge67 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == cells_per_dim[1]) && ( ijk[2] == cells_per_dim[2]);
-    bool isNewBornOnEdge46 = (ijk[0] == 0) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == cells_per_dim[2]);
-    bool isNewBornOnEdge57 = (ijk[0] == cells_per_dim[0]) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == cells_per_dim[2]);
-
-    std::vector<int> auxFaces;
-    auxFaces.reserve(2);
-
-    for (const auto& face : parentCell_to_face) {
-        const auto& faceTag = current_data.faceTag(face.index());
-        // Add I_FACE false
-        bool addIfalse = isNewBornOnEdge02 || isNewBornOnEdge04 || isNewBornOnEdge26 || isNewBornOnEdge46;
-        if( addIfalse && (faceTag == 0)  && (!face.orientation()))  {
-            auxFaces.push_back(face.index());
-        }
-        // Add J_FACE false
-        bool addJfalse = isNewBornOnEdge01 || isNewBornOnEdge04 || isNewBornOnEdge15 || isNewBornOnEdge45;
-        if( addJfalse && (faceTag == 1)  && (!face.orientation()))  {
-            auxFaces.push_back(face.index());
-        }
-        // Add K_FACE false
-        bool addKfalse = isNewBornOnEdge01 ||  isNewBornOnEdge13 || isNewBornOnEdge23 || isNewBornOnEdge02;
-        if( addKfalse && (faceTag == 2) && (!face.orientation())) {
-            auxFaces.push_back(face.index());
-        }
-        // Add I_FACE true
-        bool addItrue = isNewBornOnEdge13 || isNewBornOnEdge15 || isNewBornOnEdge37 || isNewBornOnEdge57;
-        if( addItrue && (faceTag == 0)  && (face.orientation()))  {
-            auxFaces.push_back(face.index());
-        }
-        // Add J_FACE true
-        bool addJtrue = isNewBornOnEdge23|| isNewBornOnEdge26 || isNewBornOnEdge37 || isNewBornOnEdge67;
-        if( addJtrue && (faceTag == 1)  && (face.orientation()))  {
-            auxFaces.push_back(face.index());
-        }
-        // Add K_FACE true
-        bool addKtrue = isNewBornOnEdge45 || isNewBornOnEdge67 || isNewBornOnEdge46 || isNewBornOnEdge57;
-        if(addKtrue && (faceTag == 2) && (face.orientation())) {
-            auxFaces.push_back(face.index());
-        }
-    }
-    return {auxFaces[0], auxFaces[1]};
-     }
-}
 
 bool isRefinedNewBornCornerOnLgrBoundary(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr)
 {
@@ -666,7 +560,8 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_l
 }
 
 
-int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_data,
+int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::FieldVector<double,3>& vertex,
+                                        const Dune::cpgrid::CpGridData& current_data,
                                         const std::array<int,3>& cells_per_dim_lgr1,
                                         int cornerIdxLgr1,
                                         int elemLgr1,
@@ -674,14 +569,10 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_
                                         const std::array<int,3>& cells_per_dim_lgr2,
                                         const std::vector<std::unordered_map<int,int>>& singleCellRef_extraRefinedCornIdx_to_parentFaceIdx)
 {
+     const auto faces = isVertexInElementEdge(vertex, elemLgr1, current_data);
 #ifndef NDEBUG
-    assert(newRefinedCornerLiesOnEdge(cells_per_dim_lgr1, cornerIdxLgr1));
-    const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(current_data,
-                                                                         cells_per_dim_lgr1,
-                                                                         cornerIdxLgr1,
-                                                                         elemLgr1,
-                                                                         singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
-    assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
+    assert(faces.size());
+    assert(std::find(faces.begin(), faces.end(), parentFaceLastAppearanceIdx) != faces.end());
 #endif
     
     const auto& total_naive_corners = (cells_per_dim_lgr1[0] +1)*(cells_per_dim_lgr1[1]+1)*(cells_per_dim_lgr1[2]+1);
@@ -808,26 +699,39 @@ void processEdgeCorners(int elemIdx,
     // - If the two parent faces appear only once, store immediately.
     // - Otherwise, store the corner at its last appearance among these faces, considering elemLgr.
     for (int corner = 0; corner < lgr->size(3); ++corner) {
-        if (!newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner) || coincideWithCoarseCorner[corner]) continue;
+        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
+        const auto facesWhereVertexAppear = Opm::Lgr::isVertexInElementEdge(vertex,
+                                                                                elemIdx,
+                                                                                current_data);
+        bool isVertexInParentEdgeInterior = facesWhereVertexAppear.size()>0;
+      
+        if (!isVertexInParentEdgeInterior || coincideWithCoarseCorner[corner])
+            continue;
 
-        const auto& [face1, face2] = getParentFacesAssocWithNewRefinedCornLyingOnEdge(current_data,
-                                                                                      cells_per_dim_vec[shiftedLevel],
-                                                                                      corner,
-                                                                                      elemIdx,
-                                                                                      singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
+        int maxLast = -1;
+        int faceAtMax = -1;
 
-        int last1 = faceInMarkedElemAndRefinedFaces[face1].back().first;
-        int last2 = faceInMarkedElemAndRefinedFaces[face2].back().first;
-        int maxLast = std::max(last1, last2);
-        int faceAtMax = (maxLast == last1) ? face1 : face2;
+        bool multipleAppearances = false;
+
+        for (const auto face : facesWhereVertexAppear) {
+            const auto& markedFaces = faceInMarkedElemAndRefinedFaces[face];
+
+            if (markedFaces.size() > 1) {
+                multipleAppearances = true;
+            }
+
+            if (!markedFaces.empty() && markedFaces.back().first > maxLast) {
+                maxLast = markedFaces.back().first;
+                faceAtMax = face;
+            }
+        }
+        assert(maxLast >= 0);
         int maxLastLevel = assignRefinedLevel[maxLast];
-
-        bool multipleAppearances = faceInMarkedElemAndRefinedFaces[face1].size() > 1 ||
-            faceInMarkedElemAndRefinedFaces[face2].size() > 1;
 
         if (multipleAppearances && (maxLast != elemIdx)) {
             int maxShifted = maxLastLevel - preAdaptMaxLevel - 1;
-            int neighborCorner = replaceLgr1CornerIdxByLgr2CornerIdx(current_data,
+            int neighborCorner = replaceLgr1CornerIdxByLgr2CornerIdx(vertex,
+                                                                     current_data,
                                                                      cells_per_dim_vec[shiftedLevel],
                                                                      corner, elemIdx, faceAtMax,
                                                                      cells_per_dim_vec[maxShifted],
@@ -838,7 +742,7 @@ void processEdgeCorners(int elemIdx,
 
         if ((maxLast == elemIdx) || (level!= maxLastLevel)) {
 
-            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,               // map a_to_b
+            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
                                 refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
                                 std::array{elemIdx, corner},                               // keyA
                                 std::array{level, level_corner_count},                     // keyB
@@ -867,26 +771,39 @@ void processEdgeCorners(int elemIdx, int shiftedLevel,
     // - If the two parent faces appear only once, store immediately.
     // - Otherwise, store the corner at its last appearance among these faces, considering elemLgr.
     for (int corner = 0; corner < lgr->size(3); ++corner) {
-        if (!newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner) || coincideWithCoarseCorner[corner]) continue;
+        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
 
-        const auto& [face1, face2] = getParentFacesAssocWithNewRefinedCornLyingOnEdge(current_data,
-                                                                                      cells_per_dim_vec[shiftedLevel],
-                                                                                      corner,
-                                                                                      elemIdx,
-                                                                                      singleCellRef_extraRefinedCornIdx_to_parentFaceIdx);
+        const auto facesWhereVertexAppear = Opm::Lgr::isVertexInElementEdge(vertex,
+                                                                                elemIdx,
+                                                                                current_data);
+        bool isVertexInParentEdgeInterior = facesWhereVertexAppear.size()>0;
+        if (!isVertexInParentEdgeInterior || coincideWithCoarseCorner[corner])
+            continue;
 
-        int last1 = faceInMarkedElemAndRefinedFaces[face1].back().first;
-        int last2 = faceInMarkedElemAndRefinedFaces[face2].back().first;
-        int maxLast = std::max(last1, last2);
-        int faceAtMax = (maxLast == last1) ? face1 : face2;
+        int maxLast = -1;
+        int faceAtMax = -1;
+
+        bool multipleAppearances = false;
+
+        for (const auto face : facesWhereVertexAppear) {
+            const auto& markedFaces = faceInMarkedElemAndRefinedFaces[face];
+
+            if (markedFaces.size() > 1) {
+                multipleAppearances = true;
+            }
+
+            if (!markedFaces.empty() && markedFaces.back().first > maxLast) {
+                maxLast = markedFaces.back().first;
+                faceAtMax = face;
+            }
+        }
+        assert(maxLast >= 0);
         int maxLastLevel = assignRefinedLevel[maxLast];
-
-        bool multipleAppearances = faceInMarkedElemAndRefinedFaces[face1].size() > 1 ||
-            faceInMarkedElemAndRefinedFaces[face2].size() > 1;
 
         if ((multipleAppearances && maxLast != elemIdx) || (maxLastLevel != assignRefinedLevel[elemIdx])) {
             int maxShifted = maxLastLevel - preAdaptMaxLevel - 1;
-            int neighborCorner = replaceLgr1CornerIdxByLgr2CornerIdx(current_data,
+            int neighborCorner = replaceLgr1CornerIdxByLgr2CornerIdx(vertex,
+                                                                     current_data,
                                                                      cells_per_dim_vec[shiftedLevel],
                                                                      corner, elemIdx, faceAtMax,
                                                                      cells_per_dim_vec[maxShifted],
@@ -902,6 +819,7 @@ void processEdgeCorners(int elemIdx, int shiftedLevel,
                                 corner_count);                            // counter (keyB)
         }
     }
+    
 }
 
 void processBoundaryCorners(int elemIdx,
@@ -927,9 +845,15 @@ void processBoundaryCorners(int elemIdx,
     // - If the parent face appears only once, store immediately.
     // - If the face appears in multiple LGRs, store at its last appearance to avoid duplicates.
     for (int corner = 0; corner < lgr->size(3); ++corner) {
+        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
+
+        const auto faces = Opm::Lgr::isVertexInElementEdge(vertex,
+                                                               elemIdx,
+                                                               current_data);
+        bool isVertexInParentEdgeInterior = faces.size()>0;
+             
         if (!isRefinedNewBornCornerOnLgrBoundary(cells_per_dim_vec[shiftedLevel], corner) ||
-            newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner) ||
-            coincideWithCoarseCorner[corner]) continue;
+            isVertexInParentEdgeInterior) continue;
         
         const auto& face = getParentFaceWhereNewRefinedCornerLiesOn(current_data,
                                                                     cells_per_dim_vec[shiftedLevel],
@@ -955,38 +879,6 @@ void processBoundaryCorners(int elemIdx,
 
                 const auto& [p0, refinedFaces0] = faceInMarkedElemAndRefinedFaces[face][0];
                 const auto& [p1, refinedFaces1] = faceInMarkedElemAndRefinedFaces[face][1];
-
-                
-                /*  for (const auto& refinedFace0 : refinedFaces0) {  
-                    const auto face0 = Dune::cpgrid::EntityRep<1>(refinedFace0, true);
-            
-                    for (const auto& refinedFace1 : refinedFaces1) {
-                        const auto face1 = Dune::cpgrid::EntityRep<1>(refinedFace1, true);
-                 
-                        bool face1FullyContainedInFace0 = false;
-                        const auto newFaceInFace0 = Opm::Lgr::getVerticesOfOverlapArea(face0,
-                                                                                       face1,
-                                                                                       *singleCellRef0_ptr,
-                                                                                       *singleCellRef1_ptr,
-                                                                                       missingVertices,
-                                                                                       vertexToIdx,
-                                                                                       existingVtxInCoarseGridToItsIdx,
-                                                                                       face1FullyContainedInFace0);
-
-                        if (face1FullyContainedInFace0){
-                            std::cout<< "face0 " << refinedFace0 << " contains in face1: " << refinedFace1 << std::endl;
-                            std::cout<< " save it" <<std::endl;
-                        }    
-            
-                        if (newFaceInFace0.has_value() && !newFaceInFace0.value().empty()) {
-                            std::cout<< "Begin new face in face0! "<< refinedFace0 << std::endl;
-                            for (const auto& coord : newFaceInFace0.value()) {
-                                std::cout<< coord[0] << " " << coord[1] << " " << coord[2] <<std::endl;
-                            }
-                            std::cout << std::endl;
-                        }
-                    }
-                    }*/
             }
         }
 
@@ -1021,9 +913,16 @@ void processBoundaryCorners(int elemIdx, int shiftedLevel,
     // - If the parent face appears only once, store immediately.
     // - If the face appears in multiple LGRs, store at its last appearance to avoid duplicates.
     for (int corner = 0; corner < lgr->size(3); ++corner) {
+
+        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
+
+        const auto faces = Opm::Lgr::isVertexInElementEdge(vertex,
+                                                               elemIdx,
+                                                               current_data);
+        
+        
         if (!isRefinedNewBornCornerOnLgrBoundary(cells_per_dim_vec[shiftedLevel], corner) ||
-            newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner) ||
-            coincideWithCoarseCorner[corner]) continue;
+            faces.size() || coincideWithCoarseCorner[corner]) continue;
 
         const auto& face = getParentFaceWhereNewRefinedCornerLiesOn(current_data,
                                                                     cells_per_dim_vec[shiftedLevel],
@@ -2465,63 +2364,6 @@ void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
     }
 }
 
-std::array<std::vector<int>, 6> classifyAndCollectFaceIndices(const Dune::cpgrid::CpGridData& gridData,
-                                                              const Dune::cpgrid::Entity<0>& element)
-{
-    std::array<std::vector<int>, 6> classified_face_idxs{};
-    // clasified_face_idxs[0] stores I false face indices
-    // clasified_face_idxs[1] stores I true  face indices
-    // clasified_face_idxs[2] stores J false face indices
-    // clasified_face_idxs[3] stores J true  face indices
-    // clasified_face_idxs[4] stores K false face indices
-    // clasified_face_idxs[5] stores K true  face indices
-
-    const auto& cellToFace = gridData.cellToFace(element.index());
-    
-   
-    for (const auto& face : cellToFace) {
-        
-        const auto tag = gridData.faceTag(face.index());
-        const bool orientation = face.orientation();
-        
-        if ((tag == I_FACE) && !orientation) {
-            classified_face_idxs[0].push_back(face.index());
-        }
-        else if ((tag == I_FACE) && orientation) {
-            classified_face_idxs[1].push_back(face.index());
-        }
-        else if ((tag == J_FACE) && !orientation) {
-            classified_face_idxs[2].push_back(face.index());
-        }
-        else if ((tag == J_FACE) && orientation) {
-            classified_face_idxs[3].push_back(face.index());
-        }
-        else if ((tag == K_FACE) && !orientation) {
-            classified_face_idxs[4].push_back(face.index());
-        }
-        else if ((tag == K_FACE) && orientation) {
-            classified_face_idxs[5].push_back(face.index());
-        }
-        else {
-            OPM_THROW(std::logic_error, "Face " + std::to_string(face.index()) +
-                      " has an invalid classification: expected one of +/-I, +/-J, or +/-K");
-        }
-    }
-    return classified_face_idxs;
-}
-
-bool hasOnlyOneFacePerFaceType(const Dune::cpgrid::CpGridData& gridData,
-                               const Dune::cpgrid::Entity<0>& element,
-                               const std::array<std::vector<int>, 6>& classifiedFaces,
-                               const std::map<std::array<int,2>, int>& faceTypeToIdx)
-{
-    for (const auto& face : gridData.cellToFace(element.index())) {
-        if (classifiedFaces[faceTypeToIdx.at({gridData.faceTag(face.index()),face.orientation()})].size()> 1)
-            return false;
-    }
-    return true;
-}
-
 void assignCorrectChildFace(bool                                             noCorrectionNeeded,
                             int                                              faceIdx,
                             int                                              faceType_count,
@@ -2573,7 +2415,6 @@ void assignCorrectChildFace(bool                                             noC
 
 void provideRefinementParentFaceIdxRelations(bool                                                        noCorrectionNeeded,
                                              const std::array<std::vector<int>, 6>&                      classifiedFaces,
-                                             const std::map<std::array<int,2>, int>&                     faceTypeToIdx,
                                              const Dune::cpgrid::CpGridData&                             parentGridData,
                                              const Dune::cpgrid::Entity<0>&                              parentElem,
                                              const std::array<int,3>&                                    cells_per_dim,
@@ -2592,7 +2433,7 @@ void provideRefinementParentFaceIdxRelations(bool                               
     for (const auto& face : parentGridData.cellToFace(parentElem.index())) {
         
         const auto& parent_face_tag = parentGridData.faceTag(face.index());
-        const auto faceType_count = classifiedFaces[faceTypeToIdx.at({parent_face_tag, face.orientation()})].size();
+        const auto faceType_count = classifiedFaces[faceGroupIndex(parent_face_tag, face.orientation())].size();
 
         std::vector<int> children_faces; // Cannot reserve/resize "now", it depends of the type of face.
         
@@ -2693,8 +2534,7 @@ std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> getCoordToPoint(cons
 
 
 void makeSingleCellRefinementParentFaceAware(bool                                                               noCorrectionNeeded,
-                                             const std::array<std::vector<int>, 6>&                             classifiedFaces,
-                                             const std::map<std::array<int,2>, int>&                            faceTypeToIdx,
+                                             const std::array<std::vector<int>, 6>&                             classifiedParentFaces,
                                              const Dune::cpgrid::CpGridData&                                    singleCellRefinementData,
                                              const Dune::cpgrid::CpGridData&                                    parentGridData,
                                              const Dune::cpgrid::Entity<0>&                                     parentElem,
@@ -2718,8 +2558,8 @@ void makeSingleCellRefinementParentFaceAware(bool                               
 
     std::set<Dune::FieldVector<double,3>, FieldVectorLess> missingVertices{};
     std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> newVertexToIdx{};
-    std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> vertexToIdx{};
-    std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
+    std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> refinedFaceExistingVertex_to_refinedGridCornerIdx{};
+    std::map<Dune::FieldVector<double,3>, int, FieldVectorLess> parentFaceExistingVertex_to_parentGridCornerIdx{};
     
     Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& refined_corners =
                     *(refined_geometries.geomVector(std::integral_constant<int,3>()));
@@ -2742,8 +2582,8 @@ void makeSingleCellRefinementParentFaceAware(bool                               
     std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>> vanishedRefinedFaceToNewRefinedFaces{};
     vanishedRefinedFaceToNewRefinedFaces.resize(numFaces);
 
-    std::vector<std::vector<int>> vanishedFace_to_parentFaces{};
-    vanishedFace_to_parentFaces.resize(singleCellRefinementData.numFaces());
+    // std::vector<std::vector<int>> vanishedFace_to_parentFaces{};
+    //vanishedFace_to_parentFaces.resize(singleCellRefinementData.numFaces());
     
     std::vector<int> fullyContainedInParentFace{};
     fullyContainedInParentFace.resize(singleCellRefinementData.numFaces());
@@ -2751,19 +2591,17 @@ void makeSingleCellRefinementParentFaceAware(bool                               
     for (int i = 0; i < singleCellRefinementData.size(0); ++i) {
 
         const auto refinedElem = Dune::cpgrid::Entity<0>(singleCellRefinementData, i, true);
-        const auto collectedVertices =
-            collectNewVertices<Dune::FieldVector<double,3>>(classifiedFaces,
-                                                            faceTypeToIdx,
-                                                            singleCellRefinementData,
-                                                            refinedElem,
-                                                            parentGridData,
-                                                            parentElem,
-                                                            vertexToIdx,
-                                                            existingVtxInCoarseGridToItsIdx,
-                                                            vanishedFace_to_parentFaces,
-                                                            allOverlapFaces,
-                                                            vanishedRefinedFaceToNewRefinedFaces,
-                                                            fullyContainedInParentFace);
+        const auto collectedVertices = collectNewVertices(parentGridData,
+                                                          parentElem,
+                                                          parentFaceExistingVertex_to_parentGridCornerIdx, 
+                                                          classifiedParentFaces,
+                                                          singleCellRefinementData,
+                                                          refinedElem,
+                                                          refinedFaceExistingVertex_to_refinedGridCornerIdx,
+                                                          //  vanishedFace_to_parentFaces,
+                                                          allOverlapFaces,
+                                                          vanishedRefinedFaceToNewRefinedFaces,
+                                                          fullyContainedInParentFace);
         
         missingVertices.insert(collectedVertices.begin(), collectedVertices.end());
     }
@@ -2771,7 +2609,7 @@ void makeSingleCellRefinementParentFaceAware(bool                               
     
     // Copy all vertices from single cell refinement (the missing vertices arising from
     // edge-intersections with parent cell faces when the parent cell has more than one
-    // faceof the same face tag and face oriantation are not including here, and will be
+    // face of the same face tag and face oriantation are not including here, and will be
     // added later).
     for (int i = 0; i < singleCellRefinementData.size(3); ++i) {
         corrected_corners[i] = refined_corners.get(i);
@@ -2782,15 +2620,15 @@ void makeSingleCellRefinementParentFaceAware(bool                               
     // Assign vertex index in the single-cell-refinement to new vertices
     // that come from intersection of edges with parent cell faces.
     for (const auto& vertex : missingVertices) {
-        auto it = existingVtxInCoarseGridToItsIdx.find(vertex); 
-        if (it != existingVtxInCoarseGridToItsIdx.end()) {
+        auto it = parentFaceExistingVertex_to_parentGridCornerIdx.find(vertex); 
+        if (it != parentFaceExistingVertex_to_parentGridCornerIdx.end()) {
             auto coarseIdx = it->second;
             if (std::find(parentCellToPoint.begin(),
                           parentCellToPoint.end(), coarseIdx) == parentCellToPoint.end()) {
                 // extended_parent_to_refined_corners.push_back(entry);
                 extended_parent_to_refined_corners.push_back(std::array<int,2>{coarseIdx, numVertices});
                 newVertexToIdx[vertex] = numVertices;
-                vertexToIdx[vertex] = numVertices;
+                refinedFaceExistingVertex_to_refinedGridCornerIdx[vertex] = numVertices;
                 
                 corrected_corners[numVertices] = Dune::cpgrid::Geometry<0, 3>(vertex);
                 ++numVertices;
@@ -2799,7 +2637,7 @@ void makeSingleCellRefinementParentFaceAware(bool                               
         else {
         
             newVertexToIdx[vertex] = numVertices;
-            vertexToIdx[vertex] = numVertices;
+            refinedFaceExistingVertex_to_refinedGridCornerIdx[vertex] = numVertices;
             
             corrected_corners[numVertices] = Dune::cpgrid::Geometry<0, 3>(vertex);
             ++numVertices;
@@ -2818,9 +2656,6 @@ void makeSingleCellRefinementParentFaceAware(bool                               
 
     std::vector<std::vector<int>> aux_face_to_point{};
     aux_face_to_point.resize(updateFaceSize);
-
-    std::vector<Dune::cpgrid::EntityRep<0>> aux_face_to_cell{};
-    // aux_face_to_cell.resize(updateFaceSize);
 
     std::vector<std::vector<int>> parentFace_to_refinedFaces{};
     parentFace_to_refinedFaces.resize(parentGridData.numFaces());
@@ -2886,8 +2721,8 @@ void makeSingleCellRefinementParentFaceAware(bool                               
                 faceToPoint.reserve(4);
                 
                 for (const auto& v : newRefinedFaceToCoord) {
-                    faceToPoint.push_back(vertexToIdx[v]);
-                    refinedCornIdx_to_parentFaceIdx[vertexToIdx[v]] = parentFaceIdx;
+                    faceToPoint.push_back(refinedFaceExistingVertex_to_refinedGridCornerIdx[v]);
+                    refinedCornIdx_to_parentFaceIdx[refinedFaceExistingVertex_to_refinedGridCornerIdx[v]] = parentFaceIdx;
                 }
 
                 // Add the amount of points to the count num_points.
@@ -2927,25 +2762,6 @@ void makeSingleCellRefinementParentFaceAware(bool                               
                                                          refinedElem.geometry().volume(),
                                                          corrected_refined_geometries.geomVector(std::integral_constant<int,3>()),
                                                          indices_storage_ptr);
-        
-        /** Decide if we delete this since it's replaced by makeInverseRelation */ 
-        /*   const auto& wrongCellToFace = singleCellRefinementData.cellToFace(i);
-
-             std::vector<Dune::cpgrid::EntityRep<1>> correctedCellToFace{};
-          
-             for (const auto& face : wrongCellToFace) {
-             if (vanishedRefinedFaceToNewRefinedFaces[face.index()].empty()) { // face is correct
-             assert(oldToNewFaceIdx[face.index()].size() == 1);
-             correctedCellToFace.push_back({ oldToNewFaceIdx[face.index()][0], face.orientation()});
-             }
-             else {
-             assert(oldToNewFaceIdx[face.index()].size()>1);
-             for (const auto& newFace : oldToNewFaceIdx[face.index()]) {
-             correctedCellToFace.push_back( { newFace, face.orientation() } );
-             }
-             }
-             }
-             corrected_refined_cell_to_face.appendRow(correctedCellToFace.begin(), correctedCellToFace.end());*/
     }
     corrected_refined_face_to_cell.makeInverseRelation(corrected_refined_cell_to_face);
 
@@ -2955,8 +2771,7 @@ void makeSingleCellRefinementParentFaceAware(bool                               
     refinedFace_to_parentFaces.resize(correctedRefinementData.numFaces());
 
     provideRefinementParentFaceIdxRelations(noCorrectionNeeded,
-                                            classifiedFaces,
-                                            faceTypeToIdx,
+                                            classifiedParentFaces,
                                             parentGridData,
                                             parentElem,
                                             cells_per_dim,

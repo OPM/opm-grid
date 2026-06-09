@@ -25,6 +25,7 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/LgrFaultHelpers.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
@@ -52,12 +53,11 @@ void checkFaceCountPerType(int repeatedFaceType,
                            int expectedRepeatedFaceTypeCount,
                            const std::array<std::vector<int>,6>& classifiedFaces)
 {
-    for (int faceType = 0; faceType < 6; ++faceType) {// I- has faceType 0
+    for (int faceType = 0; faceType < 6; ++faceType) {
         int expectedFaceTypeCount = (faceType == repeatedFaceType) ? expectedRepeatedFaceTypeCount : 1;
         BOOST_CHECK_EQUAL( classifiedFaces[faceType].size(), expectedFaceTypeCount);
     }
 }
-
 
 // The test cases consist in a grid with only 2 cells in level zero.
 // Only one of them gets refined, the other appears on the leaf with
@@ -73,8 +73,8 @@ void checkFaceCountInLeafCoarseElem(const Dune::CpGrid& grid,
             const auto& cellToFace = grid.currentLeafData().cellToFace(element.index());
             BOOST_CHECK_EQUAL( cellToFace.size(), expectedTotalFaceCount);
 
-            const auto classifiedFaces =  Opm::Lgr::classifyAndCollectFaceIndices(grid.currentLeafData(),
-                                                                                  element);
+            const auto classifiedFaces =  Opm::Lgr::groupFaceIndicesByType(grid.currentLeafData(),
+                                                                           element);
 
             checkFaceCountPerType(repeatedFaceType,
                                   expectedRepeatedFaceTypeCount,
@@ -110,7 +110,7 @@ void checkNewRefinedFaces(const Dune::CpGrid& grid,
     for (const auto& refinedElem : Dune::elements(grid.levelGridView(1))) {
 
         const auto& cellToFace = refinedGridData.cellToFace(refinedElem.index());
-        const auto classifiedFaces = Opm::Lgr::classifyAndCollectFaceIndices(refinedGridData, refinedElem);
+        const auto classifiedFaces = Opm::Lgr::groupFaceIndicesByType(refinedGridData, refinedElem);
 
         if (selectedFaceToCoord[refinedElem.index()].size() == 2) {
 
@@ -150,7 +150,7 @@ void checkNewRefinedFaces(const Dune::CpGrid& grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_true, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_true)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -339,7 +339,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false,*boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)//,*boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -522,7 +522,7 @@ PORO
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true,*boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)//,*boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -707,7 +707,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -1018,9 +1018,10 @@ PORO
     singleCellRef1_to_singleCellRef0_cornerIdx.resize(singleCellRef1_ptr->size(3), -1 /*invalid index */);
 
 
-    std::set<Coordinate,Opm::Lgr::FieldVectorLess> missingVertices{};
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> vertexToIdx{};
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> existingVtxInCoarseGridToItsIdx{};
+    std::set<Coordinate,Opm::Lgr::FieldVectorLess> foundNewVertices{};
+    // scr stands for single-cell-refinement
+    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> face0ExistingVertex_to_scr0GridCornerIdx{}; 
+    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> face1ExistingVertex_to_scr1GridCornerIdx{};
 
     for (std::size_t i = 0; i < faceInMarkedElemAndRefinedFaces.size(); ++i) {
         if (faceInMarkedElemAndRefinedFaces[i].size() == 1)
@@ -1030,8 +1031,6 @@ PORO
 
         const auto& [p0, refinedFaces0] = faceInMarkedElemAndRefinedFaces[i][0];
         const auto& [p1, refinedFaces1] = faceInMarkedElemAndRefinedFaces[i][1];
-
-
         
         std::cout<< i << " handling coarse face " << std::endl;
         for (const auto& refinedFace0 : refinedFaces0) {  
@@ -1041,14 +1040,14 @@ PORO
                 const auto face1 = Dune::cpgrid::EntityRep<1>(refinedFace1, true);
                  
                 bool face1FullyContainedInFace0 = false;
-                const auto newFaceInFace0 = Opm::Lgr::getVerticesOfOverlapArea(face0,
-                                                                               face1,
-                                                                               *singleCellRef0_ptr,
-                                                                               *singleCellRef1_ptr,
-                                                                               missingVertices,
-                                                                               vertexToIdx,
-                                                                               existingVtxInCoarseGridToItsIdx,
-                                                                               face1FullyContainedInFace0);
+                const auto newFaceInFace0 = Opm::Lgr::computeFaceOverlapVertices(face0,
+                                                                                 *singleCellRef0_ptr,
+                                                                                 face0ExistingVertex_to_scr0GridCornerIdx,
+                                                                                 face1,
+                                                                                 *singleCellRef1_ptr,
+                                                                                 face1ExistingVertex_to_scr1GridCornerIdx,
+                                                                                 foundNewVertices,
+                                                                                 face1FullyContainedInFace0);
 
                 if (face1FullyContainedInFace0){
                     std::cout<< "face0 " << refinedFace0 << " contains in face1: " << refinedFace1 << std::endl;
