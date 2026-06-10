@@ -256,12 +256,13 @@ private:
 /// \brief Get the number of edges of the graph of the grid and the wells for one cell
 int getNumberOfEdgesForSpecificCellForGridWithWells(const CombinedGridWellGraph& graph, int localCellId);
 
-/// \brief Iterate over the grid and get the sum of all edge weights
+/// \brief Iterate over the grid and to calculate the edge weights
 ///
 /// Used as a weight for edges between cells of a well
+/// The result is the sum of all grid edges, or multiplyWellConnectivities*grid_average if it is positive
 template <typename EdgeWeightType>
-EdgeWeightType sumOfGridEdges(const Dune::CpGrid& grid,
-                              const CombinedGridWellGraph& graph);
+EdgeWeightType calculateWellEdgeWeight(const Dune::CpGrid& grid,
+                                       const CombinedGridWellGraph& graph);
 
 /// \brief Get the list of edges and weights for one cell of a grid with wells
 template<typename ID, typename weightType>
