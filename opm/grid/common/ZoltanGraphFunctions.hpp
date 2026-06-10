@@ -193,6 +193,17 @@ public:
         else
             return 1.0;
     }
+
+    void setMultiplyWellConnectivities(const float& mWC)
+    {
+        multiplyWellConnectivities = mWC;
+    }
+
+    float getMultiplyWellConnectivities() const
+    {
+        return multiplyWellConnectivities;
+    }
+
 private:
 
     void addCompletionSetToGraph()
@@ -239,6 +250,7 @@ private:
     int edgeWeightsMethod_;
     WellConnections well_indices_;
     double log_min_;
+    float multiplyWellConnectivities = -1;
 };
 
 /// \brief Get the number of edges of the graph of the grid and the wells for one cell
