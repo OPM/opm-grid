@@ -550,13 +550,13 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     float mIWC = 1; // multiply edge weights between a well's cells. Used when allowDistributedWells=true.
     for (const auto& [key, value] : params)
     {
-        if (key=="EnvelopeWellLayers")
+        if (key=="EnvelopeWellLayers") {
             layers = std::stoi(value);
-        else if (key=="MultiplyWellConnectivities") {
+        } else if (key=="MultiplyWellConnectivities") {
             mIWC = std::stof(value);
-        }
-        else
+        } else {
             Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+        }
     }
 
     // root process has the whole grid, other ranks nothing

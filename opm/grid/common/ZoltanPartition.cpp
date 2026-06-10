@@ -326,8 +326,14 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     }
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
-    for (const auto& [key, value] : params)
-        Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+    float mWC = -1;
+    for (const auto& [key, value] : params) {
+        if (key=="MultiplyWellConnectivities") {
+            mWC = std::stof(value);
+        } else {
+            Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+        }
+    }
 
     // For the load balancer one process has the whole grid and
     // all others an empty partition before loadbalancing.
@@ -344,6 +350,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                        transmissibilities,
                                                        partitionIsEmpty,
                                                        edgeWeightsMethod));
+        gridAndWells->setMultiplyWellConnectivities(mWC);
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *gridAndWells,
                                                     partitionIsEmpty);
     }
@@ -523,8 +530,13 @@ private:
         else
             Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
 
-        for (const auto& [key, value] : params)
-            Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+        for (const auto& [key, value] : params) {
+            if (key=="MultiplyWellConnectivities") {
+                gridAndWells->setMultiplyWellConnectivities(std::stof(value));
+            } else {
+                 Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+            }
+        }
 
         // For the load balancer one process has the whole grid and
         // all others an empty partition before loadbalancing.
