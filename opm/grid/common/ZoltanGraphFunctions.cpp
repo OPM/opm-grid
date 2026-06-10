@@ -195,7 +195,7 @@ EdgeWeightType calculateWellEdgeWeight(const Dune::CpGrid& grid,
     }
 
     // when multipltWellConnectivities is provided, set the well weight to the average of grid weight times that coefficient
-    float mWC = graph.getMultiplyWellConnectivities();
+    EdgeWeightType mWC = graph.getMultiplyWellConnectivities();
     if (mWC > 0) {
         if (weWeight != std::numeric_limits<EdgeWeightType>::max()) {
             weWeight /= grid.numFaces();
@@ -203,7 +203,7 @@ EdgeWeightType calculateWellEdgeWeight(const Dune::CpGrid& grid,
             // grid is too big, start over and use maximum instead of the average
             weWeight = 0;
             for (int edge=0; edge<grid.numFaces(); ++edge) {
-                weWeight = std::max(weWeight, static_cast<float>(graph.transmissibility(edge)));
+                weWeight = std::max(weWeight, static_cast<EdgeWeightType>(graph.transmissibility(edge)));
             }
         }
         if (weWeight < std::numeric_limits<EdgeWeightType>::max()/mWC) {
