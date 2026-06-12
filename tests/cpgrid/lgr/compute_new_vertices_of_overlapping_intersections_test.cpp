@@ -990,81 +990,30 @@ PORO
     faceInMarkedElemAndRefinedFaces.resize(numCoarseFaces);
 
     // Single-cell-refinement for parent with index 0
-    const auto& [singleCellRef0_ptr,
-                 singleCellRef0_parentCorners_to_equivalentRefinedCorners,
-                 singleCellRef0_extraRefinedCornIdx_to_parentFaceIdx,
-                 singleCellRef0_refinedFaceIdx_to_parentFaceIdx,
-                 singleCellRef0_coincideWithCoarseCorner]
+    const auto [parentFaceAwareCellRefinement0,
+                 cellRef0_parentCorners_to_equivalentRefinedCorners,
+                 cellRef0_extraRefinedCornIdx_to_parentFaceIdx,
+                 cellRef0_refinedFaceIdx_to_parentFaceIdx,
+                 cellRef0_coincideWithCoarseCorner]
         = grid.currentLeafData().refineSingleCell( std::array<int,3>{2,3,2}, // cells_per_dim 
                                                    0, // parent cell index 
                                                    faceInMarkedElemAndRefinedFaces);
 
     // Single-cell-refinement for parent cell with index 1
-    const auto& [singleCellRef1_ptr,
-                 singleCellRef1_parentCorners_to_equivalentRefinedCorners,
-                 singleCellRef1_extraRefinedCornIdx_to_parentFaceIdx,
-                 singleCellRef1_refinedFaceIdx_to_parentFaceIdx,
-                 singleCellRef1_coincideWithCoarseCorner]
+    const auto [parentFaceAwareCellRefinement1,
+                 cellRef1_parentCorners_to_equivalentRefinedCorners,
+                 cellRef1_extraRefinedCornIdx_to_parentFaceIdx,
+                 cellRef1_refinedFaceIdx_to_parentFaceIdx,
+                 cellRef1_coincideWithCoarseCorner]
         = grid.currentLeafData().refineSingleCell(std::array<int,3>{2,3,2}, // cells_per_dim
                                                   1, // parent cell index
                                                   faceInMarkedElemAndRefinedFaces);
 
-
-
-    std::vector<int> singleCellRef0_to_singleCellRef1_cornerIdx{};
-    singleCellRef0_to_singleCellRef1_cornerIdx.resize(singleCellRef0_ptr->size(3), -1/* invalid index */);
-    
-    std::vector<int> singleCellRef1_to_singleCellRef0_cornerIdx{};
-    singleCellRef1_to_singleCellRef0_cornerIdx.resize(singleCellRef1_ptr->size(3), -1 /*invalid index */);
-
-
-    std::set<Coordinate,Opm::Lgr::FieldVectorLess> foundNewVertices{};
-    // scr stands for single-cell-refinement
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> face0ExistingVertex_to_scr0GridCornerIdx{}; 
-    std::map<Dune::FieldVector<double, 3>, int, Opm::Lgr::FieldVectorLess> face1ExistingVertex_to_scr1GridCornerIdx{};
-
-    for (std::size_t i = 0; i < faceInMarkedElemAndRefinedFaces.size(); ++i) {
-        if (faceInMarkedElemAndRefinedFaces[i].size() == 1)
-            continue;
-        
-        assert(faceInMarkedElemAndRefinedFaces[i].size() == 2);
-
-        const auto& [p0, refinedFaces0] = faceInMarkedElemAndRefinedFaces[i][0];
-        const auto& [p1, refinedFaces1] = faceInMarkedElemAndRefinedFaces[i][1];
-        
-        std::cout<< i << " handling coarse face " << std::endl;
-        for (const auto& refinedFace0 : refinedFaces0) {  
-            const auto face0 = Dune::cpgrid::EntityRep<1>(refinedFace0, true);
-            
-            for (const auto& refinedFace1 : refinedFaces1) {
-                const auto face1 = Dune::cpgrid::EntityRep<1>(refinedFace1, true);
-                 
-                bool face1FullyContainedInFace0 = false;
-                const auto newFaceInFace0 = Opm::Lgr::computeFaceOverlapVertices(face0,
-                                                                                 *singleCellRef0_ptr,
-                                                                                 face0ExistingVertex_to_scr0GridCornerIdx,
-                                                                                 face1,
-                                                                                 *singleCellRef1_ptr,
-                                                                                 face1ExistingVertex_to_scr1GridCornerIdx,
-                                                                                 foundNewVertices,
-                                                                                 face1FullyContainedInFace0);
-
-                if (face1FullyContainedInFace0){
-                    std::cout<< "face0 " << refinedFace0 << " contains in face1: " << refinedFace1 << std::endl;
-                    std::cout<< " save it" <<std::endl;
-                }    
-            
-                if (newFaceInFace0.has_value() && !newFaceInFace0.value().empty()) {
-                    std::cout<< "Begin new face in face0! "<< refinedFace0 << std::endl;
-                    for (const auto& coord : newFaceInFace0.value()) {
-                        std::cout<< coord[0] << " " << coord[1] << " " << coord[2] <<std::endl;
-                    }
-                    std::cout << std::endl;
-                }
-                // Create a method to track/relate refined corners at the boundary of neighboring
-                // single cell refinements
-            }
-        }
-    }
+    Opm::Lgr::computeNewGeometries(grid,
+                                   *parentFaceAwareCellRefinement0,
+                                   *parentFaceAwareCellRefinement1,
+                                   parent0,
+                                   parent1,
+                                   faceInMarkedElemAndRefinedFaces);
 }
 

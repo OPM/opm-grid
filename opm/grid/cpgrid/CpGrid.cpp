@@ -2002,20 +2002,11 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
         // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished.
         preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(data[preAdaptLevel]->size(0), -1);
     }
-    std::vector<std::unordered_map<int,int>> singleCellRef_extraRefinedCornIdx_to_parentFaceIdx{};
-    singleCellRef_extraRefinedCornIdx_to_parentFaceIdx.resize(currentLeafData().size(0));
 
-    std::vector<std::vector<std::vector<int>>> singleCellRef_refinedFace_to_parentFaces{};
-    singleCellRef_refinedFace_to_parentFaces.resize(currentLeafData().size(0));
+    Opm::Lgr::ParentAwareCellRefinements parentAwareCellRefinements(currentLeafData().size(0));
 
-    std::vector<std::vector<bool>> singleCellRef_coincideWithCoarseCorner{};
-    singleCellRef_coincideWithCoarseCorner.resize(currentLeafData().size(0));
-
-    std::vector<bool> singleCellRef_hasOnlyOneFacePerType{};
-    singleCellRef_hasOnlyOneFacePerType.resize(currentLeafData().size(0), true);
-    
     // Ignore marked aquifer cells/connections in globalRefine()/adapt(); throw in addLgrsUpdateLeafView()/autoRef().
-    Opm::Lgr::filterMarkedAquiferCellsAndConnections(*this, throwOnFailure); 
+    Opm::Lgr::filterMarkedAquiferCellsAndConnections(*this, throwOnFailure);
     Opm::Lgr::refineAndProvideMarkedRefinedRelations( *this,
                                                       /* Marked elements parameters */
                                                       markedElem_to_itsLgr,
@@ -2036,10 +2027,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                                       preAdapt_level_to_leaf_cells_vec,
                                                       /* Additional parameters */
                                                       cells_per_dim_vec,
-                                                      singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
-                                                      singleCellRef_refinedFace_to_parentFaces,
-                                                      singleCellRef_coincideWithCoarseCorner,
-                                                      singleCellRef_hasOnlyOneFacePerType);
+                                                      parentAwareCellRefinements);
 
 #if HAVE_MPI
     auto global_markedElem_count = comm().sum(markedElem_count);
@@ -2110,9 +2098,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                              cornerInMarkedElemWithEquivRefinedCorner,
                                              faceInMarkedElemAndRefinedFaces,
                                              cells_per_dim_vec,
-                                             singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
-                                             singleCellRef_coincideWithCoarseCorner,
-                                             singleCellRef_hasOnlyOneFacePerType);
+                                             parentAwareCellRefinements);
 
     // --- Adapted corners and PreAdapt corners relations ---
     std::map<std::array<int,2>,int>           elemLgrAndElemLgrCorner_to_adaptedCorner;
@@ -2132,9 +2118,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                       vanishedRefinedCorner_to_itsLastAppearance,
                                       faceInMarkedElemAndRefinedFaces,
                                       cells_per_dim_vec,
-                                      singleCellRef_extraRefinedCornIdx_to_parentFaceIdx,
-                                      singleCellRef_coincideWithCoarseCorner,
-                                       singleCellRef_hasOnlyOneFacePerType);
+                                      parentAwareCellRefinements);
 
     // FACES
     // Stablish relationships between PreAdapt faces and refined or adapted ones ---
@@ -2151,7 +2135,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                            markedElem_to_itsLgr,
                                            assignRefinedLevel,
                                            faceInMarkedElemAndRefinedFaces,
-                                           singleCellRef_refinedFace_to_parentFaces);
+                                           parentAwareCellRefinements.refinedFace_to_parentFaces);
 
     // --- Adapted faces and PreAdapt faces relations ---
     std::map< std::array<int,2>, int >           elemLgrAndElemLgrFace_to_adaptedFace;
@@ -2165,7 +2149,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                     markedElem_to_itsLgr,
                                     assignRefinedLevel,
                                     faceInMarkedElemAndRefinedFaces,
-                                    singleCellRef_refinedFace_to_parentFaces);
+                                    parentAwareCellRefinements.refinedFace_to_parentFaces);
 
     // Set refined level grids geometries
     // --- Refined corners  ---
@@ -2207,7 +2191,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                    markedElemAndEquivRefinedCorn_to_corner,
                                    cornerInMarkedElemWithEquivRefinedCorner,
                                    cells_per_dim_vec,
-                                   singleCellRef_refinedFace_to_parentFaces);
+                                   parentAwareCellRefinements.refinedFace_to_parentFaces);
 
     // Update leaf grid geometries
     // --- Adapted corners ---
@@ -2232,7 +2216,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                     cornerInMarkedElemWithEquivRefinedCorner,
                                     cells_per_dim_vec,
                                     preAdaptMaxLevel,
-                                    singleCellRef_coincideWithCoarseCorner);
+                                    parentAwareCellRefinements.coincideWithCoarseCorner);
     // --- Adapted cells ---
     Opm::Lgr::populateLeafGridCells(currentLeafData(),
                                     adapted_cells,
@@ -2252,7 +2236,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                     cornerInMarkedElemWithEquivRefinedCorner,
                                     cells_per_dim_vec,
                                     preAdaptMaxLevel,
-                                    singleCellRef_refinedFace_to_parentFaces);
+                                    parentAwareCellRefinements.refinedFace_to_parentFaces);
 
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
