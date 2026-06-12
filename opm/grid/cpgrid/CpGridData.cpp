@@ -1884,7 +1884,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         std::vector<std::array<int,2>> extended_parent_to_refined_corners = parent_to_refined_corners;
          // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
 
-        Opm::Lgr::makeSingleCellRefinementParentFaceAware(hasOnlyOneFacePerType,
+        Opm::Lgr::makeCellRefinementParentFaceAware(hasOnlyOneFacePerType,
                                                           classifiedFaces,
                                                           /* singleCellRefinementData */ refined_grid,
                                                           /* parentGridData */ *this,
