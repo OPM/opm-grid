@@ -1873,13 +1873,16 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         std::vector<std::shared_ptr<CpGridData>>                     corrected_refined_data;
         std::shared_ptr<CpGridData>                                  corrected_refined_grid_ptr = std::make_shared<CpGridData>(corrected_refined_data); // ccobj_
         auto&                                                        corrected_refined_grid = *corrected_refined_grid_ptr;
-        DefaultGeometryPolicy&                                       corrected_refined_geometries = corrected_refined_grid.geometry_;
+
+        Opm::Lgr::GeomData corrected_geomData(corrected_refined_grid);
+
+        /*DefaultGeometryPolicy&                                       corrected_refined_geometries = corrected_refined_grid.geometry_;
         std::vector<std::array<int,8>>&                              corrected_refined_cell_to_point = corrected_refined_grid.cell_to_point_;
         cpgrid::OrientedEntityTable<0,1>&                            corrected_refined_cell_to_face = corrected_refined_grid.cell_to_face_;
         Opm::SparseTable<int>&                                       corrected_refined_face_to_point = corrected_refined_grid.face_to_point_;
         cpgrid::OrientedEntityTable<1,0>&                            corrected_refined_face_to_cell = corrected_refined_grid.face_to_cell_;
         cpgrid::EntityVariable<enum face_tag,1>&                     corrected_refined_face_tags = corrected_refined_grid.face_tag_;
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_refined_face_normals = corrected_refined_grid.face_normals_;
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_refined_face_normals = corrected_refined_grid.face_normals_;*/
         
         std::vector<std::array<int,2>> extended_parent_to_refined_corners = parent_to_refined_corners;
          // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
@@ -1895,13 +1898,14 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                                                           refinedCornIdx_to_parentFaceIdx,
                                                           refinedFace_to_parentFaces,
                                                           corrected_refined_grid,
-                                                          corrected_refined_geometries,
+                                                    corrected_geomData,
+                                                    /*corrected_refined_geometries,
                                                           corrected_refined_cell_to_point,
                                                           corrected_refined_cell_to_face,
                                                           corrected_refined_face_to_point,
                                                           corrected_refined_face_to_cell,
                                                           corrected_refined_face_tags,
-                                                          corrected_refined_face_normals,
+                                                          corrected_refined_face_normals,*/
                                                           cells_per_dim);
 
         std::cout<< corrected_refined_grid.size(3) << " after correction points " << std::endl;
