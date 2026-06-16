@@ -79,7 +79,12 @@
 namespace Opm
 {
 class EclipseState;
+
+namespace Lgr{
+struct GeomData;
 }
+}
+
 namespace Dune
 {
 class CpGrid;
@@ -122,6 +127,7 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
     friend class Dune::cpgrid::IdSet;
     friend class Dune::cpgrid::LevelGlobalIdSet;
+    friend struct Opm::Lgr::GeomData;
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
