@@ -386,16 +386,16 @@ orderFaceVertices(int faceTag,
 template<typename Face>
 std::optional<std::vector<Dune::FieldVector<double,3>>>
 computeFaceOverlapVertices(const Face&                                                  face1,
-                           const Dune::cpgrid::CpGridData&                              face1_gridData,
-                           std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& face1ExistingVertex_to_face1GridCornerIdx,
+                           const Dune::cpgrid::CpGridData&                              gridData1,
+                           std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& gridData1_vertex_to_vertexIdx,
                            const Face&                                                  face2,
-                           const Dune::cpgrid::CpGridData&                              face2_gridData,
-                           std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& face2ExistingVertex_to_face2GridCornerIdx,
+                           const Dune::cpgrid::CpGridData&                              gridData2,
+                           std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& gridData2_vertex_to_vertexIdx,
                            std::set<Dune::FieldVector<double,3>,FieldVectorLess>&       foundNewVertices,
                            bool&                                                        face2FullyContainedInFace1)
 {
-    const auto face1_tag = face1_gridData.faceTag(face1.index());
-    const auto face2_tag = face2_gridData.faceTag(face2.index());
+    const auto face1_tag = gridData1.faceTag(face1.index());
+    const auto face2_tag = gridData2.faceTag(face2.index());
     
     // The orientation may differ when the grid data objects correspond
     // to neighboring single-cell refinements rather than a parent grid
@@ -404,22 +404,22 @@ computeFaceOverlapVertices(const Face&                                          
     if (face1_tag != face2_tag)
         return std::nullopt;
     
-    const auto& face1_to_point = face1_gridData.faceToPoint(face1.index());
-    const auto& face2_to_point = face2_gridData.faceToPoint(face2.index());
+    const auto& face1_to_point = gridData1.faceToPoint(face1.index());
+    const auto& face2_to_point = gridData2.faceToPoint(face2.index());
 
     // Used to create semi-planes to determine whether a vertex of face2
     // lies inside face1.
     const auto face1_edges = createEdges(face1_to_point);
-    const auto& face1_normal = face1_gridData.faceNormals(face1.index());
+    const auto& face1_normal = gridData1.faceNormals(face1.index());
     
     std::set<Dune::FieldVector<double,3>,FieldVectorLess> overlapFaceVertices{};
     
     // Case 1: face2 is fully contained in face1
     for (std::size_t i = 0; i < face2_to_point.size(); ++i) {
-        const auto currentPoint = Dune::cpgrid::Entity<3>(face2_gridData, face2_to_point[i], true).geometry().center();
-        if (isVertexInsideFace(currentPoint, face1_gridData, face1_edges, face1_normal)) {
+        const auto currentPoint = Dune::cpgrid::Entity<3>(gridData2, face2_to_point[i], true).geometry().center();
+        if (isVertexInsideFace(currentPoint, gridData1, face1_edges, face1_normal)) {
             overlapFaceVertices.insert(currentPoint);
-            face2ExistingVertex_to_face2GridCornerIdx[currentPoint] = face2_to_point[i];
+            gridData2_vertex_to_vertexIdx[currentPoint] = face2_to_point[i];
         }
     }
     if (overlapFaceVertices.size() == face2_to_point.size()) {
@@ -429,13 +429,13 @@ computeFaceOverlapVertices(const Face&                                          
     // Case 2: Intersection/overlap area between face1 and face2 is not trivial (new vertices!) 
     for (const auto& face1_edge : face1_edges) {
         
-        const auto edge0 = Dune::cpgrid::Entity<3>(face1_gridData, face1_edge[0], true).geometry().center();
-        const auto edge1 = Dune::cpgrid::Entity<3>(face1_gridData, face1_edge[1], true).geometry().center();
+        const auto edge0 = Dune::cpgrid::Entity<3>(gridData1, face1_edge[0], true).geometry().center();
+        const auto edge1 = Dune::cpgrid::Entity<3>(gridData1, face1_edge[1], true).geometry().center();
         
         for (std::size_t i = 0; i < face2_to_point.size(); ++i) {
 
-            const auto currentPoint = Dune::cpgrid::Entity<3>(face2_gridData, face2_to_point[i], true).geometry().center();
-            const auto previousPoint = Dune::cpgrid::Entity<3>(face2_gridData, face2_to_point[(i-1)%face2_to_point.size()], true).geometry().center();
+            const auto currentPoint = Dune::cpgrid::Entity<3>(gridData2, face2_to_point[i], true).geometry().center();
+            const auto previousPoint = Dune::cpgrid::Entity<3>(gridData2, face2_to_point[(i-1)%face2_to_point.size()], true).geometry().center();
 
             bool isInteriorInFace1Edge{};
             bool isInteriorInFace2Edge{};
@@ -456,10 +456,10 @@ computeFaceOverlapVertices(const Face&                                          
                             foundNewVertices.insert(p1); // if p0 and p1 coincide, no problem->it's a set
                             if (!isInteriorInFace1Edge) {
                                 if (Dune::dot(p0-edge0,p0-edge0) < 1e-8) {
-                                    face1ExistingVertex_to_face1GridCornerIdx[edge0] = face1_edge[0];
+                                    gridData1_vertex_to_vertexIdx[edge0] = face1_edge[0];
                                 }
                                 else if (Dune::dot(p0-edge1,p0-edge1) < 1e-8) {
-                                    face1ExistingVertex_to_face1GridCornerIdx[edge1] = face1_edge[1];
+                                    gridData1_vertex_to_vertexIdx[edge1] = face1_edge[1];
                                 }  
                             }
                         }
@@ -468,7 +468,7 @@ computeFaceOverlapVertices(const Face&                                          
                         face2FullyContainedInFace1 = false;
                     }
                     overlapFaceVertices.insert(currentPoint);
-                    face2ExistingVertex_to_face2GridCornerIdx[currentPoint] = face2_to_point[i];
+                    gridData2_vertex_to_vertexIdx[currentPoint] = face2_to_point[i];
                     face2FullyContainedInFace1 = false;
                 }
             }
@@ -483,7 +483,7 @@ computeFaceOverlapVertices(const Face&                                          
                     overlapFaceVertices.insert(p1);
                 }
                 overlapFaceVertices.insert(previousPoint);
-                face2ExistingVertex_to_face2GridCornerIdx[previousPoint] = face2_to_point[(i-1)%face2_to_point.size()];
+                gridData2_vertex_to_vertexIdx[previousPoint] = face2_to_point[(i-1)%face2_to_point.size()];
                 face2FullyContainedInFace1 = false;
             }
         } // end-for-refinedFaceToPoint-loop
@@ -494,7 +494,7 @@ computeFaceOverlapVertices(const Face&                                          
     // Make sure all points forming the new face are actually ("inside") lying on face1
     bool allPointsInsideFace1 = true;
     for (const auto& vertex : overlapFaceVertices) {
-        allPointsInsideFace1 = allPointsInsideFace1 && isVertexInsideFace(vertex, face1_gridData, face1_edges, face1_normal);
+        allPointsInsideFace1 = allPointsInsideFace1 && isVertexInsideFace(vertex, gridData1, face1_edges, face1_normal);
         if (!allPointsInsideFace1) {
             return std::nullopt;
         }
@@ -503,14 +503,17 @@ computeFaceOverlapVertices(const Face&                                          
     return std::make_optional<std::vector<Dune::FieldVector<double,3>>>(ordered);
 }
 
+bool isAtGridBoundary(const Dune::cpgrid::CpGridData& gridData,
+                      const Dune::cpgrid::Entity<0>& element);
+
 std::set<Dune::FieldVector<double,3>,FieldVectorLess>
 collectNewVertices(const Dune::cpgrid::CpGridData&                                                    parentGridData,
                    const Dune::cpgrid::Entity<0>&                                                     parentElem,
-                   std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&                       parentFaceExistingVertex_to_parentGridCornerIdx,
+                   std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&                       parentGridData_vertex_to_vertexIdx,
                    const std::array<std::vector<int>,6>&                                              classifiedParentCellFaces,
-                   const Dune::cpgrid::CpGridData&                                                    singleCellRefinementData, 
+                   const Dune::cpgrid::CpGridData&                                                    cellRefinementData, 
                    const Dune::cpgrid::Entity<0>&                                                     refinedElem,
-                   std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&                       refinedFaceExistingVertex_to_refinedGridCornerIdx,
+                   std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&                       cellRefinementData_vertex_to_vertexIdx,
                    std::map<int,std::vector<std::vector<Dune::FieldVector<double,3>>>>&               overlapFaces,
                    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>>& vanishedRefinedFaceToNewRefinedFaces,
                    std::vector<int>&                                                                  fullyContainedInParentFace);
@@ -558,12 +561,20 @@ void addVertices(int& verticesCount,
                  const Dune::cpgrid::CpGridData& gridData, 
                  const std::set<Dune::FieldVector<double,3>, FieldVectorLess>& foundNewVertices,
                  Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& correctedGridData_vertices,
-                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& otherGridDataVertex_to_otherGridDataVertexIdx, // parentGrid or neighboringGrid
-                 std::map<int,int>& correctedGridDataVertexIdx_to_otherGridDataVertexIdx,
+                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& parentGridData_vertex_to_vertexIdx, 
+                 std::map<int,int>& correctedGridDataVertexIdx_to_parentGridDataVertexIdx,
                  std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& newVertex_to_correctedGridDataVertexIdx,
                  const std::array<int,8>& parentCellToPoint,
                  std::vector<std::array<int,2>>& extended_parent_to_refined_corners);
 
+
+/// Add vertices to a parent-cell-faces-aware-cell-refinement CpGridData, to make it aware of neighboring cell refinement. 
+///
+/// @param [out] verticesCount            Total number of vertices before making the gridData aware of the neighboring cell refinement.
+///                                       It will be increased, due to adding new neighboring vertices.
+/// @param [in] gridData
+/// @param [in] foundNewVertices
+/// @param [out] correctedGridData_vertices
 void addVertices(int& verticesCount,
                  const Dune::cpgrid::CpGridData& beforeNeighborAwareCellRefinement, // assumed to be aware of parent-cell-faces!!!
                  const std::set<Dune::FieldVector<double,3>, FieldVectorLess>& foundNewVertices,
