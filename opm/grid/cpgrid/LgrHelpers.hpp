@@ -432,7 +432,7 @@ void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
 /// @param [in]  markedElem_to_itsLgr
 /// @param [in]  assignRefinedLevel
 /// @param [in]  faceInMarkedElemAndRefinedFaces
-/// @param [in]  singleCellRef_refinedFace_to_parentFaces
+/// @param [in]  singleCellRef_refinedFace_to_parentFace
 void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                                   int preAdaptMaxLevel,
                                   std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
@@ -441,7 +441,7 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                   const std::vector<int>& assignRefinedLevel,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                  const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
+                                  const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace);
 
 /// @brief Identify faces on the leaf (adapted) grid and establish face mappings.
 ///
@@ -456,7 +456,7 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
 /// @param [in]  markedElem_to_itsLgr
 /// @param [in]  assignRefinedLevel
 /// @param [in]  faceInMarkedElemAndRefinedFaces
-/// @param [in]  singleCellRef_refinedFace_to_parentFaces
+/// @param [in]  singleCellRef_refinedFace_to_parentFace
 void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
                            std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
@@ -464,7 +464,7 @@ void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                            const std::vector<int>& assignRefinedLevel,
                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                           const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
+                           const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace);
 
 /// @brief Compute the {i,j,k} index of a refined face from its linear index in a single-cell refinement.
 ///
@@ -496,9 +496,9 @@ bool isRefinedFaceOnLgrBoundary(int faceIdxInLgr,
 /// @param [in] faceIdxInLgr   Face index in the single-cell refinement.
 /// @param [in] elemLgr_ptr    Pointer to the single-cell refinement grid.
 /// @return Index of the parent face containing the refined face.
-std::vector<int> getParentFaceWhereNewRefinedFaceLiesOn(int faceIdxInLgr,
-                                                        const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
-                                                        const std::vector<std::vector<int>>& refinedFace_to_parentFaces);
+int getParentFaceWhereNewRefinedFaceLiesOn(int faceIdxInLgr,
+                                           const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
+                                           const std::vector<int>& refinedFace_to_parentFace);
 
 /// @brief Define the corners (geometry) for each refined level grid.
 void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
@@ -542,7 +542,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::vector<std::array<int,3>>&  cells_per_dim_vec,
-                          const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces);
+                          const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace);
 
 /// @brief Map a refined boundary face from one single-cell refinement to a neighboring refinement.
 ///
@@ -602,7 +602,7 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const int& preAdaptMaxLevel,
-                           const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFaceIdx_to_parentFaces);
+                           const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace);
 
 /// @brief Auxilliary function to compute one or more properties on selected block of parent cells.
 ///

@@ -891,7 +891,125 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(faultInLgr)
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsDifferentLgrs, *boost::unit_test::disabled())
+{
+    // Level zero grid dims = 2x1x1
+    //
+    // cell 0
+    // bottom face corners (0,0,0), (6,0,0), (0,6,0), (6,6,0)
+    //    top face corners (0,0,8), (6,0,8), (0,6,8), (6,6,8)
+    //
+    // cell 1
+    // bottom face corners (6,0,1), (12,0,1), (6,6,1),  (12,6,1)
+    //    top face corners (6,0,9), (12,0,9), (12,6,9), (12,6,9)
+    const std::string deckString =
+        R"(RUNSPEC
+DIMENS
+ 2 1 1 /
+
+GRID
+
+COORD
+ 0 0 0     0 0 9
+ 6 0 0     6 0 9
+12 0 0    12 0 9
+
+ 0 6 0    0 6 9
+ 6 6 0    6 6 9
+12 6 0   12 6 9
+/
+
+ZCORN
+0 0 1 1  0 0 1 1
+8 8 9 9  8 8 9 9
+/
+
+ACTNUM
+2*1
+/
+
+PORO
+2*0.15
+/
+)";
+
+    Dune::CpGrid grid;
+    // Opm::createGridFromDeckString(grid,
+    //                            deckString);
+
+
+    Opm::createGridAndAddLgrs(grid,
+                            deckString,
+                           /* cells_per_dim_vec */ {{2,3,2}, {2,3,2}},
+                            /* startIJK_vec */      {{0,0,0}, {1,0,0}},
+                                /* endIJK_vec */        {{1,1,1}, {2,1,1}},
+                             /* lgr_name_vec */      {"LGR1", "LGR2"});
+
+    // Element 0 and element 1 in level zero grid share an I_FACE (with face index 2)
+    //
+    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in      
+    //                                                   | y- and z- directions:
+    //
+    //              (6,0,9) -----------------(6,6,9)     |  (6,0,9) --(6,2,9)-(6,4,9)--(6,6,9)  
+    //                 |      face idx 3      |          |     |         *       *        |    
+    //              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,2,8)-(6,4,8)--(6,6,8)               
+    //                 |                      |          |     |         *       *        |                 
+    //                 |                      |          |     |         *       *        |                  
+    //                 |                      |          |     |         *       *        |                  
+    //                 |      face idx 2      |          |  (6,0,5) **(6,2,5)*(6,4,5)**(6,6,5)
+    //                 |                      |          |     |         *       *        |     
+    //                 |                      |          |  (6,0,4) **(6,2,4)*(6,4,4)**(6,6,4)              
+    //                 |                      |          |     |         *       *        |                  
+    //                 |                      |          |     |         *       *        |                 
+    //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(6,2,1)-(6,4,1)--(6,6,1)              
+    //                 |      face idx 1      |          |     |         *       *        |                  
+    //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,2,0)-(6,4,0)--(6,6,0)              
+    //                                                   |
+
+    /*  // const auto& refinedGridData = *grid.currentData()[1];
+    const auto& parentGridData = *grid.currentData()[0];
+    const auto parent0 = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
+    const auto parent1 = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
+
+    int numCoarseFaces = grid.numFaces();
+    BOOST_CHECK_EQUAL( numCoarseFaces, 13);
+
+    std::vector<std::vector<std::pair<int, std::vector<int>>>> faceInMarkedElemAndRefinedFaces{};
+    faceInMarkedElemAndRefinedFaces.resize(numCoarseFaces);
+
+    // Single-cell-refinement for parent with index 0
+    const auto [parentFaceAwareCellRefinement0,
+                 cellRef0_parentCorners_to_equivalentRefinedCorners,
+                 cellRef0_extraRefinedCornIdx_to_parentFaceIdx,
+                 cellRef0_refinedFaceIdx_to_parentFaceIdx,
+                 cellRef0_coincideWithCoarseCorner]
+        = grid.currentLeafData().refineSingleCell( std::array<int,3>{2,3,2}, // cells_per_dim 
+                                                   0, // parent cell index 
+                                                   faceInMarkedElemAndRefinedFaces);
+
+    // Single-cell-refinement for parent cell with index 1
+    const auto [parentFaceAwareCellRefinement1,
+                 cellRef1_parentCorners_to_equivalentRefinedCorners,
+                 cellRef1_extraRefinedCornIdx_to_parentFaceIdx,
+                 cellRef1_refinedFaceIdx_to_parentFaceIdx,
+                 cellRef1_coincideWithCoarseCorner]
+        = grid.currentLeafData().refineSingleCell(std::array<int,3>{2,3,2}, // cells_per_dim
+                                                  1, // parent cell index
+                                                  faceInMarkedElemAndRefinedFaces);
+
+    Opm::Lgr::computeNewGeometries(grid,
+                                   *parentFaceAwareCellRefinement0,
+                                   *parentFaceAwareCellRefinement1,
+                                   parent0,
+                                   parent1,
+                                   faceInMarkedElemAndRefinedFaces);*/
+}
+
+
+
+
+
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -945,38 +1063,26 @@ PORO
     //                            /* endIJK_vec */        {{2,1,1}},
     //                         /* lgr_name_vec */      {"LGR1"});
 
-    // LGR1 dimensions = {2,3,2}
-    // LGR1 indices
+    // Element 0 and element 1 in level zero grid share an I_FACE (with face index 2)
     //
-    // k = 1      |10    11|
-    //            | 8     9|
-    //            | 6     7|
-    //            ----------
-    // k = 0      | 4     5|
-    //            | 2     3|
-    //            | 0     1|
-    //            ----------
-
-    // Element 0 in level zero grid has two faces of type {I_FACE, true}
-    //
-    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in       LGR1 cell indices
+    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in      
     //                                                   | y- and z- directions:
-    //              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,2,8)-(6,4,8)--(6,6,8)               x-----x-----x-----x
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
-    //                 |                      |          |     |         *       *        |                  |  7  *  9  *  11 |
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
-    //                 |      face idx 2      |          |     |         *       *        |                  |     *     *     |
-    //                 |                      |          |  (6,0,4) **(6,2,4)*(6,4,4)**(6,6,4)               x*****x*****x*****x
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
-    //                 |                      |          |     |         *       *        |                  |     *     *     |
-    //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(?,?,?)-(?,?,?)--(6,6,1)               x- 1 -x- 3 -x- 5 -x
-    //                 |      face idx 1      |          |     |         *       *        |                  |     *     *     |
-    //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,2,0)-(6,4,0)--(6,6,0)               x-----x-----x-----x
+    //
+    //              (6,0,9) -----------------(6,6,9)     |  (6,0,9) --(6,2,9)-(6,4,9)--(6,6,9)  
+    //                 |      face idx 3      |          |     |         *       *        |    
+    //              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,2,8)-(6,4,8)--(6,6,8)               
+    //                 |                      |          |     |         *       *        |                 
+    //                 |                      |          |     |         *       *        |                  
+    //                 |                      |          |     |         *       *        |                  
+    //                 |      face idx 2      |          |  (6,0,5) **(6,2,5)*(6,4,5)**(6,6,5)
+    //                 |                      |          |     |         *       *        |     
+    //                 |                      |          |  (6,0,4) **(6,2,4)*(6,4,4)**(6,6,4)              
+    //                 |                      |          |     |         *       *        |                  
+    //                 |                      |          |     |         *       *        |                 
+    //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(6,2,1)-(6,4,1)--(6,6,1)              
+    //                 |      face idx 1      |          |     |         *       *        |                  
+    //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,2,0)-(6,4,0)--(6,6,0)              
     //                                                   |
-    //                                                   | The missing vertices are (6,2,1) and (6,4,1), appering in elements 1,3, or 5 in LGR1.
-    //                                                   | In LGR1 element 1: (6,2,1)
-    //                                                   | In LGR1 element 3: (6,2,1) and (6,4,1)
-    //                                                   | In LGR1 element 5: (6,4,1)
 
     // const auto& refinedGridData = *grid.currentData()[1];
     const auto& parentGridData = *grid.currentData()[0];

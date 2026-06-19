@@ -128,14 +128,14 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
             const auto& [elemLgr_ptr,
                          parentCorners_to_equivalentRefinedCorners,
                          extraRefinedCornIdx_to_parentFaceIdx,
-                         refinedFace_to_parentFaces,
+                         refinedFace_to_parentFace,
                          coincideWithCoarseCorner]
                 = grid.currentLeafData().refineSingleCell(cells_per_dim_vec[shiftedLevel],
                                                           element.index(),
                                                           faceInMarkedElemAndRefinedFaces);
             markedElem_to_itsLgr[ element.index() ] = elemLgr_ptr;
             cellRefinementsInfo.extraRefinedCornIdx_to_parentFaceIdx[element.index()] = extraRefinedCornIdx_to_parentFaceIdx;
-            cellRefinementsInfo.refinedFace_to_parentFaces[element.index()] = refinedFace_to_parentFaces;
+            cellRefinementsInfo.refinedFace_to_parentFace[element.index()] = refinedFace_to_parentFace;
             cellRefinementsInfo.coincideWithCoarseCorner[element.index()] = coincideWithCoarseCorner;
             if (parentCorners_to_equivalentRefinedCorners.size()>8) {
                 cellRefinementsInfo.hasOnlyOneFacePerType[element.index()] = false;
@@ -878,6 +878,9 @@ void processBoundaryCorners(int elemIdx,
 
                 const auto& [p0, refinedFaces0] = faceInMarkedElemAndRefinedFaces[face][0];
                 const auto& [p1, refinedFaces1] = faceInMarkedElemAndRefinedFaces[face][1];
+
+                std::cout<< p0 << " parent cell, with " << refinedFaces0.size() << " refined faces "<< std::endl;
+                std::cout<< p1 << " parent cell, with " << refinedFaces1.size() << " refined faces "<< std::endl;
             }
         }
 
@@ -1030,7 +1033,7 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                   const std::vector<int>& assignRefinedLevel,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                  const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces)
+                                  const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace)
 {
     for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
         if (!markedElem_to_itsLgr[elemIdx]) continue; // skip elements not involved in refinement
@@ -1062,52 +1065,51 @@ void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
                 // - If the marked face appears only in one marked element -> then, we store this face now.
                 // - If the marked face appears in two marked elements -> we distinguish between
                 //   both marked elements sharing that face belonging to the same level, or not.
-                const auto markedFaces = getParentFaceWhereNewRefinedFaceLiesOn(face,
-                                                                                markedElem_to_itsLgr[elemIdx],
-                                                                                singleCellRef_refinedFace_to_parentFaces[elemIdx]);
-                for (const auto& markedFace : markedFaces) {
-                    assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
+                const auto markedFace = getParentFaceWhereNewRefinedFaceLiesOn(face,
+                                                                               markedElem_to_itsLgr[elemIdx],
+                                                                               singleCellRef_refinedFace_to_parentFace[elemIdx]);
+                
+                assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
 
-                    if (faceInMarkedElemAndRefinedFaces[markedFace].size() == 1) {
+                if (faceInMarkedElemAndRefinedFaces[markedFace].size() == 1) {
                    
-                        // The marked face appears only in one marked element -> then, we store this face now.
+                    // The marked face appears only in one marked element -> then, we store this face now.
 #ifndef NDEBUG
-                        int lastElemIdxWithMarkedFace = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-                        assert(lastElemIdxWithMarkedFace == elemIdx);
+                    int lastElemIdxWithMarkedFace = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+                    assert(lastElemIdxWithMarkedFace == elemIdx);
 #endif
 
+                    insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace, // map a_to_b
+                                        refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace, // map b_to_a
+                                        {elemIdx, face},                                     // keyA
+                                        level,                                               // keyBfirst
+                                        refined_face_count_vec[shiftedLevel]);               // counter (keyBsecond)
+                }
+                else { // The marked face appears in two marked element. Distinguish between
+                    //   both marked elements sharing that face belonging to the same level, or not
+                    assert(faceInMarkedElemAndRefinedFaces[markedFace].size() == 2);
+
+                    const auto maxElemIdx = std::max( faceInMarkedElemAndRefinedFaces[markedFace][0].first,
+                                                      faceInMarkedElemAndRefinedFaces[markedFace][1].first);
+                    int maxElemLevel = assignRefinedLevel[maxElemIdx];
+
+                    // If this marked face appears in two elements assigned to the same level, we store
+                    // the face only once, for the largest marked element index.
+                    if ((maxElemLevel == level) && (maxElemIdx == elemIdx))  {
+                        int shiftedFirstLevel = maxElemLevel - preAdaptMaxLevel - 1;
+                        insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace, // map a_to_b
+                                            refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace, // map b_to_a
+                                            {maxElemIdx, face},                                  // keyA
+                                            maxElemLevel,                                        // keyBfirst
+                                            refined_face_count_vec[shiftedFirstLevel]);          // counter (keyBsecond)
+                    }
+                    else if (maxElemLevel != level) { // 2 neighboring (parent) cells got refined but
+                        // children belong to different levels then, store the refined face now
                         insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace, // map a_to_b
                                             refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace, // map b_to_a
                                             {elemIdx, face},                                     // keyA
                                             level,                                               // keyBfirst
                                             refined_face_count_vec[shiftedLevel]);               // counter (keyBsecond)
-                    }
-                    else { // The marked face appears in two marked element. Distinguish between
-                        //   both marked elements sharing that face belonging to the same level, or not
-                        assert(faceInMarkedElemAndRefinedFaces[markedFace].size() == 2);
-
-                        const auto maxElemIdx = std::max( faceInMarkedElemAndRefinedFaces[markedFace][0].first,
-                                                          faceInMarkedElemAndRefinedFaces[markedFace][1].first);
-                        int maxElemLevel = assignRefinedLevel[maxElemIdx];
-
-                        // If this marked face appears in two elements assigned to the same level, we store
-                        // the face only once, for the largest marked element index.
-                        if ((maxElemLevel == level) && (maxElemIdx == elemIdx))  {
-                            int shiftedFirstLevel = maxElemLevel - preAdaptMaxLevel - 1;
-                            insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace, // map a_to_b
-                                                refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace, // map b_to_a
-                                                {maxElemIdx, face},                                  // keyA
-                                                maxElemLevel,                                        // keyBfirst
-                                                refined_face_count_vec[shiftedFirstLevel]);          // counter (keyBsecond)
-                        }
-                        else if (maxElemLevel != level) { // 2 neighboring (parent) cells got refined but
-                            // children belong to different levels then, store the refined face now
-                            insertBidirectional(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace, // map a_to_b
-                                                refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace, // map b_to_a
-                                                {elemIdx, face},                                     // keyA
-                                                level,                                               // keyBfirst
-                                                refined_face_count_vec[shiftedLevel]);               // counter (keyBsecond)
-                        }
                     }
                 }
             }
@@ -1122,7 +1124,7 @@ void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                            const std::vector<int>& assignRefinedLevel,
                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                           const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaceIdx)
+                           const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFaceIdx)
 {
     // Step 1. Add LGR faces (new refined ones)
     for (int elem = 0; elem < current_data.size(0); ++elem) {
@@ -1148,23 +1150,18 @@ void identifyLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                 // of the marked element that got refined, then, we have two cases:
                 // - the marked face appears only in one marked element -> then, we store this face now.
                 // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                const auto markedFaces = getParentFaceWhereNewRefinedFaceLiesOn(face,
-                                                                                markedElem_to_itsLgr[elem],
-                                                                                singleCellRef_refinedFace_to_parentFaceIdx[elem]);
-
-                for (const auto& markedFace : markedFaces) {
-
-                    assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
-
-                    int lastLgr = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-
-                    if (lastLgr == elem) {
-                        // Store only at last appearance
-                        insertBidirectional(elemLgrAndElemLgrFace_to_adaptedFace, // map a_to_b
-                                            adaptedFace_to_elemLgrAndElemLgrFace, // unordered_map b_to_a
-                                            {elem, face},                         // keyA
-                                            face_count);                          // counter (keyB)
-                    }
+                const auto markedFace = getParentFaceWhereNewRefinedFaceLiesOn(face,
+                                                                               markedElem_to_itsLgr[elem],
+                                                                               singleCellRef_refinedFace_to_parentFaceIdx[elem]);
+                
+                assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
+                int lastLgr = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+                if (lastLgr == elem) {
+                    // Store only at last appearance
+                    insertBidirectional(elemLgrAndElemLgrFace_to_adaptedFace, // map a_to_b
+                                        adaptedFace_to_elemLgrAndElemLgrFace, // unordered_map b_to_a
+                                        {elem, face},                         // keyA
+                                        face_count);                          // counter (keyB)
                 }
             }
         } // end-face loop
@@ -1245,14 +1242,14 @@ bool isRefinedFaceOnLgrBoundary(int faceIdxInLgr,
     return elemLgr_ptr->faceToCell(faceIdxInLgr).size() == 1;
 }
 
-std::vector<int> getParentFaceWhereNewRefinedFaceLiesOn(int faceIdxInLgr,
-                                                        const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
-                                                        const std::vector<std::vector<int>>& refinedFace_to_parentFaces)
+int getParentFaceWhereNewRefinedFaceLiesOn(int faceIdxInLgr,
+                                           const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
+                                           const std::vector<int>& refinedFace_to_parentFace)
 {
     assert(isRefinedFaceOnLgrBoundary(faceIdxInLgr, elemLgr_ptr));
     
-    if (!refinedFace_to_parentFaces[faceIdxInLgr].empty()) {
-        return refinedFace_to_parentFaces[faceIdxInLgr];
+    if (refinedFace_to_parentFace[faceIdxInLgr] != -1 /* invalid index */) {
+        return refinedFace_to_parentFace[faceIdxInLgr];
     }
     OPM_THROW(std::logic_error, "Cannot find index of parent face where the new refined face lies on.");
 }
@@ -1378,7 +1375,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::vector<std::array<int,3>>&  cells_per_dim_vec,
-                          const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces)
+                          const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace)
 {
     // --- Refined cells ---
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
@@ -1449,20 +1446,17 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                 auto face_candidate = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.find({elemLgr, preAdaptFace});
                 if (face_candidate == elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.end()) {
                     // Get the index of the marked face where the refined face was born.
-                    const auto markedFaces = getParentFaceWhereNewRefinedFaceLiesOn(preAdaptFace,
-                                                                                    markedElem_to_itsLgr[elemLgr],
-                                                                                    singleCellRef_refinedFace_to_parentFaces[elemLgr]);
-
-                    for (const auto& markedFace : markedFaces) {
-                        // Get the last LGR (marked element) where the marked face appeared.
-                        const int& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-                        const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel],
-                                                                                                 preAdaptFace,
-                                                                                                 markedElem_to_itsLgr[elemLgr],
-                                                                                                 cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
-                        refinedFace = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace})[1];
-                        aux_refined_cell_to_face.push_back({refinedFace, face.orientation()});
-                    }
+                    const auto markedFace = getParentFaceWhereNewRefinedFaceLiesOn(preAdaptFace,
+                                                                                   markedElem_to_itsLgr[elemLgr],
+                                                                                   singleCellRef_refinedFace_to_parentFace[elemLgr]);
+                    // Get the last LGR (marked element) where the marked face appeared.
+                    const int& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+                    const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel],
+                                                                                             preAdaptFace,
+                                                                                             markedElem_to_itsLgr[elemLgr],
+                                                                                             cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
+                    refinedFace = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace})[1];
+                    aux_refined_cell_to_face.push_back({refinedFace, face.orientation()});
                 }
                 // Face is stored in adapted_faces
                 else {
@@ -1670,7 +1664,7 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const int& preAdaptMaxLevel,
-                           const std::vector<std::vector<std::vector<int>>>& singleCellRef_refinedFace_to_parentFaces)
+                           const std::vector<std::vector<int>>& singleCellRef_refinedFace_to_parentFace)
 {
     // Store the adapted cells. Main difficulty: to lookup correctly the indices of the corners and faces of each cell.
     adapted_cells.resize(cell_count);
@@ -1758,18 +1752,18 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                     // Get shifted level
                     const auto& shiftedLevel = assignRefinedLevel[elemLgr] - preAdaptMaxLevel -1; // Assigned level > preAdapt maxLevel
                     // Get the index of the marked face where the refined face was born.
-                    const auto markedFaces = getParentFaceWhereNewRefinedFaceLiesOn(preAdaptFace, /** ??? */
-                                                                                    markedElem_to_itsLgr[elemLgr],
-                                                                                    singleCellRef_refinedFace_to_parentFaces[elemLgr]);
-                    for (const auto& markedFace : markedFaces) {
+                    const auto markedFace = getParentFaceWhereNewRefinedFaceLiesOn(preAdaptFace, /** ??? */
+                                                                                   markedElem_to_itsLgr[elemLgr],
+                                                                                   singleCellRef_refinedFace_to_parentFace[elemLgr]);
+                  
                     
-                        // Get the last LGR (marked element) where the marked face appeared.
-                        const auto& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-                        const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel], preAdaptFace, markedElem_to_itsLgr[elemLgr],
-                                                                                                 cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
-                        const int adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace});
-                        aux_cell_to_face.push_back({adaptedFace, face.orientation()});
-                    }
+                    // Get the last LGR (marked element) where the marked face appeared.
+                    const auto& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+                    const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel], preAdaptFace, markedElem_to_itsLgr[elemLgr],
+                                                                                             cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
+                    const int adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace});
+                    aux_cell_to_face.push_back({adaptedFace, face.orientation()});
+                    
                 }
             }
         } // end-cell_to_face

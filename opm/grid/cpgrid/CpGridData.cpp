@@ -1787,7 +1787,7 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
 std::tuple< const std::shared_ptr<CpGridData>,
             const std::vector<std::array<int,2>>,
             std::unordered_map<int,int>, // extraRefCornIdx_to_parentFaceIdx
-            std::vector<std::vector<int>>,
+            std::vector<int>,
             std::vector<bool>>   
 CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                              const int& parent_idx,
@@ -1838,21 +1838,21 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
     
 
     std::unordered_map<int,int> refinedCornIdx_to_parentFaceIdx{}; // empty for the naive case
-    std::vector<std::vector<int>> refinedFace_to_parentFaces{};
-
+    int invalidIdx = -1;
+    
     const auto classifiedFaces = Opm::Lgr::groupFaceIndicesByType(*this, parentCellElem);
     bool hasOnlyOneFacePerType = Opm::Lgr::hasAtMostOneFacePerGroup(classifiedFaces);
 
     if(hasOnlyOneFacePerType) { // no further corrections needed in the single-cell-refinement CpGridData object
 
-        refinedFace_to_parentFaces.resize(refined_grid.numFaces());
+        std::vector<int> refinedFace_to_parentFace{};
+        refinedFace_to_parentFace.resize(refined_grid.numFaces(), invalidIdx);
         Opm::Lgr::provideRefinementParentFaceIdxRelations(hasOnlyOneFacePerType,
                                                           classifiedFaces,
                                                           *this,
                                                           parentCellElem,
                                                           cells_per_dim,
-                                                          // parentFace_to_refinedFaces,
-                                                          refinedFace_to_parentFaces,
+                                                          refinedFace_to_parentFace,
                                                           faceInMarkedElemAndRefinedFaces);
         
         std::vector<bool> coincideWithCoarseCorner{};
@@ -1865,7 +1865,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         return {refined_grid_ptr,
                 parent_to_refined_corners,
                 refinedCornIdx_to_parentFaceIdx,
-                refinedFace_to_parentFaces,
+                refinedFace_to_parentFace,
                 coincideWithCoarseCorner};
     }
     else {
@@ -1875,38 +1875,23 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         auto&                                                        corrected_refined_grid = *corrected_refined_grid_ptr;
 
         Opm::Lgr::GeomData corrected_geomData(corrected_refined_grid);
-
-        /*DefaultGeometryPolicy&                                       corrected_refined_geometries = corrected_refined_grid.geometry_;
-        std::vector<std::array<int,8>>&                              corrected_refined_cell_to_point = corrected_refined_grid.cell_to_point_;
-        cpgrid::OrientedEntityTable<0,1>&                            corrected_refined_cell_to_face = corrected_refined_grid.cell_to_face_;
-        Opm::SparseTable<int>&                                       corrected_refined_face_to_point = corrected_refined_grid.face_to_point_;
-        cpgrid::OrientedEntityTable<1,0>&                            corrected_refined_face_to_cell = corrected_refined_grid.face_to_cell_;
-        cpgrid::EntityVariable<enum face_tag,1>&                     corrected_refined_face_tags = corrected_refined_grid.face_tag_;
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_refined_face_normals = corrected_refined_grid.face_normals_;*/
-        
         std::vector<std::array<int,2>> extended_parent_to_refined_corners = parent_to_refined_corners;
-         // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
+        // with extra corners appearing if parent cell has more than 1 intersection of the same face tag and orientation.
+        std::vector<int> correctRefinedFace_to_parentFace{};
 
         Opm::Lgr::makeCellRefinementParentFaceAware(hasOnlyOneFacePerType,
-                                                          classifiedFaces,
-                                                          /* singleCellRefinementData */ refined_grid,
-                                                          /* parentGridData */ *this,
-                                                          parentCellElem,
-                                                          extended_parent_to_refined_corners,
-                                                          refined_geometries,
-                                                          faceInMarkedElemAndRefinedFaces,
-                                                          refinedCornIdx_to_parentFaceIdx,
-                                                          refinedFace_to_parentFaces,
-                                                          corrected_refined_grid,
+                                                    classifiedFaces,
+                                                    /* singleCellRefinementData */ refined_grid,
+                                                    /* parentGridData */ *this,
+                                                    parentCellElem,
+                                                    extended_parent_to_refined_corners,
+                                                    refined_geometries,
+                                                    faceInMarkedElemAndRefinedFaces,
+                                                    refinedCornIdx_to_parentFaceIdx,
+                                                    correctRefinedFace_to_parentFace,
+                                                    corrected_refined_grid,
                                                     corrected_geomData,
-                                                    /*corrected_refined_geometries,
-                                                          corrected_refined_cell_to_point,
-                                                          corrected_refined_cell_to_face,
-                                                          corrected_refined_face_to_point,
-                                                          corrected_refined_face_to_cell,
-                                                          corrected_refined_face_tags,
-                                                          corrected_refined_face_normals,*/
-                                                          cells_per_dim);
+                                                    cells_per_dim);
 
         std::cout<< corrected_refined_grid.size(3) << " after correction points " << std::endl;
         for (const auto& [coarseIdx, refinedIdx] : extended_parent_to_refined_corners)
@@ -1924,7 +1909,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         return {corrected_refined_grid_ptr,
                 extended_parent_to_refined_corners,
                 refinedCornIdx_to_parentFaceIdx,
-                refinedFace_to_parentFaces,
+                correctRefinedFace_to_parentFace,
                 coincideWithCoarseCorner};
     }
 }
