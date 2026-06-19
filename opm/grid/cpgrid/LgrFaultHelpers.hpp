@@ -92,13 +92,13 @@ struct ParentAwareCellRefinements {
 
     ParentAwareCellRefinements(int parentGridTotalCells)
         : extraRefinedCornIdx_to_parentFaceIdx(parentGridTotalCells),
-          refinedFace_to_parentFaces(parentGridTotalCells),
+          refinedFace_to_parentFace(parentGridTotalCells),
           coincideWithCoarseCorner(parentGridTotalCells),
           hasOnlyOneFacePerType(parentGridTotalCells, true)
     {}
 
     std::vector<std::unordered_map<int,int>> extraRefinedCornIdx_to_parentFaceIdx{}; // a few extra refined corners mapped to he parent face where they lie on
-    std::vector<std::vector<std::vector<int>>> refinedFace_to_parentFaces{};
+    std::vector<std::vector<int>> refinedFace_to_parentFace{};
     std::vector<std::vector<bool>> coincideWithCoarseCorner{}; // 
     std::vector<bool> hasOnlyOneFacePerType{};
 };
@@ -109,10 +109,10 @@ struct FieldVectorLess {
                     const Dune::FieldVector<double,3>& w) const
     {
         for (int i = 0; i < 3; ++i) {
-            if (v[i] < w[i]) return true;
-            if (v[i] > w[i]) return false;
+            if (v[i] < w[i]) return true; // skip
+            if (v[i] > w[i]) return false; // >= 
         }
-        return false;
+        return false; // true
     }
 };
 
@@ -524,7 +524,7 @@ void assignCorrectChildFace(bool                                             noC
                             int                                              faceType_count,
                             int                                              child_face,
                             std::vector<int>&                                children_faces,
-                            std::vector<std::vector<int>>&                   refinedFace_to_parentFaces,
+                            std::vector<int>&                                correctRefinedFace_to_parentFace,
                             const std::vector<std::vector<int>>&             oldToNewFaceIdx,
                             const std::unordered_map<int, std::vector<int>>& vanishedFaceToNewFaces,
                             const std::vector<std::vector<int>>&             parentFace_to_correctRefinedFaces,
@@ -535,8 +535,7 @@ void provideRefinementParentFaceIdxRelations(bool                               
                                              const Dune::cpgrid::CpGridData&                             parentGridData,
                                              const Dune::cpgrid::Entity<0>&                              parentElem,
                                              const std::array<int,3>&                                    cells_per_dim,
-                                             //  std::vector<std::vector<int>>&                              parentFace_to_refinedFaces,
-                                             std::vector<std::vector<int>>&                              refinedFace_to_parentFaces,
+                                             std::vector<int>&                                           correctRefinedFace_to_parentFace,
                                              std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                              const std::vector<std::vector<int>>&                        oldToNewFaceIdx = std::vector<std::vector<int>>{},
                                              const std::unordered_map<int, std::vector<int>>&            vanishedFaceToNewFaces = std::unordered_map<int,std::vector<int>>{},
@@ -552,36 +551,64 @@ void makeCellRefinementParentFaceAware(bool                                     
                                        const Dune::cpgrid::DefaultGeometryPolicy& refined_geometries,
                                        std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                        std::unordered_map<int,int>& refinedCornIdx_to_parentFaceIdx,
-                                       std::vector<std::vector<int>>& refinedFace_to_parentFaces,
+                                       std::vector<int>& correctRefinedFace_to_parentFace,
                                        Dune::cpgrid::CpGridData& correctedRefinementData,
                                        GeomData& correctedGeomData,
                                        const std::array<int,3>& cells_per_dim);
 
-void addVertices(int& verticesCount,
-                 const Dune::cpgrid::CpGridData& gridData, 
-                 const std::set<Dune::FieldVector<double,3>, FieldVectorLess>& foundNewVertices,
-                 Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& correctedGridData_vertices,
-                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& parentGridData_vertex_to_vertexIdx, 
-                 std::map<int,int>& correctedGridDataVertexIdx_to_parentGridDataVertexIdx,
-                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& newVertex_to_correctedGridDataVertexIdx,
-                 const std::array<int,8>& parentCellToPoint,
-                 std::vector<std::array<int,2>>& extended_parent_to_refined_corners);
 
+void computeNewRefinedGeometriesOnSharedCoarseFace(int numFaces1,
+                                                   const std::vector<int>& refinedFaces1,
+                                                    const Dune::cpgrid::CpGridData& parentFaceAwareCellRefinement1,
+                                                    std::set<Dune::FieldVector<double,3>, FieldVectorLess>& foundNewVertices1,
+                                                    std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& faceExistingVertex1_to_cellRef1CornerIdx,
+                                                    std::map<int,std::vector<std::vector<Dune::FieldVector<double,3>>>>& overlapFaces1,
+                                                    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>>& vanishedCellRef1Face_to_newRefinedFaces,
+                                                    std::vector<int>& face2FullyContainedInNeighborFace1,
+                                                    int numFaces2,
+                                                   const std::vector<int>& refinedFaces2,
+                                                    const Dune::cpgrid::CpGridData& parentFaceAwareCellRefinement2,
+                                                    std::set<Dune::FieldVector<double,3>, FieldVectorLess>& foundNewVertices2,
+                                                    std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& faceExistingVertex2_to_cellRef2CornerIdx,
+                                                   std::map<int,std::vector<std::vector<Dune::FieldVector<double,3>>>>& overlapFaces2,
+                                                   std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>>& vanishedCellRef2Face_to_newRefinedFaces,
+                                                   std::vector<int>&  face1FullyContainedInNeighborFace2);
 
-/// Add vertices to a parent-cell-faces-aware-cell-refinement CpGridData, to make it aware of neighboring cell refinement. 
-///
-/// @param [out] verticesCount            Total number of vertices before making the gridData aware of the neighboring cell refinement.
-///                                       It will be increased, due to adding new neighboring vertices.
-/// @param [in] gridData
-/// @param [in] foundNewVertices
-/// @param [out] correctedGridData_vertices
-void addVertices(int& verticesCount,
-                 const Dune::cpgrid::CpGridData& beforeNeighborAwareCellRefinement, // assumed to be aware of parent-cell-faces!!!
-                 const std::set<Dune::FieldVector<double,3>, FieldVectorLess>& foundNewVertices,
-                 Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& neighborAwareCellRefinement_vertices,
+void addVertices(int&                                                               verticesCount,
+                 const Dune::cpgrid::CpGridData&                                    gridData, 
+                 const std::set<Dune::FieldVector<double,3>, FieldVectorLess>&      foundNewVertices,
+                 GeomData&                                                          correctedGeomData,
+                 std::map<int,int>&                                                 correctedGridDataVertexIdx_to_parentGridDataVertexIdx,
+                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&       newVertex_to_correctedGridDataVertexIdx,
+                 const std::array<int,8>&                                           parentCellToPoint,
+                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& parentGridData_vertex_to_vertexIdx,
+                 std::vector<std::array<int,2>>&                                    extended_parent_to_refined_corners);
+
+void addVertices(int&                                                               verticesCount,
+                 const Dune::cpgrid::CpGridData&                                    gridData, 
+                 const std::set<Dune::FieldVector<double,3>, FieldVectorLess>&      foundNewVertices,
+                 Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>&     neighborAwareCellRefinement_vertices,
                  const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& neighboringCellRefinement_vertex_to_vertexIdx,
-                 std::map<int,int>& neighborAwareCellRefinementVertexIdx_to_neighboringCellRefinementVertexIdx,
-                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& newVertex_to_neighborAwareCellRefinementVertexIdx);
+                 std::map<int,int>&                                                 neighborAwareCellRefinementVertexIdx_to_neighboringCellRefinementVertexIdx,
+                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&       newVertex_to_neighborAwareCellRefinementVertexIdx);
+
+void addFaces(int numVertices1,
+              int numFaces1,
+              int numFaces2,
+              const std::map<int,std::vector<std::vector<Dune::FieldVector<double,3>>>>& overlapFaces1,
+              const Dune::cpgrid::CpGridData& parentFaceAwareCellRefinement1,
+              const std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>>& vanishedCellRef1Face_to_newRefinedFaces,
+              std::vector<std::vector<int>>& oldToNewFaceIdx1,
+              std::unordered_map<int, int>& newToOldFaceIdx1,
+              GeomData& neighborAwareGeomData1,
+              std::vector<std::vector<int>>& vanishedFace2_to_correctFaces1,
+              const  std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& newVertex_to_neighborAwareCellRef1CornerIdx,
+              const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& faceExistingVertex1_to_cellRef1CornerIdx,
+              std::unordered_map<int, std::vector<int>>& vanishedFace1ToNewFaces,
+              std::vector<int>& corn1Idx_to_face2Idx);
+
+void addCells(GeomData& geomData,
+              const Dune::cpgrid::CpGridData& gridData);
 
 void computeNewGeometries(const Dune::CpGrid& grid,
                           const Dune::cpgrid::CpGridData& parentFaceAwareCellRefinement1,
@@ -590,7 +617,7 @@ void computeNewGeometries(const Dune::CpGrid& grid,
                           const Dune::cpgrid::Entity<0>& parentCell2,
                           std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces);
 
-void makeCellRefinementNeighboringCellRefinementAware(const Dune::CpGrid& grid,
+/*void makeCellRefinementNeighboringCellRefinementAware(const Dune::CpGrid& grid,
                                                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>&      parentFaceAwareCellRefinements,
                                                       const Dune::cpgrid::Entity<0>&                                     parentCell,
                                                       std::vector<std::array<int,2>>&                                    extended_parent_to_refined_corners,
@@ -605,7 +632,7 @@ void makeCellRefinementNeighboringCellRefinementAware(const Dune::CpGrid& grid,
                                                       Opm::SparseTable<int>&                                             corrected_cellRef_face_to_point,
                                                       Dune::cpgrid::OrientedEntityTable<1,0>&                            corrected_cellRef_face_to_cell,
                                                       Dune::cpgrid::EntityVariable<enum face_tag,1>&                     corrected_cellRef_face_tags,
-                                                      Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_cellRef_face_normals);
+                                                      Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& corrected_cellRef_face_normals);*/
 
 
 } // namespace Lgr

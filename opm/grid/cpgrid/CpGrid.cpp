@@ -2135,7 +2135,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                            markedElem_to_itsLgr,
                                            assignRefinedLevel,
                                            faceInMarkedElemAndRefinedFaces,
-                                           parentAwareCellRefinements.refinedFace_to_parentFaces);
+                                           parentAwareCellRefinements.refinedFace_to_parentFace);
 
     // --- Adapted faces and PreAdapt faces relations ---
     std::map< std::array<int,2>, int >           elemLgrAndElemLgrFace_to_adaptedFace;
@@ -2149,7 +2149,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                     markedElem_to_itsLgr,
                                     assignRefinedLevel,
                                     faceInMarkedElemAndRefinedFaces,
-                                    parentAwareCellRefinements.refinedFace_to_parentFaces);
+                                    parentAwareCellRefinements.refinedFace_to_parentFace);
 
     // Set refined level grids geometries
     // --- Refined corners  ---
@@ -2191,7 +2191,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                    markedElemAndEquivRefinedCorn_to_corner,
                                    cornerInMarkedElemWithEquivRefinedCorner,
                                    cells_per_dim_vec,
-                                   parentAwareCellRefinements.refinedFace_to_parentFaces);
+                                   parentAwareCellRefinements.refinedFace_to_parentFace);
 
     // Update leaf grid geometries
     // --- Adapted corners ---
@@ -2236,7 +2236,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                     cornerInMarkedElemWithEquivRefinedCorner,
                                     cells_per_dim_vec,
                                     preAdaptMaxLevel,
-                                    parentAwareCellRefinements.refinedFace_to_parentFaces);
+                                    parentAwareCellRefinements.refinedFace_to_parentFace);
 
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
