@@ -334,7 +334,7 @@ struct FaceTagNormalHandle
     template<class T>
     std::size_t size(const T&)
     {
-        return 4; // 3 coordinates + 1 volume
+        return 1; // one DataType (tag + normal) per face
     }
     template<class B, class T>
     void gather(B& buffer, const T& t)
