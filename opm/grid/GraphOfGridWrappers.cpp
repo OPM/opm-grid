@@ -547,12 +547,16 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
     int layers = 0; // extra layers of cells attached to wells to distance them from boundary
+    float mIWC = 1; // multiply edge weights between a well's cells. Used when allowDistributedWells=true.
     for (const auto& [key, value] : params)
     {
-        if (key=="EnvelopeWellLayers")
+        if (key=="EnvelopeWellLayers") {
             layers = std::stoi(value);
-        else
+        } else if (key=="MultiplyWellConnectivities") {
+            mIWC = std::stof(value);
+        } else {
             Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+        }
     }
 
     // root process has the whole grid, other ranks nothing
@@ -568,6 +572,11 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
         // skip cell contraction if wells can be distributed over multiple processes
         addWellConnections(gog, wellConnections);
         gog.addNeighboringCellsToWells(layers);
+    } else if (mIWC != 1) {
+        // multiply edge weights between connections of a well (not between two wells)
+        for (const auto& well : wellConnections) {
+            gog.multiplyWellConnectivity(well, mIWC);
+        }
     }
 
     // call partitioner

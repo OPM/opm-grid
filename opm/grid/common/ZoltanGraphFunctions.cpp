@@ -180,8 +180,8 @@ void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
 }
 
 template <typename EdgeWeightType>
-EdgeWeightType sumOfGridEdges(const Dune::CpGrid& grid,
-                              const CombinedGridWellGraph& graph)
+EdgeWeightType calculateWellEdgeWeight(const Dune::CpGrid& grid,
+                                       const CombinedGridWellGraph& graph)
 {
     EdgeWeightType weWeight = 0;
     for (int edge=0; edge<grid.numFaces(); ++edge) {
@@ -191,7 +191,26 @@ EdgeWeightType sumOfGridEdges(const Dune::CpGrid& grid,
             weWeight = std::numeric_limits<EdgeWeightType>::max();
             break;
         }
-        weWeight += graph.transmissibility(edge);
+        weWeight += addend;
+    }
+
+    // when multipltWellConnectivities is provided, set the well weight to the average of grid weight times that coefficient
+    EdgeWeightType mWC = graph.getMultiplyWellConnectivities();
+    if (mWC > 0) {
+        if (weWeight != std::numeric_limits<EdgeWeightType>::max()) {
+            weWeight /= grid.numFaces();
+        } else {
+            // grid is too big, start over and use maximum instead of the average
+            weWeight = 0;
+            for (int edge=0; edge<grid.numFaces(); ++edge) {
+                weWeight = std::max(weWeight, static_cast<EdgeWeightType>(graph.transmissibility(edge)));
+            }
+        }
+        if (weWeight < std::numeric_limits<EdgeWeightType>::max()/mWC) {
+            weWeight *= mWC;
+        } else {
+            weWeight = std::numeric_limits<EdgeWeightType>::max();
+        }
     }
     return weWeight;
 }
@@ -326,7 +345,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
     int neighborCounter = 0;
 
     // well edge weight for partitioning, big enough that wells should not get split
-    float weWeight = sumOfGridEdges<float>(grid, graph);
+    float weWeight = calculateWellEdgeWeight<float>(grid, graph);
 
     for( int cell = 0; cell < numCells;  cell++ )
     {
@@ -438,14 +457,14 @@ void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid&, 
 template
 void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph&, const int, int*, int&, int*&, int*, const int&);
 template
-int sumOfGridEdges(const Dune::CpGrid& grid, const CombinedGridWellGraph& graph);
+int calculateWellEdgeWeight(const Dune::CpGrid& grid, const CombinedGridWellGraph& graph);
 
 template
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(Dune::CpGrid const&, int, long*, int&, long*&);
 template
 void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(Dune::cpgrid::CombinedGridWellGraph const&, int, long*, int&, long*&, long*, const long&);
 template
-long sumOfGridEdges(const Dune::CpGrid& grid, const CombinedGridWellGraph& graph);
+long calculateWellEdgeWeight(const Dune::CpGrid& grid, const CombinedGridWellGraph& graph);
 
 #endif
 

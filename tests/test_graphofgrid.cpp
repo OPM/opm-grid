@@ -892,6 +892,61 @@ BOOST_AUTO_TEST_CASE(test_getWellRanks)
 }
 #endif
 
+BOOST_AUTO_TEST_CASE(MultiplyWellConnectivities)
+{
+    Dune::CpGrid grid;
+    std::array<int, 3> dims { 3, 3, 1 };
+    std::array<double, 3> size { 1., 1., 1. };
+    grid.createCartesian(dims, size);
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0) == 0)
+        return;
+
+    std::unordered_map<std::string, std::set<int>> wells {
+        { "first row", { 0, 1, 2 } },
+        { "first column", { 0, 3, 6 } },
+        { "intersecting first row", { 1, 2, 4, 5 } }
+    };
+    float factor = 5;
+    for (const auto& well : wells) {
+        // multiplies weights of well edges, not between two wells
+        gog.multiplyWellConnectivity(well.second, factor);
+    }
+    BOOST_REQUIRE(gog.size() == 9);
+    BOOST_REQUIRE(gog.getWells().size() == 0);
+    int err;
+    int nVer = getGraphOfGridNumVertices(&gog, &err);
+    BOOST_REQUIRE(err == ZOLTAN_OK);
+    BOOST_REQUIRE(nVer == 9);
+
+    auto checkEdge = [&gog](int from, int to, float weight) {
+        const auto& edgesFrom = gog.edgeList(from);
+        BOOST_REQUIRE(edgesFrom.at(to) == weight);
+        const auto& edgesTo = gog.edgeList(to);
+        BOOST_REQUIRE(edgesTo.at(from) == weight);
+    };
+    // left-to-right edges
+    checkEdge(0, 1, 5.);
+    checkEdge(1, 2, 25.);
+    checkEdge(3, 4, 1.);
+    checkEdge(4, 5, 5.);
+    checkEdge(6, 7, 1.);
+    checkEdge(7, 8, 1.);
+    // front-to-back edges
+    checkEdge(0, 3, 5.);
+    checkEdge(1, 4, 5.);
+    checkEdge(2, 5, 5.);
+    checkEdge(3, 6, 5.);
+    checkEdge(4, 7, 1.);
+    checkEdge(5, 8, 1.);
+
+    int nrEdges = 0;
+    for (int i=0; i<gog.size(); ++i) {
+        nrEdges += gog.edgeList(i).size();
+    }
+    BOOST_REQUIRE(nrEdges == 24);
+}
+
 bool
 init_unit_test_func()
 {
