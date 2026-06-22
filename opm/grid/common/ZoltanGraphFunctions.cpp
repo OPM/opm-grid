@@ -183,17 +183,15 @@ template <typename EdgeWeightType>
 EdgeWeightType sumOfGridEdges(const Dune::CpGrid& grid,
                               const CombinedGridWellGraph& graph)
 {
-    EdgeWeightType weWeight = 0;
-    for (int edge=0; edge<grid.numFaces(); ++edge) {
-        // assumes that transmissibility is positive (too obvious to leave an assert)
-        const auto& addend = graph.transmissibility(edge);
-        if (weWeight >= std::numeric_limits<EdgeWeightType>::max()-addend) {
-            weWeight = std::numeric_limits<EdgeWeightType>::max();
-            break;
-        }
-        weWeight += graph.transmissibility(edge);
+    double total = 0.0;
+    for (int edge = 0; edge < grid.numFaces(); ++edge) {
+        total += graph.edgeWeight(edge);
     }
-    return weWeight;
+    const double maxVal = static_cast<double>(std::numeric_limits<EdgeWeightType>::max());
+    if (total > maxVal) {
+        return std::numeric_limits<EdgeWeightType>::max();
+    }
+    return static_cast<EdgeWeightType>(total);
 }
 
 template<typename ID>
