@@ -70,7 +70,7 @@ void checkFaceCountInLeafCoarseElem(const Dune::CpGrid& grid,
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         if (element.level() == 0) {
 
-            const auto& cellToFace = grid.currentLeafData().cellToFace(element.index());
+            const auto& cellToFace = grid.currentLeafData().cellToFace(element.index()); 
             BOOST_CHECK_EQUAL( cellToFace.size(), expectedTotalFaceCount);
 
             const auto classifiedFaces =  Opm::Lgr::groupFaceIndicesByType(grid.currentLeafData(),
@@ -150,7 +150,7 @@ void checkNewRefinedFaces(const Dune::CpGrid& grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap)//,  *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap)// *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -262,7 +262,7 @@ PORO
     checkFaceCountInLeafCoarseElem(grid,
                                    /* expectedTotalFaceCount = */ 12,
                                    /* repeatedFaceType = */ 0, // 0->I-
-                                   /* expoectedRepeatedFaceTypeCount = */ 7);
+                                   /* expectedRepeatedFaceTypeCount = */ 7);
 
     // Collect the expected data to later on check
     std::vector<std::vector<std::set<Coordinate,Opm::Lgr::FieldVectorLess>>> selectedFaceToCoord{};
@@ -454,7 +454,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -637,7 +637,7 @@ PORO
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -822,7 +822,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -1124,7 +1124,7 @@ PORO
 
 
 
-BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr)//, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //

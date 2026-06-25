@@ -426,10 +426,6 @@ computeFaceOverlapVertices(const Face&                                          
     if (overlapFaceVertices.size() == face2_to_point.size()) {
         face2FullyContainedInFace1 = true;
         const auto ordered = orderFaceVertices(face1_tag, overlapFaceVertices);
-        for (const auto& v: ordered)
-        {
-              std::cout<< v[0] << " " << v[1] << " " << v[2] << " ordered " << std::endl;
-        }
         
         return std::make_optional<std::vector<Dune::FieldVector<double,3>>>(ordered);
     }
@@ -580,25 +576,25 @@ void computeNewRefinedGeometriesOnSharedCoarseFace(int numFaces1,
                                                    std::vector<std::vector<std::pair<int,std::vector<Dune::FieldVector<double,3>>>>>& vanishedCellRef2Face_to_newRefinedFaces,
                                                    std::vector<int>&  face1FullyContainedInNeighborFace2);
 
-void addVertices(int&                                                               verticesCount,
-                 const Dune::cpgrid::CpGridData&                                    gridData, 
+void addVertices(int&                                                               grid1_numVertices,
+                 const Dune::cpgrid::CpGridData&                                    grid1,
+                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& parentGrid_vertex_to_vertexIdx,
                  const std::set<Dune::FieldVector<double,3>, FieldVectorLess>&      foundNewVertices,
-                 GeomData&                                                          correctedGeomData,
-                 std::map<int,int>&                                                 correctedGridDataVertexIdx_to_parentGridDataVertexIdx,
-                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&       newVertex_to_correctedGridDataVertexIdx,
+                 GeomData&                                                          correctedGrid1GeomData,
+                 std::map<int,int>&                                                 correctedGrid1VertexIdx_to_parentGridVertexIdx,
+                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&       newVertex_to_correctedGrid1VertexIdx,
                  const std::array<int,8>&                                           parentCellToPoint,
-                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& parentGridData_vertex_to_vertexIdx,
-                 std::vector<std::array<int,2>>&                                    extended_parent_to_refined_corners);
+                 std::vector<std::array<int,2>>&                                    parentBoundaryVertexIdx_to_correctedGrid1BoundaryVertexIdx);
 
-void addVertices(int&                                                               verticesCount,
-                 const Dune::cpgrid::CpGridData&                                    gridData, 
+void addVertices(int&                                                               grid1_numVertices,
+                 const Dune::cpgrid::CpGridData&                                    grid1,
+                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& grid2_vertex_to_vertexIdx,
                  const std::set<Dune::FieldVector<double,3>, FieldVectorLess>&      foundNewVertices,
-                 Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>&     neighborAwareCellRefinement_vertices,
-                 const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>& neighboringCellRefinement_vertex_to_vertexIdx,
-                 std::map<int,int>&                                                 neighborAwareCellRefinementVertexIdx_to_neighboringCellRefinementVertexIdx,
-                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&       newVertex_to_neighborAwareCellRefinementVertexIdx);
+                 Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>&     correctedGrid1_vertices,
+                 std::map<int,int>&                                                 correctedGrid1VertexIdx_to_grid2VertexIdx,
+                 std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&       newVertex_to_correctedGrid1VertexIdx);
 
-void addFaces(int                                                                                      gridData1_numVertices,
+void addFaces(//int                                                                                      gridData1_numVertices,
               int                                                                                      gridData1_numFaces,
               int                                                                                      gridData2_numFaces,
               const std::map<int,std::vector<std::vector<Dune::FieldVector<double,3>>>>&               gridData1_overlapFaces,
@@ -611,7 +607,8 @@ void addFaces(int                                                               
               const  std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&                      newVertex_to_correctedGridData1VertexIdx,
               const std::map<Dune::FieldVector<double,3>, int, FieldVectorLess>&                       gridData1_vertex_to_vertexIdx,
               std::unordered_map<int, std::vector<int>>&                                               gridData1VanishedFaceIdx_to_correctedGridData1FaceIndices,
-              std::vector<int>&                                                                        gridData1VertexIdx_to_gridData2FaceIdx,
+              // std::vector<int>&                                                                        gridData1VertexIdx_to_gridData2FaceIdx,
+              std::unordered_map<int,int>&                                                             correctedGrid1BoundaryVertexIdx_to_grid2FaceIdx,
               const std::vector<int>&                                                                  gridData1Face_fullyContainedIn_gridData2Face);
 
 
