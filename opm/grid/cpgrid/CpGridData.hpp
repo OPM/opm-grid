@@ -82,6 +82,7 @@ class EclipseState;
 
 namespace Lgr{
 struct GeomData;
+struct CellRefinementBoundaryInfo;
 }
 }
 
@@ -523,11 +524,13 @@ public:
     ///                                                      2---3   |   | TOP FACE
     ///                                                      |   |   4---5
     ///                                                      0---1 BOTTOM FACE
-    std::tuple< const std::shared_ptr<CpGridData>,
+    /*std::tuple< const std::shared_ptr<CpGridData>,
                 const std::vector<std::array<int,2>>,  // parent_to_refined_corners(~boundary_old_to_new_corners)
                 std::unordered_map<int,int>,
                 std::vector<int>,
-                std::vector<bool>>                 
+                std::vector<bool>>*/
+
+    std::pair<std::shared_ptr<CpGridData>, Opm::Lgr::CellRefinementBoundaryInfo>
     refineSingleCell(const std::array<int,3>& cells_per_dim,
                      const int& parent_idx,
                      std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const;

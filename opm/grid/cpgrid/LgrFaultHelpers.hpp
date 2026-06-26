@@ -62,7 +62,7 @@ namespace Lgr
 {
 
 
-// Warning: CellRefinementGeomData has reference members  which
+// Warning: GeomData has reference members which
 //          make the struct non-default-constructible and non-assignable.
 struct GeomData
 {
@@ -84,25 +84,101 @@ struct GeomData
     Dune::cpgrid::OrientedEntityTable<1,0>&                            face_to_cell;
     Dune::cpgrid::EntityVariable<enum face_tag,1>&                     face_tags;
     Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& face_normals;
+};   
+
+
+struct CellRefinementBoundaryInfo
+{
+
+    /* CellRefinementBoundaryInfo(int numVertices,
+                               int numFaces)
+        : boundaryRefinedFace_to_parentFace(numFaces  ),
+          boundaryRefinedVertexCoincidesWithParentVertex(numVertices)
+    {}*/
+          
+    // Parent cell vertex index (including vertices of all parent cell faces) in parent grid,
+    // mapped to cell refinement boundary vertex index.
+    std::vector<std::array<int, 2>> parentVertex_to_boundaryRefinedVertex{};
+
+    // Vertex index at the boundary of the cell refinement grid,
+    // to parent face index (in parent grid) where the vertex lies on.
+    std::unordered_map<int, int> boundaryRefinedVertex_to_parentFace{};
+
+    // Face index at the boundary of cell refinement grid, to parent face index
+    std::vector<int> boundaryRefinedFace_to_parentFace{};
+
+    // Whether a refined vertex is the same as an existing parent grid vertex.
+    std::vector<bool> boundaryRefinedVertexCoincidesWithParentVertex{};
+
+    // True if the parent cell contains only one refined face for each face type.
+    bool parentCellhasSingleFacePerType = true;
 };
 
-    
+
+/*struct GridCellRefinements
+{
+    explicit GridCellRefinements(int gridCellCount)
+        : cellRefinements(gridCellCount)
+    {}
+
+    std::vector<CellRefinementBoundaryInfo> cellRefinements{};
+};
+*/
+/*struct ParentCellRefinementData
+{
+    explicit ParentCellRefinementData(int parentCellCount)
+        : cellRefinements(parentCellCount),
+          hasSingleFacePerType(parentCellCount, true)
+    {}
+
+    // Indexed by parent cell id.
+    std::vector<CellRefinementInfo> cellRefinements;
+
+    // Indexed by parent cell id.
+    std::vector<bool> hasSingleFacePerType;
+};
+
+
 
 struct ParentAwareCellRefinements {
 
     ParentAwareCellRefinements(int parentGridTotalCells)
-        : extraRefinedCornIdx_to_parentFaceIdx(parentGridTotalCells),
+        : parentBoundaryVertexIdx_to_cellRefGridBoundaryVertexIdx(parentGridTotalCells),
+          extraRefinedCornIdx_to_parentFaceIdx(parentGridTotalCells),
           refinedFace_to_parentFace(parentGridTotalCells),
           coincideWithCoarseCorner(parentGridTotalCells),
           hasOnlyOneFacePerType(parentGridTotalCells, true)
     {}
 
+    std::vector<std::vector<std::array<int,2>>> parentBoundaryVertexIdx_to_cellRefGridBoundaryVertexIdx{};
     std::vector<std::unordered_map<int,int>> extraRefinedCornIdx_to_parentFaceIdx{}; // a few extra refined corners mapped to he parent face where they lie on
     std::vector<std::vector<int>> refinedFace_to_parentFace{};
     std::vector<std::vector<bool>> coincideWithCoarseCorner{}; // 
     std::vector<bool> hasOnlyOneFacePerType{};
 };
 
+struct CellRefinementInfo {
+
+    CellRefinementInfo(std::vector<std::array<int,2>> parent_to_cellRef_boundaryVertexIdx,
+                       std::unordered_map<int,int> cellRefVtx_to_parentFace,
+                       std::vector<int> refined_to_parent_face,
+                       std::vector<bool> coincideWithCoarseCorner,
+                       bool oneFacePerType)
+        :
+        parentBoundaryVertexIdx_to_cellRefGridBoundaryVertexIdx(std::move(parent_to_cellRef_boundaryVertexIdx)),
+        extraRefinedCornIdx_to_parentFaceIdx(std::move(cellRefVtx_to_parentFace)),
+        refinedFace_to_parentFace(std::move(refined_to_parent_face)),
+        coincideWithParentGridVertex(std::move(coincideWithCoarseCorner)),
+        hasOnlyOneFacePerType(oneFacePerType)
+    {}
+
+    std::vector<std::array<int,2>> parentBoundaryVertexIdx_to_cellRefGridBoundaryVertexIdx{};
+    std::unordered_map<int,int> extraRefinedCornIdx_to_parentFaceIdx{};
+    std::vector<int> refinedFace_to_parentFace{};
+    std::vector<bool> coincideWithParentGridVertex{};
+    bool hasOnlyOneFacePerType = true;
+    };
+*/
 
 struct FieldVectorLess {
     bool operator()(const Dune::FieldVector<double,3>& v,

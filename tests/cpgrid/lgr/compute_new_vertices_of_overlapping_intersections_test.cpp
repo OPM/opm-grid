@@ -150,7 +150,7 @@ void checkNewRefinedFaces(const Dune::CpGrid& grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap)// *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -454,7 +454,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)//, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -637,7 +637,7 @@ PORO
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)//, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)
 {
     // Level zero grid dims = 1x2x1
     //
@@ -822,7 +822,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)//, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)
 {
     // Level zero grid dims = 1x2x1
     //
@@ -1006,7 +1006,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsDifferentLgrs, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsDifferentLgrs)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -1049,16 +1049,14 @@ PORO
 )";
 
     Dune::CpGrid grid;
-    // Opm::createGridFromDeckString(grid,
-    //                            deckString);
-
-
-    Opm::createGridAndAddLgrs(grid,
+    Opm::createGridFromDeckString(grid,
+                              deckString);
+    /*  Opm::createGridAndAddLgrs(grid,
                             deckString,
-                           /* cells_per_dim_vec */ {{2,3,2}, {2,3,2}},
-                            /* startIJK_vec */      {{0,0,0}, {1,0,0}},
-                                /* endIJK_vec */        {{1,1,1}, {2,1,1}},
-                             /* lgr_name_vec */      {"LGR1", "LGR2"});
+                            {{2,3,2}, {2,3,2}}, // cells_per_dim_vec 
+                            {{0,0,0}, {1,0,0}}, // startIJK_vec 
+                            {{1,1,1}, {2,1,1}}, // endIJK_vec 
+                            {"LGR1", "LGR2"});  // lgr_name_vec*/
 
     // Element 0 and element 1 in level zero grid share an I_FACE (with face index 2)
     //
@@ -1080,8 +1078,8 @@ PORO
     //                 |      face idx 1      |          |     |         *       *        |                  
     //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,2,0)-(6,4,0)--(6,6,0)              
     //                                                   |
-
-    /*  // const auto& refinedGridData = *grid.currentData()[1];
+    //  const auto& refinedGrid1= *grid.currentData()[1];
+    //   const auto& refinedGrid2= *grid.currentData()[1];
     const auto& parentGridData = *grid.currentData()[0];
     const auto parent0 = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
     const auto parent1 = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
@@ -1094,20 +1092,14 @@ PORO
 
     // Single-cell-refinement for parent with index 0
     const auto [parentFaceAwareCellRefinement0,
-                 cellRef0_parentCorners_to_equivalentRefinedCorners,
-                 cellRef0_extraRefinedCornIdx_to_parentFaceIdx,
-                 cellRef0_refinedFaceIdx_to_parentFaceIdx,
-                 cellRef0_coincideWithCoarseCorner]
+                cellRefinementBoundaryInfo0]
         = grid.currentLeafData().refineSingleCell( std::array<int,3>{2,3,2}, // cells_per_dim 
                                                    0, // parent cell index 
                                                    faceInMarkedElemAndRefinedFaces);
 
     // Single-cell-refinement for parent cell with index 1
     const auto [parentFaceAwareCellRefinement1,
-                 cellRef1_parentCorners_to_equivalentRefinedCorners,
-                 cellRef1_extraRefinedCornIdx_to_parentFaceIdx,
-                 cellRef1_refinedFaceIdx_to_parentFaceIdx,
-                 cellRef1_coincideWithCoarseCorner]
+                cellRefinementBoundaryInfo1]
         = grid.currentLeafData().refineSingleCell(std::array<int,3>{2,3,2}, // cells_per_dim
                                                   1, // parent cell index
                                                   faceInMarkedElemAndRefinedFaces);
@@ -1117,14 +1109,14 @@ PORO
                                    *parentFaceAwareCellRefinement1,
                                    parent0,
                                    parent1,
-                                   faceInMarkedElemAndRefinedFaces);*/
+                                   faceInMarkedElemAndRefinedFaces);
 }
 
 
 
 
 
-BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr)//, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr)
 {
     // Level zero grid dims = 2x1x1
     //
@@ -1212,20 +1204,14 @@ PORO
 
     // Single-cell-refinement for parent with index 0
     const auto [parentFaceAwareCellRefinement0,
-                 cellRef0_parentCorners_to_equivalentRefinedCorners,
-                 cellRef0_extraRefinedCornIdx_to_parentFaceIdx,
-                 cellRef0_refinedFaceIdx_to_parentFaceIdx,
-                 cellRef0_coincideWithCoarseCorner]
+                cellRefinementBoundaryInfo0]
         = grid.currentLeafData().refineSingleCell( std::array<int,3>{2,3,2}, // cells_per_dim 
                                                    0, // parent cell index 
                                                    faceInMarkedElemAndRefinedFaces);
 
     // Single-cell-refinement for parent cell with index 1
     const auto [parentFaceAwareCellRefinement1,
-                 cellRef1_parentCorners_to_equivalentRefinedCorners,
-                 cellRef1_extraRefinedCornIdx_to_parentFaceIdx,
-                 cellRef1_refinedFaceIdx_to_parentFaceIdx,
-                 cellRef1_coincideWithCoarseCorner]
+                cellRefinementBoundaryInfo]
         = grid.currentLeafData().refineSingleCell(std::array<int,3>{2,3,2}, // cells_per_dim
                                                   1, // parent cell index
                                                   faceInMarkedElemAndRefinedFaces);
