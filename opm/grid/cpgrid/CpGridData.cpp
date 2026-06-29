@@ -214,7 +214,15 @@ int getIndex(const int* i)
 template<class T>
 int getIndex(T i)
 {
-    return i->index();
+    // On MSVC a std::array<int,N> iterator is a wrapper class (not a raw
+    // const int* as in libstdc++), so this template is selected for it instead
+    // of the getIndex(const int*) overload. Handle an integral pointee directly.
+    using Pointee = std::remove_cv_t<std::remove_reference_t<decltype(*i)>>;
+    if constexpr (std::is_integral_v<Pointee>) {
+        return static_cast<int>(*i);
+    } else {
+        return i->index();
+    }
 }
 
 template<class C>
