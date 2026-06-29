@@ -59,7 +59,10 @@ namespace Opm
             chunk_iterators.push_back(it);
             chunk_iterators.push_back(end);
         } else {
-            const auto chunk_size = std::max(num_elem / num_chunks, 1ul);
+            // Use std::size_t{1}, not 1ul: on Windows (LLP64) unsigned long is
+            // 32-bit while num_elem/num_chunks is 64-bit size_t, so std::max's
+            // arguments would have different types and fail to deduce.
+            const auto chunk_size = std::max(num_elem / num_chunks, std::size_t{1});
             chunk_iterators.reserve(num_chunks + 1);
             // Push evenly spaced iterators for the beginning of each chunk.
             // We do this a number of times equal to the number of chunks.

@@ -47,6 +47,14 @@ namespace cpgrid
 {
 template<int mydim, int dim>
 class Geometry;
+// Forward-declare the partial specializations too. This header instantiates
+// Geometry<3,3> (e.g. via EntityVariable<Geometry<3,3>,0> below) before the
+// definitions in Geometry.hpp are seen. Without these declarations MSVC binds
+// Geometry<3,3> to the primary template and caches that, so the specialization
+// is never selected afterwards (GCC defers the instantiation and is unaffected).
+template<int dim> class Geometry<0, dim>;
+template<int dim> class Geometry<2, dim>;
+template<int dim> class Geometry<3, dim>;
 /// @brief
 /// @todo Doc me!
 class DefaultGeometryPolicy
