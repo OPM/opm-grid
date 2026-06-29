@@ -638,7 +638,12 @@ namespace Dune
                     *(all_geom.geomVector(std::integral_constant<int,3>()));
                 EntityVariableBase<cpgrid::Geometry<2,3>>& refined_faces =
                     *(all_geom.geomVector(std::integral_constant<int,1>()));
-                EntityVariableBase<cpgrid::Geometry<3,3>>& refined_cells =
+                // Use the dependent form Geometry<3,cdim> (cdim==3 here) rather than
+                // the hard-coded Geometry<3,3>: referencing the concrete self type while
+                // this very specialization is still incomplete makes MSVC instantiate
+                // Geometry<3,3> from the *primary* template and cache it, after which the
+                // partial specialization is never selected again.
+                EntityVariableBase<cpgrid::Geometry<3,cdim>>& refined_cells =
                     *(all_geom.geomVector(std::integral_constant<int,0>()));
                 EntityVariableBase<enum face_tag>& mutable_face_tags = refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = refined_face_normals;
@@ -1033,7 +1038,7 @@ namespace Dune
                 // Compare the sum of all the volumes of all refined cells with 'parent cell' volume.
                 if (std::fabs(sum_all_refined_cell_volumes - this->volume())
                     > std::numeric_limits<Geometry<3, cdim>::ctype>::epsilon()) {
-                    Geometry<3, cdim>::ctype correction = this->volume() / sum_all_refined_cell_volumes;
+                    typename Geometry<3, cdim>::ctype correction = this->volume() / sum_all_refined_cell_volumes;
                     for(auto& cell: refined_cells){
                         cell.vol_ *= correction;
                     }
