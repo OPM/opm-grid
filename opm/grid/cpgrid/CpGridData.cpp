@@ -1784,12 +1784,7 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
     return hasNNC;
 }
 
-/*std::tuple< const std::shared_ptr<CpGridData>,
-            const std::vector<std::array<int,2>>, // parentBoundaryVertexIdx_to_correctedCellRefGridBoundaryVertexIdx
-            std::unordered_map<int,int>, // refinedBoundaryCornIdx_to_parentFaceIdx
-            std::vector<int>,            // refinedFace_to_parentFace
-            std::vector<bool>>           //  coincideWithCoarseCorner*/
- std::pair<std::shared_ptr<CpGridData>, Opm::Lgr::CellRefinementBoundaryInfo>
+std::pair<std::shared_ptr<CpGridData>, Opm::Lgr::CellRefinementBoundaryInfo>
 CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
                              const int& parent_idx,
                              std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const
