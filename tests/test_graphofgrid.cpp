@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithInactiveCells)
 }
 #endif
 
-#if HAVE_MPI
+#if HAVE_MPI && HAVE_ZOLTAN
 BOOST_AUTO_TEST_CASE(WrapperForZoltan)
 {
     Dune::CpGrid grid;
@@ -535,7 +535,7 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
         BOOST_REQUIRE( *wellList.rbegin()==well1 );
     }
 }
-#endif // HAVE_MPI
+#endif // HAVE_MPI && HAVE_ZOLTAN
 
 BOOST_AUTO_TEST_CASE(WellWithBuffers)
 {
@@ -665,7 +665,7 @@ namespace {
 } // end anonymous namespace
 #endif
 
-#if HAVE_MPI && HAVE_OPM_COMMON
+#if HAVE_MPI && HAVE_OPM_COMMON && HAVE_ZOLTAN
 // Create yet another small grid with wells and test graph properties.
 // This time wells are supplied via OpmWellType interface
 BOOST_AUTO_TEST_CASE(addWellConnections)
@@ -774,7 +774,7 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     }
 
 }
-#endif // HAVE_MPI && HAVE_OPM_COMMON
+#endif // HAVE_MPI && HAVE_OPM_COMMON && HAVE_ZOLTAN
 
 #if HAVE_OPM_COMMON
 BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)

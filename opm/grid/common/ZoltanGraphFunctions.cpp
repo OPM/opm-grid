@@ -23,11 +23,10 @@
 #endif
 #include <limits>
 
+#include <opm/grid/utility/OpmWellType.hpp>
+#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
-#include <opm/grid/utility/OpmWellType.hpp>
-
-#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>
 
 namespace Dune
@@ -358,6 +357,18 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 #endif
 }
 
+} // end namespace cpgrid
+} // end namespace Dune
+#endif // defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
+
+// CombinedGridWellGraph is used by non-Zoltan partitioners too (e.g. vanilla),
+// so its implementation must be available even without Zoltan.
+#if HAVE_MPI
+namespace Dune
+{
+namespace cpgrid
+{
+
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
                                              const std::vector<OpmWellType> * wells,
                                              const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
@@ -387,6 +398,16 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     if (edgeWeightsMethod == logTransEdgeWgt)
         findMaxMinTrans();
 }
+
+} // end namespace cpgrid
+} // end namespace Dune
+#endif // HAVE_MPI
+
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
+namespace Dune
+{
+namespace cpgrid
+{
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
                                    bool pretendNull)
