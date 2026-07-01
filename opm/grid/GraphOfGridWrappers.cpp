@@ -651,7 +651,6 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         {
             gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
             myExportList.emplace_back(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
-
         }
         // partitioner sees only one cell per well, modify remaining
         extendGIDtoRank(gog, gIDtoRank, rank);
