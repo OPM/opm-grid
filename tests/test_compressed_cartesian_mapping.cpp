@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(mapping)
     BOOST_CHECK_EQUAL(cartesian_to_compressed.at(9), 7);
 
     const int non_existing_index = 1829;
-    BOOST_CHECK_THROW(cartesian_to_compressed.at(non_existing_index), std::out_of_range);
+    BOOST_CHECK_THROW(static_cast<void>(cartesian_to_compressed.at(non_existing_index)), std::out_of_range);
 
     const std::vector<int> compressed_to_cartesian = Opm::compressedToCartesian(num_cells,  global_cell.data());
 

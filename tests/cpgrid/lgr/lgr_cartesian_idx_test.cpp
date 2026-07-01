@@ -106,7 +106,7 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
                 BOOST_CHECK_EQUAL( leafIdx_to_localCartesianIdxSets[leaf_idx][1], global_cell_level);
             }
             else {
-                BOOST_CHECK_THROW( localCartesianIdxSets_to_leafIdx[element.level()].at(global_cell_level), std::out_of_range);
+                BOOST_CHECK_THROW( static_cast<void>(localCartesianIdxSets_to_leafIdx[element.level()].at(global_cell_level)), std::out_of_range);
             }
         }
     }

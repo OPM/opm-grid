@@ -353,8 +353,8 @@ SCHEDULE
     BOOST_TEST(lgr1IJK[52][2] == 2);
 
     // Accessing inactive (non-existing) cells
-    BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(70), std::out_of_range);
-    BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(170), std::out_of_range);
+    BOOST_CHECK_THROW(static_cast<void>(lgrCartesianIdxToCellIdx.at(70)), std::out_of_range);
+    BOOST_CHECK_THROW(static_cast<void>(lgrCartesianIdxToCellIdx.at(170)), std::out_of_range);
 }
 
 BOOST_AUTO_TEST_CASE(fullInactiveParentCellsBlock_lgrCOORD_throws, *boost::unit_test::disabled())
@@ -433,5 +433,5 @@ SCHEDULE
                       lgr1IJK.size());
 
     // Accessing inactive (non-existing) cell
-    BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(0), std::out_of_range);
+    BOOST_CHECK_THROW(static_cast<void>(lgrCartesianIdxToCellIdx.at(0)), std::out_of_range);
 }
