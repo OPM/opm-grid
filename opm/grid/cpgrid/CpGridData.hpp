@@ -91,6 +91,11 @@ class IndexSet;
 class IdSet;
 class LevelGlobalIdSet;
 class PartitionTypeIndicator;
+// Forward-declare cpgrid::Intersection so the `friend class Intersection`
+// below binds to it; without this, MSVC resolves the unqualified name to the
+// dune-grid class template Dune::Intersection (pulled in by intersection.hh)
+// and errors (C2990).
+class Intersection;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
