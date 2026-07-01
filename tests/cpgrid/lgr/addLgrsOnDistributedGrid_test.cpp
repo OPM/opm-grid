@@ -93,6 +93,8 @@ BOOST_AUTO_TEST_CASE(fullyInteriorLgrsHaveUniqueVertexGlobalIds)
         const std::vector<int>& expected_vertex_ids_per_lgr = { 45, 64, 125, 45};
         // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
         Opm::checkExpectedVertexGlobalIdsCount(grid, expected_vertex_ids_per_lgr, 319 /*leaf_expected_vertex_ids*/);
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), 4);
     }
 }
 
@@ -124,6 +126,8 @@ BOOST_AUTO_TEST_CASE(interiorLgrWithOverlapNeighborHasUniqueVertexGlobalIdsIfAdd
         const std::vector<int>& expected_vertex_ids_per_lgr = { 45, 64, 125, 45};
         // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
         Opm::checkExpectedVertexGlobalIdsCount(grid, expected_vertex_ids_per_lgr, 319 /*leaf_expected_vertex_ids*/);
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), 4);
     }
 }
 
@@ -150,6 +154,8 @@ BOOST_AUTO_TEST_CASE(distributedLgrHasUniqueVertexGlobalIdsIfAddCornerCellsTrue)
         // LGR1 dim 6x2x2 -> 7x3x3 = 63 points
         // Total global ids in leaf grid view for points: 80 + (63 - 16) = 127
         Opm::checkExpectedVertexGlobalIdsCount(grid, {63} /*expected_vertex_ids_per_lgr*/, 127 /*leaf_expected_vertex_ids*/);
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     }
 }
 
@@ -186,6 +192,8 @@ BOOST_AUTO_TEST_CASE(distributedLgrFailsVertexGlobalIdsUniquenessWithAddCornerCe
         Opm::checkExpectedVertexGlobalIdsCount(grid,
                                                {expected_vertex_ids + additional_unnecesary_ids},
                                                178 /*leaf_expected_ertex_ids*/ + additional_unnecesary_ids);
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     }
 }
 
@@ -239,6 +247,8 @@ BOOST_AUTO_TEST_CASE(callAdaptWithoutArgsOnDistributedCoarseGrid)
         grid.postAdapt();
 
         Opm::checkGridWithLgrs(grid, {{2,2,2}} /*cells_per_dim_vec*/, {"GR1"} /*lgr_name_vec (GR: GLOBAL REFINEMENT)*/);
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     }
 }
 
@@ -253,5 +263,7 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineOnceOnDistributedCoarseGrid)
         grid.globalRefine(1);
 
         Opm::checkGridWithLgrs(grid,  {{2,2,2}} /*cells_per_dim_vec*/, {"GR1"} /*lgr_name_vec (GR: GLOBAL REFINEMENT)*/);
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     }
 }
