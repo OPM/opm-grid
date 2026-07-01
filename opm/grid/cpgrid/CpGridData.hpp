@@ -79,7 +79,13 @@
 namespace Opm
 {
 class EclipseState;
+
+namespace Lgr{
+struct GeomData;
+struct CellRefinementBoundaryInfo;
 }
+}
+
 namespace Dune
 {
 class CpGrid;
@@ -122,6 +128,7 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
     friend class Dune::cpgrid::IdSet;
     friend class Dune::cpgrid::LevelGlobalIdSet;
+    friend struct Opm::Lgr::GeomData;
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
@@ -347,6 +354,11 @@ public:
         return face_to_cell_[faceRep].size();
     }
 
+    auto faceToCell(int face) const {
+        Dune::cpgrid::EntityRep<1> faceRep(face, true);
+        return face_to_cell_[faceRep];
+    }
+
     auto faceTag(int faceIdx) const
     {
         Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
@@ -512,8 +524,13 @@ public:
     ///                                                      2---3   |   | TOP FACE
     ///                                                      |   |   4---5
     ///                                                      0---1 BOTTOM FACE
-    std::tuple< const std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>>                  // parent_to_refined_corners(~boundary_old_to_new_corners)
+    /*std::tuple< const std::shared_ptr<CpGridData>,
+                const std::vector<std::array<int,2>>,  // parent_to_refined_corners(~boundary_old_to_new_corners)
+                std::unordered_map<int,int>,
+                std::vector<int>,
+                std::vector<bool>>*/
+
+    std::pair<std::shared_ptr<CpGridData>, Opm::Lgr::CellRefinementBoundaryInfo>
     refineSingleCell(const std::array<int,3>& cells_per_dim,
                      const int& parent_idx,
                      std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces) const;
