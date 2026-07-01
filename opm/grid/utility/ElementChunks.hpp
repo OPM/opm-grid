@@ -122,6 +122,16 @@ public:
     {
         return grid_chunk_iterators_.size() - 1;
     }
+    /// Random-access to the i-th chunk. Enables index-based OpenMP loops
+    ///     #pragma omp parallel for
+    ///     for (std::size_t ci = 0; ci < chunks.size(); ++ci) { auto chunk = chunks[ci]; ... }
+    /// which are required by compilers whose OpenMP frontend does not accept a
+    /// range-based for after 'omp parallel for' (that needs OpenMP 5.0; MSVC's
+    /// /openmp:llvm does not support it). Equivalent to the range-based form.
+    Chunk operator[](std::size_t i) const
+    {
+        return Chunk{grid_chunk_iterators_[i], grid_chunk_iterators_[i + 1]};
+    }
 private:
     Storage grid_chunk_iterators_;
 };
