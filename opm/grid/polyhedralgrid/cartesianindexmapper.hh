@@ -46,6 +46,9 @@ namespace Dune
 
         int cartesianIndex( const int compressedElementIndex ) const
         {
+            // For grids without globalCell we return the compressedIndex
+            if (grid_.globalCellPtr() == 0)
+                return compressedElementIndex;
             assert( compressedElementIndex >= 0 && compressedElementIndex < compressedSize() );
             return grid_.globalCell()[ compressedElementIndex ];
         }

@@ -455,5 +455,35 @@ int main(int argc, char** argv )
         gridcheck( *gridPtr );
     }
 
+    {
+        // Test 2D grid embedded in a 3D domain, constructed from filename.
+        const std::string gridFileName = "polyhedral_grid_test_from_filename.txt";
+        std::stringstream gridFile;
+        std::ofstream out(gridFileName);
+
+        gridFile << "3 1 3 3 6 3 0 0" << std::endl;
+        gridFile << "0 0 0" << std::endl;
+        gridFile << "0.0 0.0 1.0 0.0 1.0 0.0 0.0 1.0 1.0" << std::endl;
+        gridFile << "0 2 4 6" << std::endl;
+        gridFile << "0 1 0 2 1 2" << std::endl;
+        gridFile << "0 -1 0 -1 0 -1" << std::endl;
+        gridFile << "1.4142135623730951 1.0 1.0" << std::endl;
+        gridFile << "0.0 0.5 0.5 0.0 0.5 1.0 0.0 1.0 0.5" << std::endl;
+        gridFile << "-1.1102230246251565e-16 -1.0 -1.0 1.1102230246251565e-16 0.0 1.0 0.0 1.0 0.0" << std::endl;
+        gridFile << "0 3" << std::endl;
+        gridFile << "0 1 2" << std::endl;
+        gridFile << "0.5" << std::endl;
+        gridFile << "0.0 0.6666666666666666 0.6666666666666666" << std::endl;
+
+        out << gridFile.str();
+        out.close();
+
+        typedef Dune::PolyhedralGrid<2, 3, float> Grid;
+        Grid grid(gridFileName);     // <- constructor using filename/read_grid()
+        gridcheck(grid);
+
+        std::remove(gridFileName.c_str());
+    }
+
     return 0;
 }
