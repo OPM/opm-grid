@@ -189,7 +189,7 @@ EdgeWeightType calculateWellEdgeWeight(const Dune::CpGrid& grid,
     }
 
     // when multipltWellConnectivities is provided, set the well weight to the average of grid weight times that coefficient
-    EdgeWeightType mWC = graph.getMultiplyWellConnectivities();
+    double mWC = graph.getMultiplyWellConnectivities();
     if (mWC >= 0) {
         if (total != std::numeric_limits<double>::infinity()) {
             total /= grid.numFaces();

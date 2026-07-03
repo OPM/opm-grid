@@ -194,12 +194,12 @@ public:
             return 1.0;
     }
 
-    void setMultiplyWellConnectivities(const float& mWC)
+    void setMultiplyWellConnectivities(const double& mWC)
     {
         multiplyWellConnectivities = mWC;
     }
 
-    float getMultiplyWellConnectivities() const
+    double getMultiplyWellConnectivities() const
     {
         return multiplyWellConnectivities;
     }
@@ -250,16 +250,15 @@ private:
     int edgeWeightsMethod_;
     WellConnections well_indices_;
     double log_min_;
-    float multiplyWellConnectivities = -1;
+    double multiplyWellConnectivities = -1;
 };
 
 /// \brief Get the number of edges of the graph of the grid and the wells for one cell
 int getNumberOfEdgesForSpecificCellForGridWithWells(const CombinedGridWellGraph& graph, int localCellId);
 
-/// \brief Iterate over the grid and to calculate the edge weights
+/// \brief Iterate over the grid to calculate the edge weights between well connections
 ///
-/// Used as a weight for edges between cells of a well
-/// The result is the sum of all grid edges, or multiplyWellConnectivities*grid_average if it is positive
+/// The result is the sum of all grid edges, or multiplyWellConnectivities*grid_average if the multiplier is positive
 template <typename EdgeWeightType>
 EdgeWeightType calculateWellEdgeWeight(const Dune::CpGrid& grid,
                                        const CombinedGridWellGraph& graph);

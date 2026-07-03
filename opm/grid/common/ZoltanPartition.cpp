@@ -326,10 +326,10 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     }
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
-    float mWC = -1;
+    double mWC = -1;
     for (const auto& [key, value] : params) {
         if (key=="MultiplyWellConnectivities") {
-            mWC = std::stof(value);
+            mWC = std::stod(value);
         } else {
             Zoltan_Set_Param(zz, key.c_str(), value.c_str());
         }
@@ -532,7 +532,7 @@ private:
 
         for (const auto& [key, value] : params) {
             if (key=="MultiplyWellConnectivities") {
-                gridAndWells->setMultiplyWellConnectivities(std::stof(value));
+                gridAndWells->setMultiplyWellConnectivities(std::stod(value));
             } else {
                  Zoltan_Set_Param(zz, key.c_str(), value.c_str());
             }
