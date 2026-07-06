@@ -217,7 +217,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     double imbalanceTol,
                     [[maybe_unused]] bool allowDistributedWells,
                     [[maybe_unused]] const std::vector<int>& input_cell_part,
-                    int level)
+                    int level,
+                    [[maybe_unused]] bool useTransToFilterOverlap)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -397,6 +398,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                                                cc,
                                                addCornerCells,
                                                transmissibilities,
+                                               useTransToFilterOverlap,
                                                1 /*layers*/,
                                                level);
         // importList contains all the indices that will be here.
