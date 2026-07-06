@@ -558,6 +558,7 @@ int addOverlapLayer([[maybe_unused]] const CpGrid& grid,
                     [[maybe_unused]] const Communication<Dune::MPIHelper::MPICommunicator>& cc,
                     [[maybe_unused]] bool addCornerCells,
                     [[maybe_unused]] const double* trans,
+                    [[maybe_unused]] bool useTransToFilterOverlap,
                     [[maybe_unused]] int layers,
                     [[maybe_unused]] int level)
 {
@@ -576,7 +577,7 @@ int addOverlapLayer([[maybe_unused]] const CpGrid& grid,
         int index = ix.index(*it);
         auto owner = cell_part[index];
         exportProcs.insert(std::make_pair(owner, 0));
-        if ( trans ) {
+        if ( trans && useTransToFilterOverlap ) {
             addOverlapLayerNoZeroTrans(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, trans, level);
         }
         else {

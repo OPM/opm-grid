@@ -108,6 +108,7 @@ namespace Dune
     /// \param[in] cc The communication object
     /// \param[in] addCornerCells Switch for adding corner cells to overlap layer.
     /// \param[in] trans The transmissibilities on cell faces. When trans[i]==0, no overlap is added.
+    /// \param[in] useTransToFilterOverlap If true, zero transmissibility faces are skipped in overlap construction.
     /// \param[in] layers Number of overlap layers
     /// \param[in] level Indicating level grid that is partitioned. Default -1 for leaf grid view.
     int addOverlapLayer(const CpGrid& grid,
@@ -117,6 +118,7 @@ namespace Dune
                         const Communication<Dune::MPIHelper::MPICommunicator>& cc,
                         bool addCornerCells,
                         const double* trans,
+                        bool useTransToFilterOverlap = true,
                         int layers = 1,
                         int level = -1);
 
