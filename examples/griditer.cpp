@@ -91,7 +91,7 @@ int main(int argc, char** argv)
         Opm::ElementChunks chunks(gv, Dune::Partitions::all, num_threads);
 #pragma omp parallel for
         for (std::size_t ci = 0; ci < chunks.size(); ++ci) {
-            const auto chunk = chunks[ci];
+            const auto& chunk = chunks[ci];
             for (const auto& elem : chunk) {
                 vols[elem.index()] = elem.geometry().volume();
             }
