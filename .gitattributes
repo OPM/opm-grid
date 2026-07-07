@@ -1,0 +1,19 @@
+# Eclipse input decks and grid files use '\n' line endings by specification
+# and are parsed byte-for-byte (no newline translation on Windows). Force LF
+# at checkout so that a clone with core.autocrlf=true on Windows does not
+# corrupt the test data.
+*.DATA    text eol=lf
+*.data    text eol=lf
+*.inc     text eol=lf
+*.include text eol=lf
+*.grdecl  text eol=lf
+*.GRDECL  text eol=lf
+*.dgf     text eol=lf
+
+# Unformatted (binary) Eclipse I/O files
+*.EGRID  binary
+*.GRID   binary
+*.INIT   binary
+*.UNRST  binary
+*.UNSMRY binary
+*.SMSPEC binary
