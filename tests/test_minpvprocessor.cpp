@@ -388,3 +388,45 @@ BOOST_AUTO_TEST_CASE(Processing)
     BOOST_CHECK_EQUAL(minpv_result7.nnc.size(), 1);
     BOOST_CHECK_EQUAL_COLLECTIONS(z7.begin(), z7.end(), zcorn7after.begin(), zcorn7after.end());
 }
+
+BOOST_AUTO_TEST_CASE(MergeColumnRunsOffGridBottom)
+{
+    // Regression test: with mergeMinPVCells == true and a column whose
+    // low-pore-volume cells extend all the way to the grid bottom, the
+    // inner column walk exits with kk_iter == dims[2].  The merge branch
+    // then accessed getCellZcorn(ii, jj, kk_iter, ...) which reads -- and
+    // via setCellZcorn writes -- 8 doubles past the end of the zcorn
+    // array.  Detect the out-of-bounds write with sentinel padding placed
+    // directly behind the grid's zcorn data.
+    //
+    // 1x1x3 column, every cell active but below the pore volume limit.
+    std::vector<double> zcorn = { 0, 0, 0, 0,
+                                  1, 1, 1, 1,
+                                  1, 1, 1, 1,
+                                  2, 2, 2, 2,
+                                  2, 2, 2, 2,
+                                  3, 3, 3, 3 };
+    const std::size_t ncorn = zcorn.size();
+    const double sentinel = -999.25;
+    std::vector<double> padded = zcorn;
+    padded.resize(ncorn + 8, sentinel); // guard region behind zcorn
+
+    std::vector<double> pv = { 0.1, 0.1, 0.1 };
+    std::vector<double> minpvv(3, 0.5);
+    std::vector<int> actnum = { 1, 1, 1 };
+    std::vector<double> thickness = { 1, 1, 1 };
+    const double z_threshold = 0.0;
+    const bool mergeMinPVCells = true;
+
+    Opm::MinpvProcessor mp(1, 1, 3);
+    const auto result = mp.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+                                   mergeMinPVCells, padded.data());
+
+    // All three cells are below the pore volume limit and must be removed.
+    BOOST_CHECK_EQUAL(result.removed_cells.size(), 3);
+
+    // The guard region must be untouched: no out-of-bounds zcorn access.
+    for (std::size_t i = ncorn; i < padded.size(); ++i) {
+        BOOST_CHECK_EQUAL(padded[i], sentinel);
+    }
+}

@@ -230,6 +230,21 @@ MinpvProcessor::process(const std::vector<double>& thickness,
 
                     // create nnc if false or merge the cells if true
                     if (mergeMinPVCells && c_low_pv_active) {
+                        // Column ran off the grid bottom: no cell below to receive
+                        // the void.  Without this guard the zcorn access at
+                        // kk_iter == dims_[2] reads and writes 8 doubles past the
+                        // end of the zcorn array.
+                        if (kk_iter == dims_[2]) {
+                            kk = kk_iter;
+                            continue;
+                        }
+
+                        // Bottom cell inactive: leave the geometry untouched, no merge.
+                        if (!actnum.empty() && !actnum[c_below]) {
+                            kk = kk_iter;
+                            continue;
+                        }
+
                         // Set lower k coordinates of cell below to upper cells's coordinates.
                         // i.e fill the void using the cell below
                         std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
