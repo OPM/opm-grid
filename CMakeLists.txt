@@ -85,6 +85,7 @@ macro(opm-grid_tests_hook)
       distributed_builder_test
       distribution_test
       dual_continuum_distribution_test
+      partition_of_unity_test
       grid_global_id_set_test
       id_entity_entityrep_test
       level_and_grid_cartesianIndexMappers_test
