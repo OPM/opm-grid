@@ -91,6 +91,7 @@ list(APPEND MAIN_SOURCE_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/partition_of_unity_test.cpp
   tests/cpgrid/lgr_backend_comparison_test.cpp
   tests/cpgrid/lgr_backend_switch_test.cpp
   tests/cpgrid/grdecl_refinement_test.cpp

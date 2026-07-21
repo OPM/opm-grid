@@ -83,6 +83,7 @@ macro(opm-grid_tests_hook)
       distribute_level_zero_from_grid_with_lgrs_test
       distributed_builder_test
       distribution_test
+      partition_of_unity_test
       grid_global_id_set_test
       id_entity_entityrep_test
       level_and_grid_cartesianIndexMappers_test
