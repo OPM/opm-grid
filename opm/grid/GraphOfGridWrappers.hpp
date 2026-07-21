@@ -389,7 +389,7 @@ zoltanPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
                                   const double zoltanImbalanceTol,
                                   bool allowDistributedWells,
                                   const std::map<std::string,std::string>& params,
-                                  Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                                  const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
                                   double coarseThreshold,
                                   int coarsePartitionMaxNodeSize);
 
@@ -439,7 +439,7 @@ zoltanSerialPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
                                         const double zoltanImbalanceTol,
                                         bool allowDistributedWells,
                                         const std::map<std::string,std::string>& params,
-                                        Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                                        const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
                                         double coarseThreshold,
                                         int coarsePartitionMaxNodeSize);
 #endif // HAVE_MPI

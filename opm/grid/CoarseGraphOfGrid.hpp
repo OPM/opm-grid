@@ -1,7 +1,7 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2026 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -57,7 +57,7 @@ public:
 
     explicit CoarseGraphOfGrid (const Grid& grid_,
                                 const Dune::EdgeWeightMethod edgeWeightMethod,
-                                TransGraph* tg,
+                                const TransGraph* tg,
                                 double coarseThreshold,
                                 int coarsePartitionMaxNodeSize,
                                 bool allowDistributedWells,
@@ -79,18 +79,18 @@ public:
         return coarseNodes.size();
     }
 
-    std::vector<std::vector<int>> getCoarseNodes() const
+    const std::vector<std::vector<int>>& getCoarseNodes() const
     {
         return coarseNodes;
     }
 
-    std::vector<std::map<int, double> > getCoarseEdges() const
+    const std::vector<std::map<int, double> >& getCoarseEdges() const
     {
         return cedges;
     }
 
     /// \brief returns map of global cell id to coarse vertex id
-    std::vector<int> getMapToCoarse() const
+    const std::vector<int>& getMapToCoarse() const
     {
         return map_to_coarse_;
     }
@@ -126,7 +126,7 @@ private:
     void dfsqw(Row row, std::priority_queue<WgtIdx> &q, int v, int master,
                double w, int maxNode, std::vector<bool>& visited,
                std::vector<int>& cnode, std::vector<std::tuple<int,int,double> >& edges,
-               std::vector<int>& hasWell, std::vector<std::vector<int>>& wellPerf);
+               const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf);
 
     /// \brief Create the coarse graph merging all vertices connected with a large transmissibility.
     ///
@@ -143,7 +143,7 @@ private:
     const Grid& grid;
     std::list<std::set<int>> wells;
 
-    Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph;
+    const TransGraph* transGraph;
     std::vector<int> map_to_coarse_;
     std::vector<std::map<int, double> > cedges;
     std::vector<std::vector<int>> coarseNodes;

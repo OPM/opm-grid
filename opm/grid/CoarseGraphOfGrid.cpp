@@ -1,7 +1,7 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2026 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -148,7 +148,7 @@ template<typename Grid>
 void CoarseGraphOfGrid<Grid>::dfsqw(Row row, std::priority_queue<WgtIdx> &q, int v, int master,
                               double w, int maxNode, std::vector<bool>& visited,
                               std::vector<int>& cnode, std::vector<std::tuple<int,int,double> >& edges,
-                              std::vector<int>& hasWell, std::vector<std::vector<int>>& wellPerf)
+                              const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf)
 {
     std::vector<int> wellIdxs;
     if (hasWell[v] == -1) {

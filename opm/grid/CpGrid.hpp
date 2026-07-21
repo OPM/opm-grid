@@ -960,7 +960,7 @@ namespace Dune
                     double imbalanceTol = 1.1,
                     bool allowDistributedWells = false,
                     bool useTransToFilterOverlap = true,
-                    Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* graph = nullptr,
+                    const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* graph = nullptr,
                     double coarseThreshold = 1.0,
                     int coarsePartitionMaxNodeSize = -1)
         {
@@ -1487,7 +1487,7 @@ namespace Dune
                     const std::vector<int>& input_cell_part = {},
                     int level = -1,
                     bool useTransToFilterOverlap = true,
-                    Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph = nullptr,
+                    const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph = nullptr,
                     double coarseThreshold = 1.0,
                     int coarsePartitionMaxNodeSize = -1);
 

@@ -219,7 +219,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] const std::vector<int>& input_cell_part,
                     int level,
                     [[maybe_unused]] bool useTransToFilterOverlap,
-                    [[maybe_unused]] Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                    [[maybe_unused]] const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
                     [[maybe_unused]] double coarseThreshold,
                     [[maybe_unused]] int coarsePartitionMaxNodeSize)
 {
