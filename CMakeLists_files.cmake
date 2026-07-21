@@ -100,6 +100,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
   tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/partition_of_unity_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp

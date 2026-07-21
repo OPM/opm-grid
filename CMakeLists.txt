@@ -82,6 +82,7 @@ macro(opm-grid_tests_hook)
       addLgrsOnDistributedGrid_test
       autoRefine_test
       distribution_test
+      partition_of_unity_test
       level_and_grid_cartesianIndexMappers_test
       logicalCartesianSize_and_refinement_test
       test_communication_utils
