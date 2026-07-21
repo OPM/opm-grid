@@ -118,6 +118,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/save_lgr_coord_zcorn_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
+  tests/cpgrid/partition_of_unity_test.cpp
   tests/cpgrid/shifted_cart_test.cpp
   tests/cpgrid/zoltan_test.cpp
   tests/p2pcommunicator_test.cc

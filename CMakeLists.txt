@@ -88,6 +88,7 @@ macro(opm-grid_tests_hook)
       lgr_cell_id_sync_test
       logicalCartesianSize_and_refinement_test
       mapLevelIndicesToCartesianOutputOrder_test
+      partition_of_unity_test
       test_communication_utils
     )
 
