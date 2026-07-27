@@ -240,27 +240,6 @@ void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
     }
 }
 
-template<typename Zoltan_Struct>
-void setCoarseGraphZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        CoarseGraphOfGrid<Dune::CpGrid>& gog,
-                                        bool pretendNull)
-{
-    CoarseGraphOfGrid<Dune::CpGrid>* pGraph = &gog;
-    if (pretendNull)
-    {
-        Zoltan_Set_Num_Obj_Fn(zz, Dune::cpgrid::getNullNumCells, pGraph);
-        Zoltan_Set_Obj_List_Fn(zz, Dune::cpgrid::getNullVertexList, pGraph);
-        Zoltan_Set_Num_Edges_Multi_Fn(zz, Dune::cpgrid::getNullNumEdgesList, pGraph);
-        Zoltan_Set_Edge_List_Multi_Fn(zz, Dune::cpgrid::getNullEdgeList, pGraph);
-    }
-    else
-    {
-        Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices<CoarseGraphOfGrid<Dune::CpGrid>>, pGraph);
-        Zoltan_Set_Obj_List_Fn(zz, getCoarseGraphVerticesList, pGraph);
-        Zoltan_Set_Num_Edges_Multi_Fn(zz, getCoarseGraphNumEdges, pGraph);
-        Zoltan_Set_Edge_List_Multi_Fn(zz, getCoarseGraphEdgeList, pGraph);
-    }
-}
 #endif // HAVE_MPI
 
 void addFutureConnectionWells(GraphOfGrid<Dune::CpGrid>& gog,

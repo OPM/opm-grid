@@ -147,11 +147,6 @@ void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
                                         GraphType& gog,
                                         bool pretendNull);
 
-/// \brief Register callback functions to Zoltan
-template<typename Zoltan_Struct>
-void setCoarseGraphZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        CoarseGraphOfGrid<Dune::CpGrid>& gog,
-                                        bool pretendNull);
 #endif
 
 /// \brief Adds well to the GraphOfGrid
