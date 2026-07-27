@@ -38,7 +38,7 @@ struct WgtIdx {
     int idx;
 
     bool operator<(const WgtIdx& other) const {
-    return wgt < other.wgt;
+        return wgt < other.wgt;
     }
 };
 
@@ -61,11 +61,12 @@ public:
                                 double coarseThreshold,
                                 int coarsePartitionMaxNodeSize,
                                 bool allowDistributedWells,
+                                int root,
                                 const Dune::cpgrid::WellConnections& wellConn)
         : grid(grid_), transGraph(tg)
     {
         createCoarseGraph(edgeWeightMethod, coarseThreshold, coarsePartitionMaxNodeSize,
-                          allowDistributedWells, wellConn);
+                          allowDistributedWells, root, wellConn);
     }
 
     const Grid& getGrid() const
@@ -74,7 +75,7 @@ public:
     }
 
     /// \brief Number of graph vertices
-    int cSize() const
+    int size() const
     {
         return coarseNodes.size();
     }
@@ -102,18 +103,6 @@ public:
     }
 private:
 
-
-    /// \brief Coarsen the graph by doing a (d)epth (f)irst (s)earch with priority (q)ueue.
-    ///
-    /// Recurseive dfs that merges strongly connected nodes (transmissibility) in the
-    /// partitioning graph.
-    /// A priority queue is used to make sure the largest connections are prioritised in the
-    /// merging of vertices.
-    void dfsq(Row row, std::priority_queue<WgtIdx> &q, int v, int master,
-              double w, int maxNode, std::vector<bool>& visited,
-              std::vector<int>& cnode, std::vector<std::tuple<int,int,double> >& edges);
-
-
     /// \brief Merge vertices that share a common well 
     void mergeWellCellsForCoarseGraph(std::vector<int>& hasWell,
                                       std::vector<std::vector<int>>& wellPerf,
@@ -122,10 +111,13 @@ private:
     /// \brief Coarsen the graph by doing a (d)epth (f)irst (s)earch with priority (q)ueue
     /// and merges (w)ells.
     ///
-    /// Similar to dfsq, but merges wells before strongly connected nodes.
-    void dfsqw(Row row, std::priority_queue<WgtIdx> &q, int v, int master,
+    /// Recurseive dfs that merges strongly connected nodes (transmissibility) in the
+    /// partitioning graph.
+    /// A priority queue is used to make sure the largest connections are prioritised in the
+    /// merging of vertices.
+    void dfsqw(const Row& row, std::priority_queue<WgtIdx> &q, int v, int master,
                double w, int maxNode, std::vector<bool>& visited,
-               std::vector<int>& cnode, std::vector<std::tuple<int,int,double> >& edges,
+               std::vector<std::vector<std::tuple<int,int,double>>>& gEdges,
                const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf);
 
     /// \brief Create the coarse graph merging all vertices connected with a large transmissibility.
@@ -138,6 +130,7 @@ private:
                            double coarseThreshold,
                            int coarsePartitionMaxNodeSize,
                            bool allowDistributedWells,
+                           int root,
                            const Dune::cpgrid::WellConnections& wells);
 
     const Grid& grid;

@@ -46,6 +46,7 @@ namespace Opm {
 /// \brief callback function for ZOLTAN_NUM_OBJ_FN
 ///
 /// returns the number of vertices in the graph
+template <typename GraphType = GraphOfGrid<Dune::CpGrid>>
 int getGraphOfGridNumVertices(void* pGraph, int *err);
 
 /// \brief callback function for ZOLTAN_OBJ_LIST_FN
@@ -94,17 +95,6 @@ void getGraphOfGridEdgeList(void *pGraph,
                             float *edgeWeights,
                             int *err);
 
-/// \brief Register callback functions to Zoltan
-template<typename Zoltan_Struct>
-void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        GraphOfGrid<Dune::CpGrid>& gog,
-                                        bool pretendNull);
-
-/// \brief callback function for ZOLTAN_NUM_OBJ_FN
-///
-/// returns the number of vertices in the graph
-int getCoarseGraphNumVertices(void* pGraph, int *err);
-
 /// \brief callback function for ZOLTAN_OBJ_LIST_FN
 ///
 ///  fills the vector gIDs with vertex global IDs
@@ -150,6 +140,12 @@ void getCoarseGraphEdgeList(void *pGraph,
                             int weightDim,
                             float *edgeWeights,
                             int *err);
+
+/// \brief Register callback functions to Zoltan
+template<typename Zoltan_Struct, typename GraphType>
+void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
+                                        GraphType& gog,
+                                        bool pretendNull);
 
 /// \brief Register callback functions to Zoltan
 template<typename Zoltan_Struct>
@@ -205,8 +201,9 @@ void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importLi
 /// On root, exportList is extended by well cells that are hidden from the partitioner.
 /// These cells are also collected and returned so they can be communicated to other ranks.
 /// \return vector[rank][cell] Each entry contains vector of cells exported to that rank.
+template<class GOG>
 std::vector<std::vector<int>>
-extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
+extendRootExportList(const GOG& gog,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      int root,
                      const std::vector<int>& gIDtoRank);

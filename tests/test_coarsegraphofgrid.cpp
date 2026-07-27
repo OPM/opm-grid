@@ -104,9 +104,9 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,
                                               graph.get(), strongConnectionThreshold,
-                                              maxNodeSize, allowDistWells, wells);
+                                              maxNodeSize, allowDistWells, 0, wells);
 
-    BOOST_REQUIRE(cgog.cSize()==8); // number of graph vertices
+    BOOST_REQUIRE(cgog.size()==8); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==1); // weight of all nodes is one 
 
     const std::vector< std::map<int, double> > edges = cgog.getCoarseEdges();
@@ -143,9 +143,9 @@ BOOST_AUTO_TEST_CASE(MergeTwoNodes)
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,
                                               graph.get(), strongConnectionThreshold,
-                                              maxNodeSize, allowDistWells, wells);
+                                              maxNodeSize, allowDistWells, 0, wells);
 
-    BOOST_REQUIRE(cgog.cSize()==7); // number of graph vertices
+    BOOST_REQUIRE(cgog.size()==7); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==2); // weight of node 0 is two 
 
     const auto edges = cgog.getCoarseEdges();
@@ -188,9 +188,9 @@ BOOST_AUTO_TEST_CASE(CoarseEdgeWeights)
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,
                                               graph.get(), strongConnectionThreshold,
-                                              maxNodeSize, allowDistWells, wells);
+                                              maxNodeSize, allowDistWells, 0, wells);
 
-    BOOST_REQUIRE(cgog.cSize()==7); // number of graph vertices
+    BOOST_REQUIRE(cgog.size()==7); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==3); // Node weight of node 0 is 3 
 
     const std::vector< std::map<int, double> > edges = cgog.getCoarseEdges();
@@ -237,9 +237,9 @@ BOOST_AUTO_TEST_CASE(MaxNodeSize)
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,
                                               graph.get(), strongConnectionThreshold,
-                                              maxNodeSize, allowDistWells, wells);
+                                              maxNodeSize, allowDistWells, 0, wells);
 
-    BOOST_REQUIRE(cgog.cSize()==7); // number of graph vertices
+    BOOST_REQUIRE(cgog.size()==7); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==2); // weight of node 0 is two
 
     auto map_to_coarse = cgog.getMapToCoarse();
@@ -314,12 +314,12 @@ BOOST_AUTO_TEST_CASE(MergeWells)
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,graph.get(),
                                               strongConnectionThreshold,
-                                              maxNodeSize, allowDistWells, wellConnections);
+                                              maxNodeSize, allowDistWells, 0, wellConnections);
 
-    BOOST_REQUIRE(cgog.cSize()==4);
+    BOOST_REQUIRE(cgog.size()==4);
 
     int err;
-    int nVer = getCoarseGraphNumVertices(&cgog,&err);
+    int nVer = Opm::getGraphOfGridNumVertices<Opm::CoarseGraphOfGrid<Dune::CpGrid> >(&cgog,&err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 4);
     std::vector<uint> gIDs(nVer);
@@ -443,13 +443,13 @@ BOOST_AUTO_TEST_CASE(MergeWellsMoreIntersecting)
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,
                                               graph.get(), strongConnectionThreshold,
-                                              maxNodeSize, allowDistWells, wellConnections);
+                                              maxNodeSize, allowDistWells, 0, wellConnections);
 
     auto map_to_coarse = cgog.getMapToCoarse();
-    BOOST_REQUIRE(cgog.cSize() == 47);
+    BOOST_REQUIRE(cgog.size() == 47);
 
     int err;
-    int nVer = getCoarseGraphNumVertices(&cgog,&err);
+    int nVer = Opm::getGraphOfGridNumVertices<Opm::CoarseGraphOfGrid<Dune::CpGrid> >(&cgog,&err);
     BOOST_REQUIRE(nVer == 47);
     std::vector<uint> gIDs(nVer);
     std::vector<float> objWeights(nVer);
@@ -550,13 +550,13 @@ BOOST_AUTO_TEST_CASE(MergeWithTransAndWells)
     int maxNodeSize = 14;
     bool allowDistWells = false;
     Opm::CoarseGraphOfGrid<Dune::CpGrid> cgog(grid, Dune::EdgeWeightMethod::uniformEdgeWgt,graph.get(),
-                                              1.1, maxNodeSize, allowDistWells, wellConnections);
+                                              1.1, maxNodeSize, allowDistWells, 0, wellConnections);
 
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==9);
     auto map_to_coarse = cgog.getMapToCoarse();
 
     int err;
-    int nVer = getCoarseGraphNumVertices(&cgog,&err);
+    int nVer = Opm::getGraphOfGridNumVertices<Opm::CoarseGraphOfGrid<Dune::CpGrid> >(&cgog,&err);
     BOOST_REQUIRE(nVer == 7);
     std::vector<uint> gIDs(nVer);
     std::vector<float> objWeights(nVer);

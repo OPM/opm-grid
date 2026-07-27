@@ -32,9 +32,10 @@
 namespace Opm {
 
 #if HAVE_MPI
+template <typename GraphType>
 int getGraphOfGridNumVertices(void* pGraph, int *err)
 {
-    const GraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const GraphOfGrid<Dune::CpGrid>*>(pGraph);
+    const GraphType&  gog = *static_cast<const GraphType*>(pGraph);
     int size = gog.size();
     *err = ZOLTAN_OK;
     return size;
@@ -131,36 +132,6 @@ void getGraphOfGridEdgeList(void *pGraph,
     *err = ZOLTAN_OK;
 }
 
-template<typename Zoltan_Struct>
-void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        GraphOfGrid<Dune::CpGrid>& gog,
-                                        bool pretendNull)
-{
-    GraphOfGrid<Dune::CpGrid>* pGraph = &gog;
-    if (pretendNull)
-    {
-        Zoltan_Set_Num_Obj_Fn(zz, Dune::cpgrid::getNullNumCells, pGraph);
-        Zoltan_Set_Obj_List_Fn(zz, Dune::cpgrid::getNullVertexList, pGraph);
-        Zoltan_Set_Num_Edges_Multi_Fn(zz, Dune::cpgrid::getNullNumEdgesList, pGraph);
-        Zoltan_Set_Edge_List_Multi_Fn(zz, Dune::cpgrid::getNullEdgeList, pGraph);
-    }
-    else
-    {
-        Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices, pGraph);
-        Zoltan_Set_Obj_List_Fn(zz, getGraphOfGridVerticesList, pGraph);
-        Zoltan_Set_Num_Edges_Multi_Fn(zz, getGraphOfGridNumEdges, pGraph);
-        Zoltan_Set_Edge_List_Multi_Fn(zz, getGraphOfGridEdgeList, pGraph);
-    }
-}
-
-int getCoarseGraphNumVertices(void* pGraph, int *err)
-{
-    const CoarseGraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
-    int size = gog.cSize();
-    *err = ZOLTAN_OK;
-    return size;
-}
-
 void getCoarseGraphVerticesList(void* pGraph,
                [[maybe_unused]] int dimGlobalID,
                [[maybe_unused]] int dimLocalID,
@@ -173,7 +144,7 @@ void getCoarseGraphVerticesList(void* pGraph,
     assert(dimGlobalID==1); // ID is a single int
     assert(weightDim==1); // vertex weight is a single float
     const CoarseGraphOfGrid<Dune::CpGrid>& gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
-    const std::vector<std::vector<int>> cnodes = gog.getCoarseNodes();
+    const std::vector<std::vector<int>>& cnodes = gog.getCoarseNodes();
     int i=0;
     for (const auto& v : cnodes)
     {
@@ -196,7 +167,7 @@ void getCoarseGraphNumEdges(void *pGraph,
     assert(dimGlobalID==1); // ID is a single int
     const CoarseGraphOfGrid<Dune::CpGrid>& gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
 
-    const std::vector<std::map<int, double> > edges = gog.getCoarseEdges();
+    const std::vector<std::map<int, double> >& edges = gog.getCoarseEdges();
 
     for (size_t idx = 0; idx < edges.size(); ++idx)
     {
@@ -222,19 +193,51 @@ void getCoarseGraphEdgeList(void *pGraph,
     assert(dimGlobalID==1); // ID is a single int
     assert(weightDim==1); // edge weight is a single float
     const CoarseGraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
-    const std::vector<std::map<int, double> > edges = gog.getCoarseEdges();
+    const std::vector<std::map<int, double> >& edges = gog.getCoarseEdges();
     int id=0;
 
+    const auto& rank = gog.getGrid().comm().rank();
     for (const auto& node : edges)
     {
         for (const auto& edge : node) {
             nborGIDs[id] = edge.first;
             edgeWeights[id] = edge.second;
-            nborProc[id++] = 0;
+            nborProc[id++] = rank;
         }
     }
     
     *err = ZOLTAN_OK;
+}
+
+template<typename Zoltan_Struct, typename GraphType>
+void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
+                                        GraphType& gog,
+                                        bool pretendNull)
+{
+    using DecayedGraph = std::decay_t<GraphType>;
+    GraphType* pGraph = &gog;
+    if (pretendNull)
+    {
+        Zoltan_Set_Num_Obj_Fn(zz, Dune::cpgrid::getNullNumCells, pGraph);
+        Zoltan_Set_Obj_List_Fn(zz, Dune::cpgrid::getNullVertexList, pGraph);
+        Zoltan_Set_Num_Edges_Multi_Fn(zz, Dune::cpgrid::getNullNumEdgesList, pGraph);
+        Zoltan_Set_Edge_List_Multi_Fn(zz, Dune::cpgrid::getNullEdgeList, pGraph);
+    }
+    else
+    {
+        if constexpr (std::is_same_v<DecayedGraph, GraphOfGrid<Dune::CpGrid>>) {
+            Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices, pGraph);
+            Zoltan_Set_Obj_List_Fn(zz, getGraphOfGridVerticesList, pGraph);
+            Zoltan_Set_Num_Edges_Multi_Fn(zz, getGraphOfGridNumEdges, pGraph);
+            Zoltan_Set_Edge_List_Multi_Fn(zz, getGraphOfGridEdgeList, pGraph);
+        }
+        else if constexpr (std::is_same_v<DecayedGraph, CoarseGraphOfGrid<Dune::CpGrid>>) {
+            Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices<GraphType>, pGraph);
+            Zoltan_Set_Obj_List_Fn(zz, getCoarseGraphVerticesList, pGraph);
+            Zoltan_Set_Num_Edges_Multi_Fn(zz, getCoarseGraphNumEdges, pGraph);
+            Zoltan_Set_Edge_List_Multi_Fn(zz, getCoarseGraphEdgeList, pGraph);
+        }
+    }
 }
 
 template<typename Zoltan_Struct>
@@ -252,7 +255,7 @@ void setCoarseGraphZoltanGraphFunctions(Zoltan_Struct *zz,
     }
     else
     {
-        Zoltan_Set_Num_Obj_Fn(zz, getCoarseGraphNumVertices, pGraph);
+        Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices<CoarseGraphOfGrid<Dune::CpGrid>>, pGraph);
         Zoltan_Set_Obj_List_Fn(zz, getCoarseGraphVerticesList, pGraph);
         Zoltan_Set_Num_Edges_Multi_Fn(zz, getCoarseGraphNumEdges, pGraph);
         Zoltan_Set_Edge_List_Multi_Fn(zz, getCoarseGraphEdgeList, pGraph);
@@ -315,9 +318,9 @@ void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
 
 #if HAVE_MPI
 namespace Impl{
-
+template<class GOG>
 std::vector<std::vector<int>>
-extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
+extendRootExportList(const GOG& gog,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      int root,
                      const std::vector<int>& gIDtoRank)
@@ -404,97 +407,6 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
         }
     }
     std::ranges::sort(exportList);
-    return exportedCells;
-}
-
-std::vector<std::vector<int>>
-extendRootExportList(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
-                     std::vector<std::tuple<int,int,char>>& exportList,
-                     int root,
-                     const std::vector<int>& gIDtoRank)
-{
-    const auto& cc = gog.getGrid().comm();
-    // non-root ranks have empty export lists.
-    std::vector<std::vector<int>> exportedCells;
-    if (cc.rank()!=root)
-    {
-        return exportedCells;
-    }
-
-    using iter = std::set<int>::const_iterator;
-    // store which wells are exported. Contains {begin, end, destination rank}
-    std::vector<std::tuple<iter,iter,int>> wellsToExport;
-    // track how many cells per rank are exported - to reserve the vector size
-    std::vector<int> sizesOfExport(cc.size(), 0);
-    const auto& gogWells = gog.getWells();
-    wellsToExport.reserve(gogWells.size());
-
-    // with gIDtoRank we can directly tell which wells belong where
-    if (gIDtoRank.size()>0)
-    {
-        for (const auto& well : gogWells)
-        {
-            auto wellID = *well.begin();
-            if (gIDtoRank[wellID]!=root)
-            {
-                wellsToExport.emplace_back(well.begin(), well.end(), gIDtoRank[wellID]);
-                sizesOfExport[gIDtoRank[wellID]] += well.size()-1;  // one of well's cells is already in the list
-            }
-        }
-    }
-    else
-    {
-        // make a list of wells for easy identification during search. Contains {begin, end, well ID}
-        std::map<int, std::tuple<iter,iter,int>> wellMap;
-        for (const auto& well : gogWells)
-        {
-            wellMap[*well.begin()] = std::make_tuple(well.begin(), well.end(), well.size());
-        }
-        // iterate once through the original exportList and identify exported wells
-        for (const auto& cellProperties : exportList)
-        {
-            auto pWell = wellMap.find(std::get<0>(cellProperties));
-            if (pWell!=wellMap.end())
-            {
-                int rankToExport = std::get<1>(cellProperties);
-                if (rankToExport!=root) // wells on root are not exported
-                {
-                    const auto& [begin, end, wSize] = pWell->second;
-                    wellsToExport.emplace_back(begin, end, rankToExport);
-                    sizesOfExport[rankToExport] += wSize-1; // one cell is already in the list
-                }
-                wellMap.erase(pWell);
-                if (wellMap.empty())
-                {
-                    break;
-                }
-            }
-        }
-    }
-
-    // create the output: the cells that are missing from importList on non-root ranks
-    // also add new cells to the exportList and sort it
-    exportedCells.resize(cc.size());
-    int addedExportsSize = 0;
-    for (int i=0; i<cc.size(); ++i)
-    {
-        exportedCells[i].reserve(sizesOfExport[i]);
-        addedExportsSize += sizesOfExport[i];
-    }
-    exportList.reserve(exportList.size()+addedExportsSize);
-    for (auto& pWell : wellsToExport)
-    {
-        auto& [begin, end, rank] = pWell;
-        // remember to skip the well's first cell which already is in the importList
-        for (auto& pgID = ++begin; pgID!=end; ++pgID)
-        {
-            using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
-            exportList.emplace_back(*pgID, rank, AttributeSet::owner);
-
-            exportedCells[rank].push_back(*pgID);
-        }
-    }
-    std::sort(exportList.begin(), exportList.end());
     return exportedCells;
 }
 
@@ -731,7 +643,7 @@ makeImportAndExportLists(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
     std::vector<int> sizeOfImport(cc.size(), 0);
     if (rank==root)
     {
-        std::vector<int> coarsePartRes(gog.cSize(), root);
+        std::vector<int> coarsePartRes(gog.size(), root);
         auto cnodes = gog.getCoarseNodes();
         for ( int i=0; i < numExport; ++i )
         {
@@ -800,8 +712,8 @@ makeImportAndExportLists(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
     }
     else
     {
-        std::sort(myExportList.begin(), myExportList.end());
-        std::sort(myImportList.begin(), myImportList.end());
+        std::ranges::sort(myExportList);
+        std::ranges::sort(myImportList);
     }
     return std::make_tuple( std::move(gIDtoRank),
                             std::move(parallel_wells),
@@ -1023,12 +935,12 @@ zoltanPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
     // non-root processes have empty grid and no wells
     CoarseGraphOfGrid cgog(grid, edgeWeightMethod, transGraph,
                            coarseThreshold, coarsePartitionMaxNodeSize,
-                           allowDistributedWells, wellConnections);
+                           allowDistributedWells, root, wellConnections);
     
-    assert(cgog.cSize()==0 || !partitionIsEmpty);
+    assert(cgog.size()==0 || !partitionIsEmpty);
 
     // call partitioner
-    setCoarseGraphZoltanGraphFunctions(zz, cgog, partitionIsEmpty);
+    setGraphOfGridZoltanGraphFunctions(zz, cgog, partitionIsEmpty);
     rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
                              &changes,        /* 1 if partitioning was changed, 0 otherwise */
                              &numGidEntries,  /* Number of integers used for a global ID */
@@ -1221,11 +1133,11 @@ applySerialZoltanCG (const Dune::CpGrid& grid,
     // prepare graph and contract well cells
     CoarseGraphOfGrid cgog(grid, edgeWeightMethod, transGraph,
                            coarseThreshold, coarsePartitionMaxNodeSize,
-                           allowDistributedWells, wellConnections);
+                           allowDistributedWells, root, wellConnections);
     
 
     // call partitioner
-    setCoarseGraphZoltanGraphFunctions(zz, cgog, false);
+    setGraphOfGridZoltanGraphFunctions(zz, cgog, false);
     rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
                              &changes, /* 1 if partitioning was changed, 0 otherwise */
                              &numGidEntries, /* Number of integers used for a global ID */
@@ -1243,7 +1155,7 @@ applySerialZoltanCG (const Dune::CpGrid& grid,
     numImport = 0;
     if (rc == ZOLTAN_OK) {
         gIDtoRank.resize(grid.numCells(), root);
-        std::vector<int> coarsePartRes(cgog.cSize(), root);
+        std::vector<int> coarsePartRes(cgog.size(), root);
         const std::vector<int> m2c = cgog.getMapToCoarse();
         for (int i = 0; i < numExport; ++i) {
             coarsePartRes[exportGlobalGids[i]] = exportToPart[i];
