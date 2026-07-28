@@ -235,8 +235,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         // kk_iter == dims_[2] reads and writes 8 doubles past the
                         // end of the zcorn array.
                         if (kk_iter == dims_[2]) {
-                            kk = kk_iter;
-                            continue;
+                            break;
                         }
 
                         // Bottom cell inactive: leave the geometry untouched, no merge.
