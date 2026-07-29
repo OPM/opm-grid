@@ -228,16 +228,18 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         low_pv_active = pv[c_below] < minpvv[c_below] && active;
                     }
 
+                    // The column ran off the grid bottom: the loop above left the last
+                    // cell via the kk_iter == dims_[2] break, and that break only exits
+                    // the inner while, not this column's for-loop.  There is no cell
+                    // below to receive the void or to connect by an NNC, and c_below
+                    // is stale, so neither branch can proceed.  Without this guard the
+                    // merge branch reads and writes 8 doubles past the end of zcorn.
+                    if (kk_iter == dims_[2]) {
+                        break;
+                    }
+
                     // create nnc if false or merge the cells if true
                     if (mergeMinPVCells && c_low_pv_active) {
-                        // Column ran off the grid bottom: no cell below to receive
-                        // the void.  Without this guard the zcorn access at
-                        // kk_iter == dims_[2] reads and writes 8 doubles past the
-                        // end of the zcorn array.
-                        if (kk_iter == dims_[2]) {
-                            break;
-                        }
-
                         // Bottom cell inactive: leave the geometry untouched, no merge.
                         if (!actnum.empty() && !actnum[c_below]) {
                             kk = kk_iter;
@@ -256,8 +258,9 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                     else
                     {
 
-                        // No top or bottom cell, so no nnc is created.
-                        if (kk == 0 || kk_iter == dims_[2]) {
+                        // No top cell, so no nnc is created.  (The no-bottom-cell case,
+                        // kk_iter == dims_[2], is handled by the guard above.)
+                        if (kk == 0) {
                             kk = kk_iter;
                             continue;
                         }
