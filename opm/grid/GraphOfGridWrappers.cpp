@@ -871,6 +871,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string, bool>>,
 zoltanPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
                                   const std::vector<Dune::cpgrid::OpmWellType> * wells,
                                   const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                                  const double* transmissibilities,
                                   const Dune::cpgrid::CpGridDataTraits::Communication& cc,
                                   Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
@@ -914,7 +915,7 @@ zoltanPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
     // non-root processes have empty grid and no wells
     CoarseGraphOfGrid cgog(grid, edgeWeightMethod, transGraph,
                            coarseThreshold, coarsePartitionMaxNodeSize,
-                           allowDistributedWells, root, wellConnections);
+                           allowDistributedWells, root, wellConnections, transmissibilities);
     
     assert(cgog.size()==0 || !partitionIsEmpty);
 
@@ -1073,6 +1074,7 @@ applySerialZoltan (const Dune::CpGrid& grid,
 std::tuple<int, std::vector<int>>
 applySerialZoltanCG (const Dune::CpGrid& grid,
                      const Dune::cpgrid::WellConnections& wellConnections,
+                     const double* transmissibilities,
                      int numParts,
                      Dune::EdgeWeightMethod edgeWeightMethod,
                      int root,
@@ -1112,7 +1114,7 @@ applySerialZoltanCG (const Dune::CpGrid& grid,
     // prepare graph and contract well cells
     CoarseGraphOfGrid cgog(grid, edgeWeightMethod, transGraph,
                            coarseThreshold, coarsePartitionMaxNodeSize,
-                           allowDistributedWells, root, wellConnections);
+                           allowDistributedWells, root, wellConnections, transmissibilities);
     
 
     // call partitioner
@@ -1259,6 +1261,7 @@ std::tuple<std::vector<int>,
 zoltanSerialPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
                                         const std::vector<Dune::cpgrid::OpmWellType> * wells,
                                         const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                                        const double* transmissibilities,
                                         const Dune::cpgrid::CpGridDataTraits::Communication& cc,
                                         Dune::EdgeWeightMethod edgeWeightMethod,
                                         int root,
@@ -1283,6 +1286,7 @@ zoltanSerialPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
     if (cc.rank() == root) {
         std::tie(rc, gIDtoRank) = applySerialZoltanCG(grid,
                                                       wellConnections,
+                                                      transmissibilities,
                                                       cc.size(),
                                                       edgeWeightMethod,
                                                       root,

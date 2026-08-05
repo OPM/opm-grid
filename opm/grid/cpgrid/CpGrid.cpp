@@ -392,8 +392,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_ZOLTAN
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
-                    ? Opm::zoltanSerialPartitioningWithCoarseGraph(*this, wells, possibleFutureConnections, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, transGraph, coarseThreshold, coarsePartitionMaxNodeSize)
-                    : Opm::zoltanPartitioningWithCoarseGraph(*this, wells, possibleFutureConnections, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, transGraph, coarseThreshold, coarsePartitionMaxNodeSize);
+                    ? Opm::zoltanSerialPartitioningWithCoarseGraph(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, transGraph, coarseThreshold, coarsePartitionMaxNodeSize)
+                    : Opm::zoltanPartitioningWithCoarseGraph(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, transGraph, coarseThreshold, coarsePartitionMaxNodeSize);
 #else
         OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN

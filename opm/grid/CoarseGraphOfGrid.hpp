@@ -62,11 +62,12 @@ public:
                                 int coarsePartitionMaxNodeSize,
                                 bool allowDistributedWells,
                                 int root,
-                                const Dune::cpgrid::WellConnections& wellConn)
+                                const Dune::cpgrid::WellConnections& wellConn,
+                                const double* transmissibilities=nullptr)
         : grid(grid_), transGraph(tg)
     {
         createCoarseGraph(edgeWeightMethod, coarseThreshold, coarsePartitionMaxNodeSize,
-                          allowDistributedWells, root, wellConn);
+                          allowDistributedWells, root, wellConn, transmissibilities);
     }
 
     const Grid& getGrid() const
@@ -103,6 +104,9 @@ public:
     }
 private:
 
+    /// \brief set logMinTransm if edgeWeightMethod == logTransEdgeWgt. Copied from GraphOfGrid.cpp
+    void setMintransLog(const double* transmissibilities);
+
     /// \brief Merge vertices that share a common well 
     void mergeWellCellsForCoarseGraph(std::vector<int>& hasWell,
                                       std::vector<std::vector<int>>& wellPerf,
@@ -131,12 +135,14 @@ private:
                            int coarsePartitionMaxNodeSize,
                            bool allowDistributedWells,
                            int root,
-                           const Dune::cpgrid::WellConnections& wells);
+                           const Dune::cpgrid::WellConnections& wells,
+                           const double* transmissibilities);
 
     const Grid& grid;
     std::list<std::set<int>> wells;
 
     const TransGraph* transGraph;
+    double logMinTransm;
     std::vector<int> map_to_coarse_;
     std::vector<std::map<int, double> > cedges;
     std::vector<std::vector<int>> coarseNodes;
