@@ -17,7 +17,17 @@
 cmake_minimum_required (VERSION 3.23)
 
 # Mandatory call to project
-project(opm-grid C CXX Fortran)
+# On a Windows host (MSVC) there is no Fortran compiler and opm-grid has no
+# Fortran sources; the only use was FortranCInterface (FCMacros.h), which is
+# generated but never #included anywhere, so Fortran is skipped there. On every
+# other host keep Fortran enabled to match upstream exactly -- the language hook
+# (opm-grid_language_hook) then regenerates FCMacros.h as before.
+# Note: WIN32 is not set before project(), so test CMAKE_HOST_WIN32 instead.
+if(CMAKE_HOST_WIN32)
+  project(opm-grid C CXX)
+else()
+  project(opm-grid C CXX Fortran)
+endif()
 
 # project information is in dune.module. Read this file and set variables.
 # we cannot generate dune.module since it is read by dunecontrol before
@@ -63,8 +73,12 @@ macro(opm-grid_prereqs_hook)
 endmacro()
 
 macro(opm-grid_language_hook)
-  include(FortranCInterface)
-  fortrancinterface_header(${PROJECT_BINARY_DIR}/FCMacros.h MACRO_NAMESPACE FC_)
+  # FCMacros.h (Fortran name-mangling) is generated but never #included in the
+  # sources, so only produce it when a Fortran compiler is actually available.
+  if(CMAKE_Fortran_COMPILER)
+    include(FortranCInterface)
+    fortrancinterface_header(${PROJECT_BINARY_DIR}/FCMacros.h MACRO_NAMESPACE FC_)
+  endif()
 endmacro()
 
 macro(opm-grid_config_hook)
