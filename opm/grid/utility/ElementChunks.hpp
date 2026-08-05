@@ -46,34 +46,29 @@ namespace Opm
 /// }
 ///
 /// Typical OpenMP-threaded loop over grid using this class:
-/// ElementChunks chunks(gridview, num_threads);
 /// #pragma omp parallel for
-/// for (std::size_t ci = 0; ci < chunks.size(); ++ci) {
-///     for (const auto& elem : chunks[ci]) {
+/// for (const auto& chunk : ElementChunks(gridview, num_threads)) {
+///     for (const auto& elem : chunk) {
 ///         // Do something with elem
 ///     }
 /// }
 ///
-/// NB: use the index-based loop shown above, not a range-based for
-/// after the pragma. A range-based for needs OpenMP 5.0, which some
-/// supported compilers (e.g. MSVC's /openmp:llvm) do not provide.
-///
 /// The ElementChunks object stores a vector of iterators, so if you
 /// have several such loops it can be a good idea to create the object
 /// once instead of once per loop:
-/// ElementChunks chunks(gridview, num_threads);
+/// ElementChunks chunks(gridview, num_threads)
 /// // First loop
 /// #pragma omp parallel for
-/// for (std::size_t ci = 0; ci < chunks.size(); ++ci) {
-///     for (const auto& elem : chunks[ci]) {
+/// for (const auto& chunk : chunks) {
+///     for (const auto& elem : chunk) {
 ///         // Do something with elem
 ///     }
 /// }
 /// // ...
 /// // Second loop
 /// #pragma omp parallel for
-/// for (std::size_t ci = 0; ci < chunks.size(); ++ci) {
-///     for (const auto& elem : chunks[ci]) {
+/// for (const auto& chunk : chunks) {
+///     for (const auto& elem : chunk) {
 ///         // Do something else with elem
 ///     }
 /// }
@@ -127,12 +122,13 @@ public:
     {
         return grid_chunk_iterators_.size() - 1;
     }
-    /// Random-access to the i-th chunk. Enables index-based OpenMP loops
+
+    /// Random-access to the i-th chunk, for loops of the form
     ///     #pragma omp parallel for
-    ///     for (std::size_t ci = 0; ci < chunks.size(); ++ci) { auto chunk = chunks[ci]; ... }
-    /// which are required by compilers whose OpenMP frontend does not accept a
-    /// range-based for after 'omp parallel for' (that needs OpenMP 5.0; MSVC's
-    /// /openmp:llvm does not support it). Equivalent to the range-based form.
+    ///     for (std::size_t ci = 0; ci < chunks.size(); ++ci) { ... chunks[ci] ... }
+    /// A range-based for after 'omp parallel for' needs OpenMP 5.0, which not
+    /// every supported compiler provides (MSVC's /openmp:llvm is 3.1), so the
+    /// index form is the portable spelling. Equivalent to the range-based one.
     Chunk operator[](std::size_t i) const
     {
         return Chunk{grid_chunk_iterators_[i], grid_chunk_iterators_[i + 1]};
