@@ -943,6 +943,7 @@ namespace Dune
         /// \param imbalanceTol Set the imbalance tolerance used by the partitioner
         /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
         ///        interior region of multiple processes.
+        /// \param useTransToFilterOverlap True to use transmissibilities to filter overlap
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
