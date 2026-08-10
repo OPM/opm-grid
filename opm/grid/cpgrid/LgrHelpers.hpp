@@ -464,7 +464,6 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner);
 
-
 /// @brief Define the cells, cell_to_point_, global_cell_, cell_to_face_, face_to_cell_, for each refined level grid.
 void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>>& refined_cells_vec,
