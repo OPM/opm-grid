@@ -2177,7 +2177,10 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                    markedElem_to_itsLgr,
                                    preAdaptMaxLevel,
                                    cornerInMarkedElemWithEquivRefinedCorner,
-                                   markedElemAndEquivRefinedCorn_to_corner);
+                                   markedElemAndEquivRefinedCorn_to_corner,
+                                   cellRefsBoundaryInfo,
+                                   faceInMarkedElemAndRefinedFaces,
+                                   currentLeafData());
     // --- Refined cells  ---
     Opm::Lgr::populateRefinedCells(currentLeafData(),
                                    refined_cells_vec,
