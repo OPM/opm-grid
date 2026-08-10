@@ -775,11 +775,6 @@ private:
     cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
     /** @brief Container for the lookup of the points for each face. */
     Opm::SparseTable<int>             face_to_point_;
-    /** @brief All points of each cell, i.e. every point of every face of the
-     *   cell, not only the eight canonical corners.  On corner-point grids
-     *   with hanging nodes the extra points are essential for building
-     *   complete codim-3 communication interfaces. */
-    Opm::SparseTable<int>             cell_to_allpoint_;
     /** @brief Vector that contains an arrays of the points of each cell*/
     std::vector< std::array<int,8> >       cell_to_point_;
     /** @brief The size of the underlying logical cartesian grid.
