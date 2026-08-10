@@ -27,6 +27,8 @@
 
 #include <opm/grid/MinpvProcessor.hpp>
 
+#include <algorithm>
+
 
 BOOST_AUTO_TEST_CASE(GAP_MAXGAP)
 {
@@ -421,4 +423,115 @@ BOOST_AUTO_TEST_CASE(Processing)
     auto minpv_result7 = mp7.process(thicknes, z_threshold, 1e20, pv, minpvv7, actnum, !fill_removed_cells, z7.data());
     BOOST_CHECK_EQUAL(minpv_result7.nnc.size(), 1);
     BOOST_CHECK_EQUAL_COLLECTIONS(z7.begin(), z7.end(), zcorn7after.begin(), zcorn7after.end());
+}
+
+namespace {
+
+    /// 1x1xN column of unit cells, with 8 doubles of sentinel padding behind
+    /// the zcorn data so an out-of-bounds write is caught deterministically.
+    struct PaddedColumn
+    {
+        explicit PaddedColumn(const int nz)
+        {
+            for (int k = 0; k < nz; ++k) {
+                const double top = k, bot = k + 1;
+                for (int i = 0; i < 4; ++i) { padded.push_back(top); }
+                for (int i = 0; i < 4; ++i) { padded.push_back(bot); }
+            }
+
+            ncorn = padded.size();
+            padded.resize(ncorn + 8, sentinel);
+        }
+
+        void checkGuardIntact() const
+        {
+            for (std::size_t i = ncorn; i < padded.size(); ++i) {
+                BOOST_CHECK_EQUAL(padded[i], sentinel);
+            }
+        }
+
+        static constexpr double sentinel = -999.25;
+        std::vector<double> padded{};
+        std::size_t ncorn{};
+    };
+
+} // Anonymous namespace
+
+BOOST_AUTO_TEST_CASE(MergeColumnRunsOffGridBottom)
+{
+    // Regression test: with mergeMinPVCells == true and a column whose
+    // low-pore-volume cells extend all the way to the grid bottom, the
+    // inner column walk exits with kk_iter == dims[2].  The merge branch
+    // then accessed getCellZcorn(ii, jj, kk_iter, ...) which reads -- and
+    // via setCellZcorn writes -- 8 doubles past the end of the zcorn
+    // array.  Detect the out-of-bounds write with sentinel padding placed
+    // directly behind the grid's zcorn data.
+    //
+    // 1x1x3 column, every cell active but below the pore volume limit.
+    PaddedColumn col{3};
+
+    const std::vector<double> pv = { 0.1, 0.1, 0.1 };
+    const std::vector<double> minpvv(3, 0.5);
+    const std::vector<int> actnum = { 1, 1, 1 };
+    const std::vector<double> thickness = { 1, 1, 1 };
+
+    Opm::MinpvProcessor mp(1, 1, 3);
+    const auto result = mp.process(thickness, /*z_threshold =*/ 0.0, 1e20,
+                                   pv, minpvv, actnum,
+                                   /*mergeMinPVCells =*/ true, col.padded.data());
+
+    // All three cells are below the pore volume limit and must be removed.
+    BOOST_CHECK_EQUAL(result.removed_cells.size(), 3);
+
+    col.checkGuardIntact();
+}
+
+
+BOOST_AUTO_TEST_CASE(MergeRunsOffBottomFirstCellStays)
+{
+    // As MergeColumnRunsOffGridBottom, but the topmost cell is above the pore
+    // volume limit.  The column walk still runs off the grid bottom, starting
+    // one cell lower.  The retained cell must survive and the guard region
+    // must be untouched.
+    PaddedColumn col{4};
+
+    const std::vector<double> pv = { 1.0, 0.1, 0.1, 0.1 };
+    const std::vector<double> minpvv(4, 0.5);
+    const std::vector<int> actnum = { 1, 1, 1, 1 };
+    const std::vector<double> thickness = { 1, 1, 1, 1 };
+
+    Opm::MinpvProcessor mp(1, 1, 4);
+    const auto result = mp.process(thickness, /*z_threshold =*/ 0.0, 1e20,
+                                   pv, minpvv, actnum,
+                                   /*mergeMinPVCells =*/ true, col.padded.data());
+
+    const auto& removed = result.removed_cells;
+    BOOST_CHECK(std::find(removed.begin(), removed.end(), 0) == removed.end());
+    BOOST_CHECK_EQUAL(removed.size(), 3);
+
+    col.checkGuardIntact();
+}
+
+BOOST_AUTO_TEST_CASE(MergeRunsOffBottomSecondCellStays)
+{
+    // The retained cell is in the middle of the column: cell 0 is below the
+    // limit and merges into cell 1, then cells 2 and 3 are below the limit and
+    // their walk runs off the grid bottom.
+    PaddedColumn col{4};
+
+    const std::vector<double> pv = { 0.1, 1.0, 0.1, 0.1 };
+    const std::vector<double> minpvv(4, 0.5);
+    const std::vector<int> actnum = { 1, 1, 1, 1 };
+    const std::vector<double> thickness = { 1, 1, 1, 1 };
+
+    Opm::MinpvProcessor mp(1, 1, 4);
+    const auto result = mp.process(thickness, /*z_threshold =*/ 0.0, 1e20,
+                                   pv, minpvv, actnum,
+                                   /*mergeMinPVCells =*/ true, col.padded.data());
+
+    const auto& removed = result.removed_cells;
+    BOOST_CHECK(std::find(removed.begin(), removed.end(), 1) == removed.end());
+    BOOST_CHECK_EQUAL(removed.size(), 3);
+
+    col.checkGuardIntact();
 }
