@@ -1276,8 +1276,25 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                           const int& preAdaptMaxLevel,
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                          const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner)
+                          const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
+                          const std::vector<CellRefinementBoundaryInfo>& boundaryInfo,
+                          const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                          const Dune::cpgrid::CpGridData& current_data)
 {
+
+    auto findCornerIdx = [&](const Dune::FieldVector<double,3>& w) {
+        for (const auto& [_, lastCellAndCorner] : vanishedRefinedCorner_to_itsLastAppearance) {
+            const auto v = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[lastCellAndCorner[0]], lastCellAndCorner[1], true).geometry().center();
+            if (!Opm::Lgr::areClose(w,v)) {
+                continue;
+            }
+            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+                return lastCellAndCorner;
+            }
+        }
+        return std::array<int,2>{-1,-1};
+    };     
+    
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_face_count_vec.size(); ++shiftedLevel) {
         // Store the refined faces
         refined_faces_vec[shiftedLevel].resize(refined_face_count_vec[shiftedLevel]);
@@ -1309,6 +1326,8 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
             // Face_to_point
             for (std::size_t corn = 0; corn < preAdapt_face_to_point.size(); ++corn) {
                 const auto& elemLgrCorn = preAdapt_face_to_point[corn];
+
+                
                 std::size_t refinedCorn = 0; // It'll be rewritten.
                 // Corner is stored in adapted_corners
                 if (auto candidate = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.find({elemLgr, elemLgrCorn});
@@ -1323,19 +1342,21 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
                        corner_candidate != markedElemAndEquivRefinedCorn_to_corner.end()) {
                         lastAppearanceLgr_lgrEquivCorner = cornerInMarkedElemWithEquivRefinedCorner[corner_candidate->second].back();
                     }
-                    else {
-                        // To locate vanished corners, we need a while-loop, since {elemLgr, elemLgrcorner} leads to
-                        // {neighboringElemLgr, neighboringElemLgrCornerIdx}, which might have also vanished.
-                        // Then, use the lastest appearance of the current corner, meaning, the first (and unique one - by construction) that
-                        // gives elemLgrAndElemLgrCorner_to_refinedCorner.count(lastAppearanceLgr_lgrCorner) == 1).
-                        // This corner lies on the area occupied by a coarse face that got refined and belonged to two marked elements.
-                        // Get the index of this corner with respect to the greatest marked element index, using find instead of count.
-                        lastAppearanceLgr_lgrEquivCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
+                    else if(auto corner_candidate_2 = vanishedRefinedCorner_to_itsLastAppearance.find({elemLgr, elemLgrCorn});
+                            corner_candidate_2 !=  vanishedRefinedCorner_to_itsLastAppearance.end()) {
+                        
+                        lastAppearanceLgr_lgrEquivCorner = corner_candidate_2->second; // vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
                         while (elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.find(lastAppearanceLgr_lgrEquivCorner) ==
                                elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.end()) {
                             const auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrEquivCorner;
                             lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
                         }
+                    }
+                    else {
+                        const Dune::FieldVector<double,3> vertex = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[elemLgr], elemLgrCorn, true).geometry().center();
+                        lastAppearanceLgr_lgrEquivCorner = findCornerIdx(vertex);
+                        assert(lastAppearanceLgr_lgrEquivCorner[0]>=0);
+                        assert(lastAppearanceLgr_lgrEquivCorner[1]>=0);
                     }
                     refinedCorn =  elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.at(lastAppearanceLgr_lgrEquivCorner)[1];
                 }
@@ -1369,6 +1390,19 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::vector<CellRefinementBoundaryInfo>& cellRefinementsInfo)
 {
+    auto findCornerIdx = [&](const Dune::FieldVector<double,3>& w) {
+        for (const auto& [_, lastCellAndCorner] : vanishedRefinedCorner_to_itsLastAppearance) {
+            const auto v = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[lastCellAndCorner[0]], lastCellAndCorner[1], true).geometry().center();
+            if (!Opm::Lgr::areClose(w,v)) {
+                continue;
+            }
+            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+                return lastCellAndCorner;
+            }
+        }
+        return std::array<int,2>{-1,-1};
+    };    
+        
     // --- Refined cells ---
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
 
@@ -1408,16 +1442,21 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
                         lastAppearanceLgr_lgrCorner = cornerInMarkedElemWithEquivRefinedCorner[candidate->second].back();
                     }
                     else {
-                        // To locate vanished corners, we need a while-loop, since {elemLgr, elemLgrcorner} leads to
-                        // {neighboringElemLgr, neighboringElemLgrCornerIdx}, which might have also vanished.
-                        // Then, use the lastest appearance of the current corner, meaning, the first (and unique one - by construction) that
-                        // gives elemLgrAndElemLgrCorner_to_adaptedCorner.count( lastAppearanceLgr_lgrCorner ) == 1).
-                        // This corner lies on the area occupied by a coarse face that got refined and belonged to two marked elements.
-                        // Get the index of this corner with respect to the greatest marked element index.
-                        lastAppearanceLgr_lgrCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, preAdaptCorn});
-                        while (elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.find(lastAppearanceLgr_lgrCorner) == elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.end()) {
-                            const auto& tempLgr_lgrCorner =   lastAppearanceLgr_lgrCorner;
-                            lastAppearanceLgr_lgrCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
+                        if(auto corner_candidate_2 = vanishedRefinedCorner_to_itsLastAppearance.find({elemLgr, preAdaptCorn});
+                           corner_candidate_2 !=  vanishedRefinedCorner_to_itsLastAppearance.end()) {
+                        
+                            lastAppearanceLgr_lgrCorner = corner_candidate_2->second; // vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
+                            while (elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.find(lastAppearanceLgr_lgrCorner) ==
+                                   elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.end()) {
+                                const auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrCorner;
+                                lastAppearanceLgr_lgrCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
+                            }
+                        }
+                        else {
+                            const auto vertex = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[elemLgr], preAdaptCorn, true).geometry().center();
+                            lastAppearanceLgr_lgrCorner = findCornerIdx(vertex);
+                            assert(lastAppearanceLgr_lgrCorner[0]>=0);
+                            assert(lastAppearanceLgr_lgrCorner[1]>=0);
                         }
                     }
                     refinedCorn = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.at(lastAppearanceLgr_lgrCorner)[1];
@@ -1511,6 +1550,19 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            [[maybe_unused]] const int& preAdaptMaxLevel)
 {
+    auto findCornerIdx = [&](const Dune::FieldVector<double,3>& w) {
+        for (const auto& [_, lastCellAndCorner] : vanishedRefinedCorner_to_itsLastAppearance) {
+            const auto v = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[lastCellAndCorner[0]], lastCellAndCorner[1], true).geometry().center();
+            if (!Opm::Lgr::areClose(w,v)) {
+                continue;
+            }
+            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+                return lastCellAndCorner;
+            }
+        }
+        return std::array<int,2>{-1,-1};
+    };    
+    
     adapted_faces.resize(face_count);
     mutable_face_tags.resize(face_count);
     mutable_face_normals.resize(face_count);
@@ -1564,16 +1616,22 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                                                                                           elemLgrCorn);
                         assert(!isNewRefinedCornInInteriorLgr);
 #endif
-                        // To locate vanished corners, we need a while-loop, since {elemLgr, elemLgrcorner} leads to
-                        // {neighboringElemLgr, neighboringElemLgrCornerIdx}, which might have also vanished.
-                        // Then, use the lastest appearance of the current corner, meaning, the first (and unique one - by construction) that
-                        // gives elemLgrAndElemLgrCorner_to_adaptedCorner.count(lastAppearanceLgr_lgrEquivCorner) == 1).
-                        // This corner lies on the area occupied by a coarse face that got refined and belonged to two marked elements.
-                        // Get the index of this corner with respect to the greatest marked element index, using find instead of count.
-                        lastAppearanceLgr_lgrEquivCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
-                        while (elemLgrAndElemLgrCorner_to_adaptedCorner.find( lastAppearanceLgr_lgrEquivCorner ) == elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
-                            const auto& tempLgr_lgrCorner = lastAppearanceLgr_lgrEquivCorner;
-                            lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
+
+                        if(auto corner_candidate_2 = vanishedRefinedCorner_to_itsLastAppearance.find({elemLgr, elemLgrCorn});
+                           corner_candidate_2 !=  vanishedRefinedCorner_to_itsLastAppearance.end()) {
+                        
+                            lastAppearanceLgr_lgrEquivCorner = corner_candidate_2->second; // vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
+                            while (elemLgrAndElemLgrCorner_to_adaptedCorner.find(lastAppearanceLgr_lgrEquivCorner) ==
+                                   elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
+                                const auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrEquivCorner;
+                                lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
+                            }
+                        }
+                        else {
+                            const auto vertex = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[elemLgr], elemLgrCorn, true).geometry().center();
+                            lastAppearanceLgr_lgrEquivCorner = findCornerIdx(vertex);
+                            assert(lastAppearanceLgr_lgrEquivCorner[0]>=0);
+                            assert(lastAppearanceLgr_lgrEquivCorner[1]>=0);
                         }
                     }
                 } // end-if(elemLgr>-1)
@@ -1606,6 +1664,19 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                            const std::vector<CellRefinementBoundaryInfo>& cellRefinementsInfo)
 {
+    auto findCornerIdx = [&](const Dune::FieldVector<double,3>& w) {
+        for (const auto& [_, lastCellAndCorner] : vanishedRefinedCorner_to_itsLastAppearance) {
+            const auto v = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[lastCellAndCorner[0]], lastCellAndCorner[1], true).geometry().center();
+            if (!Opm::Lgr::areClose(w,v)) {
+                continue;
+            }
+            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+                return lastCellAndCorner;
+            }
+        }
+        return std::array<int,2>{-1,-1};
+    };    
+    
     // Store the adapted cells. Main difficulty: to lookup correctly the indices of the corners and faces of each cell.
     adapted_cells.resize(cell_count);
     adapted_cell_to_point.resize(cell_count);
@@ -1647,16 +1718,21 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                         lastAppearanceLgr_lgrEquivCorner = cornerInMarkedElemWithEquivRefinedCorner[candidate->second].back();
                     }
                     else {
-                        // To locate vanished corners, we need a while-loop, since {elemLgr, elemLgrcorner} leads to
-                        // {neighboringElemLgr, neighboringElemLgrCornerIdx}, which might have also vanished.
-                        // Then, use the lastest appearance of the current corner, meaning, the first (and unique one - by construction) that
-                        // gives elemLgrAndElemLgrCorner_to_adaptedCorner.count( lastAppearanceLgr_lgrEquivCorner ) == 1).
-                        // This corner lies on the area occupied by a coarse face that got refined and belonged to two marked elements.
-                        // Get the index of this corner with respect to the greatest marked element index.
-                        lastAppearanceLgr_lgrEquivCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, preAdaptCorn});
-                        while (elemLgrAndElemLgrCorner_to_adaptedCorner.find(lastAppearanceLgr_lgrEquivCorner) == elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
-                            const auto& tempLgr_lgrCorner =  lastAppearanceLgr_lgrEquivCorner;
-                            lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
+                        if(auto corner_candidate_2 = vanishedRefinedCorner_to_itsLastAppearance.find({elemLgr, preAdaptCorn});
+                           corner_candidate_2 !=  vanishedRefinedCorner_to_itsLastAppearance.end()) {
+                        
+                            lastAppearanceLgr_lgrEquivCorner = corner_candidate_2->second; // vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
+                            while (elemLgrAndElemLgrCorner_to_adaptedCorner.find(lastAppearanceLgr_lgrEquivCorner) ==
+                                   elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
+                                const auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrEquivCorner;
+                                lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
+                            }
+                        }
+                        else {
+                            const auto vertex = Dune::cpgrid::Entity<3>(*markedElem_to_itsLgr[elemLgr], preAdaptCorn, true).geometry().center();
+                            lastAppearanceLgr_lgrEquivCorner = findCornerIdx(vertex);
+                            assert(lastAppearanceLgr_lgrEquivCorner[0]>=0);
+                            assert(lastAppearanceLgr_lgrEquivCorner[1]>=0);
                         }
                     }
                 }

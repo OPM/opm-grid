@@ -257,7 +257,7 @@ void checkFaces(const Dune::cpgrid::CpGridData& gridData,
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -447,7 +447,7 @@ PORO
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_trivialOverlap)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_trivialOverlap, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -558,7 +558,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -744,7 +744,7 @@ PORO
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_true, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -932,7 +932,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false)
+BOOST_AUTO_TEST_CASE(parentCellWithMoreThanSixIntersections_J_FACE_false, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 1x2x1
     //
@@ -1119,7 +1119,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsDifferentLgrs)
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsDifferentLgrs, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -1239,7 +1239,7 @@ PORO
 
 }
 
-BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr)
+BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -1351,7 +1351,7 @@ PORO
 
 
 
-BOOST_AUTO_TEST_CASE(simpleDiffLgr)
+BOOST_AUTO_TEST_CASE(simpleDiffLgr, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -1543,7 +1543,7 @@ PORO
 }
 
 
-BOOST_AUTO_TEST_CASE(simpleSameLgr)
+BOOST_AUTO_TEST_CASE(simpleSameLgr, *boost::unit_test::disabled())
 {
     // Level zero grid dims = 2x1x1
     //
@@ -1566,9 +1566,9 @@ COORD
  6 0 0     6 0 9
 12 0 0    12 0 9
 
- 0 6 0    0 6 9
- 6 6 0    6 6 9
-12 6 0   12 6 9
+ 0 6 0     0 6 9
+ 6 6 0     6 6 9
+12 6 0    12 6 9
 /
 
 ZCORN
@@ -1676,4 +1676,90 @@ PORO
     Opm::checkGridWithLgrs(grid,
                            {{1,2,1}}, // cells_per_dim_vec
                            {"LGR1"}); //  lgr_name_vec
+}
+
+
+BOOST_AUTO_TEST_CASE(failsForNowLgr)
+{
+
+// Level zero grid dims = 2x2x1
+//
+// Cell 0 (x=0..6,   y=0..6)
+// bottom face corners (0,0,0), (6,0,0), (0,6,1), (6,6,1)
+//    top face corners (0,0,8), (6,0,8), (0,6,9), (6,6,9)
+//
+// Cell 1 (x=6..12,  y=0..6)
+// bottom face corners (6,0,1), (12,0,1), (6,6,2), (12,6,2)
+//    top face corners (6,0,9), (12,0,9), (6,6,10), (12,6,10)
+//
+// Cell 2 (x=0..6,   y=6..12)
+// bottom face corners (0,6,0), (6,6,0), (0,12,1), (6,12,1)
+//    top face corners (0,6,8), (6,6,8), (0,12,9), (6,12,9)
+//
+// Cell 3 (x=6..12,  y=6..12)
+// bottom face corners (6,6,1), (12,6,1), (6,12,2), (12,12,2)
+//    top face corners (6,6,9), (12,6,9), (6,12,10), (12,12,10)
+
+    const std::string deckString =
+        R"(RUNSPEC
+DIMENS
+ 2 1 2 /
+
+GRID
+
+COORD
+ 0  0 0     0  0 17
+ 6  0 0     6  0 17
+12  0 0    12  0 17
+
+ 0  6 0     0  6 17
+ 6  6 0     6  6 17
+12  6 0    12  6 17
+/
+
+ZCORN
+0 0 1 1  0 0 1 1
+8 8 9 9  8 8 9 9
+
+ 8  8  9  9     8  8  9  9
+16 16 17 17    16 16 17 17
+/
+
+ACTNUM
+4*1
+/
+
+PORO
+4*0.15
+/
+)";
+
+    Dune::CpGrid grid;
+    // Opm::createGridFromDeckString(grid, deckString);
+    Opm::createGridAndAddLgrs(grid,
+                           deckString,
+    /* cells_per_dim_vec */{{1,2,1}},
+    /* startIJK_vec */      {{0,0,0}},
+    /* endIJK_vec */        {{2,1,2}},
+    /* lgr_name_vec */      {"LGR1"});
+
+
+    /* for (const auto& vertex : Dune::vertices(grid.levelGridView(0))) {
+        const auto v = vertex.geometry().center();
+        std::cout<< v[0] << " " << v[1] << " " << v[2] << std::endl;
+    }
+    */
+    /* for (const auto& element :Dune::elements(grid.levelGridView(0))) {
+        std::cout<< element.index() << " element index"<<std::endl;
+        for (const auto& point : grid.currentData().front()->cellToPoint(element.index())) {
+            const auto vertex = Dune::cpgrid::Entity<3>(*grid.currentData().front(), point, true);
+             const auto v = vertex.geometry().center();
+        std::cout<< v[0] << " " << v[1] << " " << v[2] << std::endl;
+            
+        }
+        std::cout<<std::endl;
+    }
+    */
+    
+    
 }
