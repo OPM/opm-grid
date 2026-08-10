@@ -536,7 +536,7 @@ struct CellGeometryHandle
             buffer.read(pos[i]);
 
         buffer.read(vol);
-        scatterCont_[t] = Geom(pos, vol, pointGeom_, cell2Points_[t.index()].data());
+        scatterCont_[t] = Geom(pos, vol, pointGeom_.get(), cell2Points_[t.index()].data());
         double isAquifer;
         buffer.read(isAquifer);
         if (isAquifer == 1.0)
