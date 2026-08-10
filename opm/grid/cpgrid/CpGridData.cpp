@@ -1716,26 +1716,33 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
     // face/point traversal order is copied from the global grid during
     // distribution and is rank-independent.  Deduplicate while preserving
     // the first-occurrence traversal order -- do NOT sort by local index.
+    // Local: consumed by the handle below and not needed afterwards, so it
+    // costs nothing once the interfaces are built.
+    Opm::SparseTable<int> cell_to_allpoint;
     const std::size_t nc = cell_to_point_.size();
     std::vector<int> points;
+    // seen[p] == cell+1 marks p as already taken for this cell, so the
+    // duplicate check is O(1) per point rather than a linear scan.
+    std::vector<std::size_t> seen(noExistingPoints, 0);
     for (std::size_t cell = 0; cell < nc; ++cell) {
         points.clear();
         const auto& faces = cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
         const int nf = faces.size();
         for (int f = 0; f < nf; ++f) {
             for (const auto& fv : face_to_point_[faces[f].index()]) {
-                if (std::find(points.begin(), points.end(), fv) == points.end()) {
+                if (seen[fv] != cell + 1) {
+                    seen[fv] = cell + 1;
                     points.push_back(fv);
                 }
             }
         }
-        cell_to_allpoint_.appendRow(points.begin(), points.end());
+        cell_to_allpoint.appendRow(points.begin(), points.end());
     }
 
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
     AttributeDataHandle<Opm::SparseTable<int> >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
-                     point_attributes, cell_to_allpoint_, *this);
+                     point_attributes, cell_to_allpoint, *this);
     if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(cell_interfaces_))
         .interfaces().size() )
     {
@@ -1963,7 +1970,7 @@ bool CpGridData::preAdapt()
             if (local_empty)
                 mark_.resize(size(0));
         }
-       
+
         // Detect the maximum mark across processes, and rewrite
         // the local entry in mark_, i.e.,
         // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
