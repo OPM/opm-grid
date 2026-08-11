@@ -1831,9 +1831,9 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, int parent_
 
     if(cellRefinementBoundaryInfo.parentCellhasSingleFacePerType) {
 
-        cellRefinementBoundaryInfo.boundaryRefinedFaceIdx_to_parentFaceIdx.resize(cellRefGrid.numFaces(), /* invalidIdx = */ -1);
+        cellRefinementBoundaryInfo.boundaryRefinedFaceIdx_to_parentFaceIdx.resize(cellRefGrid.numFaces(),  -1);
         Opm::Lgr::provideRefinementParentFaceIdxRelations(classifiedParentCellFaces,
-                                                          /* parentGrid */ *this,
+                                                          *this,
                                                           parentCellElem,
                                                           cells_per_dim,
                                                           cellRefinementBoundaryInfo,
@@ -1843,7 +1843,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, int parent_
 
         return {cellRefGrid_ptr, cellRefinementBoundaryInfo};
     }
-    else { // Make cell-refinement aware of multiple parent-cell-faces of the same type (same tag and same orientation).
+    else {  // Make cell-refinement aware of multiple parent-cell-faces of the same type (same tag and same orientation).
         std::vector<std::shared_ptr<CpGridData>>                     correctedCellRefGridData;
         std::shared_ptr<CpGridData>                                  correctedCellRefGrid_ptr = std::make_shared<CpGridData>(correctedCellRefGridData); // ccobj_
         auto&                                                        correctedCellRefGrid = *correctedCellRefGrid_ptr;

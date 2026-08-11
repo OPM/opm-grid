@@ -346,241 +346,109 @@ void identifyRefinedCornersPerLevel(const Dune::cpgrid::CpGridData& current_data
             }
         }
     } // end corner-forloop
-
-    if (!withoutFaults) {
-
-        for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
-            if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
-                const auto& level = assignRefinedLevel[elemIdx];
-                assert(level>0);
-                // To access containers with refined level grid information
-                const auto shiftedLevel = level - preAdaptMaxLevel -1;
-
-                processLevelInteriorCorners(elemIdx,
-                                            level,
-                                            markedElem_to_itsLgr[elemIdx],
-                                            refined_corner_count_vec[shiftedLevel],
-                                            elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                            refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                            cells_per_dim_vec[shiftedLevel],
-                                            visited);
-            }
-        }
         
-        for (int coarseFaceIdx = 0; coarseFaceIdx < current_data.numFaces(); ++coarseFaceIdx) {
+    for (int coarseFaceIdx = 0; coarseFaceIdx < current_data.numFaces(); ++coarseFaceIdx) {
             
-            if (faceInMarkedElemAndRefinedFaces[coarseFaceIdx].empty())
-                continue;
+        if (faceInMarkedElemAndRefinedFaces[coarseFaceIdx].empty())
+            continue;
 
-            const auto& [firstRef, firstFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].front();
-            const auto& [maxLast, lastFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].back();
-            bool multipleAppearances = (firstRef != maxLast);
+        const auto& [firstRef, firstFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].front();
+        const auto& [maxLast, lastFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].back();
+        bool multipleAppearances = (firstRef != maxLast);
 
-            int firstRefLevel = assignRefinedLevel[firstRef];
-            int maxLastLevel = assignRefinedLevel[maxLast];
-            int shiftedMaxLastLevel = maxLastLevel - preAdaptMaxLevel -1;
+        int firstRefLevel = assignRefinedLevel[firstRef];
+        int maxLastLevel = assignRefinedLevel[maxLast];
+        int shiftedMaxLastLevel = maxLastLevel - preAdaptMaxLevel -1;
             
-            // To access containers with refined level grid information
-            const auto& shiftedLevel = firstRefLevel - preAdaptMaxLevel -1;
-            const auto& singleCellRef = markedElem_to_itsLgr[firstRef];
+        // To access containers with refined level grid information
+        const auto& shiftedLevel = firstRefLevel - preAdaptMaxLevel -1;
+        const auto& singleCellRef = markedElem_to_itsLgr[firstRef];
            
             
-            for (const auto& refFace : firstFaces) {
-                for (const auto& point : singleCellRef->faceToPoint(refFace)) {
+        for (const auto& refFace : firstFaces) {
+            for (const auto& point : singleCellRef->faceToPoint(refFace)) {
 
-                    const auto vertex = Dune::cpgrid::Entity<3>(*singleCellRef, point, true).geometry().center();
+                const auto vertex = Dune::cpgrid::Entity<3>(*singleCellRef, point, true).geometry().center();
 
-                    if (visited[firstRef][point] ||  cellRefinementsInfo[firstRef].boundaryRefinedVertexCoincidesWithParentVertex[point])
-                        continue;
+                if (visited[firstRef][point] ||  cellRefinementsInfo[firstRef].boundaryRefinedVertexCoincidesWithParentVertex[point])
+                    continue;
 
-                    if (auto it = cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.find(point);
-                        it != cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.end() &&
-                        it->second != coarseFaceIdx) {
-                        continue;
-                    }
+                if (auto it = cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.find(point);
+                    it != cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.end() &&
+                    it->second != coarseFaceIdx) {
+                    continue;
+                }
 
-                    if (multipleAppearances && !visited[firstRef][point]) {
-                        visited[firstRef][point] = true;
+                if (multipleAppearances && !visited[firstRef][point]) {
+                    visited[firstRef][point] = true;
 
-                        const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
-                                                                            lastFaces, 
-                                                                            vertex);
+                    const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
+                                                                        lastFaces, 
+                                                                        vertex);
                 
-                        assert(neighborVertexIdx.has_value());
+                    assert(neighborVertexIdx.has_value());
 
-                        int neighborCorner = neighborVertexIdx.value();
+                    int neighborCorner = neighborVertexIdx.value();
                 
-                        markVanishedCorner({firstRef, point}, {maxLast, neighborCorner},
-                                           vanishedRefinedCorner_to_itsLastAppearance);
+                    markVanishedCorner({firstRef, point}, {maxLast, neighborCorner},
+                                       vanishedRefinedCorner_to_itsLastAppearance);
                         
-                        visited[maxLast][neighborCorner] = true;
-                        insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,                // map a_to_b
-                                            refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,                // map b_to_a
-                                            std::array{maxLast, neighborCorner},                                    // keyA
-                                            std::array{maxLastLevel, refined_corner_count_vec[shiftedMaxLastLevel]},// keyB
-                                            refined_corner_count_vec[shiftedMaxLastLevel]);                         // counter
+                    visited[maxLast][neighborCorner] = true;
+                    insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,                // map a_to_b
+                                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,                // map b_to_a
+                                        std::array{maxLast, neighborCorner},                                    // keyA
+                                        std::array{maxLastLevel, refined_corner_count_vec[shiftedMaxLastLevel]},// keyB
+                                        refined_corner_count_vec[shiftedMaxLastLevel]);                         // counter
 
-                        if (maxLastLevel != firstRefLevel) {
+                    if (maxLastLevel != firstRefLevel) {
                             
-                            visited[firstRef][point] = true;
-                            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,           // map a_to_b
-                                                refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,           // map b_to_a
-                                                std::array{firstRef, point},                                       // keyA
-                                                std::array{firstRefLevel, refined_corner_count_vec[shiftedLevel]}, // keyB
-                                                refined_corner_count_vec[shiftedLevel]);                           // counter
-                              
-                        }
-                    }
-                    else  {
                         visited[firstRef][point] = true;
                         insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,           // map a_to_b
                                             refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,           // map b_to_a
                                             std::array{firstRef, point},                                       // keyA
                                             std::array{firstRefLevel, refined_corner_count_vec[shiftedLevel]}, // keyB
                                             refined_corner_count_vec[shiftedLevel]);                           // counter
+                              
                     }
+                }
+                else  {
+                    visited[firstRef][point] = true;
+                    insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,           // map a_to_b
+                                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,           // map b_to_a
+                                        std::array{firstRef, point},                                       // keyA
+                                        std::array{firstRefLevel, refined_corner_count_vec[shiftedLevel]}, // keyB
+                                        refined_corner_count_vec[shiftedLevel]);                           // counter
                 }
             }
         }
     }
 
-    if (withoutFaults) {
-        for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
-            if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
-                const auto& level = assignRefinedLevel[elemIdx];
-                assert(level>0);
-                // To access containers with refined level grid information
-                const auto& shiftedLevel = level - preAdaptMaxLevel -1;
-            
-                const auto& singleCellRef = markedElem_to_itsLgr[elemIdx];
+    for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
+        if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
+            const auto& level = assignRefinedLevel[elemIdx];
+            assert(level>0);
+            // To access containers with refined level grid information
+            const auto shiftedLevel = level - preAdaptMaxLevel -1;
 
-                processLevelInteriorCorners(elemIdx,
-                                            level,
-                                            singleCellRef,
-                                            refined_corner_count_vec[shiftedLevel],
-                                            elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                            refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                            cells_per_dim_vec[shiftedLevel],
-                                            visited);
-
-            
-                processLevelEdgeCorners(elemIdx,
-                                        level,
-                                        singleCellRef,
-                                        refined_corner_count_vec[shiftedLevel],
-                                        elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                        vanishedRefinedCorner_to_itsLastAppearance,
-                                        current_data,
-                                        assignRefinedLevel,
-                                        faceInMarkedElemAndRefinedFaces,
-                                        cellRefinementsInfo[elemIdx].boundaryRefinedVertexCoincidesWithParentVertex,
-                                        markedElem_to_itsLgr);
-
-                // LYING ON BOUNDARY LGR - NOT ON AN EDGE - NOT COINCIDING WITH A MARKED CORNER
-                processLevelBoundaryCorners(elemIdx,
-                                            level,
-                                            shiftedLevel,
-                                            singleCellRef,
-                                            refined_corner_count_vec[shiftedLevel],
-                                            elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                            refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                            vanishedRefinedCorner_to_itsLastAppearance,
-                                            current_data,
-                                            assignRefinedLevel,
-                                            faceInMarkedElemAndRefinedFaces,
-                                            cells_per_dim_vec,
-                                            cellRefinementsInfo[elemIdx].boundaryRefinedVertexIdx_to_parentFaceIdx,
-                                            cellRefinementsInfo[elemIdx].boundaryRefinedVertexCoincidesWithParentVertex,
-                                            markedElem_to_itsLgr);
+            for (int faceIdx = 0; faceIdx < markedElem_to_itsLgr[elemIdx]->numFaces(); ++faceIdx) {
+                const auto faceToCell = markedElem_to_itsLgr[elemIdx]->faceToCell(faceIdx);
+                if (faceToCell.size()==2) {
+                    for (const auto& point :  markedElem_to_itsLgr[elemIdx]->faceToPoint(faceIdx)) {
+                        if (!visited[elemIdx][point]) {
+                            visited[elemIdx][point] = true;
+                            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
+                                                refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
+                                                std::array{elemIdx, point},                         // keyA
+                                                std::array{level, refined_corner_count_vec[shiftedLevel]},                     // keyB
+                                                refined_corner_count_vec[shiftedLevel]);
+                        }
+                        
+                    }
+                    
+                }
             }
-        } // end-if-nullptr
-    } // end-elem-for-loop
-}
-
-bool isRefinedCornerInInteriorLgr(const std::array<int,3>& cells_per_dim,
-                                  int cornerIdxInLgr)
-{
-    assert(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]>0);
-    const int total_naive_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
-
-    if (total_naive_corners<= cornerIdxInLgr) {
-        return false;
-    }
-    else {
-        const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
-        return ((ijk[0]%cells_per_dim[0] > 0) &&  (ijk[1]%cells_per_dim[1]>0) && (ijk[2]%cells_per_dim[2]>0));
-    }
-}
-
-std::array<int,3> getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr)
-{
-    const auto& total_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
-    if (cornerIdxInLgr >= total_corners) {
-        OPM_THROW(std::logic_error, "Invalid corner index from single-cell-refinement.\n");
-    }
-    // Order defined in Geometry::refine
-    //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    std::array<int,3> ijk;
-    ijk[2] = cornerIdxInLgr % (cells_per_dim[2] +1);
-    cornerIdxInLgr -= ijk[2];
-    cornerIdxInLgr /= (cells_per_dim[2] +1);
-    ijk[0] = cornerIdxInLgr % (cells_per_dim[0]+1);
-    cornerIdxInLgr -=ijk[0];
-    ijk[1] = cornerIdxInLgr / (cells_per_dim[0]+1);
-    return ijk;
-}
-
-int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::cpgrid::CpGridData& current_data,
-                                             const std::array<int,3>& cells_per_dim,
-                                             int cornerIdxInLgr,
-                                             int elemLgr,
-                                             const std::unordered_map<int,int>& extraRefCornIdx_to_parentFaceIdx)
-{
-    assert(!isRefinedCornerInInteriorLgr(cells_per_dim, cornerIdxInLgr));
-    const auto total_naive_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
-    
-    if (total_naive_corners<= cornerIdxInLgr) { // "extra corners lying on boundary of single-cell-refinement have larger indices"
-        assert(!extraRefCornIdx_to_parentFaceIdx.empty());
-        auto it = extraRefCornIdx_to_parentFaceIdx.find(cornerIdxInLgr);
-        if (it != extraRefCornIdx_to_parentFaceIdx.end()) {
-            auto faceIdx = it->second;
-            return faceIdx;
         }
     }
-    
-    const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
-    const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
-
-    bool isOnParentCell_I_FACEfalse_and_newBornCorn = ( (ijk[0] == 0) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
-    bool isOnParentCell_I_FACEtrue_and_newBornCorn = ( (ijk[0] == cells_per_dim[0]) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
-    bool isOnParentCell_J_FACEfalse_and_newBornCorn = ( (ijk[1] == 0) && ((ijk[0] % cells_per_dim[0] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
-    bool isOnParentCell_J_FACEtrue_and_newBornCorn = ( (ijk[1] == cells_per_dim[1]) && ((ijk[0] % cells_per_dim[0] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
-    bool isOnParentCell_K_FACEfalse_and_newBornCorn = ( (ijk[2] == 0) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[0] % cells_per_dim[0] !=0) ));
-    bool isOnParentCell_K_FACEtrue_and_newBornCorn = ( (ijk[2] == cells_per_dim[2]) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[0] % cells_per_dim[0] !=0) ));
-
-    for (const auto& face : parentCell_to_face) {
-        const auto& faceTag = current_data.faceTag(face.index());
-        if (isOnParentCell_I_FACEfalse_and_newBornCorn && (faceTag == 0) && !face.orientation()) { // I_FACE false
-            return face.index();
-        }
-        if (isOnParentCell_I_FACEtrue_and_newBornCorn && (faceTag == 0) && face.orientation()) { // I_FACE true
-            return face.index();
-        }
-        if (isOnParentCell_J_FACEfalse_and_newBornCorn && (faceTag == 1) && !face.orientation()) { // J_FACE false
-            return face.index();
-        }
-        if (isOnParentCell_J_FACEtrue_and_newBornCorn && (faceTag == 1) && face.orientation()) { // J_FACE true
-            return face.index();
-        }
-        if (isOnParentCell_K_FACEfalse_and_newBornCorn && (faceTag == 2) && !face.orientation()) { // K_FACE false
-            return face.index();
-        }
-        if (isOnParentCell_K_FACEtrue_and_newBornCorn && (faceTag == 2) && face.orientation()) { // K_FACE true
-            return face.index();
-        }
-    }
-    OPM_THROW(std::logic_error, "Cannot find parent face index where new refined corner lays on.");
 }
 
 void markVanishedCorner(const std::array<int,2>& vanished,
@@ -588,334 +456,6 @@ void markVanishedCorner(const std::array<int,2>& vanished,
                         std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance)
 {
     vanishedRefinedCorner_to_itsLastAppearance[vanished] = lastAppearance;
-}
-
-void processLevelInteriorCorners(int parentCellIdx,
-                                 int level,
-                                 const std::shared_ptr<Dune::cpgrid::CpGridData>& singleCellRefinement,
-                                 int& level_corner_count,
-                                 std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                 std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                 const std::array<int,3>& level_cells_per_dim,
-                                 std::vector<std::vector<bool>>&  visited)
-{
-    // These corners are fully inside a single-cell-refinement and do not coincide with any starting grid corner.
-    // They are always stored as new corners in the level grid.
-    for (int corner = 0; corner < singleCellRefinement->size(3); ++corner) {
-        if (isRefinedCornerInInteriorLgr(level_cells_per_dim, corner)) {
-            visited[parentCellIdx][corner] = true;
-            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                std::array{parentCellIdx, corner},                         // keyA
-                                std::array{level, level_corner_count},                     // keyB
-                                level_corner_count);
-        }
-    }
-}
-
-void processLeafInteriorCorners(int elemIdx,
-                                int shiftedLevel,
-                                const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
-                                int& corner_count,
-                                std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                std::vector<std::vector<bool>>&  visited)
-{
-    // These corners are fully inside a single-cell-refinement and do not coincide with any starting grid corner.
-    // They are always stored as new corners in the updated leaf grid.
-    for (int corner = 0; corner < lgr->size(3); ++corner) {
-        if (isRefinedCornerInInteriorLgr(cells_per_dim_vec[shiftedLevel], corner)) {
-            visited[elemIdx][corner] = true;
-            insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner,    // map a_to_b
-                                adaptedCorner_to_elemLgrAndElemLgrCorner,    // unordered_map b_to_a
-                                std::array{elemIdx, corner},                 // keyA
-                                corner_count);                               // counter (keyB)
-        }
-    }
-}
-
-void processLevelEdgeCorners(int elemIdx,
-                             int level,
-                             const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
-                             int& level_corner_count,
-                             std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                             std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                             std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                             const Dune::cpgrid::CpGridData& current_data,
-                             const std::vector<int>& assignRefinedLevel,
-                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                             const std::vector<bool>& coincideWithCoarseCorner,
-                             const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr)
-{
-    // Refined corners lying on edges
-    // Corners on edges of a parent cell. Each edge connects two coarse parent corners.
-    // To avoid duplicates:
-    // - If the two parent faces appear only once, store immediately.
-    // - Otherwise, store the corner at its last appearance among these faces, considering elemLgr.
-    for (int corner = 0; corner < lgr->size(3); ++corner) {
-        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
-
-        const auto facesWhereVertexAppear = Opm::Lgr::isVertexInElementEdge(vertex, elemIdx, current_data);
-        bool isVertexInParentEdgeInterior = facesWhereVertexAppear.size()>0;
-      
-        if ((!isVertexInParentEdgeInterior) || coincideWithCoarseCorner[corner])
-            continue;
-
-        int maxLast = -1;
-        std::vector<int> lastFaces{};
-        int faceAtMax = -1;
-
-        bool multipleAppearances = false;
-
-        for (const auto face : facesWhereVertexAppear) {
-            const auto& markedFaces = faceInMarkedElemAndRefinedFaces[face];
-
-            if (markedFaces.size() > 1) {
-                multipleAppearances = true;
-            }
-
-            if (!markedFaces.empty() && markedFaces.back().first > maxLast) {
-                maxLast = markedFaces.back().first;
-                lastFaces = markedFaces.back().second;
-                faceAtMax = face;
-            }
-        }
-        assert(maxLast >= 0);
-        int maxLastLevel = assignRefinedLevel[maxLast];
-
-        if (multipleAppearances && (maxLast != elemIdx)) {
-            assert(faceInMarkedElemAndRefinedFaces[faceAtMax].size() == 2);
-            const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
-                                                                lastFaces, 
-                                                                vertex);
-                
-            assert(neighborVertexIdx.has_value());
-
-            int neighborCorner = neighborVertexIdx.value();
-                
-            markVanishedCorner({elemIdx, corner}, {maxLast, neighborCorner},
-                               vanishedRefinedCorner_to_itsLastAppearance);
-        }
-
-        if ((maxLast == elemIdx) || (level!= maxLastLevel)) {
-
-            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                std::array{elemIdx, corner},                               // keyA
-                                std::array{level, level_corner_count},                     // keyB
-                                level_corner_count);                                       // counter
-        }
-    }
-}
-
-void processLeafEdgeCorners(int elemIdx,
-                            const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
-                            int& corner_count,
-                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
-                            std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                            std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                            const Dune::cpgrid::CpGridData& current_data,
-                            const std::vector<int>& assignRefinedLevel,
-                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                            const std::vector<bool>& coincideWithCoarseCorner,
-                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr)
-{
-    // Refined corners lying on edges
-    // Corners on edges of a parent cell. Each edge connects two coarse parent corners.
-    // To avoid duplicates:
-    // - If the two parent faces appear only once, store immediately.
-    // - Otherwise, store the corner at its last appearance among these faces, considering elemLgr.
-    for (int corner = 0; corner < lgr->size(3); ++corner) {
-        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
-
-        const auto facesWhereVertexAppear = Opm::Lgr::isVertexInElementEdge(vertex,
-                                                                            elemIdx,
-                                                                            current_data);
-        
-        bool isVertexInParentEdgeInterior = facesWhereVertexAppear.size()>0;
-        if ((!isVertexInParentEdgeInterior)|| coincideWithCoarseCorner[corner])
-            continue;
-        
-        int maxLastt = -1;
-        int faceAtMax = -1;
-
-        bool multipleAppearances = false;
-
-        for (const auto face : facesWhereVertexAppear) {
-            const auto& markedFaces = faceInMarkedElemAndRefinedFaces[face];
-
-            if (markedFaces.size() > 1) {
-                multipleAppearances = true;
-            }
-
-            if (!markedFaces.empty() && markedFaces.back().first > maxLastt) {
-                maxLastt = markedFaces.back().first;
-                faceAtMax = face;
-            }
-        }
-        assert(maxLastt >= 0);
-        const auto& [maxLast, lastFaces] = faceInMarkedElemAndRefinedFaces[faceAtMax].back();
-        int maxLastLevel = assignRefinedLevel[maxLast];
-
-        if ((multipleAppearances && (maxLast != elemIdx)) || (maxLastLevel != assignRefinedLevel[elemIdx])) {
-            //int maxShifted = maxLastLevel - preAdaptMaxLevel - 1;
-            assert(faceInMarkedElemAndRefinedFaces[faceAtMax].size() == 2);
-               
-            const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
-                                                                lastFaces, 
-                                                                vertex);
-            assert(neighborVertexIdx.has_value());
-
-            int neighborCorner = neighborVertexIdx.value();
-                
-            markVanishedCorner({elemIdx, corner}, {maxLast, neighborCorner},
-                               vanishedRefinedCorner_to_itsLastAppearance);
-        }
-
-        if (maxLast == elemIdx) {
-            insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner, // map a_to_b
-                                adaptedCorner_to_elemLgrAndElemLgrCorner, // unordered_map b_to_a
-                                std::array{elemIdx, corner},              // keyA
-                                corner_count);                            // counter (keyB)
-        }
-    }
-    
-}
-
-void processLevelBoundaryCorners(int elemIdx,
-                                 int level,
-                                 int shiftedLevel,
-                                 const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
-                                 int& level_corner_count,
-                                 std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                 std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                 std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                                 const Dune::cpgrid::CpGridData& current_data,
-                                 const std::vector<int>& assignRefinedLevel,
-                                 const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                 const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                 const std::unordered_map<int, int>& boundaryRefinedVertex_to_parentFace,
-                                 const std::vector<bool>& boundaryRefinedVertexCoincidesWithParentVertex,
-                                 const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr)
-                          
-{
-    // Refined corners on LGR boundaries (not on edges)
-    // Corners born on a face of a marked element that got refined.
-    // Storage rules:
-    // - If the parent face appears only once, store immediately.
-    // - If the face appears in multiple LGRs, store at its last appearance to avoid duplicates.
-    for (int corner = 0; corner < lgr->size(3); ++corner) {
-        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
-
-        const auto uniqueTypeFacesVertexIsIn = Opm::Lgr::isVertexInElementEdge(vertex,
-                                                                               elemIdx,
-                                                                               current_data);
-        bool isVertexInParentEdgeInterior = uniqueTypeFacesVertexIsIn.size()>0;
-             
-        if (boundaryRefinedVertexCoincidesWithParentVertex[corner] ||
-            isRefinedCornerInInteriorLgr(cells_per_dim_vec[shiftedLevel], corner)||
-            isVertexInParentEdgeInterior) continue;
-       
-        const auto face = getParentFaceWhereNewRefinedCornerLiesOn(current_data,
-                                                                   cells_per_dim_vec[shiftedLevel],
-                                                                   corner,
-                                                                   elemIdx,
-                                                                   boundaryRefinedVertex_to_parentFace);
-
-        int maxLast = -1;
-        std::vector<int> lastFaces{};
-        bool multipleAppearances = false;
-         
-        const auto& markedFaces = faceInMarkedElemAndRefinedFaces[face];
-
-        if (markedFaces.size() > 1) {
-            multipleAppearances = true;
-        }
-
-        if (!markedFaces.empty() && markedFaces.back().first > maxLast) {
-            maxLast = markedFaces.back().first;
-            lastFaces = markedFaces.back().second;
-        } 
-        assert(maxLast >= 0);
-        int maxLastLevel = assignRefinedLevel[maxLast];
-
-        if (multipleAppearances && (maxLast != elemIdx)) {
-            
-            const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
-                                                                lastFaces, 
-                                                                vertex);
-            assert(neighborVertexIdx.has_value());
-            
-            markVanishedCorner({elemIdx, corner}, {maxLast, neighborVertexIdx.value()},
-                               vanishedRefinedCorner_to_itsLastAppearance);
-        }
-        if ((maxLast == elemIdx) || (maxLastLevel != level)) {
-            insertBidirectional(elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,   // map a_to_b
-                                refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,   // map b_to_a
-                                std::array{elemIdx, corner},                               // keyA
-                                std::array{level, level_corner_count},                     // keyB
-                                level_corner_count);                                       // counter
-        }
-    }
-}
-
-void processLeafBoundaryCorners(int elemIdx, int shiftedLevel,
-                                const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
-                                int& corner_count,
-                                std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                                const Dune::cpgrid::CpGridData& current_data,
-                                const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                const std::unordered_map<int, int>& boundaryRefinedVertex_to_parentFace,
-                                const std::vector<bool>& boundaryRefinedVertexCoincidesWithParentVertex,
-                                const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr)
-{
-    // Refined corners on LGR boundaries (not on edges)
-    // Corners born on a face of a marked element that got refined.
-    // Storage rules:
-    // - If the parent face appears only once, store immediately.
-    // - If the face appears in multiple LGRs, store at its last appearance to avoid duplicates.           
-    for (int corner = 0; corner < lgr->size(3); ++corner) {
-
-        const auto vertex = Dune::cpgrid::Entity<3>(*lgr, corner, true).geometry().center();
-        const auto facesWithEdgeContainingVertex = Opm::Lgr::isVertexInElementEdge(vertex,
-                                                                                   elemIdx,
-                                                                                   current_data);
-        
-        if (boundaryRefinedVertexCoincidesWithParentVertex[corner] ||
-            isRefinedCornerInInteriorLgr(cells_per_dim_vec[shiftedLevel], corner) ||
-            facesWithEdgeContainingVertex.size()) continue;
-
-        const auto& face = getParentFaceWhereNewRefinedCornerLiesOn(current_data,
-                                                                    cells_per_dim_vec[shiftedLevel],
-                                                                    corner,
-                                                                    elemIdx,
-                                                                    boundaryRefinedVertex_to_parentFace);
-        
-        bool multipleAppearances = faceInMarkedElemAndRefinedFaces[face].size() >1;
-        const auto& [lastLgr, lastFaces] =  faceInMarkedElemAndRefinedFaces[face].back();
-
-        if (multipleAppearances && (lastLgr != elemIdx)) {
-                
-            const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[lastLgr],
-                                                                 lastFaces,
-                                                                 vertex);
-             assert(neighborVertexIdx.has_value());
-                
-             markVanishedCorner({elemIdx, corner}, {lastLgr, neighborVertexIdx.value()},
-                                vanishedRefinedCorner_to_itsLastAppearance);
-         }
-         if (lastLgr == elemIdx) {
-            
-             insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner, // map a_to_b
-                                 adaptedCorner_to_elemLgrAndElemLgrCorner, // unordered_map b_to_a
-                                 std::array{elemIdx, corner},              // keyA
-                                 corner_count);                            // counter (keyB)
-         }
-    }
 }
 
 void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
@@ -939,7 +479,6 @@ void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
             visited[elemIdx].resize(markedElem_to_itsLgr[elemIdx]->size(3), false);
         }
     }
-
     
     // Step 1: Handle starting grid corners
     const int numCorners = current_data.size(3);
@@ -960,120 +499,105 @@ void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
             visited[lgr][lgrCorner] = true;
         }
     }
-    
-    if (!withoutFaults) {
 
-        for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
-            if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
-                int level = assignRefinedLevel[elemIdx];
-                int shiftedLevel = level - preAdaptMaxLevel - 1;
-
-                const auto& lgr = markedElem_to_itsLgr[elemIdx];
-
-                processLeafInteriorCorners(elemIdx, shiftedLevel, lgr, corner_count,
-                                           elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                           adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                           cells_per_dim_vec,
-                                           visited);
-            }
-        }
-         
-        for (int coarseFaceIdx = 0; coarseFaceIdx < current_data.numFaces(); ++coarseFaceIdx) {
-            
-            if (faceInMarkedElemAndRefinedFaces[coarseFaceIdx].empty())
-                continue;
-
-            const auto& [firstRef, firstFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].front();
-            const auto& [maxLast, lastFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].back();
-            bool multipleAppearances =  (faceInMarkedElemAndRefinedFaces[coarseFaceIdx].size() == 2);
-            
-            const auto& singleCellRef = markedElem_to_itsLgr[firstRef];
-            
-            for (const auto& refFace : firstFaces) {
-                for (const auto& point : singleCellRef->faceToPoint(refFace)) {
-                   
-                    if (visited[firstRef][point] ||  cellRefinementsInfo[firstRef].boundaryRefinedVertexCoincidesWithParentVertex[point])
-                        continue;
-
-                    if (auto it = cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.find(point);
-                          it != cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.end() &&
-                          it->second != coarseFaceIdx) {
-                        continue;
-                    }
-                     
-                    const auto vertex = Dune::cpgrid::Entity<3>(*singleCellRef, point, true).geometry().center();
-
-                    if (multipleAppearances) {
-                       
-                        visited[firstRef][point] = true;
-
-                        const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
-                                                                            lastFaces, 
-                                                                            vertex);
-                
-                        assert(neighborVertexIdx.has_value());
-
-                        int neighborCorner = neighborVertexIdx.value();
-                
-                        markVanishedCorner({firstRef, point}, {maxLast, neighborCorner},
-                                           vanishedRefinedCorner_to_itsLastAppearance);
-                        
-                        if (maxLast != firstRef) {
-                            visited[maxLast][neighborCorner] = true;
-            
-                            insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner, // map a_to_b
-                                                adaptedCorner_to_elemLgrAndElemLgrCorner, // unordered_map b_to_a
-                                                std::array{maxLast, neighborCorner},              // keyA
-                                                corner_count);                            // counter (keyB)
-                        }
-                    }
-                    else if (!multipleAppearances) {
-                        visited[firstRef][point] = true;
-            
-                        insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner, // map a_to_b
-                                            adaptedCorner_to_elemLgrAndElemLgrCorner, // unordered_map b_to_a
-                                            std::array{firstRef, point},              // keyA
-                                            corner_count);                            // counter (keyB)
-                    }
-                }
-            }
-        }
-    }
-    
-    if (withoutFaults) { 
-
-        // Step 2: Handle refined grid corners
-        for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
-            if (!markedElem_to_itsLgr[elemIdx]) continue;
+    /* for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
+        if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
             int level = assignRefinedLevel[elemIdx];
             int shiftedLevel = level - preAdaptMaxLevel - 1;
 
             const auto& lgr = markedElem_to_itsLgr[elemIdx];
+
             processLeafInteriorCorners(elemIdx, shiftedLevel, lgr, corner_count,
                                        elemLgrAndElemLgrCorner_to_adaptedCorner,
                                        adaptedCorner_to_elemLgrAndElemLgrCorner,
                                        cells_per_dim_vec,
                                        visited);
+        }
+        }*/
+         
+    for (int coarseFaceIdx = 0; coarseFaceIdx < current_data.numFaces(); ++coarseFaceIdx) {
+            
+        if (faceInMarkedElemAndRefinedFaces[coarseFaceIdx].empty())
+            continue;
 
-            processLeafEdgeCorners(elemIdx,
-                                   lgr, corner_count,
-                                   elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                   adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                   vanishedRefinedCorner_to_itsLastAppearance,
-                                   current_data, assignRefinedLevel, faceInMarkedElemAndRefinedFaces,
-                                   cellRefinementsInfo[elemIdx].boundaryRefinedVertexCoincidesWithParentVertex,
-                                   markedElem_to_itsLgr);
+        const auto& [firstRef, firstFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].front();
+        const auto& [maxLast, lastFaces] = faceInMarkedElemAndRefinedFaces[coarseFaceIdx].back();
+        bool multipleAppearances =  (faceInMarkedElemAndRefinedFaces[coarseFaceIdx].size() == 2);
+            
+        const auto& singleCellRef = markedElem_to_itsLgr[firstRef];
+            
+        for (const auto& refFace : firstFaces) {
+            for (const auto& point : singleCellRef->faceToPoint(refFace)) {
+                   
+                if (visited[firstRef][point] ||  cellRefinementsInfo[firstRef].boundaryRefinedVertexCoincidesWithParentVertex[point])
+                    continue;
 
-            processLeafBoundaryCorners(elemIdx, shiftedLevel, lgr, corner_count,
-                                       elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                       adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                       vanishedRefinedCorner_to_itsLastAppearance,
-                                       current_data,
-                                       faceInMarkedElemAndRefinedFaces,
-                                       cells_per_dim_vec,
-                                       cellRefinementsInfo[elemIdx].boundaryRefinedVertexIdx_to_parentFaceIdx,
-                                       cellRefinementsInfo[elemIdx].boundaryRefinedVertexCoincidesWithParentVertex,
-                                       markedElem_to_itsLgr);
+                if (auto it = cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.find(point);
+                    it != cellRefinementsInfo[firstRef].boundaryRefinedVertexIdx_to_parentFaceIdx.end() &&
+                    it->second != coarseFaceIdx) {
+                    continue;
+                }
+                     
+                const auto vertex = Dune::cpgrid::Entity<3>(*singleCellRef, point, true).geometry().center();
+
+                if (multipleAppearances) {
+                       
+                    visited[firstRef][point] = true;
+
+                    const auto neighborVertexIdx = findVertexIdxInFaces(*markedElem_to_itsLgr[maxLast],
+                                                                        lastFaces, 
+                                                                        vertex);
+                
+                    assert(neighborVertexIdx.has_value());
+
+                    int neighborCorner = neighborVertexIdx.value();
+                
+                    markVanishedCorner({firstRef, point}, {maxLast, neighborCorner},
+                                       vanishedRefinedCorner_to_itsLastAppearance);
+                        
+                    if (maxLast != firstRef) {
+                        visited[maxLast][neighborCorner] = true;
+            
+                        insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner, // map a_to_b
+                                            adaptedCorner_to_elemLgrAndElemLgrCorner, // unordered_map b_to_a
+                                            std::array{maxLast, neighborCorner},              // keyA
+                                            corner_count);                            // counter (keyB)
+                    }
+                }
+                else if (!multipleAppearances) {
+                    visited[firstRef][point] = true;
+            
+                    insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner, // map a_to_b
+                                        adaptedCorner_to_elemLgrAndElemLgrCorner, // unordered_map b_to_a
+                                        std::array{firstRef, point},              // keyA
+                                        corner_count);                            // counter (keyB)
+                }
+            }
+        }
+    }
+
+    for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
+        if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
+            int level = assignRefinedLevel[elemIdx];
+            int shiftedLevel = level - preAdaptMaxLevel - 1;
+
+            const auto& lgr = markedElem_to_itsLgr[elemIdx];
+
+            for (int faceIdx = 0; faceIdx < markedElem_to_itsLgr[elemIdx]->numFaces(); ++faceIdx) {
+                const auto faceToCell = markedElem_to_itsLgr[elemIdx]->faceToCell(faceIdx);
+                if (faceToCell.size()==2) {
+                    for (const auto& point :  markedElem_to_itsLgr[elemIdx]->faceToPoint(faceIdx)) {
+                        if (!visited[elemIdx][point]) {
+                            visited[elemIdx][point] = true;
+                          
+                            insertBidirectional(elemLgrAndElemLgrCorner_to_adaptedCorner,    // map a_to_b
+                                                adaptedCorner_to_elemLgrAndElemLgrCorner,    // unordered_map b_to_a
+                                                std::array{elemIdx, point},                 // keyA
+                                                corner_count);                               // counter (keyB)
+                        }
+                    } 
+                }
+            }
         }
     }
 }
@@ -1610,17 +1134,10 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                         lastAppearanceLgr_lgrEquivCorner =  cornerInMarkedElemWithEquivRefinedCorner[corner_candidate->second].back();
                     }
                     else {
-#ifndef NDEBUG
-                        const auto& shiftedLevel = assignRefinedLevel[elemLgr] - preAdaptMaxLevel -1; // Assigned level > preAdapt maxLevel
-                        bool isNewRefinedCornInInteriorLgr = isRefinedCornerInInteriorLgr(cells_per_dim_vec[shiftedLevel],
-                                                                                          elemLgrCorn);
-                        assert(!isNewRefinedCornInInteriorLgr);
-#endif
-
                         if(auto corner_candidate_2 = vanishedRefinedCorner_to_itsLastAppearance.find({elemLgr, elemLgrCorn});
                            corner_candidate_2 !=  vanishedRefinedCorner_to_itsLastAppearance.end()) {
                         
-                            lastAppearanceLgr_lgrEquivCorner = corner_candidate_2->second; // vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
+                            lastAppearanceLgr_lgrEquivCorner = corner_candidate_2->second; 
                             while (elemLgrAndElemLgrCorner_to_adaptedCorner.find(lastAppearanceLgr_lgrEquivCorner) ==
                                    elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
                                 const auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrEquivCorner;
