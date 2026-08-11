@@ -2102,9 +2102,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                              assignRefinedLevel,
                                              cornerInMarkedElemWithEquivRefinedCorner,
                                              faceInMarkedElemAndRefinedFaces,
-                                             cells_per_dim_vec,
-                                             cellRefsBoundaryInfo,
-                                             withoutFaults);
+                                             cellRefsBoundaryInfo);
 
     // --- Adapted corners and PreAdapt corners relations ---
     std::map<std::array<int,2>,int>           elemLgrAndElemLgrCorner_to_adaptedCorner;
@@ -2112,20 +2110,16 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
     // Integer to count adapted corners (mixed between corners from pre-refined-leaf corners not involved in LGRs, and new-born refined corners).
     int corner_count = 0;
     Opm::Lgr::identifyLeafGridCorners(currentLeafData(),
-                                      preAdaptMaxLevel,
                                       /* Adapted grid parameters */
                                       elemLgrAndElemLgrCorner_to_adaptedCorner,
                                       adaptedCorner_to_elemLgrAndElemLgrCorner,
                                       corner_count,
                                       /* Additional parameters */
                                       markedElem_to_itsLgr,
-                                      assignRefinedLevel,
                                       cornerInMarkedElemWithEquivRefinedCorner,
                                       vanishedRefinedCorner_to_itsLastAppearance,
                                       faceInMarkedElemAndRefinedFaces,
-                                      cells_per_dim_vec,
-                                      cellRefsBoundaryInfo,
-                                      withoutFaults);
+                                      cellRefsBoundaryInfo);
 
     // FACES
     // Stablish relationships between PreAdapt faces and refined or adapted ones ---
@@ -2177,10 +2171,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
                                    markedElem_to_itsLgr,
                                    preAdaptMaxLevel,
                                    cornerInMarkedElemWithEquivRefinedCorner,
-                                   markedElemAndEquivRefinedCorn_to_corner,
-                                   cellRefsBoundaryInfo,
-                                   faceInMarkedElemAndRefinedFaces,
-                                   currentLeafData());
+                                   markedElemAndEquivRefinedCorn_to_corner);
     // --- Refined cells  ---
     Opm::Lgr::populateRefinedCells(currentLeafData(),
                                    refined_cells_vec,
