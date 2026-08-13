@@ -58,8 +58,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cstddef>
-#include <fstream>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
@@ -1083,7 +1083,9 @@ namespace cpgrid
                 const int c2 = global_to_local[nncpair.second];
                 cells[0].setValue(c1, true);
                 cells[1].setValue(c2, false);
-                std::sort(cells, cells + 2);
+                if (cells[1] < cells[0]) {
+                    std::swap(cells[0], cells[1]);
+                }
                 f2c.appendRow(cells, cells + 2);
                 face_to_output_face.push_back(cpgrid::NNCFace);
             }
@@ -1160,11 +1162,12 @@ namespace cpgrid
                     }
                 }
 
-                // Assertation below is no longer true, due to periodic_extension etc.
-                // Instead, the appendRow() is put inside an if test.
-                // assert(cellcount == 1 || cellcount == 2);
+                // cellcount == 0 is possible (periodic_extension boundary faces).
                 if (cellcount > 0) {
-                    std::sort(cells, cells + cellcount);
+                    assert(cellcount == 1 || cellcount == 2);
+                    if (cellcount == 2 && cells[1] < cells[0]) {
+                        std::swap(cells[0], cells[1]);
+                    }
                     f2c.appendRow(cells, cells + cellcount);
                     face_to_output_face.push_back(i);
                 }
