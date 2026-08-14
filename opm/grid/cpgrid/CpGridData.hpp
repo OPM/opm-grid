@@ -381,6 +381,7 @@ public:
         }
         else {
             OPM_THROW(std::logic_error, "Vertex has no history record.\n");
+            __builtin_unreachable();
         }
     }
 

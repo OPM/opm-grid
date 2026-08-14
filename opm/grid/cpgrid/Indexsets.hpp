@@ -555,6 +555,7 @@ namespace Dune
             }
 
             OPM_THROW(std::runtime_error, "No grid or mapping. Should not be here!");
+            __builtin_unreachable();
         }
         void release()
         {
