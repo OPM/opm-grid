@@ -62,6 +62,50 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 using Coordinate = Dune::FieldVector<double, 3>;
 
+// In all the test cases, which are quite simple grids of dimensions
+// 2x1x1, 1x2x1, or 2x1x2, the grid cells are shifted such that
+// every cell in the level-zero grid has seven faces.
+void checkFaultInLevelZeroGrid(const Dune::CpGrid& grid)
+{
+    const auto& parentGridData = *grid.currentData()[0];
+    for (const auto& element : Dune::elements(grid.levelGridView(0))) {
+        BOOST_CHECK_EQUAL(parentGridData.cellToFace(element.index()).size(), 7);
+    }
+}
+
+// In a without-faults-grid of dimensions {nx, ny, nz},
+// - the total amount of vertices is given by (nx+1)*(ny+1)*(nz+1)
+// - the total amount of faces is given by ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1))
+// Since now the refinement is aware of
+// (a) parent cell having more than one face per type
+//     (e.g. level zero grid having cell 0 with two I+ faces and cell 1 with two I- faces)
+// (b) neighboring refinements with faults (creating new vertices and faces)
+// the total amount of vertices and faces in presence of faults may be larger than
+// (nx+1)*(ny+1)*(nz+1) and ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) respectively.
+void checkVertexAndFaceCount(const Dune::cpgrid::CpGridData& gridData,
+                             const std::array<int,3>& nxnynz,
+                             int newVertexCount,
+                             int vanishedFaceCount,
+                             int newFaceCount)
+{
+    const auto& [nx,ny,nz] = nxnynz;
+    BOOST_CHECK_EQUAL( gridData.size(3), (nx+1)*(ny+1)*(nz+1) + newVertexCount);
+    BOOST_CHECK_EQUAL( gridData.numFaces(), ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) - vanishedFaceCount + newFaceCount); 
+}
+
+void checkVertexAndFaceLeafCount(const Dune::CpGrid& grid,
+                                 int sharedBetweenLevelsVertexCount,
+                                 int sharedBetweenLevelsFaceCount)
+{   int vertexCount = 0;
+    int faceCount = 0;
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        vertexCount += grid.currentData()[level]->size(3);
+        faceCount += grid.currentData()[level]->numFaces();
+    }
+    
+    BOOST_CHECK_EQUAL( grid.size(3), vertexCount - sharedBetweenLevelsVertexCount);    
+    BOOST_CHECK_EQUAL( grid.numFaces(), faceCount - sharedBetweenLevelsFaceCount); 
+}
 
 void checkFaceCountPerType(int repeatedFaceType,
                            int expectedRepeatedFaceTypeCount,
@@ -256,18 +300,66 @@ bool equalFaces(const std::vector<std::vector<Dune::FieldVector<double,3>>>& act
 }
 
 void checkFaces(const Dune::cpgrid::CpGridData& gridData,
-                const std::vector<std::vector<Coordinate>>& expectedFaces)
+                const std::vector<std::vector<Coordinate>>& expectedFaces,
+                const std::vector<std::pair<int,int>>& expectedFaceToCell)
 {
     std::vector<std::vector<Dune::FieldVector<double,3>>> actualFaces{};
     actualFaces.resize(gridData.numFaces());
 
     for (int i = 0; i < gridData.numFaces(); ++i) {
+        
+        const auto& faceToCell = gridData.faceToCell(i);
+        BOOST_CHECK(faceToCell.size() <= 2);
+        
+        const auto& [cell1, cell2] = expectedFaceToCell[i];
+        int expectedFaceToCellSize = (cell2 == -1)? 1 : 2;
+        
+        if (expectedFaceToCellSize>1) {
+            BOOST_CHECK_EQUAL( faceToCell[0].index(), cell1);
+            BOOST_CHECK_EQUAL( faceToCell[1].index(), cell2);
+        }
+        else {
+            BOOST_CHECK_EQUAL( faceToCell[0].index(), cell1);
+        }
+        
+        
         for (const auto& vertexIdx : gridData.faceToPoint(i)){
             actualFaces[i].push_back(Dune::cpgrid::Entity<3>(gridData, vertexIdx, true).geometry().center());
         }
     }
 
     BOOST_CHECK(equalFaces(actualFaces, expectedFaces));
+}
+
+void checkCellToFace(const Dune::CpGrid& grid, int level,
+                     const std::vector<std::vector<std::vector<Coordinate>>>& expectedCellToFace)
+{
+    bool isLeafGrid = (level<0);
+    int cell_count = isLeafGrid? grid.leafGridView().size(0) : grid.levelGridView(level).size(0);
+    
+    BOOST_CHECK_EQUAL(cell_count, expectedCellToFace.size());
+    
+    const auto& elements = isLeafGrid? Dune::elements(grid.leafGridView()) : Dune::elements(grid.levelGridView(level));
+    const auto& gridData = isLeafGrid? grid.currentLeafData() : *grid.currentData()[level];
+    
+    for (const auto& element : elements) {
+        const auto& cellToFace = gridData.cellToFace(element.index());
+        
+        std::vector<std::vector<Dune::FieldVector<double,3>>> actualCellToFace{};
+        actualCellToFace.resize(cellToFace.size());
+
+        BOOST_CHECK_EQUAL( cellToFace.size(), expectedCellToFace[element.index()].size());
+
+        int count = 0;
+        for (const auto& face : cellToFace) {
+            for (const auto& vertexIdx : gridData.faceToPoint(face.index())){
+                actualCellToFace[count].push_back(Dune::cpgrid::Entity<3>(gridData, vertexIdx, true).geometry().center());
+            }
+            ++count;
+        }
+
+        BOOST_CHECK(equalFaces(actualCellToFace, expectedCellToFace[element.index()]));
+    }
 }
 
 // Level zero grid dims = 2x1x1
@@ -310,6 +402,387 @@ PORO
 /
 )";
 
+// In the test cases "simpleRefinementDiffLgrs" and "simpleRefinementSameLgr"
+// each parent cell gets refined into 1x2x1 children. In this way, it's pretty
+// easy and not so long to provide the expected cell-to-face and face-to-cell
+// relationships, as well as the vertices coordinates and the face vertices
+// coordinates for level and leaf grids.
+// The leaf grid view in both test cases coincide, therefore we introduce below
+// a few "expected-leaf-grid" data that will be used for both test cases.
+
+// Element 0 and element 1 in level zero grid share an I_FACE (with face index 2)
+//
+// Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in
+//                                                   | y- and z- directions:
+//
+//              (6,0,9) -----------------(6,6,9)     |  (6,0,9) --(6,3,9)---(6,6,9)
+//                 |      face idx 3      |          |     |         *         |
+//              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,3,8)---(6,6,8)
+//                 |                      |          |     |         *         |
+//                 |                      |          |     |         *         |
+//                 |                      |          |     |         *         |
+//                 |      face idx 2      |          |     |         *         |
+//                 |                      |          |     |         *         |
+//                 |                      |          |     |         *         |
+//                 |                      |          |     |         *         |
+//                 |                      |          |     |         *         |
+//              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(6,3,1)---(6,6,1)
+//                 |      face idx 1      |          |     |         *         |
+//              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,3,0)---(6,6,0)
+//                                                   |
+
+// "simpleRefinementDiffLgrs"
+//
+// Recall that for a level zero input grid of dimensions 2x1x1 that gets refined
+// LGR1 and LGR2, with 1x2x1 children per cell,
+//
+// k = 0 |  cell 0 | cell 1 |  level zero grid
+//
+// Parent cell from level zero refined into 1x2x2 children:
+// k = 0, j = 1  | cell 1 (LGR*) |    level 1 and 2 grid cell indices are equal. 
+//               |---------------|
+//        j = 0  | cell 0 (LGR*) |
+//
+// k = 0, j = 1  | cell 1 (from LGR1) | cell 3 (from LGR2)|    leaf grid cell indices
+//               |--------------------|-------------------|
+//        j = 0  | cell 0 (from LGR1) | cell 2 (from LGR2)|
+//
+//
+//                LGR1                       | LGR2
+// New vertices: (6,0,1),(6,3,1),(6,6,1)     | (6,0,8),(6,3,8),(6,6,8)
+//                                           |
+// New faces:                                |
+//              (6,0,8) --(6,3,8)---(6,6,8)  |  (6,0,9) --(6,3,9)---(6,6,9)
+//                 |         *         |     |     |         *         |  
+//                 |         *         |     |  (6,0,8) --(6,3,8)---(6,6,8) 
+//                 |         *         |     |     |         *         | 
+//              (6,0,1) --(6,3,1)---(6,6,1)  |     |         *         | 
+//                 |         *         |     |     |         *         | 
+//              (6,0,0) --(6,3,0)---(6,6,0)  |  (6,0,1) --(6,3,1)---(6,6,1)
+
+// "simpleRefinementSameLgr"
+//
+// Recall that for a level zero input grid of dimensions 2x1x1 that gets refined
+// into one LGR1 with 1x2x1 children per cell,
+//
+// k = 0 |  cell 0 | cell 1 |  level zero grid
+//
+// Entire level zero grid gets refined, each parent cell has 1x2x1 children:
+//
+// k = 0, j = 1  | cell 1  | cell 3 |    level 1 and leaf grid cell indices
+//               |---------|--------|
+//        j = 0  | cell 0  | cell 2 |
+
+
+// To avoid creating containers with the same content, here we provide a few
+// cell-to-face and face-to-cell relationships that appear in both test cases.
+
+const std::vector<std::vector<Coordinate>> expectedLeafCellToFace0 = {
+    {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      // K_FACE   z = 0, face 0
+    {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      // K_FACE   z = 8, face 1
+    {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      // I_FACE   x = 0, face 2
+    {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},      // I_FACE   x = 6, face 3
+    {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6, face 4
+    {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},      // J_FACE   y = 0, face 5
+    {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}}       // J_FACE   y = 3, face 6
+};
+    
+const std::vector<std::vector<Coordinate>> expectedLeafCellToFace1 = {
+    {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      // K_FACE   z = 0, face 0
+    {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},      // K_FACE   z = 8, face 1
+    {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},      // I_FACE   x = 0, face 2
+    {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      // I_FACE   x = 6, face 3
+    {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6, face 4
+    {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},      // J_FACE   y = 3, face 5
+    {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}}       // J_FACE   y = 6, face 6
+};
+
+const std::vector<std::vector<Coordinate>> expectedLeafCellToFace2 = {
+    {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},    // K_FACE   z = 1,  face 0
+    {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},    // K_FACE   z = 9,  face 1
+    {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6,  face 2
+    {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},      // I_FACE   x = 6,  face 3
+    {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}},  // I_FACE   x = 12, face 4
+    {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},    // J_FACE   y = 0,  face 5
+    {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 6
+};
+    
+const std::vector<std::vector<Coordinate>> expectedLeafCellToFace3 = {
+    {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    // K_FACE   z = 1,  face 0
+    {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},    // K_FACE   z = 9,  face 1
+    {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6,  face 2
+    {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},      // I_FACE   x = 6,  face 3
+    {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}},  // I_FACE   x = 12, face 4
+    {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 5
+    {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    // J_FACE   y = 6,  face 6
+};
+
+// Leaf faces whose faceToCell has 2 elements
+//
+//     (6,0,8) --(6,3,9)---(6,6,8)
+//        |         *         |
+//        |         *         |
+//        |         *         |         leaf face index 15 to cells = {0, 2}
+//        |  face   *  face   |         leaf face index 17 to cells = {1, 3}
+//        |   idx   *   idx   |
+//        |   15    *   17    |
+//        |         *         |
+//        |         *         |
+//     (6,0,1) --(6,3,1)---(6,6,1)
+
+const std::vector<std::vector<Coordinate>> expectedLeafFaces = {
+    {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      // K_FACE   z = 0,  face 0
+    {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      // K_FACE   z = 0,  face 1
+    {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      // K_FACE   z = 8,  face 2
+    {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},      // K_FACE   z = 8,  face 3
+    {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      // I_FACE   x = 0,  face 4
+    {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},      // I_FACE   x = 0,  face 5
+    {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},      // I_FACE   x = 6,  face 6
+    {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      // I_FACE   x = 6,  face 7
+    {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},      // J_FACE   y = 0,  face 8
+    {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},      // J_FACE   y = 3,  face 9
+    {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}},      // J_FACE   y = 6,  face 10
+    {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},    // K_FACE   z = 1,  face 11
+    {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    // K_FACE   z = 1,  face 12
+    {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},    // K_FACE   z = 9,  face 13
+    {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},    // K_FACE   z = 9,  face 14
+    {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6,  face 15
+    {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},      // I_FACE   x = 6,  face 16
+    {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6,  face 17
+    {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},      // I_FACE   x = 6,  face 18
+    {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}},  // I_FACE   x = 12, face 19
+    {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}},  // I_FACE   x = 12, face 20
+    {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},    // J_FACE   y = 0,  face 21
+    {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 22
+    {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    // J_FACE   y = 6,  face 23
+};
+
+const std::vector<std::pair<int,int>> expectedLeafFaceToCell = {
+    {0, -1},      // K_FACE   z = 0,  face 0  {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}}
+    {1, -1},      // K_FACE   z = 0,  face 1  {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}}
+    {0, -1},      // K_FACE   z = 8,  face 2  {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}} 
+    {1, -1},      // K_FACE   z = 8,  face 3  {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}}
+    {0, -1},      // I_FACE   x = 0,  face 4  {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}}
+    {1, -1},      // I_FACE   x = 0,  face 5  {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}}
+    {0, -1},      // I_FACE   x = 6,  face 6  {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}}
+    {1, -1},      // I_FACE   x = 6,  face 7  {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}}
+    {0, -1},      // J_FACE   y = 0,  face 8  {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}}
+    {0,  1},      // J_FACE   y = 3,  face 9  {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}}
+    {1, -1},      // J_FACE   y = 6,  face 10 {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}}
+    {2, -1},      // K_FACE   z = 1,  face 11 {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}}
+    {3, -1},      // K_FACE   z = 1,  face 12 {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}}
+    {2, -1},      // K_FACE   z = 9,  face 13 {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}}
+    {3, -1},      // K_FACE   z = 9,  face 14 {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}}
+    {0,  2},      // I_FACE   x = 6,  face 15 {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}}
+    {2, -1},      // I_FACE   x = 6,  face 16 {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}}
+    {1,  3},      // I_FACE   x = 6,  face 17 {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}}
+    {3, -1},      // I_FACE   x = 6,  face 18 {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}}
+    {2, -1},      // I_FACE   x = 12, face 19 {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}}
+    {3, -1},      // I_FACE   x = 12, face 20 {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}}
+    {2, -1},      // J_FACE   y = 0,  face 21 {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}}
+    {2,  3},      // J_FACE   y = 3,  face 22 {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}}
+    {3, -1},      // J_FACE   y = 6,  face 23 {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}}
+};
+
+BOOST_AUTO_TEST_CASE(simpleRefinementDiffLgrs)
+{
+    Dune::CpGrid grid;
+    Opm::createGridAndAddLgrs(grid,
+                              deckTwoCellsInXDirGrid,
+                              /* cells_per_dim_vec */ {{1,2,1}, {1,2,1}},
+                              /* startIJK_vec */      {{0,0,0}, {1,0,0}},
+                              /* endIJK_vec */        {{1,1,1}, {2,1,1}},
+                              /* lgr_name_vec */      {"LGR1", "LGR2"});
+
+    checkFaultInLevelZeroGrid(grid);
+
+    // In a grid of dimensions {nx, ny, nz},
+    // - the total amount of vertices is given by (nx+1)*(ny+1)*(nz+1)
+    // - the total amount of faces is given by ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1))
+    // Since now the refinement is aware of
+    // (a) parent cell having more than one face per type
+    //     (like in this level zero grid having cell 0 with two I+ faces and cell 1 with two I- faces)
+    // (b) neighboring refinements with faults (creating new vertices and faces)
+    // the total amount of vertices and faces in presence of faults may be larger than
+    // (nx+1)*(ny+1)*(nz+1) and ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) respectively.
+
+    const auto& refinedGrid1 = *grid.currentData()[1];
+    const auto& refinedGrid2 = *grid.currentData()[2];
+    // for LGR1 and LGR2, {nx,ny,nz} = {1,2,1}
+    // (nx+1)*(ny+1)*(nz+1) + "new vertices" = (2x3x2) + 3 = 15
+    // ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) - vanished faces + new faces = (2x2x1) + (1x3x1) + (1x2x2) - 2 + 4 = 13
+    checkVertexAndFaceCount(refinedGrid1, /* nxnynz = */ {1,2,1}, /* newVertexCount = */ 3,
+                            /* vanishedFaceCount = */ 2, /* newFaceCount = */ 4);
+    checkVertexAndFaceCount(refinedGrid2, /* nxnynz = */ {1,2,1}, /* newVertexCount = */ 3,
+                            /* vanishedFaceCount = */ 2, /* newFaceCount = */ 4);
+    
+    const auto& leafGrid = grid.currentLeafData();
+    // level 0 + level 1 + level 2 vertices - shared vertices =
+    // 16 + 15 + 15 - 10 (shared level 0 and 1) - 10 (shared level 0 and 2) - 2 (shared level 1 and 2, not level 0)  = 24
+    // level 0 + level 1 + level 2 faces - shared/vanished faces = 13 + 13 + 13 - 13 (vanished level 0) - 2 (shared level 1 and level 2)  = 24
+    checkVertexAndFaceLeafCount(grid, /* sharedBetweenLevelsVertexCount = */ 22, /* sharedBetweenLevelsFaceCount = */ 15);
+
+    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedLGR1Vertices = {
+        {0.,0.,0.}, {0.,0.,8.},              // pillar x = 0,  y = 0
+        {6.,0.,0.}, {6.,0.,1.}, {6.,0.,8.},  // pillar x = 6,  y = 0
+        {0.,3.,0.}, {0.,3.,8.},              // pillar x = 0,  y = 3
+        {6.,3.,0.}, {6.,3.,1.}, {6.,3.,8.},  // pillar x = 6,  y = 3
+        {0.,6.,0.}, {0.,6.,8.},              // pillar x = 0,  y = 6
+        {6.,6.,0.}, {6.,6.,1.}, {6.,6.,8.}   // pillar x = 6,  y = 6
+    };
+
+    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedLGR2Vertices = {
+        {6.,0.,1.}, {6.,0.,8.}, {6.,0.,9.}, // pillar x = 6,  y = 0
+        {12.,0.,1.}, {12.,0.,9.},           // pillar x = 12, y = 0
+        {6.,3.,1.}, {6.,3.,8.}, {6.,3.,9.}, // pillar x = 6,  y = 3
+        {12.,3.,1.}, {12.,3.,9.},           // pillar x = 12, y = 3
+        {6.,6.,1.}, {6.,6.,8.}, {6.,6.,9.}, // pillar x = 6,  y = 6
+        {12.,6.,1.}, {12.,6.,9.}            // pillar x = 12, y = 6
+    };
+
+    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedLeafVertices = {
+        {0.,0.,0.}, {0.,0.,8.},                          // pillar x = 0,  y = 0
+        {6.,0.,0.}, {6.,0.,1.}, {6.,0.,8.}, {6.,0.,9.},  // pillar x = 6,  y = 0
+        {12.,0.,1.}, {12.,0.,9.},                        // pillar x = 12, y = 0
+        {0.,3.,0.}, {0.,3.,8.},                          // pillar x = 0,  y = 3
+        {6.,3.,0.}, {6.,3.,1.}, {6.,3.,8.}, {6.,3.,9.},  // pillar x = 6,  y = 3
+        {12.,3.,1.}, {12.,3.,9.},                        // pillar x = 12, y = 3
+        {0.,6.,0.}, {0.,6.,8.},                          // pillar x = 0,  y = 6
+        {6.,6.,0.}, {6.,6.,1.}, {6.,6.,8.}, {6.,6.,9.},  // pillar x = 6,  y = 6
+        {12.,6.,1.}, {12.,6.,9.}                         // pillar x = 12, y = 6
+    };
+
+    checkLevelVertices(grid, std::vector{expectedLGR1Vertices, expectedLGR2Vertices});
+    checkLeafVertices(grid, expectedLeafVertices);
+
+    checkCellToFace(grid, /* level = */ 1, std::vector{expectedLeafCellToFace0,  expectedLeafCellToFace1});
+    checkCellToFace(grid, /* level = */ 2, std::vector{expectedLeafCellToFace2,  expectedLeafCellToFace3});
+    checkCellToFace(grid, /* level = */ -1 /* leafGrid!*/,
+                    std::vector{expectedLeafCellToFace0,  expectedLeafCellToFace1,
+                                expectedLeafCellToFace2,  expectedLeafCellToFace3});
+
+    const std::vector<std::vector<Coordinate>> expectedLGR1Faces = {
+        {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      // K_FACE   z = 0, face 0
+        {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      // K_FACE   z = 0, face 1
+        {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      // K_FACE   z = 8, face 2
+        {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},      // K_FACE   z = 8, face 3
+        {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      // I_FACE   x = 0, face 4
+        {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},      // I_FACE   x = 0, face 5
+        {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},      // I_FACE   x = 6, face 6
+        {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6, face 7
+        {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      // I_FACE   x = 6, face 8
+        {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6, face 9
+        {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},      // J_FACE   y = 0, face 10
+        {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},      // J_FACE   y = 3, face 11
+        {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}},      // J_FACE   y = 6, face 12
+    };
+    const std::vector<std::pair<int,int>> expectedLGR1FaceToCell = {
+        {0, -1}, // K_FACE   z = 0, face 0 {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      
+        {1, -1}, // K_FACE   z = 0, face 1 {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      
+        {0, -1}, // K_FACE   z = 8, face 2 {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      
+        {1, -1}, // K_FACE   z = 8, face 3 {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},     
+        {0, -1}, // I_FACE   x = 0, face 4 {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      
+        {1, -1}, // I_FACE   x = 0, face 5 {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},    
+        {0, -1}, // I_FACE   x = 6, face 6  {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},     
+        {0, -1}, // I_FACE   x = 6, face 7 {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},     
+        {1, -1}, // I_FACE   x = 6, face 8 {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      
+        {1, -1}, // I_FACE   x = 6, face 9 {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},     
+        {0, -1}, // J_FACE   y = 0, face 10 {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},     
+        {0,  1}, // J_FACE   y = 3, face 11  {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},     
+        {1, -1}  // J_FACE   y = 6, face 12 {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}},      
+    };
+    checkFaces(refinedGrid1, expectedLGR1Faces, expectedLGR1FaceToCell);
+ 
+ 
+    const std::vector<std::vector<Coordinate>> expectedLGR2Faces = {
+        {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},    // K_FACE   z = 1,  face 0
+        {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    // K_FACE   z = 1,  face 1
+        {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},    // K_FACE   z = 9,  face 2
+        {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},    // K_FACE   z = 9,  face 3
+        {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6,  face 4
+        {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},      // I_FACE   x = 6,  face 5
+        {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6,  face 6
+        {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},      // I_FACE   x = 6,  face 7
+        {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}},  // I_FACE   x = 12, face 8
+        {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}},  // I_FACE   x = 12, face 9
+        {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},    // J_FACE   y = 0,  face 10
+        {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 11
+        {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    // J_FACE   y = 6,  face 12
+    };
+    const std::vector<std::pair<int,int>> expectedLGR2FaceToCell = {
+        {0, -1}, // K_FACE   z = 1,  face 0  {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},   
+        {1, -1}, // K_FACE   z = 1,  face 1  {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    
+        {0, -1}, // K_FACE   z = 9,  face 2  {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},   
+        {1, -1}, // K_FACE   z = 9,  face 3  {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},   
+        {0, -1}, // I_FACE   x = 6,  face 4  {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      
+        {0, -1}, // I_FACE   x = 6,  face 5  {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},     
+        {1, -1}, // I_FACE   x = 6,  face 6  {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      
+        {1, -1}, // I_FACE   x = 6,  face 7  {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},     
+        {0, -1}, // I_FACE   x = 12, face 8  {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}}, 
+        {1, -1}, // I_FACE   x = 12, face 9  {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}}, 
+        {0, -1}, // J_FACE   y = 0,  face 10 {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},  
+        {0,  1}, // J_FACE   y = 3,  face 11 {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    
+        {1, -1}  // J_FACE   y = 6,  face 12 {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    
+    };
+    checkFaces(refinedGrid2, expectedLGR2Faces, expectedLGR2FaceToCell);
+    
+    checkFaces(leafGrid, expectedLeafFaces, expectedLeafFaceToCell);
+
+    Opm::checkGridWithLgrs(grid,
+                           {{1,2,1}, {1,2,1}}, // cells_per_dim_vec
+                           {"LGR1", "LGR2"});  // lgr_name_vec
+}
+
+BOOST_AUTO_TEST_CASE(simpleRefinementSameLgr)
+{
+    Dune::CpGrid grid;
+    Opm::createGridAndAddLgrs(grid,
+                              deckTwoCellsInXDirGrid,
+                              /* cells_per_dim_vec */ {{1,2,1}},
+                              /* startIJK_vec */      {{0,0,0}},
+                              /* endIJK_vec */        {{2,1,1}},
+                              /* lgr_name_vec */      {"LGR1"});
+
+    const auto& refinedGrid1 = *grid.currentData()[1];
+    // for LGR1, {nx,ny,nz} = {2,2,1}
+    // (nx+1)*(ny+1)*(nz+1) + "new vertices" = (3x3x2) + 6 = 24
+    // ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) - vanished faces + new faces = (3x2x1) + (2x3x1) + (2x2x1) - 2 + 6 = 24
+    checkVertexAndFaceCount(refinedGrid1, /* nxnynz = */ {2,2,1}, /* newVertexCount = */ 6,
+                            /* vanishedFaceCount = */ 2, /* newFaceCount = */ 6);
+    
+    const auto& leafGrid = grid.currentLeafData();
+    // level 0 + level 1 vertices - shared vertices = 16 + 24 - 16 (shared level 0 and 1) = 24
+    // level 0 + level 1 faces - shared/vanished faces = 13 + 24 - 13 (vanished level 0) = 24
+    checkVertexAndFaceLeafCount(grid, /* sharedBetweenLevelsVertexCount = */ 16, /* sharedBetweenLevelsFaceCount = */ 13);
+
+    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices = {
+        {0.,0.,0.}, {0.,0.,8.},                          // pillar x = 0,  y = 0
+        {6.,0.,0.}, {6.,0.,1.}, {6.,0.,8.}, {6.,0.,9.},  // pillar x = 6,  y = 0
+        {12.,0.,1.}, {12.,0.,9.},                        // pillar x = 12, y = 0
+        {0.,3.,0.}, {0.,3.,8.},                          // pillar x = 0,  y = 3
+        {6.,3.,0.}, {6.,3.,1.}, {6.,3.,8.}, {6.,3.,9.},  // pillar x = 6,  y = 3
+        {12.,3.,1.}, {12.,3.,9.},                        // pillar x = 12, y = 3
+        {0.,6.,0.}, {0.,6.,8.},                          // pillar x = 0,  y = 6
+        {6.,6.,0.}, {6.,6.,1.}, {6.,6.,8.}, {6.,6.,9.},  // pillar x = 6,  y = 6
+        {12.,6.,1.}, {12.,6.,9.}                         // pillar x = 12, y = 6
+    };
+
+    checkLevelVertices(grid, std::vector{expectedVertices});
+    checkLeafVertices(grid, expectedVertices);
+
+    checkCellToFace(grid, /* level = */ 1, std::vector{expectedLeafCellToFace0,  expectedLeafCellToFace1,
+                                                       expectedLeafCellToFace2,  expectedLeafCellToFace3});
+    checkCellToFace(grid, /* level = */ -1 /* leafGrid!*/,
+                    std::vector{expectedLeafCellToFace0,  expectedLeafCellToFace1,
+                                expectedLeafCellToFace2,  expectedLeafCellToFace3});
+    
+    checkFaces(refinedGrid1, expectedLeafFaces, expectedLeafFaceToCell);
+    checkFaces(leafGrid, expectedLeafFaces, expectedLeafFaceToCell);
+
+    Opm::checkGridWithLgrs(grid,
+                           {{1,2,1}}, // cells_per_dim_vec
+                           {"LGR1"}); //  lgr_name_vec
+}
 
 BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOverlap)
 {
@@ -354,21 +827,20 @@ BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOve
     //                                                   | In LGR1 element 3: (6,2,1) and (6,4,1)
     //                                                   | In LGR1 element 5: (6,4,1)
 
-    const auto& refinedGridData = *grid.currentData()[1];
-    const auto& parentGridData = *grid.currentData()[0];
-    const auto parentElem = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
-
-    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parentElem.index()).size(), 7);
-
-    BOOST_CHECK_EQUAL( refinedGridData.size(3), 40);
-    // LGR1 dims 2x3x2 -> 3x4x3 vertices + 4 extra missing vertices  (6,0,1), (6,2,1), (6,4,1), and (6,6,1).
-    BOOST_CHECK_EQUAL( refinedGridData.numFaces(), 55);
+    const auto& refinedGrid = *grid.currentData()[1];
+    // for LGR1, {nx,ny,nz} = {2,3,2}
+    // (nx+1)*(ny+1)*(nz+1) + "new vertices" = (3x4x3) + 4 = 36 + 4 = 40
+    // new vertices  (6,0,1), (6,2,1), (6,4,1), and (6,6,1).
+    // ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) - vanished faces + new faces = (3x3x2) + (2x4x2) + (2x3x3) - 3 + 6 = 52 - 3 + 6 = 55
     // LGR1 dims 2x3x2 -> 52 faces (before correction due to missing points)
     // 3 of those 52 faces vanished and give origin to 6 new faces: 52 - 3 + 6 = 55 faces
+    checkVertexAndFaceCount(refinedGrid, /* nxnynz = */ {2,3,2}, /* newVertexCount = */ 4,
+                            /* vanishedFaceCount = */ 3, /* newFaceCount = */ 6);
+   
+    // level 0 + level 1 vertices - shared vertices = 16 + 40 - 10 (shared level 0 and 1) = 46
+    // level 0 + level 1 faces - shared/vanished faces = 13 + 55 - 7 (vanished level 0) = 61
+    checkVertexAndFaceLeafCount(grid, /* sharedBetweenLevelsVertexCount = */ 10, /* sharedBetweenLevelsFaceCount = */ 7);
 
-    const auto& leafGridData = grid.currentLeafData();
-    BOOST_CHECK_EQUAL( leafGridData.size(3), 46); // 46 = 40 + 6 (40 in level 1 + 6 vertices from cell_to_point_ from coarse element)
-    BOOST_CHECK_EQUAL( leafGridData.numFaces(), 61); // 61 = 55 + 6 (55 in level 1 + 6 other faces from coarse element)
 
     // Originally, the element not involved in refinement
     // had  7 faces. It's neihgbor in level zero
@@ -453,7 +925,7 @@ BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_trueOriented_nonTrivialOve
             selectedFaceToCoord[11].push_back(expectedNewFaceInFace2);
         }
     }
-    checkNewRefinedFaces(grid, refinedGridData,
+    checkNewRefinedFaces(grid, refinedGrid,
                          selectedFaceToCoord, /* repeatedFaceType = */ 1); // 1-> I+
 
     Opm::checkGridWithLgrs(grid,
@@ -678,8 +1150,6 @@ BOOST_AUTO_TEST_CASE(parentCellWithMoreThanOne_I_FACE_false)
                            /* lgr_name_vec = */ {"LGR1"});
 }
 
-
-
 BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsDifferentLgrs)
 {
     Dune::CpGrid grid;
@@ -830,252 +1300,6 @@ BOOST_AUTO_TEST_CASE(neighboringSingleCellRefinementsSameLgr)
                            {"LGR1"}); // lgr_name_vec
 }
 
-BOOST_AUTO_TEST_CASE(simpleDiffLgr)
-{
-    Dune::CpGrid grid;
-    Opm::createGridAndAddLgrs(grid,
-                              deckTwoCellsInXDirGrid,
-                              /* cells_per_dim_vec */ {{1,2,1}, {1,2,1}},
-                              /* startIJK_vec */      {{0,0,0}, {1,0,0}},
-                              /* endIJK_vec */        {{1,1,1}, {2,1,1}},
-                              /* lgr_name_vec */      {"LGR1", "LGR2"});
-
-    // Element 0 and element 1 in level zero grid share an I_FACE (with face index 2)
-    //
-    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in
-    //                                                   | y- and z- directions:
-    //
-    //              (6,0,9) -----------------(6,6,9)     |  (6,0,9) --(6,3,9)---(6,6,9)
-    //                 |      face idx 3      |          |     |         *         |
-    //              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,3,9)---(6,6,8)
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |      face idx 2      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(6,3,1)---(6,6,1)
-    //                 |      face idx 1      |          |     |         *         |
-    //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,3,0)---(6,6,0)
-    //                                                   |
-    const auto& parentGridData = *grid.currentData()[0];
-    const auto parent0 = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
-    const auto parent1 = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
-
-    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parent0.index()).size(), 7);
-    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parent1.index()).size(), 7);
-
-    const auto& refinedGrid1 = *grid.currentData()[1];
-    BOOST_CHECK_EQUAL( refinedGrid1.size(3), 15);
-    BOOST_CHECK_EQUAL( refinedGrid1.numFaces(), 13);
-
-    const auto& refinedGrid2 = *grid.currentData()[2];
-    BOOST_CHECK_EQUAL( refinedGrid2.size(3), 15);
-    BOOST_CHECK_EQUAL( refinedGrid2.numFaces(), 13);
-
-    const auto& leafGrid = grid.currentLeafData();
-    BOOST_CHECK_EQUAL( leafGrid.size(3), 24);
-    BOOST_CHECK_EQUAL( leafGrid.numFaces(), 24);
-
-
-    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedLGR1Vertices = {
-        {0.,0.,0.}, {0.,0.,8.},              // pillar x = 0,  y = 0
-        {6.,0.,0.}, {6.,0.,1.}, {6.,0.,8.},  // pillar x = 6,  y = 0
-        {0.,3.,0.}, {0.,3.,8.},              // pillar x = 0,  y = 3
-        {6.,3.,0.}, {6.,3.,1.}, {6.,3.,8.},  // pillar x = 6,  y = 3
-        {0.,6.,0.}, {0.,6.,8.},              // pillar x = 0,  y = 6
-        {6.,6.,0.}, {6.,6.,1.}, {6.,6.,8.}   // pillar x = 6,  y = 6
-    };
-
-    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedLGR2Vertices = {
-        {6.,0.,1.}, {6.,0.,8.}, {6.,0.,9.}, // pillar x = 6,  y = 0
-        {12.,0.,1.}, {12.,0.,9.},           // pillar x = 12, y = 0
-        {6.,3.,1.}, {6.,3.,8.}, {6.,3.,9.}, // pillar x = 6,  y = 3
-        {12.,3.,1.}, {12.,3.,9.},           // pillar x = 12, y = 3
-        {6.,6.,1.}, {6.,6.,8.}, {6.,6.,9.}, // pillar x = 6,  y = 6
-        {12.,6.,1.}, {12.,6.,9.}            // pillar x = 12, y = 6
-    };
-
-    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedLeafVertices = {
-        {0.,0.,0.}, {0.,0.,8.},                          // pillar x = 0,  y = 0
-        {6.,0.,0.}, {6.,0.,1.}, {6.,0.,8.}, {6.,0.,9.},  // pillar x = 6,  y = 0
-        {12.,0.,1.}, {12.,0.,9.},                        // pillar x = 12, y = 0
-        {0.,3.,0.}, {0.,3.,8.},                          // pillar x = 0,  y = 3
-        {6.,3.,0.}, {6.,3.,1.}, {6.,3.,8.}, {6.,3.,9.},  // pillar x = 6,  y = 3
-        {12.,3.,1.}, {12.,3.,9.},                        // pillar x = 12, y = 3
-        {0.,6.,0.}, {0.,6.,8.},                          // pillar x = 0,  y = 6
-        {6.,6.,0.}, {6.,6.,1.}, {6.,6.,8.}, {6.,6.,9.},  // pillar x = 6,  y = 6
-        {12.,6.,1.}, {12.,6.,9.}                         // pillar x = 12, y = 6
-    };
-
-    checkLevelVertices(grid, std::vector{expectedLGR1Vertices, expectedLGR2Vertices});
-    checkLeafVertices(grid, expectedLeafVertices);
-
-    const std::vector<std::vector<Coordinate>> expectedLGR1Faces = {
-        {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      // K_FACE   z = 0, face 0
-        {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      // K_FACE   z = 0, face 1
-        {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      // K_FACE   z = 8, face 2
-        {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},      // K_FACE   z = 8, face 3
-        {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      // I_FACE   x = 0, face 4
-        {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},      // I_FACE   x = 0, face 5
-        {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},      // I_FACE   x = 6, face 6
-        {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6, face 7
-        {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      // I_FACE   x = 6, face 8
-        {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6, face 9
-        {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},      // J_FACE   y = 0, face 10
-        {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},      // J_FACE   y = 3, face 11
-        {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}},      // J_FACE   y = 6, face 12
-    };
-
-    const std::vector<std::vector<Coordinate>> expectedLGR2Faces = {
-        {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},    // K_FACE   z = 1,  face 0
-        {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    // K_FACE   z = 1,  face 1
-        {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},    // K_FACE   z = 9,  face 2
-        {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},    // K_FACE   z = 9,  face 3
-        {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6,  face 4
-        {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},      // I_FACE   x = 6,  face 5
-        {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6,  face 6
-        {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},      // I_FACE   x = 6,  face 7
-        {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}},  // I_FACE   x = 12, face 8
-        {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}},  // I_FACE   x = 12, face 9
-        {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},    // J_FACE   y = 0,  face 10
-        {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 11
-        {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    // J_FACE   y = 6,  face 12
-    };
-
-    const std::vector<std::vector<Coordinate>> expectedLeafFaces = {
-        {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      // K_FACE   z = 0,  face 0
-        {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      // K_FACE   z = 0,  face 1
-        {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      // K_FACE   z = 8,  face 2
-        {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},      // K_FACE   z = 8,  face 3
-        {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      // I_FACE   x = 0,  face 6
-        {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},      // I_FACE   x = 0,  face 5
-        {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},      // I_FACE   x = 6,  face 6
-        {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      // I_FACE   x = 6,  face 7
-        {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},      // J_FACE   y = 0,  face 8
-        {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},      // J_FACE   y = 3,  face 9
-        {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}},      // J_FACE   y = 6,  face 10
-        {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},    // K_FACE   z = 1,  face 11
-        {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    // K_FACE   z = 1,  face 12
-        {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},    // K_FACE   z = 9,  face 13
-        {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},    // K_FACE   z = 9,  face 14
-        {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6,  face 15
-        {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},      // I_FACE   x = 6,  face 16
-        {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6,  face 17
-        {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},      // I_FACE   x = 6,  face 18
-        {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}},  // I_FACE   x = 12, face 19
-        {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}},  // I_FACE   x = 12, face 20
-        {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},    // J_FACE   y = 0,  face 21
-        {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 22
-        {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    // J_FACE   y = 6,  face 23
-    };
-
-    checkFaces(refinedGrid1, expectedLGR1Faces);
-    checkFaces(refinedGrid2, expectedLGR2Faces);
-    checkFaces(leafGrid, expectedLeafFaces);
-
-    Opm::checkGridWithLgrs(grid,
-                           {{1,2,1}, {1,2,1}}, // cells_per_dim_vec
-                           {"LGR1", "LGR2"}); // lgr_name_vec
-}
-
-
-BOOST_AUTO_TEST_CASE(simpleSameLgr)
-{
-    Dune::CpGrid grid;
-    Opm::createGridAndAddLgrs(grid,
-                              deckTwoCellsInXDirGrid,
-                              /* cells_per_dim_vec */ {{1,2,1}},
-                              /* startIJK_vec */      {{0,0,0}},
-                              /* endIJK_vec */        {{2,1,1}},
-                              /* lgr_name_vec */      {"LGR1"});
-
-    // Element 0 and element 1 in level zero grid share an I_FACE (with face index 2)
-    //
-    // Vertices of those faces lie on the plane x = 6    | After refinement, number of subdivisions in
-    //                                                   | y- and z- directions:
-    //
-    //              (6,0,9) -----------------(6,6,9)     |  (6,0,9) --(6,3,9)---(6,6,9)
-    //                 |      face idx 3      |          |     |         *         |
-    //              (6,0,8) ---------------- (6,6,8)     |  (6,0,8) --(6,3,9)---(6,6,8)
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |      face idx 2      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //                 |                      |          |     |         *         |
-    //              (6,0,1) -----------------(6,6,1)     |  (6,0,1) --(6,3,1)---(6,6,1)
-    //                 |      face idx 1      |          |     |         *         |
-    //              (6,0,0) -----------------(6,6,0)     |  (6,0,0) --(6,3,0)---(6,6,0)
-    //                                                   |
-    const auto& parentGridData = *grid.currentData()[0];
-    const auto parent0 = Dune::cpgrid::Entity<0>(parentGridData, 0, true);
-    const auto parent1 = Dune::cpgrid::Entity<0>(parentGridData, 1, true);
-
-    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parent0.index()).size(), 7);
-    BOOST_CHECK_EQUAL(parentGridData.cellToFace(parent1.index()).size(), 7);
-
-    const auto& refinedGrid1 = *grid.currentData()[1];
-    BOOST_CHECK_EQUAL( refinedGrid1.size(3), 24);
-    BOOST_CHECK_EQUAL( refinedGrid1.numFaces(), 24);
-
-    const auto& leafGrid = grid.currentLeafData();
-    BOOST_CHECK_EQUAL( leafGrid.size(3), 24);
-    BOOST_CHECK_EQUAL( leafGrid.numFaces(), 24);
-
-    const std::set<Coordinate,Opm::Lgr::FieldVectorLess> expectedVertices = {
-        {0.,0.,0.}, {0.,0.,8.},                          // pillar x = 0,  y = 0
-        {6.,0.,0.}, {6.,0.,1.}, {6.,0.,8.}, {6.,0.,9.},  // pillar x = 6,  y = 0
-        {12.,0.,1.}, {12.,0.,9.},                        // pillar x = 12, y = 0
-        {0.,3.,0.}, {0.,3.,8.},                          // pillar x = 0,  y = 3
-        {6.,3.,0.}, {6.,3.,1.}, {6.,3.,8.}, {6.,3.,9.},  // pillar x = 6,  y = 3
-        {12.,3.,1.}, {12.,3.,9.},                        // pillar x = 12, y = 3
-        {0.,6.,0.}, {0.,6.,8.},                          // pillar x = 0,  y = 6
-        {6.,6.,0.}, {6.,6.,1.}, {6.,6.,8.}, {6.,6.,9.},  // pillar x = 6,  y = 6
-        {12.,6.,1.}, {12.,6.,9.}                         // pillar x = 12, y = 6
-    };
-
-    checkLevelVertices(grid, std::vector{expectedVertices});
-    checkLeafVertices(grid, expectedVertices);
-
-    const std::vector<std::vector<Coordinate>> expectedFaces = {
-        {{0.,0.,0.}, {6.,0.,0.}, {6.,3.,0.}, {0.,3.,0.}},      // K_FACE   z = 0,  face 0
-        {{0.,3.,0.}, {6.,3.,0.}, {6.,6.,0.}, {0.,6.,0.}},      // K_FACE   z = 0,  face 1
-        {{0.,0.,8.}, {6.,0.,8.}, {6.,3.,8.}, {0.,3.,8.}},      // K_FACE   z = 8,  face 2
-        {{0.,3.,8.}, {6.,3.,8.}, {6.,6.,8.}, {0.,6.,8.}},      // K_FACE   z = 8,  face 3
-        {{0.,0.,0.}, {0.,3.,0.}, {0.,3.,8.}, {0.,0.,8.}},      // I_FACE   x = 0,  face 4
-        {{0.,3.,0.}, {0.,6.,0.}, {0.,6.,8.}, {0.,3.,8.}},      // I_FACE   x = 0,  face 5
-        {{6.,0.,0.}, {6.,3.,0.}, {6.,3.,1.}, {6.,0.,1.}},      // I_FACE   x = 6,  face 6
-        {{6.,3.,0.}, {6.,6.,0.}, {6.,6.,1.}, {6.,3.,1.}},      // I_FACE   x = 6,  face 7
-        {{0.,0.,0.}, {6.,0.,0.}, {6.,0.,8.}, {0.,0.,8.}},      // J_FACE   y = 0,  face 8
-        {{0.,3.,0.}, {6.,3.,0.}, {6.,3.,8.}, {0.,3.,8.}},      // J_FACE   y = 3,  face 9
-        {{0.,6.,0.}, {6.,6.,0.}, {6.,6.,8.}, {0.,6.,8.}},      // J_FACE   y = 6,  face 10
-        {{6.,0.,1.}, {12.,0.,1.}, {12.,3.,1.}, {6.,3.,1.}},    // K_FACE   z = 1,  face 11
-        {{6.,3.,1.}, {12.,3.,1.}, {12.,6.,1.}, {6.,6.,1.}},    // K_FACE   z = 1,  face 12
-        {{6.,0.,9.}, {12.,0.,9.}, {12.,3.,9.}, {6.,3.,9.}},    // K_FACE   z = 9,  face 13
-        {{6.,3.,9.}, {12.,3.,9.}, {12.,6.,9.}, {6.,6.,9.}},    // K_FACE   z = 9,  face 14
-        {{6.,0.,1.}, {6.,3.,1.}, {6.,3.,8.}, {6.,0.,8.}},      // I_FACE   x = 6,  face 15
-        {{6.,0.,8.}, {6.,3.,8.}, {6.,3.,9.}, {6.,0.,9.}},      // I_FACE   x = 6,  face 16
-        {{6.,3.,1.}, {6.,6.,1.}, {6.,6.,8.}, {6.,3.,8.}},      // I_FACE   x = 6,  face 17
-        {{6.,3.,8.}, {6.,6.,8.}, {6.,6.,9.}, {6.,3.,9.}},      // I_FACE   x = 6,  face 18
-        {{12.,0.,1.}, {12.,3.,1.}, {12.,3.,9.}, {12.,0.,9.}},  // I_FACE   x = 12, face 19
-        {{12.,3.,1.}, {12.,6.,1.}, {12.,6.,9.}, {12.,3.,9.}},  // I_FACE   x = 12, face 20
-        {{6.,0.,1.}, {12.,0.,1.}, {12.,0.,9.}, {6.,0.,9.}},    // J_FACE   y = 0,  face 21
-        {{6.,3.,1.}, {12.,3.,1.}, {12.,3.,9.}, {6.,3.,9.}},    // J_FACE   y = 3,  face 22
-        {{6.,6.,1.}, {12.,6.,1.}, {12.,6.,9.}, {6.,6.,9.}},    // J_FACE   y = 6,  face 23
-    };
-
-    checkFaces(refinedGrid1, expectedFaces);
-    checkFaces(leafGrid, expectedFaces);
-
-    Opm::checkGridWithLgrs(grid,
-                           {{1,2,1}}, // cells_per_dim_vec
-                           {"LGR1"}); //  lgr_name_vec
-}
 
 // Level zero grid dims = 1x2x1
 //

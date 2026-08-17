@@ -1393,7 +1393,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
             if (!Opm::Lgr::areClose(w,v)) {
                 continue;
             }
-            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+            else {
                 return lastCellAndCorner;
             }
         }
@@ -1553,7 +1553,7 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
             if (!Opm::Lgr::areClose(w,v)) {
                 continue;
             }
-            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+            else { 
                 return lastCellAndCorner;
             }
         }
@@ -1667,7 +1667,7 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
             if (!Opm::Lgr::areClose(w,v)) {
                 continue;
             }
-            else { std::cout<< v[0]<< " " << v[1] << " " << v[2] <<std::endl;
+            else { 
                 return lastCellAndCorner;
             }
         }
