@@ -205,8 +205,11 @@ namespace cpgrid
                     return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
                         transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
                 };
+                // Edge-conformal grids must stay topologically connected: merge removed
+                // cells geometrically instead of bridging them with NNCs.
+                const bool mergeMinPVCells = edge_conformal;
                 minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
-                                          poreVolume, ecl_grid.getMinpvVector(), actnumData, false,
+                                          poreVolume, ecl_grid.getMinpvVector(), actnumData, mergeMinPVCells,
                                           zcornData.data(), nogap, pinchOptionALL,
                                           permZ, multZ, tolerance_unique_points);
                 if (!minpv_result.nnc.empty()) {
@@ -224,6 +227,11 @@ namespace cpgrid
 
             // Add PINCH NNCs.
             std::vector<Opm::NNCdata> pinchedNNCs;
+            if (edge_conformal) {
+                // Merged (not bridged) cells: an edge-conformal grid must not
+                // produce artificial faces via MINPV NNCs.
+                assert(minpv_result.nnc.empty());
+            }
 
             for (const auto& [cell1, cell2] : minpv_result.nnc) {
                 nnc_cells[PinchNNC].insert({cell1, cell2});
@@ -416,12 +424,21 @@ namespace cpgrid
         }
         else {
             // Make the grid.
+            auto pinchActive_copy = pinchActive;
+            if (edge_conformal) {
+                // Edge-conformal grids merged all removed cells geometrically;
+                // there must be no NNC bridging, and pinch handling must treat
+                // the merged columns as active gaps.
+                pinchActive_copy = true;
+                assert(nnc_cells[PinchNNC].empty());
+                assert(nnc_cells[ExplicitNNC].empty());
+            }
             this->processEclipseFormat(g,
                                        ecl_state,
                                        nnc_cells,
                                        false,
                                        turn_normals,
-                                       pinchActive,
+                                       pinchActive_copy,
                                        tolerance_unique_points,
                                        edge_conformal);
         }
