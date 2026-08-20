@@ -33,7 +33,6 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
-  opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
