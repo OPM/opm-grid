@@ -158,9 +158,10 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @return
-            const LocalGeometry& geometryInInside() const
+            [[noreturn]] const LocalGeometry& geometryInInside() const
             {
                 OPM_THROW(std::runtime_error, "This intersection class does not support geometryInInside().");
+                __builtin_unreachable();
             }
 
             // Geometrical information about this intersection in
@@ -168,12 +169,13 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @return
-            const LocalGeometry& geometryInOutside() const
+            [[noreturn]] const LocalGeometry& geometryInOutside() const
             {
                 if (boundary()) {
                     OPM_THROW(std::runtime_error, "Cannot access geometryInOutside(), intersection is at a boundary.");
                 }
                 OPM_THROW(std::runtime_error, "This intersection class does not support geometryInOutside().");
+                __builtin_unreachable();
             }
 
             /// @brief
