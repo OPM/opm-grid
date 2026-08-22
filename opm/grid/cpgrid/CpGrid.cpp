@@ -218,7 +218,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool allowDistributedWells,
                     [[maybe_unused]] const std::vector<int>& input_cell_part,
                     int level,
-                    [[maybe_unused]] bool useTransToFilterOverlap)
+                    [[maybe_unused]] bool useTransToFilterOverlap,
+                    [[maybe_unused]] const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                    [[maybe_unused]] double coarseThreshold,
+                    [[maybe_unused]] int coarsePartitionMaxNodeSize)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -227,6 +230,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     static_cast<void>(method);
     static_cast<void>(imbalanceTol);
     static_cast<void>(level);
+    static_cast<void>(transGraph);
+    static_cast<void>(coarseThreshold);
+    static_cast<void>(coarsePartitionMaxNodeSize);
 
     if(!distributed_data_.empty())
     {
@@ -381,8 +387,17 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
-            }
-            else
+            } else if (partitionMethod == Dune::PartitionMethod::zoltanCG)
+            {
+#ifdef HAVE_ZOLTAN
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
+                    = serialPartitioning
+                    ? Opm::zoltanSerialPartitioningWithCoarseGraph(*this, wells, possibleFutureConnections, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, transGraph, coarseThreshold, coarsePartitionMaxNodeSize)
+                    : Opm::zoltanPartitioningWithCoarseGraph(*this, wells, possibleFutureConnections, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, transGraph, coarseThreshold, coarsePartitionMaxNodeSize);
+#else
+        OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
+#endif // HAVE_ZOLTAN
+            } else
             {
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
                     cpgrid::vanillaPartitionGridOnRoot(*this, wells, possibleFutureConnections, transmissibilities, allowDistributedWells);

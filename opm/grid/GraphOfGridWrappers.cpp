@@ -32,9 +32,10 @@
 namespace Opm {
 
 #if HAVE_MPI
+template <typename GraphType>
 int getGraphOfGridNumVertices(void* pGraph, int *err)
 {
-    const GraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const GraphOfGrid<Dune::CpGrid>*>(pGraph);
+    const GraphType&  gog = *static_cast<const GraphType*>(pGraph);
     int size = gog.size();
     *err = ZOLTAN_OK;
     return size;
@@ -131,12 +132,90 @@ void getGraphOfGridEdgeList(void *pGraph,
     *err = ZOLTAN_OK;
 }
 
-template<typename Zoltan_Struct>
+void getCoarseGraphVerticesList(void* pGraph,
+               [[maybe_unused]] int dimGlobalID,
+               [[maybe_unused]] int dimLocalID,
+                                ZOLTAN_ID_PTR gIDs,
+               [[maybe_unused]] ZOLTAN_ID_PTR lIDs,
+                                int weightDim,
+                                float *objWeights,
+                                int *err)
+{
+    assert(dimGlobalID==1); // ID is a single int
+    assert(weightDim==1); // vertex weight is a single float
+    const CoarseGraphOfGrid<Dune::CpGrid>& gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
+    const std::vector<std::vector<int>>& cnodes = gog.getCoarseNodes();
+    int i=0;
+    for (const auto& v : cnodes)
+    {
+        gIDs[i] = i;
+        // lIDs are left unused
+        objWeights[i] = v.size();
+        ++i;
+    }
+    *err = ZOLTAN_OK;
+}
+void getCoarseGraphNumEdges(void *pGraph,
+           [[maybe_unused]] int dimGlobalID,
+           [[maybe_unused]] int dimLocalID,
+           [[maybe_unused]] int numCells,
+                            ZOLTAN_ID_PTR gIDs,
+           [[maybe_unused]] ZOLTAN_ID_PTR lIDs,
+                            int *numEdges,
+                            int *err)
+{
+    assert(dimGlobalID==1); // ID is a single int
+    const CoarseGraphOfGrid<Dune::CpGrid>& gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
+
+    const std::vector<std::map<int, double> >& edges = gog.getCoarseEdges();
+
+    for (size_t idx = 0; idx < edges.size(); ++idx)
+    {
+        numEdges[idx] = edges[gIDs[idx]].size();
+    }
+    
+    *err = ZOLTAN_OK;
+}
+
+void getCoarseGraphEdgeList(void *pGraph,
+           [[maybe_unused]] int dimGlobalID,
+           [[maybe_unused]] int dimLocalID,
+           [[maybe_unused]] int numCells,
+           [[maybe_unused]] ZOLTAN_ID_PTR gIDs,
+           [[maybe_unused]] ZOLTAN_ID_PTR lIDs,
+           [[maybe_unused]] int *numEdges,
+                            ZOLTAN_ID_PTR nborGIDs,
+                            int *nborProc,
+                            int weightDim,
+                            float *edgeWeights,
+                            int *err)
+{
+    assert(dimGlobalID==1); // ID is a single int
+    assert(weightDim==1); // edge weight is a single float
+    const CoarseGraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
+    const std::vector<std::map<int, double> >& edges = gog.getCoarseEdges();
+    int id=0;
+
+    const auto& rank = gog.getGrid().comm().rank();
+    for (const auto& node : edges)
+    {
+        for (const auto& edge : node) {
+            nborGIDs[id] = edge.first;
+            edgeWeights[id] = edge.second;
+            nborProc[id++] = rank;
+        }
+    }
+    
+    *err = ZOLTAN_OK;
+}
+
+template<typename Zoltan_Struct, typename GraphType>
 void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        GraphOfGrid<Dune::CpGrid>& gog,
+                                        GraphType& gog,
                                         bool pretendNull)
 {
-    GraphOfGrid<Dune::CpGrid>* pGraph = &gog;
+    using DecayedGraph = std::decay_t<GraphType>;
+    GraphType* pGraph = &gog;
     if (pretendNull)
     {
         Zoltan_Set_Num_Obj_Fn(zz, Dune::cpgrid::getNullNumCells, pGraph);
@@ -146,12 +225,21 @@ void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
     }
     else
     {
-        Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices, pGraph);
-        Zoltan_Set_Obj_List_Fn(zz, getGraphOfGridVerticesList, pGraph);
-        Zoltan_Set_Num_Edges_Multi_Fn(zz, getGraphOfGridNumEdges, pGraph);
-        Zoltan_Set_Edge_List_Multi_Fn(zz, getGraphOfGridEdgeList, pGraph);
+        if constexpr (std::is_same_v<DecayedGraph, GraphOfGrid<Dune::CpGrid>>) {
+            Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices, pGraph);
+            Zoltan_Set_Obj_List_Fn(zz, getGraphOfGridVerticesList, pGraph);
+            Zoltan_Set_Num_Edges_Multi_Fn(zz, getGraphOfGridNumEdges, pGraph);
+            Zoltan_Set_Edge_List_Multi_Fn(zz, getGraphOfGridEdgeList, pGraph);
+        }
+        else if constexpr (std::is_same_v<DecayedGraph, CoarseGraphOfGrid<Dune::CpGrid>>) {
+            Zoltan_Set_Num_Obj_Fn(zz, getGraphOfGridNumVertices<GraphType>, pGraph);
+            Zoltan_Set_Obj_List_Fn(zz, getCoarseGraphVerticesList, pGraph);
+            Zoltan_Set_Num_Edges_Multi_Fn(zz, getCoarseGraphNumEdges, pGraph);
+            Zoltan_Set_Edge_List_Multi_Fn(zz, getCoarseGraphEdgeList, pGraph);
+        }
     }
 }
+
 #endif // HAVE_MPI
 
 void addFutureConnectionWells(GraphOfGrid<Dune::CpGrid>& gog,
@@ -209,9 +297,9 @@ void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
 
 #if HAVE_MPI
 namespace Impl{
-
+template<class GOG>
 std::vector<std::vector<int>>
-extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
+extendRootExportList(const GOG& gog,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      int root,
                      const std::vector<int>& gIDtoRank)
@@ -491,6 +579,128 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                             std::move(myImportList) );
 }
 
+template<class Id>
+std::tuple<std::vector<int>,
+           std::vector<std::pair<std::string, bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> > >
+makeImportAndExportLists(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
+                         const Dune::Communication<MPI_Comm>& cc,
+                         const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                         const Dune::cpgrid::WellConnections& wellConnections,
+                         const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                         int root,
+                         int numExport,
+                         int numImport,
+        [[maybe_unused]] const Id* exportLocalGids,
+                         const Id* exportGlobalGids,
+                         const int* exportToPart,
+        [[maybe_unused]] const Id* importGlobalGids,
+                         bool allowDistributedWells)
+{
+    int size = gog.getMapToCoarse().size();
+    cc.broadcast(&size, 1, root);
+    int rank  = cc.rank();
+    std::vector<int> gIDtoRank(size, rank);
+    std::vector<std::vector<int> > wellsOnProc;
+
+    // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
+    std::vector<std::tuple<int,int,char>> myExportList;
+    // List entry: process to import from, global index, process rank, attribute here, local index (determined later)
+    std::vector<std::tuple<int,int,char,int>> myImportList;
+    float buffer = 1.05; // to allocate extra space for wells in myExportList and myImportList
+    assert(rank==root || numExport==0);
+    assert(rank!=root || numImport==0);
+    // all cells on root are added to its export and its import list
+    std::size_t reserveEx = rank!=root ? 0 : size;
+    std::size_t reserveIm = size*buffer/cc.size();
+    myExportList.reserve(reserveEx);
+    myImportList.reserve(reserveIm);
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+
+    std::vector<std::vector<int>> importListFromRoot(cc.size());
+    std::vector<int> sizeOfImport(cc.size(), 0);
+    if (rank==root)
+    {
+        std::vector<int> coarsePartRes(gog.size(), root);
+        auto cnodes = gog.getCoarseNodes();
+        for ( int i=0; i < numExport; ++i )
+        {
+            coarsePartRes[exportGlobalGids[i]] = exportToPart[i];
+            sizeOfImport[exportToPart[i]] += cnodes[exportGlobalGids[i]].size(); 
+        }
+
+        const std::vector<int> m2c = gog.getMapToCoarse();
+        for (int i = 0; i < size; ++i) {
+
+            gIDtoRank[i] = coarsePartRes[m2c[i]];
+            myExportList.emplace_back(i, coarsePartRes[m2c[i]], static_cast<char>(AttributeSet::owner));
+        }
+
+        for ( std::size_t i = 0; i < gIDtoRank.size(); ++i)
+        {
+            if ( gIDtoRank[i] == rank )
+            {
+                myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
+            }
+            else {
+                importListFromRoot[gIDtoRank[i]].emplace_back(i);
+            }
+        }
+    }
+    std::vector<int> newImportList;
+    int newNumImport;
+    if (cc.rank() == root) {
+        std::vector<MPI_Request> requestSize(2 * (cc.size() - 1));
+        
+        for (int i = 0; i < cc.size() - 1; ++i) {
+            int ii = i + (int)(i >= root); // ii takes values {0,...,mpisize-1} but skips root
+            int tag = 15; // a random number
+            MPI_Isend(&sizeOfImport[ii], 1, MPI_INT, ii, tag, cc, &requestSize[2 * i]);
+            MPI_Isend(importListFromRoot[ii].data(), sizeOfImport[ii], MPI_INT,ii, tag + 1, cc, &requestSize[2 * i + 1]);
+        }
+        newNumImport = 0;
+        MPI_Waitall(requestSize.size(), requestSize.data(), MPI_STATUS_IGNORE);
+    } else {
+        int tag = 15; // a random number
+        MPI_Recv(&newNumImport, 1, MPI_INT, root, tag, cc, MPI_STATUS_IGNORE);
+        newImportList.resize(newNumImport);
+        MPI_Recv(newImportList.data(), newNumImport, MPI_INT, root, tag + 1, cc, MPI_STATUS_IGNORE);
+    }
+
+    for ( int i=0; i < newNumImport; ++i )
+    {
+        myImportList.emplace_back(newImportList[i], root, static_cast<char>(AttributeSet::owner), -1);
+    }
+    std::vector<std::pair<std::string, bool>> parallel_wells;
+    if( wells )
+    {
+        if (allowDistributedWells) {
+            wellsOnProc = Dune::cpgrid::perforatingWellIndicesOnProc(gIDtoRank, *wells,
+                                                                     possibleFutureConnections,
+                                                                     gog.getGrid());
+            parallel_wells = Dune::cpgrid::computeParallelWells(wellsOnProc,
+                                                                *wells,
+                                                                cc,
+                                                                root);
+        }
+        else {
+            auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
+            parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
+        }
+    }
+    else
+    {
+        std::ranges::sort(myExportList);
+        std::ranges::sort(myImportList);
+    }
+    return std::make_tuple( std::move(gIDtoRank),
+                            std::move(parallel_wells),
+                            std::move(myExportList),
+                            std::move(myImportList) );
+
+}
+
 namespace {
 void setDefaultZoltanParameters(Zoltan_Struct* zz)
 {
@@ -654,6 +864,115 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     return importExportLists;
 }
 
+std::tuple<std::vector<int>, std::vector<std::pair<std::string, bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> >,
+           Dune::cpgrid::WellConnections>
+zoltanPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
+                                  const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                                  const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                                  const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                  Dune::EdgeWeightMethod edgeWeightMethod,
+                                  int root,
+                                  const double zoltanImbalanceTol,
+                                  bool allowDistributedWells,
+                                  const std::map<std::string,std::string>& params,
+                                  const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                                  double coarseThreshold,
+                                  int coarsePartitionMaxNodeSize)
+{
+    float ver = 0;
+    struct Zoltan_Struct *zz;
+    int changes, numGidEntries, numLidEntries, numImport, numExport;
+    ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
+    int *importProcs, *importToPart, *exportProcs, *exportToPart;
+    int argc=0;
+    char** argv = 0 ;
+    int rc = Zoltan_Initialize(argc, argv, &ver);
+    if (rc != ZOLTAN_OK) {
+        OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+    }
+    zz = Zoltan_Create(cc);
+    if (zz == nullptr) {
+        OPM_THROW(std::runtime_error, "Could not create Zoltan data structures!");
+    }
+    setDefaultZoltanParameters(zz);
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
+
+    for (const auto& [key, value] : params)
+    {
+        Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+    }
+
+    // root process has the whole grid, other ranks nothing
+    bool partitionIsEmpty = cc.rank()!=root;
+
+    auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
+        : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
+
+    // prepare graph and contract well cells
+    // non-root processes have empty grid and no wells
+    CoarseGraphOfGrid cgog(grid, edgeWeightMethod, transGraph,
+                           coarseThreshold, coarsePartitionMaxNodeSize,
+                           allowDistributedWells, root, wellConnections);
+    
+    assert(cgog.size()==0 || !partitionIsEmpty);
+
+    // call partitioner
+    setGraphOfGridZoltanGraphFunctions(zz, cgog, partitionIsEmpty);
+    rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
+                             &changes,        /* 1 if partitioning was changed, 0 otherwise */
+                             &numGidEntries,  /* Number of integers used for a global ID */
+                             &numLidEntries,  /* Number of integers used for a local ID */
+                             &numImport,      /* Number of vertices to be sent to me */
+                             &importGlobalGids,  /* Global IDs of vertices to be sent to me */
+                             &importLocalGids,   /* Local IDs of vertices to be sent to me */
+                             &importProcs,    /* Process rank for source of each incoming vertex */
+                             &importToPart,   /* New partition for each incoming vertex */
+                             &numExport,      /* Number of vertices I must send to other processes*/
+                             &exportGlobalGids,  /* Global IDs of the vertices I must send */
+                             &exportLocalGids,   /* Local IDs of the vertices I must send */
+                             &exportProcs,    /* Process to which I send each of the vertices */
+                             &exportToPart);  /* Partition to which each vertex will belong */
+    if (rc == ZOLTAN_WARN) {
+        OpmLog::warning("Zoltan_LB_Partition returned with warning");
+    } else if (rc == ZOLTAN_MEMERR) {
+        OPM_THROW(std::runtime_error, "Memory allocation failure in Zoltan_LB_Partition");
+    } else if (rc == ZOLTAN_FATAL) {
+        OPM_THROW(std::runtime_error, "Error returned from Zoltan_LB_Partition");
+    }
+
+    // arrange output into tuples and add well cells
+    auto prepareIELists = [&]() {
+        
+        auto partResult = makeImportAndExportLists(cgog,
+                                                   cc,
+                                                   wells,
+                                                   wellConnections,
+                                                   possibleFutureConnections,
+                                                   root,
+                                                   numExport,
+                                                   numImport,
+                                                   exportLocalGids,
+                                                   exportGlobalGids,
+                                                   exportProcs,
+                                                   importGlobalGids,
+                                                   allowDistributedWells);
+        return std::tuple(std::move(std::get<0>(partResult)),
+                          std::move(std::get<1>(partResult)),
+                          std::move(std::get<2>(partResult)),
+                          std::move(std::get<3>(partResult)),
+                          std::move(wellConnections));
+    };
+    auto importExportLists = prepareIELists();
+
+    Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
+    Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
+    Zoltan_Destroy(&zz);
+
+    return importExportLists;
+}
+
 std::vector<std::vector<int> >
 makeExportListsFromGIDtoRank(const std::vector<int>& gIDtoRank, int ccsize)
 {
@@ -750,6 +1069,88 @@ applySerialZoltan (const Dune::CpGrid& grid,
     Zoltan_Destroy(&zz);
     return std::make_tuple(rc, gIDtoRank);
 }
+
+std::tuple<int, std::vector<int>>
+applySerialZoltanCG (const Dune::CpGrid& grid,
+                     const Dune::cpgrid::WellConnections& wellConnections,
+                     int numParts,
+                     Dune::EdgeWeightMethod edgeWeightMethod,
+                     int root,
+                     const double zoltanImbalanceTol,
+                     bool allowDistributedWells,
+                     const std::map<std::string, std::string>& params,
+                     const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                     double coarseThreshold,
+                     int coarsePartitionMaxNodeSize)
+{
+    int rc = ZOLTAN_OK;
+    ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
+    int numExport = 0, numImport = 0;
+    int *importProcs, *importToPart, *exportProcs, *exportToPart;
+    struct Zoltan_Struct* zz;
+    int changes, numGidEntries, numLidEntries;
+
+    int argc = 0;
+    char** argv = 0;
+    float ver = 0;
+    std::vector<int> gIDtoRank;
+
+    rc = Zoltan_Initialize(argc, argv, &ver);
+    if (rc != ZOLTAN_OK)
+        return std::make_tuple(ZOLTAN_OK + 1, gIDtoRank);
+    zz = Zoltan_Create(MPI_COMM_SELF);
+    if (!zz)
+        return std::make_tuple(ZOLTAN_OK + 2, gIDtoRank);
+    setDefaultZoltanParameters(zz);
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
+    Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(numParts).c_str());
+    
+    for (const auto& [key, value] : params) {
+        Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+    }
+
+    // prepare graph and contract well cells
+    CoarseGraphOfGrid cgog(grid, edgeWeightMethod, transGraph,
+                           coarseThreshold, coarsePartitionMaxNodeSize,
+                           allowDistributedWells, root, wellConnections);
+    
+
+    // call partitioner
+    setGraphOfGridZoltanGraphFunctions(zz, cgog, false);
+    rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
+                             &changes, /* 1 if partitioning was changed, 0 otherwise */
+                             &numGidEntries, /* Number of integers used for a global ID */
+                             &numLidEntries, /* Number of integers used for a local ID */
+                             &numImport, /* Number of vertices to be sent to me */
+                             &importGlobalGids, /* Global IDs of vertices to be sent to me */
+                             &importLocalGids, /* Local IDs of vertices to be sent to me */
+                             &importProcs, /* Process rank for source of each incoming vertex */
+                             &importToPart, /* New partition for each incoming vertex */
+                             &numExport, /* Number of vertices I must send to other processes*/
+                             &exportGlobalGids, /* Global IDs of the vertices I must send */
+                             &exportLocalGids, /* Local IDs of the vertices I must send */
+                             &exportProcs, /* Process to which I send each of the vertices */
+                             &exportToPart); /* Partition to which each vertex will belong */
+    numImport = 0;
+    if (rc == ZOLTAN_OK) {
+        gIDtoRank.resize(grid.numCells(), root);
+        std::vector<int> coarsePartRes(cgog.size(), root);
+        const std::vector<int> m2c = cgog.getMapToCoarse();
+        for (int i = 0; i < numExport; ++i) {
+            coarsePartRes[exportGlobalGids[i]] = exportToPart[i];
+        }
+        for (int i = 0; i < grid.numCells(); ++i) {
+            gIDtoRank[i] = coarsePartRes[m2c[i]];
+        }
+            
+    } else {
+        rc = ZOLTAN_OK + 3; // distinguish Zoltan failures
+    }
+    Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
+    Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
+    Zoltan_Destroy(&zz);
+    return std::make_tuple(rc, gIDtoRank);
+}
 } // end anonymous namespace
 
 std::tuple<std::vector<int>,
@@ -789,6 +1190,108 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                                     zoltanImbalanceTol,
                                                     allowDistributedWells,
                                                     params);
+    }
+
+    cc.broadcast(&rc, 1, root);
+    if (rc != ZOLTAN_OK) {
+        switch (rc) {
+        case ZOLTAN_OK+1:
+            OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+        case ZOLTAN_OK+2:
+            OPM_THROW(std::runtime_error, "Could not create Zoltan!");
+        case ZOLTAN_OK+3:
+            OPM_THROW(std::runtime_error, "Partitioning with Zoltan failed!");
+        default:
+            OPM_THROW(std::runtime_error, "Unknown error reported by Zoltan!");
+        }
+    }
+
+    if (cc.rank() == root) {
+        // prepare exportedCells for communication
+        exportedCells = makeExportListsFromGIDtoRank(gIDtoRank, cc.size());
+        myImportList.reserve(exportedCells[root].size());
+        for (const auto& cell : exportedCells[root]) {
+            myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
+        }
+        // exclude root's own cells from communication
+        exportedCells[root].resize(0);
+    }
+    // communicate and create import+export lists
+    auto importedCells = Opm::Impl::communicateExportedCells(exportedCells, cc, root);
+    if (cc.rank() == root) {
+        myExportList.reserve(grid.numCells());
+        for (int i = 0; i < grid.numCells(); ++i) {
+            myExportList.emplace_back(i, gIDtoRank[i], static_cast<char>(AttributeSet::owner));
+        }
+    } else {
+        myImportList.reserve(importedCells.size());
+        for (const auto& cell : importedCells) {
+            myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
+        }
+    }
+
+    // get the distribution of wells
+    std::vector<std::pair<std::string, bool>> parallel_wells;
+    if (wells) {
+        if (allowDistributedWells) {
+            // wells can be split among several processes
+            auto wellsOnProc = Dune::cpgrid::perforatingWellIndicesOnProc(gIDtoRank, *wells, possibleFutureConnections, grid);
+            parallel_wells = Dune::cpgrid::computeParallelWells(wellsOnProc, *wells, cc, root);
+        } else {
+            // each well is guaranteed to be on a single process
+            auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
+            parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
+        }
+    }
+
+    return std::make_tuple(std::move(gIDtoRank),
+                           std::move(parallel_wells),
+                           std::move(myExportList),
+                           std::move(myImportList),
+                           std::move(wellConnections));
+}
+
+std::tuple<std::vector<int>,
+           std::vector<std::pair<std::string, bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> >,
+           Dune::cpgrid::WellConnections>
+zoltanSerialPartitioningWithCoarseGraph(const Dune::CpGrid& grid,
+                                        const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                                        const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                                        const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                        Dune::EdgeWeightMethod edgeWeightMethod,
+                                        int root,
+                                        const double zoltanImbalanceTol,
+                                        bool allowDistributedWells,
+                                        const std::map<std::string, std::string>& params,
+                                        const Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>* transGraph,
+                                        double coarseThreshold,
+                                        int coarsePartitionMaxNodeSize)
+{
+    // root process has the whole grid, other ranks nothing
+    bool partitionIsEmpty = cc.rank() != root;
+    int rc = ZOLTAN_OK;
+    std::vector<int> gIDtoRank;
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+    std::vector<std::tuple<int, int, char>> myExportList;
+    std::vector<std::tuple<int, int, char, int>> myImportList;
+    std::vector<std::vector<int>> exportedCells;
+    auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
+                                                      : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
+
+    if (cc.rank() == root) {
+        std::tie(rc, gIDtoRank) = applySerialZoltanCG(grid,
+                                                      wellConnections,
+                                                      cc.size(),
+                                                      edgeWeightMethod,
+                                                      root,
+                                                      zoltanImbalanceTol,
+                                                      allowDistributedWells,
+                                                      params,
+                                                      transGraph,
+                                                      coarseThreshold,
+                                                      coarsePartitionMaxNodeSize);
     }
 
     cc.broadcast(&rc, 1, root);
