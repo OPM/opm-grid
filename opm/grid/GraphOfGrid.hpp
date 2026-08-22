@@ -179,6 +179,9 @@ public:
         }
     }
 
+    /// \brief Multiply edges between well cells by a factor
+    void multiplyWellConnectivity (const std::set<int>& well, const WeightType& factor);
+
 private:
     /// \brief Create a graph representation of the grid
     ///
