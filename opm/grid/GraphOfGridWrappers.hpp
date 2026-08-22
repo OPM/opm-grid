@@ -30,7 +30,9 @@
 
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/common/WellConnections.hpp>
+#if HAVE_ZOLTAN
 #include <opm/grid/common/ZoltanGraphFunctions.hpp> // defines Zoltan and null-callback-functions
+#endif
 
 namespace Opm {
 /*
@@ -40,7 +42,7 @@ namespace Opm {
   Additionally, parsing wells is done here.
 */
 
-#if HAVE_MPI
+#if HAVE_MPI && HAVE_ZOLTAN
 /// \brief callback function for ZOLTAN_NUM_OBJ_FN
 ///
 /// returns the number of vertices in the graph
@@ -97,7 +99,7 @@ template<typename Zoltan_Struct>
 void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
                                         GraphOfGrid<Dune::CpGrid>& gog,
                                         bool pretendNull);
-#endif
+#endif // HAVE_MPI && HAVE_ZOLTAN
 
 /// \brief Adds well to the GraphOfGrid
 ///
@@ -217,6 +219,7 @@ wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
                 const Dune::cpgrid::CpGridDataTraits::Communication& cc,
                 int root);
 
+#if HAVE_ZOLTAN
 /// \brief Transform Zoltan output into tuples
 ///
 /// \param gog GraphOfGrid, has ref. to CpGrid and knows how well-cells were contracted
@@ -273,6 +276,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   bool allowDistributedWells,
                                   const std::map<std::string,std::string>& params,
                                   int level);
+#endif // HAVE_ZOLTAN
 
 /// \brief Make complete export lists from a vector holding destination rank for each global ID
 ///
@@ -284,6 +288,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 std::vector<std::vector<int> >
 makeExportListsFromGIDtoRank(const std::vector<int>& gIDtoRank, int ccsize);
 
+#if HAVE_ZOLTAN
 /// \brief Call serial Zoltan partitioner on GraphOfGrid
 ///
 /// GraphOfGrid represents a well by one vertex, so wells can not be
@@ -302,6 +307,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                         const double zoltanImbalanceTol,
                                         bool allowDistributedWells,
                                         const std::map<std::string,std::string>& params);
+#endif // HAVE_ZOLTAN
 #endif // HAVE_MPI
 
 } // end namespace Opm
