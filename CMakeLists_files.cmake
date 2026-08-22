@@ -33,7 +33,6 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
-  opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
@@ -100,6 +99,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
   tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/partition_of_unity_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
