@@ -25,6 +25,7 @@
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/UnstructuredGrid.h>
 
 namespace Dune
 {
@@ -144,6 +145,196 @@ void CpGridData::computeUniqueBoundaryIds()
     std::cout << "computeUniqueBoundaryIds() gave all boundary intersections\n"
               << "unique boundaryId()s ranging from 1 to " << count << std::endl;
 #endif
+}
+
+void CpGridData::processUnstructuredGrid(const UnstructuredGrid& input_grid)
+{
+    if (input_grid.dimensions != 3) {
+        OPM_THROW(std::runtime_error,
+                  "CpGrid::processUnstructuredGrid() currently requires a 3D grid.");
+    }
+    if (!input_grid.cell_facetag) {
+        OPM_THROW(std::runtime_error,
+                  "CpGrid::processUnstructuredGrid() requires cell facetags for Phase 1.");
+    }
+
+    const int num_cells = input_grid.number_of_cells;
+    const int num_faces = input_grid.number_of_faces;
+    const int num_nodes = input_grid.number_of_nodes;
+
+    face_to_cell_.clear();
+    face_to_point_.clear();
+    cell_to_face_.clear();
+    cell_to_point_.clear();
+    aquifer_cells_.clear();
+    zcorn.clear();
+
+    std::vector<int> face_axis_tag(num_faces, -1);
+
+    for (int cell = 0; cell < num_cells; ++cell) {
+        const auto begin = input_grid.cell_facepos[cell];
+        const auto end = input_grid.cell_facepos[cell + 1];
+        for (auto pos = begin; pos < end; ++pos) {
+            const int face = input_grid.cell_faces[pos];
+            const int facetag = input_grid.cell_facetag[pos];
+            const int axis = facetag / 2;
+            if (axis < 0 || axis > 2) {
+                OPM_THROW(std::runtime_error,
+                          "CpGrid::processUnstructuredGrid() found invalid face tag.");
+            }
+            if (face_axis_tag[face] == -1) {
+                face_axis_tag[face] = axis;
+            } else if (face_axis_tag[face] != axis) {
+                OPM_THROW(std::runtime_error,
+                          "CpGrid::processUnstructuredGrid() found inconsistent facetags for a face.");
+            }
+        }
+    }
+
+    for (int face = 0; face < num_faces; ++face) {
+        cpgrid::EntityRep<0> cells[2];
+        int cell_count = 0;
+
+        const int c0 = input_grid.face_cells[2 * face];
+        const int c1 = input_grid.face_cells[2 * face + 1];
+
+        if (c0 != -1) {
+            cells[cell_count++].setValue(c0, true);
+        }
+        if (c1 != -1) {
+            cells[cell_count++].setValue(c1, false);
+        }
+
+        if (cell_count > 0) {
+            std::sort(cells, cells + cell_count);
+            face_to_cell_.appendRow(cells, cells + cell_count);
+        }
+
+        const auto fn_begin = input_grid.face_nodepos[face];
+        const auto fn_end = input_grid.face_nodepos[face + 1];
+        face_to_point_.appendRow(input_grid.face_nodes + fn_begin,
+                                 input_grid.face_nodes + fn_end);
+    }
+
+    face_to_cell_.makeInverseRelation(cell_to_face_);
+
+    cell_to_point_.reserve(num_cells);
+    for (int cell = 0; cell < num_cells; ++cell) {
+        int bot_face = -1;
+        int top_face = -1;
+
+        const auto begin = input_grid.cell_facepos[cell];
+        const auto end = input_grid.cell_facepos[cell + 1];
+
+        for (auto pos = begin; pos < end; ++pos) {
+            const int face = input_grid.cell_faces[pos];
+            const int facetag = input_grid.cell_facetag[pos];
+            if (facetag == 4) {
+                bot_face = face;
+            } else if (facetag == 5) {
+                top_face = face;
+            }
+        }
+
+        if (bot_face < 0 || top_face < 0) {
+            OPM_THROW(std::runtime_error,
+                      "CpGrid::processUnstructuredGrid() requires K-/K+ tagged faces for each cell.");
+        }
+
+        const auto bfbegin = input_grid.face_nodepos[bot_face];
+        const auto bfend = input_grid.face_nodepos[bot_face + 1];
+        const auto tfbegin = input_grid.face_nodepos[top_face];
+        const auto tfend = input_grid.face_nodepos[top_face + 1];
+
+        if ((bfend - bfbegin) != 4 || (tfend - tfbegin) != 4) {
+            OPM_THROW(std::runtime_error,
+                      "CpGrid::processUnstructuredGrid() requires quadrilateral K-faces.");
+        }
+
+        std::array<int, 8> corners = {{ input_grid.face_nodes[bfbegin],
+                                        input_grid.face_nodes[bfbegin + 1],
+                                        input_grid.face_nodes[bfbegin + 3],
+                                        input_grid.face_nodes[bfbegin + 2],
+                                        input_grid.face_nodes[tfbegin],
+                                        input_grid.face_nodes[tfbegin + 1],
+                                        input_grid.face_nodes[tfbegin + 3],
+                                        input_grid.face_nodes[tfbegin + 2] }};
+
+        //std::array<int, 8> sorted_corners = corners;
+        //std::sort(sorted_corners.begin(), sorted_corners.end());
+        //const auto unique_end = std::unique(sorted_corners.begin(), sorted_corners.end());
+        //if (std::distance(sorted_corners.begin(), unique_end) != 8) {
+        //    OPM_THROW(std::runtime_error,
+        //              "CpGrid::processUnstructuredGrid() requires cells with exactly eight unique corners.");
+        //}
+
+        cell_to_point_.push_back(corners);
+    }
+
+    global_cell_.resize(num_cells);
+    if (input_grid.global_cell) {
+        std::copy_n(input_grid.global_cell, num_cells, global_cell_.begin());
+    } else {
+        std::iota(global_cell_.begin(), global_cell_.end(), 0);
+    }
+
+    std::copy_n(input_grid.cartdims, 3, logical_cartesian_size_.begin());
+
+    auto point_geom = geometry_.geomVector(std::integral_constant<int, 3>());
+    auto face_geom = geometry_.geomVector(std::integral_constant<int, 1>());
+    auto cell_geom = geometry_.geomVector(std::integral_constant<int, 0>());
+
+    point_geom->resize(num_nodes);
+    face_geom->resize(num_faces);
+    cell_geom->resize(num_cells);
+    face_normals_.resize(num_faces);
+
+    for (int node = 0; node < num_nodes; ++node) {
+        Geometry<0, 3>::GlobalCoordinate pos;
+        for (int d = 0; d < 3; ++d) {
+            pos[d] = input_grid.node_coordinates[3 * node + d];
+        }
+        (*point_geom)[cpgrid::EntityRep<3>(node, true)] = Geometry<0, 3>(pos);
+    }
+
+    for (int face = 0; face < num_faces; ++face) {
+        Geometry<2, 3>::GlobalCoordinate center;
+        for (int d = 0; d < 3; ++d) {
+            center[d] = input_grid.face_centroids[3 * face + d];
+            face_normals_.get(face)[d] = input_grid.face_normals[3 * face + d];
+        }
+        (*face_geom)[cpgrid::EntityRep<1>(face, true)] = Geometry<2, 3>(center, input_grid.face_areas[face]);
+
+        if (face_axis_tag[face] == -1) {
+            OPM_THROW(std::runtime_error,
+                      "CpGrid::processUnstructuredGrid() found a face not connected to any cell.");
+        }
+    }
+
+    std::vector<enum face_tag> tags(num_faces, NNC_FACE);
+    for (int face = 0; face < num_faces; ++face) {
+        tags[face] = static_cast<enum face_tag>(face_axis_tag[face]);
+    }
+    face_tag_.assign(tags.begin(), tags.end());
+
+    for (int cell = 0; cell < num_cells; ++cell) {
+        Geometry<3, 3>::GlobalCoordinate center;
+        for (int d = 0; d < 3; ++d) {
+            center[d] = input_grid.cell_centroids[3 * cell + d];
+        }
+        (*cell_geom)[cpgrid::EntityRep<0>(cell, true)] = Geometry<3, 3>(center,
+                                                                         input_grid.cell_volumes[cell],
+                                                                         point_geom,
+                                                                         cell_to_point_[cell].data());
+    }
+
+    computeUniqueBoundaryIds();
+
+    if (ccobj_.size() > 1) {
+        populateGlobalCellIndexSet();
+    }
+
+    index_set_ = std::make_unique<IndexSet>(cell_to_face_.size(), geomVector<3>().size());
 }
 
 int CpGridData::size(int codim) const

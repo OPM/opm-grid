@@ -48,6 +48,8 @@
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #endif
 
+#include <opm/grid/UnstructuredGrid.h>
+
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
@@ -183,6 +185,48 @@ CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
     data_.push_back(std::make_shared<cpgrid::CpGridData>(comm, data_));
     current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
+}
+
+CpGrid::CpGrid(const std::string& filename)
+    : distributed_data_(),
+      cell_scatter_gather_interfaces_(new InterfaceMap, FreeInterfaces{}),
+      point_scatter_gather_interfaces_(new InterfaceMap, FreeInterfaces{}),
+      global_id_set_ptr_()
+{
+    data_.push_back(std::make_shared<cpgrid::CpGridData>(data_));
+    current_data_ = &data_;
+    global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
+
+    using GridPtr = std::unique_ptr<UnstructuredGrid, decltype(&destroy_grid)>;
+    GridPtr input_grid(read_grid(filename.c_str()), &destroy_grid);
+    if (!input_grid) {
+        OPM_THROW(std::runtime_error,
+                  "Failed to read UnstructuredGrid from file: " + filename);
+    }
+
+    current_data_->back()->processUnstructuredGrid(*input_grid);
+}
+
+void CpGrid::readUnstructuredGridFile(const std::string& filename)
+{
+    // Only the root rank reads and processes the file; all other ranks keep
+    // an empty global-view grid, which is correct for a subsequent
+    // scatterGrid / loadBalance call.
+    if (current_data_->back()->ccobj_.rank() == 0) {
+        using GridPtr = std::unique_ptr<UnstructuredGrid, decltype(&destroy_grid)>;
+        GridPtr input_grid(read_grid(filename.c_str()), &destroy_grid);
+        if (!input_grid) {
+            OPM_THROW(std::runtime_error,
+                      "Failed to read UnstructuredGrid from file: " + filename);
+        }
+        current_data_->back()->processUnstructuredGrid(*input_grid);
+    }
+
+    // Broadcast the logical Cartesian size so every rank knows the total
+    // cell count (mirrors what processEclipseFormat does).
+    current_data_->back()->ccobj_.broadcast(
+        current_data_->back()->logical_cartesian_size_.data(),
+        current_data_->back()->logical_cartesian_size_.size(), 0);
 }
 
 std::vector<int>
