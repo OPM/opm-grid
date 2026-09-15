@@ -99,6 +99,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
+  tests/cpgrid/combinedgridwellgraph_test.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
