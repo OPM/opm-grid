@@ -115,11 +115,9 @@ void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& well
 #if HAVE_OPM_COMMON
     well_indices_.resize(wells.size());
 
-    // Both loops below index cartesian_to_compressed with a position derived
-    // from the connection, and neither checked that the position is actually
-    // inside the map.  Bound the lookup against the container that is being
-    // indexed, so that a position which is not a level-zero Cartesian index
-    // cannot read past the end of it.
+    // Bound both lookups against the container being indexed.  Future
+    // connections are bare integers with no grid attached, so this is all that
+    // stands between them and a read past the end of the map.
     const auto lookup = [&cartesian_to_compressed](const int cart_grid_idx)
     {
         if ((cart_grid_idx < 0) ||
@@ -138,6 +136,15 @@ void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& well
         const auto& connectionSet = well.getConnections( );
         for (size_t c=0; c<connectionSet.size(); c++) {
             const auto& connection = connectionSet.get(c);
+
+            // A completion inside a refinement carries a position local to the
+            // refined grid.  Bounding the lookup misses the case where that
+            // position lands back inside the level-zero map and aliases an
+            // unrelated cell, so decide on the connection instead.
+            if (connection.get_lgr_level() != 0) {
+                continue;
+            }
+
             int i = connection.getI();
             int j = connection.getJ();
             int k = connection.getK();
