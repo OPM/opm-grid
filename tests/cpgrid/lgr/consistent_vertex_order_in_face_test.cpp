@@ -55,6 +55,17 @@ void checkConsistentVertexOrderInFaceToPoint(const Dune::cpgrid::CpGridData& gri
 
         const auto& faceTag = gridData.faceTag(face.index());
 
+        // The corners must wind counter-clockwise around the face normal.
+        auto diag0 = vertex2;
+        diag0 -= vertex0;
+        auto diag1 = vertex3;
+        diag1 -= vertex1;
+        const auto& normal = gridData.faceNormals(face.index());
+        const double winding = normal[0]*(diag0[1]*diag1[2] - diag0[2]*diag1[1])
+            + normal[1]*(diag0[2]*diag1[0] - diag0[0]*diag1[2])
+            + normal[2]*(diag0[0]*diag1[1] - diag0[1]*diag1[0]);
+        BOOST_CHECK(winding > 0.0);
+
         if (faceTag == 0) {
             BOOST_CHECK( vertex0[1] == vertex3[1]);
             BOOST_CHECK( vertex1[1] == vertex2[1]);

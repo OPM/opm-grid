@@ -804,9 +804,6 @@ namespace Dune
                                     (face_vector0[2]*face_vector1[0]) -  (face_vector0[0]*face_vector1[2]),
                                     (face_vector0[0]*face_vector1[1]) -  (face_vector0[1]*face_vector1[0])};
                                 mutable_face_normals[idx] /= mutable_face_normals[idx].two_norm();
-                                if (face_tag == J_FACE) {
-                                    mutable_face_normals[idx] *= -1;
-                                }
                                 // Construct "refined_face_to_edges"
                                 // with the {edge_indix[0], edge_index[1]} for each edge of the refined face.
                                 std::vector<std::array<int,2>> refined_face_to_edges = {
@@ -1126,10 +1123,10 @@ namespace Dune
                              (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
                         + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
                         + (l*cells_per_dim[0]*cells_per_dim[2]) + (m*cells_per_dim[2]) + n,
-                             {(l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n,
-                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n,
-                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n+1,
-                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n+1},
+                             {(l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n,
+                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n,
+                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n+1,
+                              (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n+1},
                              neighboring_cells_of_one_face,
                              {(.5 + m)/cells_per_dim[0], double(l)/cells_per_dim[1], (.5 + n)/cells_per_dim[2]}};
                 default:
