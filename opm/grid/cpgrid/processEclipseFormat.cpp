@@ -476,7 +476,18 @@ namespace cpgrid
         int process_ok{};
 
 #if HAVE_OPM_COMMON
-        if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
+        // Whether the numerical aquifers of the deck are represented by taking over grid
+        // cells.  When they are not, the grid must come out exactly as it would without
+        // the AQUNUM records: no cells kept alive for their sake, no cell volumes
+        // overridden, and above all no non-neighbour connections generated -- the
+        // simulator represents those aquifers itself.  Not generating them is also what
+        // makes such a deck usable with edge-conformal processing, which cannot handle
+        // non-neighbour connections at all.
+        const bool numAquiferInGrid = (ecl_state != nullptr)
+            && ecl_state->aquifer().hasNumericalAquifer()
+            && (ecl_state->numericalAquiferMode() == Opm::NumericalAquiferMode::GridCells);
+
+        if (numAquiferInGrid) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
                 static_cast<std::size_t>(input_data.dims[1]) *
@@ -521,7 +532,7 @@ namespace cpgrid
         }
 
 #if HAVE_OPM_COMMON
-        if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
+        if (numAquiferInGrid) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
                 static_cast<std::size_t>(input_data.dims[1]) *
@@ -567,7 +578,7 @@ namespace cpgrid
         // here we need the cell volumes based on the active index order
         std::unordered_map<std::size_t, double> aquifer_cell_volumes_local{};
 #if HAVE_OPM_COMMON
-        if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
+        if (numAquiferInGrid) {
             const auto& aquifer_cell_volumes = ecl_state->aquifer()
                 .numericalAquifers().aquiferCellVolumes();
 
