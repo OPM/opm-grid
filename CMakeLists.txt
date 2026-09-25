@@ -43,14 +43,14 @@ macro(opm-grid_prereqs_hook)
     target_link_libraries(opmgrid PUBLIC MPI::MPI_C MPI::MPI_CXX)
   endif()
 
-  target_link_libraries(opmgrid PUBLIC dunecommon dunegrid)
+  target_link_libraries(opmgrid PUBLIC Dune::Grid)
 
   if(TARGET Dune::ISTL)
     target_link_libraries(opmgrid PUBLIC Dune::ISTL)
   endif()
 
-  if(TARGET duneuggrid)
-    target_link_libraries(opmgrid PUBLIC duneuggrid)
+  if(TARGET Dune::UGGrid)
+    target_link_libraries(opmgrid PUBLIC Dune::UGGrid)
   endif()
 
   if(TARGET Zoltan::Zoltan)
