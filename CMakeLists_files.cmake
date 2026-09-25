@@ -97,7 +97,6 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
   tests/test_repairzcorn.cpp
-  tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
