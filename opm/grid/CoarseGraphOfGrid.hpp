@@ -112,17 +112,14 @@ private:
                                       std::vector<std::vector<int>>& wellPerf,
                                       const Dune::cpgrid::WellConnections& wells);
 
-    /// \brief Coarsen the graph by doing a (d)epth (f)irst (s)earch with priority (q)ueue
-    /// and merges (w)ells.
-    ///
-    /// Recurseive dfs that merges strongly connected nodes (transmissibility) in the
-    /// partitioning graph.
-    /// A priority queue is used to make sure the largest connections are prioritised in the
-    /// merging of vertices.
-    void dfsqw(const Row& row, std::priority_queue<WgtIdx> &q, int v, int master,
-               double w, int maxNode, std::vector<bool>& visited,
-               std::vector<std::vector<std::tuple<int,int,double>>>& gEdges,
-               const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf);
+    /// \brief Coarsen the graph by merging nodes connected by strong transmissibility, while 
+    /// making sure that the size of the merged node remains below maxNode.
+    /// 
+    /// Grow the coarse node by selecting the largest connection that is larger than the threshold w.
+    /// Continue until maxNode is reached. Always add all well connections first if any exist.
+    void mergeCells(int v, int master, double w, int maxNode, std::vector<bool>& visited,
+                    std::vector<std::vector<std::tuple<int,int,double>>>& gEdges,
+                    const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf);
 
     /// \brief Create the coarse graph merging all vertices connected with a large transmissibility.
     ///

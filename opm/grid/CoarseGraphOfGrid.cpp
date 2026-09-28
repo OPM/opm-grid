@@ -115,98 +115,100 @@ void CoarseGraphOfGrid<Grid>::mergeWellCellsForCoarseGraph(std::vector<int>& has
 }
 
 template<typename Grid>
-void CoarseGraphOfGrid<Grid>::dfsqw(const Row& row, std::priority_queue<WgtIdx> &q, int v, int master,
-                                    double w, int maxNode, std::vector<bool>& visited,
-                                    std::vector<std::vector<std::tuple<int,int,double>>>& gEdges,
-                                    const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf)
+void CoarseGraphOfGrid<Grid>::mergeCells(int v, int master, double w, int maxNode, std::vector<bool>& visited,
+                                         std::vector<std::vector<std::tuple<int,int,double>>>& gEdges,
+                                         const std::vector<int>& hasWell, const std::vector<std::vector<int>>& wellPerf)
 {
 
     auto& current_cnode = coarseNodes.back();
     auto& current_edges = gEdges.back();
 
-    std::vector<int> wellIdxs;
-    if (hasWell[v] == -1) {
-        visited[v] = true;
-        map_to_coarse_[v] = master;
-        current_cnode.push_back(v);
+    std::priority_queue<WgtIdx> q;
 
-        // Add all neighboring vertices of v with transmissibility larger than w to the queue.
-        auto col = row.begin();
-        for (; col != row.end(); ++col) {
-            int nab = col.index();
-            double wgt = (*transGraph)[v][nab];
-            if ( wgt > w) {
-                if (!visited[nab]) {
-                    q.push({wgt, nab});
-                }
-            }
-        }
-    } else {
-        // If node has a well, merge all connections to  master node.
-        int wellId = hasWell[v];
-        const std::vector<int>& perfs = wellPerf[wellId];
+    // Function to avoid duplication of code. Adds node u course master node.
+    // Connections of u that have transmissibility > w is added to priority queue q.
+    // If u has well connections, all of them are added to the master node.
+    auto absorb = [&](int u) {
 
-        for (const auto& idx : perfs) {
-            visited[idx] = true;
-            map_to_coarse_[idx] = master;
-            current_cnode.push_back(idx);
-            wellIdxs.push_back(idx);
-        }
-        for (const auto& idx : perfs) {
-            auto wrow = (*transGraph)[idx];
-            auto col = wrow.begin();
-            for (; col != wrow.end(); ++col) {
+        // If u has no well connections, only consider neighbours of u in transGraph
+        if (hasWell[u] == -1) {
+            visited[u] = true;
+            map_to_coarse_[u] = master;
+            current_cnode.push_back(u);
+
+            const auto& urow = (*transGraph)[u];
+            // Add all neighboring vertices of u with transmissibility larger than w to the queue.
+            auto col = urow.begin();
+            for (; col != urow.end(); ++col) {
                 int nab = col.index();
-                double wgt = (*transGraph)[idx][nab];
+                double wgt = (*transGraph)[u][nab];
                 if ( wgt > w) {
+                    // Only add neighbor if it is not already absorbed
                     if (!visited[nab]) {
                         q.push({wgt, nab});
                     }
                 }
             }
-        }
-    }
+        } else {
+            // If node has a well, merge all connections to  master node.
+            int wellId = hasWell[u];
+            const std::vector<int>& perfs = wellPerf[wellId];
 
-    // Only merge more vertices if the current coarse node is smaller than maxNode.
-    if ( (int)current_cnode.size() < maxNode ) {
-        if (!q.empty()) {
-
-            // Find strongest connection in queue q not already merged to current_cnode.
-            auto strongCon = q.top();
-            int nab = strongCon.idx;
-            q.pop();
-            while (visited[nab] && !q.empty()) {
-                strongCon = q.top();
-                nab = strongCon.idx;
-                q.pop();
+            for (const auto& idx : perfs) {
+                visited[idx] = true;
+                map_to_coarse_[idx] = master;
+                current_cnode.push_back(idx);
             }
-            // Call dfsq reflexively on strongest connection in queue
-            if (!visited[nab])
-                dfsqw((*transGraph)[nab],q,nab,master,w,maxNode,visited,gEdges,hasWell,wellPerf);
-        }
-    } else {
-        q = std::priority_queue<WgtIdx>();
-    }
-
-    // Add connection between v and nab if v and nab are not merged
-    if (wellIdxs.size() > 0) {
-        for (const auto& idx : wellIdxs) {
-            auto wrow = (*transGraph)[idx];
-            auto col = wrow.begin();
-            for (; col != wrow.end(); ++col) {
-                int nab = col.index();
-                if (map_to_coarse_[v]!=map_to_coarse_[nab]) {
-                    current_edges.push_back({v,nab,(*transGraph)[idx][nab]});
+            for (const auto& idx : perfs) {
+                auto wrow = (*transGraph)[idx];
+                auto col = wrow.begin();
+                for (; col != wrow.end(); ++col) {
+                    int nab = col.index();
+                    double wgt = (*transGraph)[idx][nab];
+                    if ( wgt > w) {
+                        // Only add neighbor if it is not already absorbed
+                        if (!visited[nab]) {
+                            q.push({wgt, nab});
+                        }
+                    }
                 }
             }
         }
+    };
+
+    // Add start node
+    absorb(v);
+
+    // Only merge more vertices if the current coarse node is smaller than maxNode.
+    while ( (int)current_cnode.size() < maxNode ) {
+
+        int strongest = -1;
+        while (!q.empty()) {
+
+            // Find strongest connection in queue q not already merged to current_cnode.
+            const int strongNab = q.top().idx;
+            q.pop();
+
+            // We only want to merge strongNab if it is not already merged.
+            if (!visited[strongNab]) {
+                strongest = strongNab;
+                break;
+            }
+        }
+        if (strongest == -1) {
+            break; // q is empty
+        }
+        absorb(strongest);
     }
-    else {
+
+    // Add connections between idx in current_cnode to conections 
+    for (const auto& idx : current_cnode) {
+        auto row = (*transGraph)[idx];
         auto col = row.begin();
         for (; col != row.end(); ++col) {
             int nab = col.index();
-            if (map_to_coarse_[v]!=map_to_coarse_[nab]) {
-                current_edges.push_back({v,nab,(*transGraph)[v][nab]});
+            if (map_to_coarse_[idx]!=map_to_coarse_[nab]) {
+                current_edges.push_back({idx,nab,*col});
             }
         }
     }
@@ -261,16 +263,14 @@ void CoarseGraphOfGrid<Grid>::createCoarseGraph(const Dune::EdgeWeightMethod edg
             // if idx v is not visited, add it to coarse graph
             if (!visited[v]) {
 
-                std::priority_queue<WgtIdx> q;
-
                 // Allocate coarse node v in gEdges and coarseNodes
                 gEdges.emplace_back();
                 coarseNodes.emplace_back();
 
                 // Call depth first search from row transGraph[v]
-                dfsqw((*transGraph)[v],q,v,newV,coarseThreshold,
-                      coarsePartitionMaxNodeSize,visited,
-                      gEdges,hasWell,wellPerf);
+                mergeCells(v,newV,coarseThreshold,
+                           coarsePartitionMaxNodeSize,visited,
+                           gEdges,hasWell,wellPerf);
 
                 newV++;
 
