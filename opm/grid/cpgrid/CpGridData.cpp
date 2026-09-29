@@ -21,7 +21,7 @@
 #include <opm/grid/common/GridPartitioning.hpp>
 #include <dune/common/parallel/remoteindices.hh>
 #include <dune/common/enumset.hh>
-#include <opm/grid/utility/SparseTable.hpp>
+#include <opm/common/utility/SparseTable.hpp>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <opm/grid/CpGrid.hpp>

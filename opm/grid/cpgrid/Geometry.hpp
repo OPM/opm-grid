@@ -54,7 +54,7 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/common/Volumes.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
-#include <opm/grid/utility/SparseTable.hpp>
+#include <opm/common/utility/SparseTable.hpp>
 
 #include <opm/grid/utility/ErrorMacros.hpp>
 
