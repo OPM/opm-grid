@@ -72,7 +72,7 @@ auto createWell (const std::string& name)
 {
     using namespace Opm;
     return Dune::cpgrid::OpmWellType(name,name,0,0,0,0,0.,WellType(),
-                                     Well::ProducerCMode(),Connection::Order(),UnitSystem(),
+                                     Well::ProducerCMode(),UnitSystem(),
                                      0.,false,false,0,Well::GasInflowEquation());
 };
 } // end anonymous namespace
@@ -100,14 +100,14 @@ BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_cartesian_cpgrid_wi
 
     std::vector<Dune::cpgrid::OpmWellType> wells;
     wells.push_back(createWell("well1"));
-    wells[0].updateConnections(wellCon,true);
+    wells[0].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wellCon = std::make_shared<Opm::WellConnections>(); // reset
     wellCon->add(createConnection(0,0,2)); // {level 0, cell idx 4} -> ijk = {0,0,2}
     wellCon->add(createConnection(0,0,3)); // {level 0, cell idx 6} -> ijk = {0,0,3}
 
     wells.push_back(createWell("well2"));
-    wells[1].updateConnections(wellCon,true);
+    wells[1].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wells.push_back(createWell("well3"));
 
@@ -243,13 +243,13 @@ BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_global_refined_cpgr
     wellCon->add(createConnection(0,1,0)); // {level 0, cell idx 1}
     wellCon->add(createConnection(0,1,1)); // {level 0, cell idx 3}
     wells.push_back(createWell("first"));
-    wells[0].updateConnections(wellCon,true);
+    wells[0].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wellCon = std::make_shared<Opm::WellConnections>(); // reset
     wellCon->add(createConnection(0,0,2)); // {level 0, cell idx 4}
     wellCon->add(createConnection(0,1,2)); // {level 0, cell idx 5}
     wells.push_back(createWell("second"));
-    wells[1].updateConnections(wellCon,true);
+    wells[1].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wells.push_back(createWell("third"));
     std::unordered_map<std::string, std::set<int>> futureConnections;
