@@ -588,9 +588,9 @@ namespace cpgrid
         buildGeom(output, cell_to_face_, cell_to_point_,
                   face_to_output_face,
                   aquifer_cell_volumes_local,
-                  *geometry_.geomVector(std::integral_constant<int,0>()),
-                  *geometry_.geomVector(std::integral_constant<int,1>()),
-                  geometry_.geomVector(std::integral_constant<int,3>()),
+                  geometry_.geomVector(std::integral_constant<int,0>()),
+                  geometry_.geomVector(std::integral_constant<int,1>()),
+                  geometry_.pointGeometryPtr(),
                   face_normals_,
                   turn_normals);
 

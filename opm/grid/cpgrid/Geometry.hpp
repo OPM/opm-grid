@@ -635,11 +635,11 @@ namespace Dune
                                       const std::vector<double>& heightsZ) const
             {
                 EntityVariableBase<cpgrid::Geometry<0,3>>& refined_corners =
-                    *(all_geom.geomVector(std::integral_constant<int,3>()));
+                    all_geom.geomVector(std::integral_constant<int,3>());
                 EntityVariableBase<cpgrid::Geometry<2,3>>& refined_faces =
-                    *(all_geom.geomVector(std::integral_constant<int,1>()));
+                    all_geom.geomVector(std::integral_constant<int,1>());
                 EntityVariableBase<cpgrid::Geometry<3,3>>& refined_cells =
-                    *(all_geom.geomVector(std::integral_constant<int,0>()));
+                    all_geom.geomVector(std::integral_constant<int,0>());
                 EntityVariableBase<enum face_tag>& mutable_face_tags = refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = refined_face_normals;
 
@@ -1023,7 +1023,7 @@ namespace Dune
                             refined_cells[refined_cell_idx] =
                                 Geometry<3,cdim>(refined_cell_center,
                                                  refined_cell_volume,
-                                                 all_geom.geomVector(std::integral_constant<int,3>()),
+                                                 all_geom.pointGeometryPtr(),
                                                  indices_storage_ptr);
                         } // end i-for-loop
                     }  // end j-for-loop
@@ -1058,7 +1058,7 @@ namespace Dune
             /// @param [out] refined_face_tag            I_FACE, J_FACE, K_FACE
             /// @param [out] refined_face_index          Face index of a refined cell 'lmn' generated with "refine()".
             /// @param [out] refined_face_to_point       Four corner indices of the corners of the refined face 'lmn'.
-            ///                                          Vertex order 
+            ///                                          Vertex order
             ///                                          for I_FACE:  jk, (j+1)k, (j+1)(k+1), j(k+1)
             ///                                          for J_FACE:  (i+1)k, ik,  i(k+1), (i+1)(k+1)
             ///                                          for K_FACE:  ij, (i+1)j, (i+1)(j+1), (i+1)(j+1)

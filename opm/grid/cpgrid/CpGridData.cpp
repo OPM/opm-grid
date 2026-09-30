@@ -1215,20 +1215,20 @@ void CpGridData::computeGeometry(const CpGrid& grid,
                                  const OrientedEntityTable<0, 1>& cell2Faces,
                                  const std::vector< std::array<int,8> >& cell2Points)
 {
-    FaceGeometryHandle faceGeomHandle(*globalGeometry.geomVector(std::integral_constant<int,1>()),
-                                      *geometry.geomVector(std::integral_constant<int,1>()));
+    FaceGeometryHandle faceGeomHandle(globalGeometry.geomVector(std::integral_constant<int,1>()),
+                                      geometry.geomVector(std::integral_constant<int,1>()));
     FaceViaCellHandleWrapper<FaceGeometryHandle>
         wrappedFaceGeomHandle(faceGeomHandle, globalCell2Faces, cell2Faces);
     grid.scatterData(wrappedFaceGeomHandle);
 
-    PointGeometryHandle pointGeomHandle(*globalGeometry.geomVector(std::integral_constant<int,3>()),
-                                        *geometry.geomVector(std::integral_constant<int,3>()));
+    PointGeometryHandle pointGeomHandle(globalGeometry.geomVector(std::integral_constant<int,3>()),
+                                        geometry.geomVector(std::integral_constant<int,3>()));
     grid.scatterData(pointGeomHandle);
 
-    CellGeometryHandle cellGeomHandle(*globalGeometry.geomVector(std::integral_constant<int,0>()),
-                                      *geometry.geomVector(std::integral_constant<int,0>()),
+    CellGeometryHandle cellGeomHandle(globalGeometry.geomVector(std::integral_constant<int,0>()),
+                                      geometry.geomVector(std::integral_constant<int,0>()),
                                       globalAquiferCells, aquiferCells,
-                                      geometry.geomVector(std::integral_constant<int,3>()),
+                                      geometry.pointGeometryPtr(),
                                       cell2Points);
     grid.scatterData(cellGeomHandle);
 }
@@ -1546,9 +1546,9 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
     // Set up the new topology arrays
-    geometry_.geomVector(std::integral_constant<int,1>()) -> resize(noExistingFaces);
-    geometry_.geomVector(std::integral_constant<int,0>()) -> resize(cell_to_face_.size());
-    geometry_.geomVector(std::integral_constant<int,3>()) -> resize(noExistingPoints);
+    geometry_.geomVector(std::integral_constant<int,1>()).resize(noExistingFaces);
+    geometry_.geomVector(std::integral_constant<int,0>()).resize(cell_to_face_.size());
+    geometry_.geomVector(std::integral_constant<int,3>()).resize(noExistingPoints);
 
     computeGeometry(grid, view_data.geometry_, view_data.aquifer_cells_, view_data.cell_to_face_,
                     geometry_, aquifer_cells_, cell_to_face_, cell_to_point_);
@@ -1804,7 +1804,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
     
     // Refine parent cell
     const auto parentCellElem = Entity<0>(*this, parent_idx, true);
-    const cpgrid::Geometry<3,3>& parentCellGeom = (*(geometry_.geomVector(std::integral_constant<int,0>())))[parentCellElem];
+    const cpgrid::Geometry<3,3>& parentCellGeom = (geometry_.geomVector(std::integral_constant<int,0>()))[parentCellElem];
     parentCellGeom.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                                         refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
                                         {1,1,1}, /*widthX, lengthY, heightZ*/ {1.}, {1.}, {1.});
@@ -1973,12 +1973,9 @@ std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
     std::array<double,8> Y;
     std::array<double,8> Z;
     for (int cornIdx = 0; cornIdx < 8; ++cornIdx) {
-        X[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
-                      -> get(cell_to_point_indices[cornIdx])).center()[0];
-        Y[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
-                      -> get(cell_to_point_indices[cornIdx])).center()[1];
-        Z[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
-                      -> get(cell_to_point_indices[cornIdx])).center()[2];
+        X[cornIdx] = geometry_.geomVector(std::integral_constant<int,3>()).get(cell_to_point_indices[cornIdx]).center()[0];
+        Y[cornIdx] = geometry_.geomVector(std::integral_constant<int,3>()).get(cell_to_point_indices[cornIdx]).center()[1];
+        Z[cornIdx] = geometry_.geomVector(std::integral_constant<int,3>()).get(cell_to_point_indices[cornIdx]).center()[2];
 
     }
     return std::array<double,3> { { std::accumulate(X.begin(), X.end(), 0.0) / 8.0,

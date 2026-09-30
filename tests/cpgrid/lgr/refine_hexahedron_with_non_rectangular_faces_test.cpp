@@ -52,10 +52,10 @@ bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid
     //  0 ---- 1                          4 ---- 5
     std::vector<Dune::cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
     aFewCorners.resize(4); // {'0', '1', '3', '5'}
-    aFewCorners[0] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-    aFewCorners[1] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-    aFewCorners[2] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
-    aFewCorners[3] = (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
+    aFewCorners[0] = (leafGrid.getGeometry().geomVector(std::integral_constant<int,3>())).get(cellToPoint[0]).center();
+    aFewCorners[1] = (leafGrid.getGeometry().geomVector(std::integral_constant<int,3>())).get(cellToPoint[1]).center();
+    aFewCorners[2] = (leafGrid.getGeometry().geomVector(std::integral_constant<int,3>())).get(cellToPoint[3]).center();
+    aFewCorners[3] = (leafGrid.getGeometry().geomVector(std::integral_constant<int,3>())).get(cellToPoint[5]).center();
 
     auto distance = [](const auto& p1, const auto& p2) {
         double dx = p2[0] - p1[0];
@@ -69,7 +69,7 @@ bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid
     double height  = distance(aFewCorners[1], aFewCorners[3]);
 
     const double cuboidVolume = length*breadth*height;
-    const auto actualVolume =  (*(leafGrid.getGeometry().geomVector(std::integral_constant<int,0>())))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
+    const auto actualVolume =  (leafGrid.getGeometry().geomVector(std::integral_constant<int,0>()))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
 
     return (std::abs(cuboidVolume - actualVolume) <  1e-6);
 }

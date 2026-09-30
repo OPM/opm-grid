@@ -1219,7 +1219,7 @@ void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<Dune::c
         refined_corners_vec[shiftedLevel].resize(refined_corner_count_vec[shiftedLevel]);
         for (int corner = 0; corner < refined_corner_count_vec[shiftedLevel]; ++corner) {
             const auto& [elemLgr, elemLgrCorner] = refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner.at({static_cast<int>(shiftedLevel) + preAdaptMaxLevel +1,corner});
-            refined_corners_vec[shiftedLevel][corner] =  markedElem_to_itsLgr[elemLgr] -> getGeometry().geomVector(std::integral_constant<int,3>()) -> get(elemLgrCorner);
+            refined_corners_vec[shiftedLevel][corner] =  markedElem_to_itsLgr[elemLgr] -> getGeometry().geomVector(std::integral_constant<int,3>()).get(elemLgrCorner);
         }
     }
 }
@@ -1256,7 +1256,7 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
             const auto& elemLgrFaceEntity =  Dune::cpgrid::EntityRep<1>(elemLgrFace, true);
 
             // Get the face geometry.
-            refined_faces_vec[shiftedLevel][face] = (*(markedElem_to_itsLgr.at(elemLgr)->getGeometry().geomVector(std::integral_constant<int,1>())))[elemLgrFaceEntity];
+            refined_faces_vec[shiftedLevel][face] = (markedElem_to_itsLgr.at(elemLgr)->getGeometry().geomVector(std::integral_constant<int,1>()))[elemLgrFaceEntity];
             // Get the face tag.
             mutable_refined_face_tags_vec[shiftedLevel][face] = markedElem_to_itsLgr.at(elemLgr)->faceTag(elemLgrFace);
             // Get the face normal.
@@ -1338,7 +1338,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
         refined_cell_to_point_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_global_cell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
 
-        const auto& allLevelCorners = refined_geometries_vec[shiftedLevel].geomVector(std::integral_constant<int,3>());
+        const auto allLevelCorners = refined_geometries_vec[shiftedLevel].pointGeometryPtr();
 
         for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
 
@@ -1422,7 +1422,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
             // Refined cell to face.
             refined_cell_to_face_vec[shiftedLevel].appendRow(aux_refined_cell_to_face.begin(), aux_refined_cell_to_face.end());
             // Get the cell geometry.
-            const auto& elemLgrGeom =  (*( markedElem_to_itsLgr.at(elemLgr)->getGeometry().geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
+            const auto& elemLgrGeom =  (markedElem_to_itsLgr.at(elemLgr)->getGeometry().geomVector(std::integral_constant<int,0>()))[elemLgrCellEntity];
 
             // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
             int* indices_storage_ptr = refined_cell_to_point_vec[shiftedLevel][cell].data();
@@ -1501,7 +1501,7 @@ void populateLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
         //       the value 0, we represent the current leaf data with the value -1
         adapted_corners[corner] = ((elemLgr == -1) ?
                                    current_data :
-                                   *markedElem_to_itsLgr[elemLgr]).getGeometry().geomVector(std::integral_constant<int,3>())-> get(elemLgrCorner);
+                                   *markedElem_to_itsLgr[elemLgr]).getGeometry().geomVector(std::integral_constant<int,3>()).get(elemLgrCorner);
     }
 }
 
@@ -1539,7 +1539,7 @@ void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
         const auto& grid_or_elemLgr_data = (elemLgr == -1) ? current_data : *markedElem_to_itsLgr[elemLgr];
 
         // Get the face geometry.
-        adapted_faces[face] = (*(grid_or_elemLgr_data.getGeometry().geomVector(std::integral_constant<int,1>())))[elemLgrFaceEntity];
+        adapted_faces[face] = (grid_or_elemLgr_data.getGeometry().geomVector(std::integral_constant<int,1>()))[elemLgrFaceEntity];
         // Get the face tag.
         mutable_face_tags[face] = grid_or_elemLgr_data.faceTag(elemLgrFace);
         // Get the face normal.
@@ -1629,11 +1629,11 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
         // Auxiliary cell_to_face
         std::vector<Dune::cpgrid::EntityRep<1>> aux_cell_to_face;
 
-        const auto& allCorners = adapted_geometries.geomVector(std::integral_constant<int,3>());
+        const auto allCorners = adapted_geometries.pointGeometryPtr();
         const auto& grid_or_elemLgr_data = (elemLgr == -1) ? current_data : *markedElem_to_itsLgr.at(elemLgr);
 
         // Get the cell geometry.
-        const auto& cellGeom = (*(grid_or_elemLgr_data.getGeometry().geomVector(std::integral_constant<int,0>()) ) )[elemLgrCellEntity];
+        const auto& cellGeom = (grid_or_elemLgr_data.getGeometry().geomVector(std::integral_constant<int,0>()) )[elemLgrCellEntity];
         // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
         const auto& preAdapt_cell_to_point  =  grid_or_elemLgr_data.cellToPoint(elemLgrCell);
         // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
@@ -2287,7 +2287,7 @@ void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
                 } else {
                     grid.mark(0, elem);
                 }
-            }  
+            }
         }
     };
 
