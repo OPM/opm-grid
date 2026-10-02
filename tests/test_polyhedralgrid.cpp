@@ -18,9 +18,7 @@
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#endif
 
 #include <iostream>
 
@@ -266,7 +264,6 @@ int main(int argc, char** argv )
     {
         typedef Dune::PolyhedralGrid< 3, 3 > Grid;
 
-#if HAVE_OPM_COMMON
         const char *deckString =
             "RUNSPEC\n"
             "METRIC\n"
@@ -291,7 +288,6 @@ int main(int argc, char** argv )
         Grid grid(eclgrid, porv);
         gridcheck( grid );
         std::cout << std::endl;
-#endif
         // test DGF grid creation capabilities
         std::stringstream dgfFile;
         // create unit cube with 8 cells in each direction

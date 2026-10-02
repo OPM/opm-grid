@@ -19,8 +19,6 @@
 #ifndef OPM_GRID_WELLTYPE_HEADER_INCLUDED
 #define OPM_GRID_WELLTYPE_HEADER_INCLUDED
 
-#if HAVE_OPM_COMMON
-
 namespace Opm {
 class Well;
 }
@@ -30,14 +28,5 @@ namespace Dune {
         using OpmWellType = Opm::Well;
     }
 }
-#else // #if HAVE_OPM_COMMON
-
-namespace Dune {
-    namespace cpgrid {
-        using OpmWellType = int;
-    }
-}
-
-#endif // #if HAVE_OPM_COMMON
 
 #endif // #ifndef OPM_GRID_WELLTYPE_HEADER_INCLUDED

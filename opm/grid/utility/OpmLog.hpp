@@ -19,36 +19,6 @@
 #ifndef OPM_GRID_LOG_HPP
 #define OPM_GRID_LOG_HPP
 
-#if HAVE_OPM_COMMON
 #include <opm/common/OpmLog/OpmLog.hpp>
-#else
-
-#include <iostream>
-#include <string_view>
-
-namespace Opm::OpmLog {
-  static inline void error(std::string_view msg)
-  {
-      std::cerr << msg << std::endl;
-  }
-
-  static inline void info(std::string_view msg)
-  {
-      std::cout << msg << std::endl;
-  }
-
-  static inline void warning(std::string_view msg)
-  {
-      std::cout << msg << std::endl;
-  }
-
-  static inline void warning(std::string_view tag, std::string_view msg)
-  {
-      std::cout << '[' << tag << "]: " << msg << std::endl;
-  }
-
-  static inline void setupSimpleDefaultLogging() {}
-}
-#endif
 
 #endif // OPM_GRID_LOG_HPP

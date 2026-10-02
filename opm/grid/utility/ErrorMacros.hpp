@@ -19,28 +19,6 @@
 #ifndef OPM_GRID_ERROR_MACROS_HPP
 #define OPM_GRID_ERROR_MACROS_HPP
 
-#if HAVE_OPM_COMMON
 #include <opm/common/ErrorMacros.hpp>
-#else
-
-#include <iostream>
-#include <string>
-
-#define OPM_THROW(Exception, message)                    \
-    do {                                                       \
-        std::string oss_ = std::string{"["} + __FILE__ + ":" + \
-                           std::to_string(__LINE__) + "] " +   \
-                           message;                            \
-        throw Exception(oss_);                                 \
-    } while (false)
-
-#define OPM_THROW_NOLOG OPM_THROW
-
-// throw an exception if a condition is true
-#define OPM_ERROR_IF(condition, message) do {if(condition){ OPM_THROW(std::logic_error, message);}} while(false)
-
-#define OPM_MESSAGE(x) do { std::cerr << x << std::endl; } while(false)
-
-#endif
 
 #endif // OPM_GRID_ERROR_MACROS_HPP

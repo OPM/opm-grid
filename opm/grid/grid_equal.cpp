@@ -1,6 +1,5 @@
 #include <config.h>
 
-#if HAVE_OPM_COMMON
 
 #include <algorithm>
 #include <cstddef>
@@ -148,5 +147,3 @@ bool grid_equal(const UnstructuredGrid* g1, const UnstructuredGrid* g2)
 
     return eq;
 }
-
-#endif // #if HAVE_OPM_COMMON

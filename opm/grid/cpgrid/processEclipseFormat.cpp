@@ -51,10 +51,8 @@
 #include <opm/grid/cpgrid/Geometry.hpp>
 #include <opm/grid/cpgrid/Indexsets.hpp>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
-#endif
 
 #include <algorithm>
 #include <array>
@@ -83,7 +81,6 @@ namespace Dune
     // Forward declarations.
     namespace
     {
-#if HAVE_OPM_COMMON
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnum);
@@ -98,7 +95,6 @@ namespace Dune
                                std::vector<double>& new_zcorn,
                                std::vector<int>& new_actnum,
                                grdecl& output);
-#endif
 
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
@@ -128,7 +124,6 @@ namespace Dune
 namespace cpgrid
 {
 
-#if HAVE_OPM_COMMON
     std::vector<std::size_t>
     CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                                      Opm::EclipseState* ecl_state,
@@ -445,7 +440,6 @@ namespace cpgrid
 
         return minpv_result.removed_cells;
     }
-#endif // #if HAVE_OPM_COMMON
 
 
     enum { NNCFace = -1 };
@@ -453,9 +447,7 @@ namespace cpgrid
 
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(const grdecl& input_data,
-#if HAVE_OPM_COMMON
                                           Opm::EclipseState* ecl_state,
-#endif
                                           NNCMaps& nnc,
                                           const bool remove_ij_boundary,
                                           const bool turn_normals,
@@ -475,7 +467,6 @@ namespace cpgrid
         processed_grid output{};
         int process_ok{};
 
-#if HAVE_OPM_COMMON
         if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
@@ -499,7 +490,6 @@ namespace cpgrid
                                         &output);
         }
         else
-#endif
         {
             process_ok = process_grdecl(static_cast<int>(pinchActive),
                                         static_cast<int>(edge_conformal),
@@ -520,7 +510,6 @@ namespace cpgrid
             // removeUnusedNodes(output);
         }
 
-#if HAVE_OPM_COMMON
         if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
@@ -547,7 +536,6 @@ namespace cpgrid
                 nnc[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
             }
         }
-#endif
 
         // Move data into the grid's structures.
 #ifdef VERBOSE
@@ -566,7 +554,6 @@ namespace cpgrid
 #endif
         // here we need the cell volumes based on the active index order
         std::unordered_map<std::size_t, double> aquifer_cell_volumes_local{};
-#if HAVE_OPM_COMMON
         if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
             const auto& aquifer_cell_volumes = ecl_state->aquifer()
                 .numericalAquifers().aquiferCellVolumes();
@@ -583,7 +570,6 @@ namespace cpgrid
 
             std::ranges::sort(aquifer_cells_);
         }
-#endif
 
         buildGeom(output, cell_to_face_, cell_to_point_,
                   face_to_output_face,
@@ -639,7 +625,6 @@ namespace cpgrid
 
     namespace
     {
-#if HAVE_OPM_COMMON
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnumData)
@@ -866,7 +851,6 @@ namespace cpgrid
             output.zcorn = &new_zcorn[0];
             output.actnum = &new_actnum[0];
         }
-#endif
 
 
 

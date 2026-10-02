@@ -25,12 +25,9 @@ project(opm-grid C CXX Fortran)
 
 option(SIBLING_SEARCH "Search for other modules in sibling directories?" ON)
 option(REQUIRE_ZOLTAN "Require Zoltan to be found (needed for productive run" ON)
-option(USE_OPM_COMMON "Use data structures from opm-common?" ON)
 
 macro(opm-grid_prereqs_hook)
-  if(USE_OPM_COMMON)
-    target_link_libraries(opmgrid PUBLIC opmcommon)
-  endif()
+  target_link_libraries(opmgrid PUBLIC opmcommon)
 
   if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
     message(SEND_ERROR
@@ -81,22 +78,18 @@ macro(opm-grid_tests_hook)
     set(tests_4proc
       addLgrsOnDistributedGrid_test
       autoRefine_test
+      communicate_distributed_grid_with_lgrs_test
+      distribute_level_zero_from_grid_with_lgrs_and_wells_test
+      distribute_level_zero_from_grid_with_lgrs_test
       distribution_test
-      level_and_grid_cartesianIndexMappers_test
-      logicalCartesianSize_and_refinement_test
-      test_communication_utils
+      grid_global_id_set_test
       id_entity_entityrep_test
+      level_and_grid_cartesianIndexMappers_test
+      lgr_cell_id_sync_test
+      logicalCartesianSize_and_refinement_test
+      mapLevelIndicesToCartesianOutputOrder_test
+      test_communication_utils
     )
-    if(USE_OPM_COMMON)
-      list(APPEND tests_4proc
-        communicate_distributed_grid_with_lgrs_test
-        distribute_level_zero_from_grid_with_lgrs_test
-        distribute_level_zero_from_grid_with_lgrs_and_wells_test
-        grid_global_id_set_test
-        lgr_cell_id_sync_test
-        mapLevelIndicesToCartesianOutputOrder_test
-      )
-    endif()
 
     list(APPEND test_4proc lgr_with_inactive_parent_cells_test)
     foreach(procs 3 4)
@@ -125,7 +118,7 @@ macro(opm-grid_tests_hook)
       set_tests_properties(${test4}_parallel PROPERTIES PROCESSORS 4)
     endforeach()
 
-    if(HAVE_OPM_TESTS AND USE_OPM_COMMON)
+    if(HAVE_OPM_TESTS)
       opm_add_executable(
         TARGET
           cpgrid_aquifer_test

@@ -58,10 +58,8 @@
 #include <dune/common/parallel/variablesizecommunicator.hh>
 #include <dune/grid/common/gridenums.hh>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/NNC.hpp>
-#endif
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
@@ -201,7 +199,6 @@ public:
                            bool turn_normals = false,
                            bool edge_conformal = false);
 
-#if HAVE_OPM_COMMON
     /// Read the Eclipse grid format ('grdecl').
     ///
     /// \param[in] deck Low-level input Deck object from the OPM Parser.
@@ -272,7 +269,6 @@ public:
                          bool clip_z = false,
                          bool pinchActive = true,
                          bool edge_conformal = false);
-#endif
 
     /// Read the Eclipse grid format ('grdecl').
     ///
@@ -303,9 +299,7 @@ public:
     /// edge-conformal grid.  Typically useful in geo-mechanical
     /// applications.
     void processEclipseFormat(const grdecl& input_data,
-#if HAVE_OPM_COMMON
                               Opm::EclipseState* ecl_state,
-#endif
                               std::array<std::set<std::pair<int, int>>, 2>& nnc,
                               bool remove_ij_boundary,
                               bool turn_normals,
