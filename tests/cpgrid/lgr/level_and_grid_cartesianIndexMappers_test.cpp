@@ -1004,7 +1004,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_globalRefine)
     checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
 
-#if HAVE_OPM_COMMON
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeafView_with_a_few_inactive_parent_cells)
 {
 
@@ -1294,7 +1293,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeaf
     BOOST_CHECK(grid.comm().max(foundId13));
     BOOST_CHECK(grid.comm().max(foundId26));
 }
-#endif
 
 
 /** TODO: Define class LeafCartesianIndexMapper and include it in the test */

@@ -44,12 +44,10 @@
 #include <dune/common/version.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/grid/LookUpCellCentroid.hh>
-#endif
 
 #include <opm/grid/polyhedralgrid.hh>
 

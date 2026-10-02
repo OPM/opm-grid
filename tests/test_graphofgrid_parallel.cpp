@@ -35,9 +35,7 @@
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
-#endif
 
 #include <algorithm>
 
@@ -162,7 +160,6 @@ BOOST_AUTO_TEST_CASE(CommunicateExportedCells)
     }
 }
 
-#if HAVE_OPM_COMMON
 namespace {
 auto createWell(const std::string& name)
 {
@@ -367,7 +364,6 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
         impCells.swap(importedCells);
     BOOST_REQUIRE(importedCells == importSol);
 }
-#endif // HAVE_OPM_COMMON
 #endif // HAVE_MPI
 
 bool init_unit_test_func()

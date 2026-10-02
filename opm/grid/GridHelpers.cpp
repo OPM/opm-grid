@@ -24,10 +24,8 @@
 
 #include <opm/grid/common/Volumes.hpp>
 
-#if HAVE_OPM_COMMON
 #include <opm/common/utility/ActiveGridCells.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#endif
 
 namespace Opm
 {
@@ -61,12 +59,10 @@ const int* cartDims(const UnstructuredGrid& grid)
     return grid.cartdims;
 }
 
-#if HAVE_OPM_COMMON
 std::vector<int> createACTNUM(const UnstructuredGrid& grid) {
     const int* dims = cartDims(grid);
     return ActiveGridCells(dims[0], dims[1], dims[2], globalCell(grid), numCells(grid)).actNum();
 }
-#endif
 
 const double* beginCellCentroids(const UnstructuredGrid& grid)
 {
@@ -328,7 +324,6 @@ FaceCellTraits<UnstructuredGrid>::Type faceCells(const UnstructuredGrid& grid)
 }
 
 
-#if HAVE_OPM_COMMON
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid ) {
     const int * dims = UgGridHelpers::cartDims( grid );
 
@@ -350,7 +345,6 @@ Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::Ecli
         throw std::invalid_argument("Size mismatch - dimensions of inputGrid argument and current UnstructuredGrid instance disagree");
     }
 }
-#endif
 
 }
 }

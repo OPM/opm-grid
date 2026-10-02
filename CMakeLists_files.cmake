@@ -29,24 +29,6 @@
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
 list(APPEND MAIN_SOURCE_FILES
-  opm/grid/cpgrid/Intersection.cpp
-  opm/grid/cpgrid/CpGridData.cpp
-  opm/grid/cpgrid/CpGrid.cpp
-  opm/grid/cpgrid/CpGridUtilities.cpp
-  opm/grid/cpgrid/DataHandleWrappers.cpp
-  opm/grid/cpgrid/GridHelpers.cpp
-  opm/grid/cpgrid/Iterators.cpp
-  opm/grid/cpgrid/Indexsets.cpp
-  opm/grid/cpgrid/LgrHelpers.cpp
-  opm/grid/cpgrid/LgrOutputHelpers.cpp
-  opm/grid/cpgrid/NestedRefinementUtilities.cpp
-  opm/grid/cpgrid/PartitionTypeIndicator.cpp
-  opm/grid/cpgrid/processEclipseFormat.cpp
-  opm/grid/common/GridPartitioning.cpp
-  opm/grid/common/MetisPartition.cpp
-  opm/grid/common/WellConnections.cpp
-  opm/grid/common/ZoltanGraphFunctions.cpp
-  opm/grid/common/ZoltanPartition.cpp
   opm/grid/CellQuadrature.cpp
   opm/grid/ColumnExtract.cpp
   opm/grid/FaceQuadrature.cpp
@@ -56,33 +38,91 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/GridManager.cpp
   opm/grid/GridUtilities.cpp
   opm/grid/MinpvProcessor.cpp
+  opm/grid/UnstructuredGrid.c
   opm/grid/cart_grid.c
+  opm/grid/common/GridPartitioning.cpp
+  opm/grid/common/MetisPartition.cpp
+  opm/grid/common/WellConnections.cpp
+  opm/grid/common/ZoltanGraphFunctions.cpp
+  opm/grid/common/ZoltanPartition.cpp
   opm/grid/cornerpoint_grid.c
   opm/grid/cpgpreprocess/facetopology.c
   opm/grid/cpgpreprocess/geometry.c
   opm/grid/cpgpreprocess/make_edge_conformal.cpp
   opm/grid/cpgpreprocess/preprocess.c
   opm/grid/cpgpreprocess/uniquepoints.c
-  opm/grid/UnstructuredGrid.c
+  opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/CpGridData.cpp
+  opm/grid/cpgrid/CpGridUtilities.cpp
+  opm/grid/cpgrid/DataHandleWrappers.cpp
+  opm/grid/cpgrid/GridHelpers.cpp
+  opm/grid/cpgrid/Indexsets.cpp
+  opm/grid/cpgrid/Intersection.cpp
+  opm/grid/cpgrid/Iterators.cpp
+  opm/grid/cpgrid/LgrHelpers.cpp
+  opm/grid/cpgrid/LgrOutputHelpers.cpp
+  opm/grid/cpgrid/NestedRefinementUtilities.cpp
+  opm/grid/cpgrid/PartitionTypeIndicator.cpp
+  opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/grid_equal.cpp
-  opm/grid/utility/compressedToCartesian.cpp
-  opm/grid/utility/cartesianToCompressed.cpp
+  opm/grid/transmissibility/trans_tpfa.c
   opm/grid/utility/StopWatch.cpp
+  opm/grid/utility/VelocityInterpolation.cpp
   opm/grid/utility/WachspressCoord.cpp
+  opm/grid/utility/cartesianToCompressed.cpp
+  opm/grid/utility/compressedToCartesian.cpp
 )
-
-if(USE_OPM_COMMON)
-  list(APPEND MAIN_SOURCE_FILES
-    opm/grid/utility/VelocityInterpolation.cpp
-    opm/grid/transmissibility/trans_tpfa.c
-  )
-endif()
 
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list(APPEND TEST_SOURCE_FILES
+  tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/eclCentroid_test.cpp
+  tests/cpgrid/entity_test.cpp
+  tests/cpgrid/entityrep_test.cpp
+  tests/cpgrid/facetag_test.cpp
+  tests/cpgrid/geometry_test.cpp
+  tests/cpgrid/grid_nnc.cpp
+  tests/cpgrid/grid_pinch.cpp
+  tests/cpgrid/lgr/adapt_cpgrid_test.cpp
+  tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
+  tests/cpgrid/lgr/addLgrs_if_non_nnc_in_lgrs_test.cpp
+  tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
+  tests/cpgrid/lgr/aquifer_cells_and_conn_not_refined_test.cpp
+  tests/cpgrid/lgr/autoRefine_test.cpp
+  tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
+  tests/cpgrid/lgr/consistent_vertex_order_in_face_test.cpp
+  tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
+  tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
+  tests/cpgrid/lgr/getParentIntersectionFromLgrBoundaryFace_test.cpp
+  tests/cpgrid/lgr/global_refine_test.cpp
+  tests/cpgrid/lgr/grid_global_id_set_test.cpp
+  tests/cpgrid/lgr/id_entity_entityrep_test.cpp
+  tests/cpgrid/lgr/levelCartToLevelCompressed_test.cpp
+  tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
+  tests/cpgrid/lgr/lgrIJK_test.cpp
+  tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
+  tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
+  tests/cpgrid/lgr/lgr_coord_zcorn_test.cpp
+  tests/cpgrid/lgr/lgr_with_inactive_parent_cells_test.cpp
+  tests/cpgrid/lgr/lgrs_sharing_faces_test.cpp
+  tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
+  tests/cpgrid/lgr/lookUpCellCentroid_cpgrid_test.cpp
+  tests/cpgrid/lgr/lookupdataCpGrid_test.cpp
+  tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
+  tests/cpgrid/lgr/nested_refinement_test.cpp
+  tests/cpgrid/lgr/refine_hexahedron_with_non_rectangular_faces_test.cpp
+  tests/cpgrid/lgr/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
+  tests/cpgrid/lgr/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
+  tests/cpgrid/lgr/restrict_data_to_level_grids_test.cpp
+  tests/cpgrid/lgr/save_lgr_coord_zcorn_test.cpp
+  tests/cpgrid/orientedentitytable_test.cpp
+  tests/cpgrid/partition_iterator_test.cpp
+  tests/cpgrid/shifted_cart_test.cpp
+  tests/cpgrid/zoltan_test.cpp
   tests/p2pcommunicator_test.cc
   tests/test_cartgrid.cpp
+  tests/test_cellCentroid_polyhedralGrid.cpp
   tests/test_column_extract.cpp
   tests/test_communication_utils.cpp
   tests/test_compressed_cartesian_mapping.cpp
@@ -92,78 +132,28 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_graphofgrid.cpp
   tests/test_graphofgrid_parallel.cpp
   tests/test_gridutilities.cpp
+  tests/test_lookupdata_polyhedral.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
   tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
+  tests/test_regionmapping.cpp
   tests/test_repairzcorn.cpp
   tests/test_subgridpart.cpp
-  tests/cpgrid/distribution_test.cpp
-  tests/cpgrid/entityrep_test.cpp
-  tests/cpgrid/entity_test.cpp
-  tests/cpgrid/facetag_test.cpp
-  tests/cpgrid/geometry_test.cpp
-  tests/cpgrid/orientedentitytable_test.cpp
-  tests/cpgrid/partition_iterator_test.cpp
-  tests/cpgrid/shifted_cart_test.cpp
-  tests/cpgrid/zoltan_test.cpp
-  tests/cpgrid/lgr/adapt_cpgrid_test.cpp
-  tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
-  tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
-  tests/cpgrid/lgr/autoRefine_test.cpp
-  tests/cpgrid/lgr/global_refine_test.cpp
-  tests/cpgrid/lgr/id_entity_entityrep_test.cpp
-  tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
-  tests/cpgrid/lgr/lgrs_sharing_faces_test.cpp
-  tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
-  tests/cpgrid/lgr/nested_refinement_test.cpp
-  tests/cpgrid/lgr/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
-  tests/cpgrid/lgr/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
+  tests/test_ug.cpp
 )
-
-if(USE_OPM_COMMON)
-  list(APPEND TEST_SOURCE_FILES
-    tests/test_regionmapping.cpp
-    tests/test_ug.cpp
-    tests/test_cellCentroid_polyhedralGrid.cpp
-    tests/test_lookupdata_polyhedral.cpp
-    tests/cpgrid/eclCentroid_test.cpp
-    tests/cpgrid/grid_nnc.cpp
-    tests/cpgrid/grid_pinch.cpp
-    tests/cpgrid/lgr/aquifer_cells_and_conn_not_refined_test.cpp
-    tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
-    tests/cpgrid/lgr/consistent_vertex_order_in_face_test.cpp
-    tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
-    tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
-    tests/cpgrid/lgr/grid_global_id_set_test.cpp
-    tests/cpgrid/lgr/getParentIntersectionFromLgrBoundaryFace_test.cpp
-    tests/cpgrid/lgr/levelCartToLevelCompressed_test.cpp
-    tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
-    tests/cpgrid/lgr/mapLevelIndicesToCartesianOutputOrder_test.cpp
-    tests/cpgrid/lgr/restrict_data_to_level_grids_test.cpp
-    tests/cpgrid/lgr/addLgrs_if_non_nnc_in_lgrs_test.cpp
-    tests/cpgrid/lgr/lgrIJK_test.cpp
-    tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
-    tests/cpgrid/lgr/lgr_coord_zcorn_test.cpp
-    tests/cpgrid/lgr/lgr_with_inactive_parent_cells_test.cpp
-    tests/cpgrid/lgr/lookUpCellCentroid_cpgrid_test.cpp
-    tests/cpgrid/lgr/lookupdataCpGrid_test.cpp
-    tests/cpgrid/lgr/refine_hexahedron_with_non_rectangular_faces_test.cpp
-    tests/cpgrid/lgr/save_lgr_coord_zcorn_test.cpp
-  )
-endif()
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list(APPEND TEST_DATA_FILES
   tests/CORNERPOINT_ACTNUM.DATA
-  tests/compressed_gridproperty.data
   tests/FIVE.DATA
   tests/FIVE_ACTNUM.DATA
   tests/FIVE_PINCH.DATA
   tests/FIVE_PINCH_NOGAP.DATA
   tests/FIVE_PINCH_NOGAP2.DATA
   tests/FIVE_PINCH_NOGAP3.DATA
+  tests/compressed_gridproperty.data
 )
 
 # originally generated with the command:
@@ -173,59 +163,78 @@ list(APPEND EXAMPLE_SOURCE_FILES
   examples/griditer.cpp
 )
 
-if(USE_OPM_COMMON)
-  list(APPEND PROGRAM_SOURCE_FILES
-    examples/grdecl2vtu.cpp
-    examples/mirror_grid.cpp
-  )
-endif()
+list(APPEND PROGRAM_SOURCE_FILES
+  examples/grdecl2vtu.cpp
+  examples/mirror_grid.cpp
+)
 
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
 list(APPEND PUBLIC_HEADER_FILES
+  opm/grid/CellQuadrature.hpp
+  opm/grid/ColumnExtract.hpp
+  opm/grid/CpGrid.hpp
+  opm/grid/FaceQuadrature.hpp
+  opm/grid/GraphOfGrid.hpp
+  opm/grid/GraphOfGridWrappers.hpp
+  opm/grid/GridHelpers.hpp
+  opm/grid/GridManager.hpp
+  opm/grid/GridUtilities.hpp
+  opm/grid/LookUpCellCentroid.hh
+  opm/grid/LookUpData.hh
+  opm/grid/MinpvProcessor.hpp
+  opm/grid/RepairZCORN.hpp
+  opm/grid/UnstructuredGrid.h
+  opm/grid/cart_grid.h
+  opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/CommunicationUtils.hpp
   opm/grid/common/GeometryHelpers.hpp
   opm/grid/common/GridAdapter.hpp
+  opm/grid/common/GridEnums.hpp
   opm/grid/common/GridPartitioning.hpp
+  opm/grid/common/LevelCartesianIndexMapper.hpp
+  opm/grid/common/MetisPartition.hpp
+  opm/grid/common/SubGridPart.hpp
   opm/grid/common/Volumes.hpp
+  opm/grid/common/WellConnections.hpp
+  opm/grid/common/ZoltanGraphFunctions.hpp
+  opm/grid/common/ZoltanPartition.hpp
   opm/grid/common/p2pcommunicator.hh
   opm/grid/common/p2pcommunicator_impl.hh
-  opm/grid/common/WellConnections.hpp
+  opm/grid/cornerpoint_grid.h
+  opm/grid/cpgpreprocess/facetopology.h
+  opm/grid/cpgpreprocess/geometry.h
+  opm/grid/cpgpreprocess/make_edge_conformal.hpp
+  opm/grid/cpgpreprocess/preprocess.h
+  opm/grid/cpgpreprocess/uniquepoints.h
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
   opm/grid/cpgrid/CpGridDataTraits.hpp
   opm/grid/cpgrid/CpGridUtilities.hpp
   opm/grid/cpgrid/DataHandleWrappers.hpp
   opm/grid/cpgrid/DefaultGeometryPolicy.hpp
-  opm/grid/cpgrid/dgfparser.hh
-  opm/grid/cpgrid/Entity2IndexDataHandle.hpp
+  opm/grid/cpgrid/ElementMarkHandle.hpp
   opm/grid/cpgrid/Entity.hpp
+  opm/grid/cpgrid/Entity2IndexDataHandle.hpp
   opm/grid/cpgrid/EntityRep.hpp
   opm/grid/cpgrid/Geometry.hpp
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
-  opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
-  opm/grid/cpgrid/NestedRefinementUtilities.hpp
-  opm/grid/CpGrid.hpp
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
-  opm/grid/cpgrid/ElementMarkHandle.hpp
+  opm/grid/cpgrid/NestedRefinementUtilities.hpp
   opm/grid/cpgrid/OrientedEntityTable.hpp
-  opm/grid/cpgrid/ParentToChildrenCellGlobalIdHandle.hpp
   opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp
+  opm/grid/cpgrid/ParentToChildrenCellGlobalIdHandle.hpp
   opm/grid/cpgrid/PartitionIteratorRule.hpp
   opm/grid/cpgrid/PartitionTypeIndicator.hpp
   opm/grid/cpgrid/PersistentContainer.hpp
-  opm/grid/common/CartesianIndexMapper.hpp
-  opm/grid/common/GridEnums.hpp
-  opm/grid/common/LevelCartesianIndexMapper.hpp
-  opm/grid/common/MetisPartition.hpp
-  opm/grid/common/SubGridPart.hpp
-  opm/grid/common/ZoltanGraphFunctions.hpp
-  opm/grid/common/ZoltanPartition.hpp
+  opm/grid/cpgrid/dgfparser.hh
+  opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/capabilities.hh
   opm/grid/polyhedralgrid/cartesianindexmapper.hh
   opm/grid/polyhedralgrid/declaration.hh
@@ -234,41 +243,19 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/polyhedralgrid/entitypointer.hh
   opm/grid/polyhedralgrid/entityseed.hh
   opm/grid/polyhedralgrid/geometry.hh
-  opm/grid/polyhedralgrid/gridhelpers.hh
   opm/grid/polyhedralgrid/grid.hh
+  opm/grid/polyhedralgrid/gridhelpers.hh
   opm/grid/polyhedralgrid/gridview.hh
-  opm/grid/polyhedralgrid/levelcartesianindexmapper.hh
-  opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/idset.hh
   opm/grid/polyhedralgrid/indexset.hh
   opm/grid/polyhedralgrid/intersection.hh
   opm/grid/polyhedralgrid/intersectioniterator.hh
   opm/grid/polyhedralgrid/iterator.hh
+  opm/grid/polyhedralgrid/levelcartesianindexmapper.hh
   opm/grid/polyhedralgrid/persistentcontainer.hh
-  opm/grid/UnstructuredGrid.h
-  opm/grid/CellQuadrature.hpp
-  opm/grid/ColumnExtract.hpp
-  opm/grid/FaceQuadrature.hpp
-  opm/grid/GraphOfGrid.hpp
-  opm/grid/GraphOfGridWrappers.hpp
-  opm/grid/GridHelpers.hpp
-  opm/grid/GridManager.hpp
-  opm/grid/GridUtilities.hpp
-  opm/grid/MinpvProcessor.hpp
-  opm/grid/RepairZCORN.hpp
-  opm/grid/cart_grid.h
-  opm/grid/cornerpoint_grid.h
-  opm/grid/cpgpreprocess/facetopology.h
-  opm/grid/cpgpreprocess/geometry.h
-  opm/grid/cpgpreprocess/make_edge_conformal.hpp
-  opm/grid/cpgpreprocess/preprocess.h
-  opm/grid/cpgpreprocess/uniquepoints.h
-  opm/grid/transmissibility/trans_tpfa.h
   opm/grid/transmissibility/TransTpfa.hpp
   opm/grid/transmissibility/TransTpfa_impl.hpp
-  opm/grid/utility/compressedToCartesian.hpp
-  opm/grid/utility/cartesianToCompressed.hpp
-  opm/grid/utility/createThreadIterators.hpp
+  opm/grid/transmissibility/trans_tpfa.h
   opm/grid/utility/ElementChunks.hpp
   opm/grid/utility/ErrorMacros.hpp
   opm/grid/utility/OpmLog.hpp
@@ -278,13 +265,9 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/VariableSizeCommunicator.hpp
   opm/grid/utility/VelocityInterpolation.hpp
   opm/grid/utility/WachspressCoord.hpp
+  opm/grid/utility/cartesianToCompressed.hpp
+  opm/grid/utility/compressedToCartesian.hpp
+  opm/grid/utility/createThreadIterators.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h
   opm/grid/utility/platform_dependent/reenable_warnings.h
 )
-
-if(USE_OPM_COMMON)
-  list(APPEND PUBLIC_HEADER_FILES
-    opm/grid/LookUpCellCentroid.hh
-    opm/grid/LookUpData.hh
-  )
-endif()

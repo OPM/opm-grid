@@ -19,8 +19,6 @@
 #ifndef OPM_GRID_UTILITY_DISABLE_WARNINGS_HEADER_INCLUDED
 #define OPM_GRID_UTILITY_DISABLE_WARNINGS_HEADER_INCLUDED
 
-#if HAVE_OPM_COMMON
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
-#endif
 
 #endif

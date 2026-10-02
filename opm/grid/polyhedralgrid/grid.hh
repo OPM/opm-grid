@@ -39,9 +39,7 @@
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#endif
 
 namespace Dune
 {
@@ -318,7 +316,6 @@ namespace Dune
     /** \name Construction and Destruction
      *  \{ */
 
-#if HAVE_OPM_COMMON
     /** \brief constructor
      *
      *  \param[in]  deck         Opm Eclipse deck
@@ -337,7 +334,6 @@ namespace Dune
     {
       init();
     }
-#endif
 
     /** \brief constructor
      *
@@ -887,7 +883,6 @@ namespace Dune
     }
 
   protected:
-#if HAVE_OPM_COMMON
     UnstructuredGridType*
     createGrid(const Opm::EclipseGrid&    inputGrid,
                const std::vector<double>& poreVolumes,
@@ -946,7 +941,6 @@ namespace Dune
 
       return cgrid;
     }
-#endif
 
     UnstructuredGridType* createGrid( const std::vector< int >& n, const std::vector< double >& dx ) const
     {

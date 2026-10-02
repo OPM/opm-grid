@@ -20,11 +20,9 @@
 
 #include <opm/grid/polyhedralgrid/gridfactory.hh>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Deck/Deck.hpp>
-#endif
 
 namespace Dune
 {
@@ -60,7 +58,6 @@ namespace Dune
       if( !input )
         DUNE_THROW( DGFException, "Macrofile '" << filename << "' not found" );
 
-#if HAVE_OPM_COMMON
       if( !DuneGridFormatParser::isDuneGridFormat( input ) )
       {
         Opm::Parser parser;
@@ -71,7 +68,6 @@ namespace Dune
         return ;
       }
       else
-#endif
       {
         generate( input );
       }

@@ -110,13 +110,11 @@ const int* cartDims(const UnstructuredGrid& grid);
 /// in the underlying structured grid.
 const int* globalCell(const UnstructuredGrid& grid);
 
-#if HAVE_OPM_COMMON
 /// \brief Create Eclipse style ACTNUM array.
 ///
 /// Create a vector with global cartesian number of elements,
 /// the value is 0 for inactive cells and one for active cells.
 std::vector<int> createACTNUM(const UnstructuredGrid& grid);
-#endif
 
 
 /// \brief Traits of the cell centroids of a grid.
@@ -220,11 +218,9 @@ struct CellVolumeIteratorTraits<UnstructuredGrid>
        correctly represented in the EclipseGrid created by this
        method.
     */
-#if HAVE_OPM_COMMON
 /// \brief Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actnum from the dune UnstructuredGrid.
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid );
-#endif
 
 /// \brief Get an iterator over the cell volumes of a grid positioned at the first cell.
 const double* beginCellVolumes(const UnstructuredGrid& grid);

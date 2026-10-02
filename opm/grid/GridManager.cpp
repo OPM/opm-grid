@@ -27,14 +27,11 @@
 #include <opm/grid/MinpvProcessor.hpp>
 #include <opm/grid/utility/ErrorMacros.hpp>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#endif
 
 namespace Opm
 {
 
-#if HAVE_OPM_COMMON
     /// Construct a 3d corner-point grid from a deck.
     GridManager::GridManager(const Opm::EclipseGrid& inputGrid,
                              const bool edge_conformal)
@@ -51,7 +48,6 @@ namespace Opm
     {
         initFromEclipseGrid(inputGrid, poreVolumes, edge_conformal);
     }
-#endif
 
 
     /// Construct a 2d cartesian grid with cells of unit size.
@@ -128,7 +124,6 @@ namespace Opm
 
 
 
-#if HAVE_OPM_COMMON
     // Construct corner-point grid from EclipseGrid.
     void GridManager::initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                           const std::vector<double>& poreVolumes,
@@ -174,7 +169,6 @@ namespace Opm
 
     }
 
-#endif
 
 
 

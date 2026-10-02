@@ -11,10 +11,8 @@
 
 #include <opm/grid/cpgrid/dgfparser.hh>
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
-#endif
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 using Dune::referenceElement; //grid check assume usage of Dune::Geometry
@@ -142,7 +140,6 @@ int main(int argc, char** argv )
     // test CpGrid
     typedef Dune::CpGrid Grid;
 
-#if HAVE_OPM_COMMON
     const char *deckString =
         "RUNSPEC\n"
         "METRIC\n"
@@ -185,7 +182,6 @@ int main(int argc, char** argv )
     }
 
 
-#endif
 
     std::stringstream dgfFile;
     // create unit cube with 8 cells in each direction

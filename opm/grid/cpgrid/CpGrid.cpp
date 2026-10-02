@@ -44,9 +44,7 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
-#if HAVE_OPM_COMMON
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#endif
 
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
@@ -638,9 +636,7 @@ void CpGrid::createCartesian(const std::array<int, 3>& dims,
     // Note: This is a Cartesian, matching grid which is edge-conforming
     // regardless of the edge_conformal flag.
     current_data_->back()->processEclipseFormat(g,
-#if HAVE_OPM_COMMON
                                                 /* ecl_state = */ nullptr,
-#endif
                                                 nnc,
                                                 /* remove_ij_boundary = */ false,
                                                 /* turn_normals = */ false,
@@ -1702,7 +1698,6 @@ const cpgrid::CpGridDataTraits::RemoteIndices& CpGrid::getCellRemoteIndices() co
 
 #endif
 
-#if HAVE_OPM_COMMON
 std::vector<std::size_t>
 CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
@@ -1738,7 +1733,6 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                                 !ecl_grid_ptr || ecl_grid_ptr->isPinchActive(), edge_conformal);
 }
 
-#endif
 
 void CpGrid::processEclipseFormat(const grdecl& input_data,
                                   const bool remove_ij_boundary,
@@ -1749,9 +1743,7 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
     using NNCMaps = std::array<NNCMap, 2>;
     NNCMaps nnc;
     current_data_->back()->processEclipseFormat(input_data,
-#if HAVE_OPM_COMMON
                                                 nullptr,
-#endif
                                                 nnc,
                                                 remove_ij_boundary,
                                                 turn_normals,

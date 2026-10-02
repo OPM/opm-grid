@@ -29,9 +29,7 @@ struct grdecl;
 namespace Opm
 {
 
-#if HAVE_OPM_COMMON
 class EclipseGrid;
-#endif
 
     /// This class manages an Opm::UnstructuredGrid in the sense that it
     /// encapsulates creation and destruction of the grid.
@@ -45,7 +43,6 @@ class EclipseGrid;
     {
     public:
 
-#if HAVE_OPM_COMMON
         /// Construct a grid from an EclipseState::EclipseGrid instance.
         explicit GridManager(const EclipseGrid& inputGrid,
                              bool edge_conformal = false);
@@ -58,7 +55,6 @@ class EclipseGrid;
         GridManager(const EclipseGrid& inputGrid,
                     const std::vector<double>& poreVolumes,
                     bool edge_conformal);
-#endif
 
         /// Construct a 2d cartesian grid with cells of unit size.
         GridManager(int nx, int ny);
@@ -91,12 +87,10 @@ class EclipseGrid;
         GridManager(const GridManager& other) = delete;
         GridManager& operator=(const GridManager& other) = delete;
 
-#if HAVE_OPM_COMMON
         // Construct corner-point grid from EclipseGrid.
         void initFromEclipseGrid(const EclipseGrid& inputGrid,
                                  const std::vector<double>& poreVolumes,
                                  bool edge_conformal);
-#endif
 
         // The managed UnstructuredGrid.
         UnstructuredGrid* ug_;
