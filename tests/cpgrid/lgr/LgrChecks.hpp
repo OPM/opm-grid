@@ -121,6 +121,8 @@ void checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
                                        const std::vector<int>& expected_vertex_ids_per_lgr,
                                        int leaf_expected_vertex_ids);
 
+std::set<int> setOfAllVertexGlobalIds(const Dune::CpGrid& grid, int levelOrLeaf);
+
 void checkVertexGlobalIds(const Dune::CpGrid& grid,
                           int expected_vertex_ids,
                           int levelOrLeaf);
@@ -584,7 +586,7 @@ void Opm::checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
     checkVertexGlobalIds(grid, leaf_expected_vertex_ids, grid.maxLevel()+1);
 }
 
-void Opm::checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int levelOrLeaf)
+std::set<int> Opm::setOfAllVertexGlobalIds(const Dune::CpGrid& grid, int levelOrLeaf)
 {
     std::vector<int> localVertexIds_vec;
     const auto& levelOrLeafData = grid.currentData()[levelOrLeaf];
@@ -601,6 +603,28 @@ void Opm::checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids
                    { return is.id(vertex); });
     auto [allGlobalIds_verts, displVertex ] = allGatherv(localVertexIds_vec, grid.comm());
     const std::set<int> allGlobalIds_verts_set(allGlobalIds_verts.begin(), allGlobalIds_verts.end());
+    
+    return allGlobalIds_verts_set;
+}
+
+void Opm::checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int levelOrLeaf)
+{
+    /*std::vector<int> localVertexIds_vec;
+    const auto& levelOrLeafData = grid.currentData()[levelOrLeaf];
+    localVertexIds_vec.reserve(levelOrLeafData->size(3));
+
+    const int leafGridIdx = grid.maxLevel()+1;
+    bool isLeaf = (levelOrLeaf == leafGridIdx);
+
+    const auto& verts = isLeaf? Dune::vertices(grid.leafGridView()) : Dune::vertices(grid.levelGridView(levelOrLeaf));
+    // Notice that all partition type points are pushed back.
+    // Selecting only interior points does not bring us to the expected value.
+    std::transform(verts.begin(), verts.end(), std::back_inserter(localVertexIds_vec),
+                   [&is = levelOrLeafData->globalIdSet()](const auto& vertex)
+                   { return is.id(vertex); });
+    auto [allGlobalIds_verts, displVertex ] = allGatherv(localVertexIds_vec, grid.comm());
+    const std::set<int> allGlobalIds_verts_set(allGlobalIds_verts.begin(), allGlobalIds_verts.end());*/
+    const auto allGlobalIds_verts_set = Opm::setOfAllVertexGlobalIds(grid, levelOrLeaf);
 
     BOOST_CHECK_EQUAL( allGlobalIds_verts_set.size(), expected_vertex_ids);
 }
