@@ -97,7 +97,6 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
   tests/test_repairzcorn.cpp
-  tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -272,11 +271,9 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/createThreadIterators.hpp
   opm/grid/utility/ElementChunks.hpp
   opm/grid/utility/ErrorMacros.hpp
-  opm/grid/utility/IteratorRange.hpp
   opm/grid/utility/OpmLog.hpp
   opm/grid/utility/OpmWellType.hpp
   opm/grid/utility/RegionMapping.hpp
-  opm/grid/utility/SparseTable.hpp
   opm/grid/utility/StopWatch.hpp
   opm/grid/utility/VariableSizeCommunicator.hpp
   opm/grid/utility/VelocityInterpolation.hpp

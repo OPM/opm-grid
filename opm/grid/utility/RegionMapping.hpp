@@ -20,7 +20,7 @@
 #ifndef OPM_REGIONMAPPING_HEADER_INCLUDED
 #define OPM_REGIONMAPPING_HEADER_INCLUDED
 
-#include <opm/grid/utility/IteratorRange.hpp>
+#include <opm/common/utility/IteratorRange.hpp>
 
 #include <unordered_map>
 #include <vector>

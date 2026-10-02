@@ -21,7 +21,7 @@
 #define OPM_GRIDUTILITIES_HEADER_INCLUDED
 
 #include <opm/grid/UnstructuredGrid.h>
-#include <opm/grid/utility/SparseTable.hpp>
+#include <opm/common/utility/SparseTable.hpp>
 
 namespace Opm
 {

@@ -25,7 +25,7 @@
 
 #include <opm/grid/UnstructuredGrid.h>
 
-#include <opm/grid/utility/IteratorRange.hpp>
+#include <opm/common/utility/IteratorRange.hpp>
 
 namespace Opm
 {

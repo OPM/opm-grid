@@ -20,7 +20,7 @@
 #ifndef OPM_WACHSPRESSCOORD_HEADER_INCLUDED
 #define OPM_WACHSPRESSCOORD_HEADER_INCLUDED
 
-#include <opm/grid/utility/SparseTable.hpp>
+#include <opm/common/utility/SparseTable.hpp>
 #include <vector>
 
 struct UnstructuredGrid;
