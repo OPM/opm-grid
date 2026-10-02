@@ -1426,7 +1426,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
 
             // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
             int* indices_storage_ptr = refined_cell_to_point_vec[shiftedLevel][cell].data();
-            refined_cells_vec[shiftedLevel][cell] = Dune::cpgrid::Geometry<3,3>(elemLgrGeom.center(), elemLgrGeom.volume(), allLevelCorners, indices_storage_ptr);
+            refined_cells_vec[shiftedLevel][cell] = Dune::cpgrid::Geometry<3,3>(elemLgrGeom.center(), elemLgrGeom.volume(), allLevelCorners.get(), indices_storage_ptr);
         } // refined_cells
         // Refined face to cell.
         refined_cell_to_face_vec[shiftedLevel].makeInverseRelation(refined_face_to_cell_vec[shiftedLevel]);
@@ -1722,7 +1722,7 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
 
         // Create a pointer to the first element of "adapted_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
         int* indices_storage_ptr = adapted_cell_to_point[cell].data();
-        adapted_cells[cell] = Dune::cpgrid::Geometry<3,3>(cellGeom.center(), cellGeom.volume(), allCorners, indices_storage_ptr);
+        adapted_cells[cell] = Dune::cpgrid::Geometry<3,3>(cellGeom.center(), cellGeom.volume(), allCorners.get(), indices_storage_ptr);
     } // adapted_cells
 
     // Adapted/Leaf-grid-view face to cell.
@@ -2287,7 +2287,7 @@ void filterMarkedAquiferCellsAndConnections(Dune::CpGrid& grid,
                 } else {
                     grid.mark(0, elem);
                 }
-            }  
+            }
         }
     };
 

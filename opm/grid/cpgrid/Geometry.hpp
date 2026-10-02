@@ -406,6 +406,10 @@ namespace Dune
 
             /// @brief Construct from center, volume (1- and 0-moments) and
             ///        corners.
+            /// @warning This constructor does not own the corners or indices,
+            ///         thus, the pointers must remain valid for the lifetime of
+            ///         the Geometry object.
+            ///
             /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
             /// @param allcorners_ptr pointer of all corner positions in the grid
@@ -414,17 +418,17 @@ namespace Dune
             ///                       by (kji), i.e. i running fastest.
             Geometry(const GlobalCoordinate& pos,
                      ctype vol,
-                     std::shared_ptr<const EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_ptr,
+                     EntityVariable<cpgrid::Geometry<0, 3>, 3> const * allcorners_ptr,
                      const int* corner_indices)
                 : pos_(pos), vol_(vol),
                   allcorners_(allcorners_ptr), cor_idx_(corner_indices)
             {
-                assert(allcorners_ && corner_indices);
+                assert(allcorners_ptr && corner_indices);
             }
 
             /// Default constructor, giving a non-valid geometry.
             Geometry()
-                : pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
+                : pos_(0.0), vol_(0.0), allcorners_(nullptr), cor_idx_(nullptr)
             {
             }
 
@@ -1023,7 +1027,7 @@ namespace Dune
                             refined_cells[refined_cell_idx] =
                                 Geometry<3,cdim>(refined_cell_center,
                                                  refined_cell_volume,
-                                                 all_geom.geomVector(std::integral_constant<int,3>()),
+                                                 all_geom.geomVector(std::integral_constant<int,3>()).get(),
                                                  indices_storage_ptr);
                         } // end i-for-loop
                     }  // end j-for-loop
@@ -1044,7 +1048,7 @@ namespace Dune
         private:
             GlobalCoordinate pos_;
             double vol_;
-            std::shared_ptr<const EntityVariable<Geometry<0, 3>,3>> allcorners_; // For dimension 3 only
+            const EntityVariable<Geometry<0, 3>,3>* allcorners_; // store non-owning pointer of the 8 corners
             const int* cor_idx_; // For dimension 3 only
 
             /// @brief
