@@ -1920,11 +1920,11 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& adapted_face_normals = adaptedGrid.face_normals_;
     // Mutable containers for adapted corners, faces, cells, face tags, and face normals.
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& adapted_corners =
-        *(adapted_geometries.geomVector(std::integral_constant<int,3>()));
+        adapted_geometries.geomVector(std::integral_constant<int,3>());
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& adapted_faces =
-        *(adapted_geometries.geomVector(std::integral_constant<int,1>()));
+        adapted_geometries.geomVector(std::integral_constant<int,1>());
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells =
-        *(adapted_geometries.geomVector(std::integral_constant<int,0>()));
+        adapted_geometries.geomVector(std::integral_constant<int,0>());
     Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags = adapted_face_tags;
     typedef Dune::FieldVector<double,3> PointType;
     Dune::cpgrid::EntityVariableBase<PointType>& mutable_face_normals = adapted_face_normals;
@@ -2243,11 +2243,11 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
         Dune::cpgrid::DefaultGeometryPolicy&  refinedLevel_geometries = (*data[refinedLevelGridIdx]).geometry_;
         // Mutable containers for adapted corners, faces, cells, face tags, and face normals.
         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& level_corners =
-            *(refinedLevel_geometries.geomVector(std::integral_constant<int,3>()));
+            refinedLevel_geometries.geomVector(std::integral_constant<int,3>());
         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& level_faces =
-            *(refinedLevel_geometries.geomVector(std::integral_constant<int,1>()));
+            refinedLevel_geometries.geomVector(std::integral_constant<int,1>());
         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& level_cells =
-            *(refinedLevel_geometries.geomVector(std::integral_constant<int,0>()));
+            refinedLevel_geometries.geomVector(std::integral_constant<int,0>());
 
         level_corners.swap(refined_corners_vec[level]);
         level_faces.swap(refined_faces_vec[level]);
