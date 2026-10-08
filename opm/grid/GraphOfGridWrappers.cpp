@@ -267,6 +267,25 @@ std::vector<std::set<int>> partitionCellGroupsWithHalo(const Dune::CpGrid& grid)
     return result;
 }
 
+void addRefinedCellWeights(GraphOfGrid<Dune::CpGrid>& gog)
+{
+    const auto& grid = gog.getGrid();
+    if (grid.lgrBackend() != Opm::Refinement::Backend::Conforming || grid.maxLevel() == 0) {
+        return;
+    }
+    const auto level0 = grid.levelGridView(0);
+    std::vector<int> leafCells(level0.size(0), 0);
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        ++leafCells[element.getOrigin().index()];
+    }
+    const auto& ids = grid.currentData().front()->globalIdSet();
+    for (const auto& element : Dune::elements(level0)) {
+        if (const int n = leafCells[element.index()]; n > 1) {
+            gog.setVertexWeight(ids.id(element), static_cast<float>(n));
+        }
+    }
+}
+
 void addPartitionCellGroups(GraphOfGrid<Dune::CpGrid>& gog)
 {
     for (auto& group : partitionCellGroupsWithHalo(gog.getGrid())) {
@@ -647,6 +666,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
     GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod, level);
+    addRefinedCellWeights(gog);
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                                       : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
@@ -799,6 +819,7 @@ applySerialZoltan (const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
+    addRefinedCellWeights(gog);
     if (!allowDistributedWells){
         // skip cell contraction if wells can be distributed over multiple processes
         addWellConnections(gog, wellConnections);
