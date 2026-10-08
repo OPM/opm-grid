@@ -95,6 +95,8 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/conforming_builder_test.cpp
   tests/cpgrid/faulted_boundary_test.cpp
   tests/cpgrid/edge_conformal_refinement_test.cpp
+  tests/cpgrid/distributed_builder_test.cpp
+  tests/cpgrid/partition_cell_groups_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp

@@ -23,6 +23,7 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
+#include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <opm/common/ErrorMacros.hpp>
@@ -30,6 +31,7 @@
 #include <algorithm>
 #include <array>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -87,6 +89,39 @@ void CpGrid::setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> buil
     refinement_builder_ = std::move(builder);
 }
 
+// The input is retained on rank 0's undistributed level zero; every rank's builder resamples it.
+// Entered on all ranks, whether or not the current view already holds it.
+void CpGrid::broadcastRetainedInput_()
+{
+    auto input = std::make_shared<Opm::Refinement::RetainedCornerPointInput>();
+    int present = 0;
+    if (comm().rank() == 0 && !data_.empty()) {
+        if (const auto source = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*data_[0])) {
+            *input = *source;
+            present = 1;
+        }
+    }
+    comm().broadcast(&present, 1, 0);
+    if (!present) {
+        return;
+    }
+    comm().broadcast(input->dims.data(), 3, 0);
+    int edgeConformal = input->edgeConformal ? 1 : 0;
+    comm().broadcast(&edgeConformal, 1, 0);
+    input->edgeConformal = (edgeConformal != 0);
+    std::array<int,3> sizes{static_cast<int>(input->coord.size()),
+                            static_cast<int>(input->zcorn.size()),
+                            static_cast<int>(input->actnum.size())};
+    comm().broadcast(sizes.data(), 3, 0);
+    input->coord.resize(sizes[0]);
+    input->zcorn.resize(sizes[1]);
+    input->actnum.resize(sizes[2]);
+    if (sizes[0] > 0) comm().broadcast(input->coord.data(), sizes[0], 0);
+    if (sizes[1] > 0) comm().broadcast(input->zcorn.data(), sizes[1], 0);
+    if (sizes[2] > 0) comm().broadcast(input->actnum.data(), sizes[2], 0);
+    Opm::Refinement::GridStateWriter::setRetainedCornerPointInput(*current_data_->front(), input);
+}
+
 void CpGrid::addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefinement>& requests)
 {
     Opm::Refinement::validateBlockRefinements(requests, getLgrNameToLevel());
@@ -112,6 +147,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefin
         return;
     }
 
+    if (comm().size() > 1) {
+        broadcastRetainedInput_();
+    }
     auto builder = refinement_builder_;
     if (!builder) {
         if (auto input = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*current_data_->front())) {
