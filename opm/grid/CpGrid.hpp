@@ -57,6 +57,7 @@
 
 #include <opm/grid/utility/OpmWellType.hpp>
 
+#include <cstdint>
 #include <set>
 
 namespace Opm
@@ -369,6 +370,10 @@ namespace Dune
         /// from whence the current CpGrid was constructed.
         const std::vector<int>& globalCell() const;
 
+        /// Rank- and partition-independent cell id of the current view; unlike globalCell(),
+        /// refined siblings get distinct ids.
+        std::vector<std::int64_t> stableCellId() const;
+
         /// @brief Returns either data_ or distributed_data_(if non empty).
         const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData() const;
 
@@ -513,6 +518,12 @@ namespace Dune
         Opm::Refinement::Backend lgrBackend() const
         {
             return lgr_backend_;
+        }
+
+        /// True once the grid has been scattered by loadBalance().
+        bool isDistributed() const
+        {
+            return !distributed_data_.empty();
         }
 
         /// @brief The builder the Conforming backend refines with.
