@@ -69,6 +69,7 @@
 //#include "GlobalIdMapping.hpp"
 #include "Geometry.hpp"
 
+#include <algorithm>
 #include <array>
 #include <initializer_list>
 #include <set>
@@ -917,7 +918,32 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                                   const Interface& interface)
 {
-    this->template communicateCodim<codim>(data, dir, interface.interfaces());
+    if (!data.fixedSize()) {
+        this->template communicateCodim<codim>(data, dir, interface.interfaces());
+        return;
+    }
+
+    // The communicator allocates message buffers of its maximum size, 32768
+    // items by default, for each neighbour on every call. With a fixed size
+    // per entity, the largest message on this interface is known.
+    std::size_t maxEntities = 1;
+    std::size_t entitySize = 1;
+    for (const auto& entry : interface.interfaces()) {
+        const auto& lists = entry.second;
+        maxEntities = std::max({maxEntities, lists.first.size(), lists.second.size()});
+        if (lists.first.size() > 0) {
+            entitySize = data.size(lists.first[0]);
+        } else if (lists.second.size() > 0) {
+            entitySize = data.size(lists.second[0]);
+        }
+    }
+
+    Communicator comm(ccobj_, interface.interfaces(), maxEntities * entitySize);
+
+    if (dir == ForwardCommunication)
+        comm.forward(data);
+    else
+        comm.backward(data);
 }
 
 template<int codim, class DataHandle>
