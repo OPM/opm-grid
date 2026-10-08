@@ -48,7 +48,6 @@ CpGridData::CpGridData(const CpGridData& g)
 CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
-      level_data_ptr_(),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 #if HAVE_MPI
     , cell_comm_(Dune::MPIHelper::getCommunicator())
@@ -57,13 +56,12 @@ CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
 #if HAVE_MPI
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
-    level_data_ptr_ = &data;
+    levels_.level_data_ptr = &data;
 }
 
 CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
-      level_data_ptr_(),
       ccobj_(comm), use_unique_boundary_ids_(false)
 #if HAVE_MPI
     , cell_comm_(comm)
@@ -72,7 +70,7 @@ CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared
 #if HAVE_MPI
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
-    level_data_ptr_ = &data;
+    levels_.level_data_ptr = &data;
 }
 
 #if HAVE_MPI
@@ -1717,11 +1715,11 @@ void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
     // The else branch is needed to ensure the leaf grid view uses the logical Cartesian size
     // of the original level-zero grid.
 
-    if (level_) { // refined level grids with level > 0
+    if (levels_.level) { // refined level grids with level > 0
         ijk = Opm::Lgr::getIJK(global_cell_[c], logical_cartesian_size_);
     }
     else { // level zero and leaf grids
-        ijk = Opm::Lgr::getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
+        ijk = Opm::Lgr::getIJK(global_cell_[c], levels_.level_data_ptr->front()->logicalCartesianSize());
     }
 }
 

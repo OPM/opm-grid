@@ -228,6 +228,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
+  opm/grid/cpgrid/LevelHierarchy.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/NestedRefinementUtilities.hpp
