@@ -49,6 +49,31 @@ void CpGrid::setLgrBackend(Opm::Refinement::Backend backend)
     current_data_->front()->retain_cp_input_ = (backend == Opm::Refinement::Backend::Conforming);
 }
 
+void CpGrid::throwIfConforming_(const std::string& what) const
+{
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        OPM_THROW(std::logic_error, what + " is not available with the Conforming LGR backend; "
+                  "refine with addLgrsUpdateLeafView() instead.");
+    }
+}
+
+void CpGrid::globalRefineConforming_(int refCount)
+{
+    if (refCount < 0) {
+        OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
+    }
+    if (refCount == 0) {
+        return;
+    }
+    // One builder pass yields one level; globalRefine(n) promises n nested levels.
+    if (refCount > 1 || maxLevel() > 0) {
+        OPM_THROW(std::logic_error, "The Conforming LGR backend refines an unrefined grid once; "
+                  "use globalRefine(1) or addLgrsUpdateLeafView() with the factor you need.");
+    }
+    const auto dims = logicalCartesianSize();
+    addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{dims[0], dims[1], dims[2]}}, {"GR1"});
+}
+
 void CpGrid::setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder)
 {
     refinement_builder_ = std::move(builder);

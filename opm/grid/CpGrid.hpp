@@ -1485,6 +1485,8 @@ namespace Dune
 
     private:
         void broadcastRetainedInput_();
+        void throwIfConforming_(const std::string& what) const;
+        void globalRefineConforming_(int refCount);
 
         /// \brief Scatter a global grid to all processors.
         /// \param method The edge-weighting method to be used on the graph partitioner.
