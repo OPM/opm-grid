@@ -252,7 +252,7 @@ void CpGrid::populateLeafGlobalIdSet()
     // Global id for the points in leaf grid view
     std::vector<int> leafPointIds(current_data_->back()->size(3));
     for(const auto& point : vertices(leafGridView())){
-        const auto& level_pointLevelIdx = current_data_->back()->corner_history_[point.index()];
+        const auto& level_pointLevelIdx = current_data_->back()->levels_.corner_history[point.index()];
         assert(level_pointLevelIdx[0] != -1);
         assert(level_pointLevelIdx[1] != -1);
         const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
@@ -361,7 +361,7 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
     // Notice that "levels" represents also the total amount of new (after calling adapt) refined level grids.
     const int& preAdaptMaxLevel = this->maxLevel();
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
-    const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_data_->back()->corner_history_ : std::vector<std::array<int,2>>();
+    const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_data_->back()->levels_.corner_history : std::vector<std::array<int,2>>();
 
     if (!global_id_set_ptr_) {
         global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*data.back());
@@ -483,11 +483,11 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
     std::vector<std::vector<int>> preAdapt_level_to_leaf_cells_vec(preAdaptMaxLevel +1);
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
         // Resize with the corresponding amount of cells of the preAdapt level. Deafualt {-1, empty vector} when the cell has no children.
-        if ( (*data[preAdaptLevel]).parent_to_children_cells_.empty()){
+        if ( (*data[preAdaptLevel]).levels_.parent_to_children_cells.empty()){
             preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(data[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
         }
         else {
-            preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*data[preAdaptLevel]).parent_to_children_cells_;
+            preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*data[preAdaptLevel]).levels_.parent_to_children_cells;
         }
         // Resize with the corresponding amount of cell of the preAdapt level. Dafualt -1 when the cell vanished and does not appear on the leaf grid view.
         // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished.
@@ -529,8 +529,8 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
 
     // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt.
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
-        (*data[preAdaptLevel]).parent_to_children_cells_ = preAdapt_parent_to_children_cells_vec[preAdaptLevel];
-        (*data[preAdaptLevel]).level_to_leaf_cells_ =  preAdapt_level_to_leaf_cells_vec[preAdaptLevel];
+        (*data[preAdaptLevel]).levels_.parent_to_children_cells = preAdapt_parent_to_children_cells_vec[preAdaptLevel];
+        (*data[preAdaptLevel]).levels_.level_to_leaf_cells =  preAdapt_level_to_leaf_cells_vec[preAdaptLevel];
     }
 
     // -- Child-parent relations --
@@ -767,17 +767,17 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
         // Further Refined grid Attributes
         //
         // Populate some attributes of the level LGR
-        (*data[refinedLevelGridIdx]).level_data_ptr_ = &(this -> currentData());
-        (*data[refinedLevelGridIdx]).level_ = refinedLevelGridIdx;
+        (*data[refinedLevelGridIdx]).levels_.level_data_ptr = &(this -> currentData());
+        (*data[refinedLevelGridIdx]).levels_.level = refinedLevelGridIdx;
         this -> lgr_names_[lgr_name_vec[level]] = refinedLevelGridIdx; // {"name_lgr", level}
-        (*data[refinedLevelGridIdx]).child_to_parent_cells_ = refined_child_to_parent_cells_vec[level];
-        (*data[refinedLevelGridIdx]).cell_to_idxInParentCell_ = refined_cell_to_idxInParentCell_vec[level];
-        (*data[refinedLevelGridIdx]).level_to_leaf_cells_ =  refined_level_to_leaf_cells_vec[level];
+        (*data[refinedLevelGridIdx]).levels_.child_to_parent_cells = refined_child_to_parent_cells_vec[level];
+        (*data[refinedLevelGridIdx]).levels_.cell_to_idxInParentCell = refined_cell_to_idxInParentCell_vec[level];
+        (*data[refinedLevelGridIdx]).levels_.level_to_leaf_cells =  refined_level_to_leaf_cells_vec[level];
         (*data[refinedLevelGridIdx]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[refinedLevelGridIdx]->size(0),
                                                                                      data[refinedLevelGridIdx]->size(3));
-        (*data[refinedLevelGridIdx]).refinement_max_level_ = levels + preAdaptMaxLevel;
+        (*data[refinedLevelGridIdx]).levels_.refinement_max_level = levels + preAdaptMaxLevel;
         // Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
-        (*data[refinedLevelGridIdx]).cells_per_dim_ = cells_per_dim_vec[level];
+        (*data[refinedLevelGridIdx]).levels_.cells_per_dim = cells_per_dim_vec[level];
         // TO DO: This new code for refinement do not assume Cartesian Shape. How does logical_cartesian_size_ should be defined then?
         // When the refined level grid has been originated from a block of cells, then its logical Cartesian size
         // corresponds to the inner product between cells_per_dim_vec[level] and the dimension of the block (amount of cells in each direction).
@@ -803,12 +803,12 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
     data.push_back(adaptedGrid_ptr);
 
     // Further Adapted  grid Attributes
-    (*data[levels + preAdaptMaxLevel +1]).child_to_parent_cells_ = adapted_child_to_parent_cells;
-    (*data[levels + preAdaptMaxLevel +1]).cell_to_idxInParentCell_ = adapted_cell_to_idxInParentCell;
-    (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
+    (*data[levels + preAdaptMaxLevel +1]).levels_.child_to_parent_cells = adapted_child_to_parent_cells;
+    (*data[levels + preAdaptMaxLevel +1]).levels_.cell_to_idxInParentCell = adapted_cell_to_idxInParentCell;
+    (*data[levels + preAdaptMaxLevel +1]).levels_.leaf_to_level_cells =  leaf_to_level_cells;
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
                                                                                           data[levels + preAdaptMaxLevel +1]->size(3));
-    (*data[levels + preAdaptMaxLevel +1]).refinement_max_level_ = levels + preAdaptMaxLevel;
+    (*data[levels + preAdaptMaxLevel +1]).levels_.refinement_max_level = levels + preAdaptMaxLevel;
 
     if (isGlobalRefine) {
         assert(cells_per_dim_vec.size() == 1);
@@ -930,7 +930,7 @@ void CpGrid::globalIdsPartitionTypesLgrAndLeafGrids([[maybe_unused]] const std::
                                                 cells_per_dim_vec);
 
 
-    const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
+    const auto& parent_to_children = current_data_->front()->levels_.parent_to_children_cells;
     ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children, localToGlobal_cells_per_level);
     currentData().front()->communicate(parentToChildrenGlobalId_handle,
                                        Dune::InteriorBorder_All_Interface,
@@ -1260,7 +1260,7 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
                                        const int& newLevels)
 {
     for (int level = preAdaptMaxLevel+1; level < preAdaptMaxLevel + newLevels+1; ++level) {
-        currentData()[level]->corner_history_.resize( currentData()[level] ->size(3), std::array<int,2>({-1,-1}));
+        currentData()[level]->levels_.corner_history.resize( currentData()[level] ->size(3), std::array<int,2>({-1,-1}));
     }
     // corner_history_ for levels 0, level 1, ..., preAdapt-maxLevel (maximum level before calling (again) adapt) should be already populated
     // corner_history_[ new corner ] = {-1,-1}
@@ -1268,20 +1268,20 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
     for (std::size_t corner = 0; corner < cornerInMarkedElemWithEquivRefinedCorner.size(); ++corner) {
         if (!cornerInMarkedElemWithEquivRefinedCorner[corner].empty()) {
             const auto& [refinedLevel, refinedCorner] = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.at(cornerInMarkedElemWithEquivRefinedCorner[corner].back());
-            currentData()[refinedLevel]->corner_history_[refinedCorner] = preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, static_cast<int>(corner)}} :  preAdaptGrid_corner_history[corner];
+            currentData()[refinedLevel]->levels_.corner_history[refinedCorner] = preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, static_cast<int>(corner)}} :  preAdaptGrid_corner_history[corner];
         }
     }
 
     // corner_history_ leaf grid view
     for ( int leafCorner = 0; leafCorner < corner_count; ++leafCorner){
-        currentData().back()->corner_history_.resize(corner_count);
+        currentData().back()->levels_.corner_history.resize(corner_count);
         const auto& [elemLgr, elemLgrCorner] = adaptedCorner_to_elemLgrAndElemLgrCorner.at(leafCorner);
         if (elemLgr != -1) {
             const auto& [refinedLevel, refinedCorner] = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.at({elemLgr, elemLgrCorner});
-            currentData().back()->corner_history_[leafCorner] = { refinedLevel, refinedCorner};
+            currentData().back()->levels_.corner_history[leafCorner] = { refinedLevel, refinedCorner};
         }
         else {
-            currentData().back()->corner_history_[leafCorner] =  preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, elemLgrCorner}} : preAdaptGrid_corner_history[elemLgrCorner];
+            currentData().back()->levels_.corner_history[leafCorner] =  preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, elemLgrCorner}} : preAdaptGrid_corner_history[elemLgrCorner];
         }
     }
 }

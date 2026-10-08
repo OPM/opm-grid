@@ -71,16 +71,16 @@ bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element, bool throw
         return false;
     }
     assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
-    if (mark_.empty()) {
-        mark_.resize(this->size(0));
+    if (levels_.mark.empty()) {
+        levels_.mark.resize(this->size(0));
     }
-    mark_[element.index()] = refCount;
-    return (mark_[element.index()] == refCount);
+    levels_.mark[element.index()] = refCount;
+    return (levels_.mark[element.index()] == refCount);
 }
 
 int CpGridData::getMark(const cpgrid::Entity<0>& element) const
 {
-    return mark_.empty() ? 0 : mark_[element.index()];
+    return levels_.mark.empty() ? 0 : levels_.mark[element.index()];
 }
 
 bool CpGridData::preAdapt()
@@ -88,18 +88,18 @@ bool CpGridData::preAdapt()
     // Communicate marked elements across all processes.
     if (ccobj_.size()>1) {
 
-        auto local_empty = mark_.empty();
+        auto local_empty = levels_.mark.empty();
         // The attribute mark_ can be empty in processes with no elements marked
         // for refinement. In that case, resize before communication occurs.
         if (ccobj_.max(!local_empty)){
             if (local_empty)
-                mark_.resize(size(0));
+                levels_.mark.resize(size(0));
         }
 
         // Detect the maximum mark across processes, and rewrite
         // the local entry in mark_, i.e.,
         // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
-        ElementMarkHandle element_mark_handle(mark_);
+        ElementMarkHandle element_mark_handle(levels_.mark);
 
         // An element may be marked somewhere in opm-simulators because it does not fulfill a
         // certain property, regardless of whether it belongs to the interior or overlap
@@ -109,7 +109,7 @@ bool CpGridData::preAdapt()
                     Dune::ForwardCommunication);
     }
 
-    if(mark_.empty()) {
+    if(levels_.mark.empty()) {
         return false;
     }
     else {
@@ -129,7 +129,7 @@ bool CpGridData::adapt()
 
 void CpGridData::postAdapt()
 {
-    mark_.resize(this->size(0), 0);
+    levels_.mark.resize(this->size(0), 0);
 }
 
 } // namespace cpgrid

@@ -68,6 +68,7 @@
 //#include "DataHandleWrappers.hpp"
 //#include "GlobalIdMapping.hpp"
 #include "Geometry.hpp"
+#include "LevelHierarchy.hpp"
 
 #include <array>
 #include <initializer_list>
@@ -365,13 +366,13 @@ public:
 
     auto cornerHistorySize() const
     {
-        return corner_history_.size();
+        return levels_.corner_history.size();
     }
 
     const auto& getCornerHistory(int cornerIdx) const
     {
         if(cornerHistorySize()) {
-            return corner_history_[cornerIdx];
+            return levels_.corner_history[cornerIdx];
         }
         else {
             OPM_THROW(std::logic_error, "Vertex has no history record.\n");
@@ -444,18 +445,18 @@ public:
         // 3. Due to 2. we need an extra bool value to distinguish between the actual level 0 grid and such a leaf grid view (with incorrect level_ == 0). For this
         //    reason we check if child_to_parent_cells_.empty() [true for actual level 0 grid, false for the leaf grid view].
         // --- TO BE IMPROVED ---
-        if ((level_data_ptr_ ->size() >1) && (level_ == 0) && (!child_to_parent_cells_.empty())) {
-            return level_data_ptr_->size() -1;
+        if ((levels_.level_data_ptr ->size() >1) && (levels_.level == 0) && (!levels_.child_to_parent_cells.empty())) {
+            return levels_.level_data_ptr->size() -1;
         }
-        return level_;
+        return levels_.level;
     }
     /// Add doc/or remove method and replace it with better approach
     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelData() const
     {
-        if (level_data_ptr_->empty()) {
+        if (levels_.level_data_ptr->empty()) {
             OPM_THROW(std::logic_error, "Level data has not been initialized\n");
         }
-        return *level_data_ptr_;
+        return *levels_.level_data_ptr;
     }
 
     /// @brief Retrieves the level and child indices of a given parent cell.
@@ -466,11 +467,11 @@ public:
     ///         - A vector of integers representing the indices of the child cells.
     ///         - If the parent cell has no children, the entry is {-1, {}}.
     const std::tuple<int,std::vector<int>>& getChildrenLevelAndIndexList(int elemIdx) const {
-        return parent_to_children_cells_[elemIdx];
+        return levels_.parent_to_children_cells[elemIdx];
     }
 
     const std::vector<std::tuple<int,std::vector<int>>>& getParentToChildren() const {
-        return parent_to_children_cells_;
+        return levels_.parent_to_children_cells;
     }
 
     const cpgrid::DefaultGeometryPolicy getGeometry() const
@@ -480,10 +481,10 @@ public:
 
     int getLeafIdxFromLevelIdx(int level_cell_idx) const
     {
-        if (level_to_leaf_cells_.empty()) {
+        if (levels_.level_to_leaf_cells.empty()) {
             OPM_THROW(std::logic_error, "Grid has no LGRs. No mapping to the leaf.\n");
         }
-        return level_to_leaf_cells_[level_cell_idx];
+        return levels_.level_to_leaf_cells[level_cell_idx];
     }
 
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
@@ -804,32 +805,8 @@ private:
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
-    /** Mark elements to be refined **/
-    std::vector<int> mark_;
-    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */
-    int level_{0};
-    /** Copy of (CpGrid object).data_ associated with the CpGridData object. */
-    std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
-    // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
-    /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. -1 when the cell vanished.*/
-    std::vector<int> level_to_leaf_cells_; // In entry 'level cell index', we store 'leafview cell index'
-    /** Parent cells and their children. Entry is {-1, {}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
-    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_;
-    /** Amount of children cells per parent cell in each direction. */ // {# children in x-direction, ... y-, ... z-}
-    std::array<int,3> cells_per_dim_;
-    // SUITABLE ONLY FOR LEAFVIEW
-    /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
-    std::vector<std::array<int,2>> leaf_to_level_cells_;
-    /** Corner history. corner_history_[ corner index ] = {level where the corner was born, its index there }, {-1,-1} otherwise. */
-    std::vector<std::array<int,2>> corner_history_;
-    // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
-    /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
-    std::vector<std::array<int,2>> child_to_parent_cells_;
-    /** Level-grid or Leaf-grid cell to parent cell and refined-cell-in-parent-cell index (number between zero and total amount
-        of children per parent (cells_per_dim[0]_*cells_per_dim_[1]*cells_per_dim_[2])). Entry is -1 when cell has no father. */
-    std::vector<int> cell_to_idxInParentCell_;
-    /** To keep track of refinement processes */
-    int refinement_max_level_{0};
+    /** The refinement relations of this grid to the other levels. */
+    LevelHierarchy levels_;
 
     /// \brief Object for collective communication operations.
     Communication ccobj_;

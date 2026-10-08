@@ -44,9 +44,9 @@ void Dune::cpgrid::HierarchicIterator::stackChildren_(const Entity<0>& target)
 {
     // Load sons of target onto the iterator stack
     if (!target.isLeaf() && (target.level() < maxLevel_)){
-        const auto& [lgr_level, children_list] = target.pgrid_-> parent_to_children_cells_[target.index()];
+        const auto& [lgr_level, children_list] = target.pgrid_-> levels_.parent_to_children_cells[target.index()];
         // GET CHILD GRID
-        const auto& lgr_grid =  (*(target.pgrid_-> level_data_ptr_))[lgr_level];
+        const auto& lgr_grid =  (*(target.pgrid_-> levels_.level_data_ptr))[lgr_level];
         for (const auto& child : children_list){
             this->elemStack_.push(Entity<0>(*lgr_grid, child, true));
         }

@@ -79,11 +79,11 @@ void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& sta
         // Each parent cell has been refined in cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2] child cells.
         // element has certain 'position' inside its parent cell that can be described with 'IJK' indices, let's denote them by ijk,
         // where 0<= i < cells_per_dim[0], 0<= j < cells_per_dim[1], 0<= k < cells_per_dim[2].
-        const auto& cells_per_dim = currentData()[level]->cells_per_dim_;
+        const auto& cells_per_dim = currentData()[level]->levels_.cells_per_dim;
         //
         // Refined cell (here 'element') has "index in parent cell": k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
         // and it's stored in  cell_to_idxInParentCell_.
-        auto idx_in_parent_cell =  currentData()[level]-> cell_to_idxInParentCell_[element.index()];
+        auto idx_in_parent_cell =  currentData()[level]-> levels_.cell_to_idxInParentCell[element.index()];
         // Find ijk.
         std::array<int,3> childIJK = Opm::Lgr::getIJK(idx_in_parent_cell, cells_per_dim);
         // The corresponding lgrIJK can be computed as follows:
