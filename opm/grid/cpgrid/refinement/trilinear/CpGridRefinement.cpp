@@ -1085,6 +1085,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::string>& lgr_name_vec,
                                    const std::vector<std::string>& lgr_parent_grid_name_vec)
 {
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        addLgrsUpdateLeafView(Opm::Refinement::blockRefinements(cells_per_dim_vec, startIJK_vec, endIJK_vec,
+                                                                lgr_name_vec, lgr_parent_grid_name_vec));
+        return;
+    }
+
     // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked,
     // then current_data_ == distributed_data_.
     // For serial run, level zero grid is stored in data_[0]. In this case, current_data_ == data_.
