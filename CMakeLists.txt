@@ -92,6 +92,7 @@ macro(opm-grid_tests_hook)
       logicalCartesianSize_and_refinement_test
       mapLevelIndicesToCartesianOutputOrder_test
       partition_cell_groups_test
+      refined_distribution_test
       test_communication_utils
     )
 

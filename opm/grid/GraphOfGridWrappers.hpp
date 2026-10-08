@@ -129,6 +129,10 @@ std::vector<std::set<int>> partitionCellGroupsWithHalo(const Dune::CpGrid& grid)
 /// \brief Contract each partition cell group into one graph vertex, like a well.
 void addPartitionCellGroups(GraphOfGrid<Dune::CpGrid>& gog);
 
+/// \brief Weight each level-zero vertex by its number of leaf cells when a Conforming grid is
+/// refined before load balancing, so the partition balances the refined grid.
+void addRefinedCellWeights(GraphOfGrid<Dune::CpGrid>& gog);
+
 /// \brief Correct gIDtoRank's data about well cells
 ///
 /// gIDtoRank's entries come from Zoltan partitioner's export list
