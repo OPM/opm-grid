@@ -54,6 +54,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridLevels.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
+  opm/grid/cpgrid/refinement/trilinear/CpGridDataRefinement.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/DataHandleWrappers.cpp
