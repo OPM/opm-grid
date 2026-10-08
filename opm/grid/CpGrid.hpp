@@ -736,6 +736,24 @@ namespace Dune
 
         void setPartitioningParams(const std::map<std::string,std::string>& params);
 
+        /// \brief Groups of Cartesian cells the graph partitioner keeps on one rank, each grown
+        /// by haloLayers of face or corner neighbours. Set before loadBalance().
+        void setPartitionCellGroups(std::vector<std::set<int>> cellGroups, int haloLayers = 0)
+        {
+            partition_cell_groups_ = std::move(cellGroups);
+            partition_cell_group_halo_ = haloLayers;
+        }
+
+        int partitionCellGroupHalo() const
+        {
+            return partition_cell_group_halo_;
+        }
+
+        const std::vector<std::set<int>>& partitionCellGroups() const
+        {
+            return partition_cell_groups_;
+        }
+
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
@@ -1464,6 +1482,8 @@ namespace Dune
         const std::vector<int>& sortedNumAquiferCells() const;
 
     private:
+        void broadcastRetainedInput_();
+
         /// \brief Scatter a global grid to all processors.
         /// \param method The edge-weighting method to be used on the graph partitioner.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
@@ -1524,6 +1544,8 @@ namespace Dune
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
         Opm::Refinement::Backend lgr_backend_ = Opm::Refinement::Backend::Trilinear;
         std::shared_ptr<Opm::Refinement::Builder> refinement_builder_;
+        std::vector<std::set<int>> partition_cell_groups_;
+        int partition_cell_group_halo_{0};
         /**
          * @brief Interface for scattering and gathering cell data.
          *
