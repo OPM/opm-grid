@@ -925,18 +925,19 @@ void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& dat
 
     // The communicator allocates message buffers of its maximum size, 32768
     // items by default, for each neighbour on every call. With a fixed size
-    // per entity, the largest message on this interface is known.
+    // per entity, the largest message on this interface is known. Only
+    // senders may be asked for that size, so it is shared between processes.
     std::size_t maxEntities = 1;
-    std::size_t entitySize = 1;
+    std::size_t entitySize = 0;
     for (const auto& entry : interface.interfaces()) {
         const auto& lists = entry.second;
         maxEntities = std::max({maxEntities, lists.first.size(), lists.second.size()});
-        if (lists.first.size() > 0) {
-            entitySize = data.size(lists.first[0]);
-        } else if (lists.second.size() > 0) {
-            entitySize = data.size(lists.second[0]);
+        const auto& send = (dir == ForwardCommunication) ? lists.first : lists.second;
+        if (entitySize == 0 && send.size() > 0) {
+            entitySize = data.size(send[0]);
         }
     }
+    entitySize = std::max<std::size_t>(ccobj_.max(entitySize), 1);
 
     Communicator comm(ccobj_, interface.interfaces(), maxEntities * entitySize);
 
