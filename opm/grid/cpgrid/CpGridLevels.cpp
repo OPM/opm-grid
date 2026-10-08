@@ -61,6 +61,8 @@
 //#include <fstream>
 //#include <iostream>
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
 #include <iomanip>
 #include <numeric>
 #include <tuple>
@@ -164,5 +166,32 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
 }
+
+std::vector<std::int64_t> CpGrid::stableCellId() const
+{
+    return currentLeafData().stableCellId();
+}
+
+namespace cpgrid
+{
+std::vector<std::int64_t> CpGridData::stableCellId() const
+{
+    // Refined cells: tagged (parent Cartesian index, index in parent); others: Cartesian index.
+    constexpr int childBits = 20;
+    constexpr std::int64_t refinedTag = std::int64_t(1) << 62;
+    const auto& childToParent = levels_.child_to_parent_cells;
+    std::vector<std::int64_t> ids(global_cell_.size());
+    for (std::size_t c = 0; c < ids.size(); ++c) {
+        if (childToParent.empty() || childToParent[c][0] == -1) {
+            ids[c] = global_cell_[c];
+            continue;
+        }
+        const std::int64_t child = levels_.cell_to_idxInParentCell[c];
+        assert(child >= 0 && child < (std::int64_t(1) << childBits));
+        ids[c] = refinedTag | (std::int64_t(global_cell_[c]) << childBits) | child;
+    }
+    return ids;
+}
+} // namespace cpgrid
 
 } // namespace Dune

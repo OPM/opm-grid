@@ -54,6 +54,13 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridLevels.cpp
   opm/grid/cpgrid/refinement/CpGridLgrBackend.cpp
+  opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.cpp
+  opm/grid/cpgrid/refinement/conforming/EdgeConformal.cpp
+  opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.cpp
+  opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.cpp
+  opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.cpp
+  opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.cpp
+  opm/grid/cpgrid/refinement/GridStateWriter.cpp
   opm/grid/cpgrid/refinement/RefinementBuilder.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridDataRefinement.cpp
@@ -83,6 +90,11 @@ list(APPEND MAIN_SOURCE_FILES
 list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/lgr_backend_switch_test.cpp
+  tests/cpgrid/grdecl_refinement_test.cpp
+  tests/cpgrid/level_grid_assembler_test.cpp
+  tests/cpgrid/conforming_builder_test.cpp
+  tests/cpgrid/faulted_boundary_test.cpp
+  tests/cpgrid/edge_conformal_refinement_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -232,8 +244,16 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Iterators.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/cpgrid/LevelHierarchy.hpp
+  opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp
+  opm/grid/cpgrid/refinement/conforming/EdgeConformal.hpp
+  opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp
+  opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp
+  opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.hpp
+  opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.hpp
+  opm/grid/cpgrid/refinement/GridStateWriter.hpp
   opm/grid/cpgrid/refinement/RefinementBuilder.hpp
   opm/grid/cpgrid/refinement/RefinementRequest.hpp
+  opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/NestedRefinementUtilities.hpp

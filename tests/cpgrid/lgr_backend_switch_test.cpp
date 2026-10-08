@@ -26,8 +26,13 @@
 
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 struct MPIFixture
@@ -71,6 +76,31 @@ struct RecordingBuilder : Opm::Refinement::Builder
     std::vector<BlockRefinement> recorded{};
 };
 
+void processDeck(Dune::CpGrid& grid)
+{
+    const std::string deckString = R"(RUNSPEC
+DIMENS
+ 4 3 3 /
+GRID
+CARFIN
+'LGR1' 2 3 1 1 1 1 4 2 2 /
+ENDFIN
+DX
+ 36*1 /
+DY
+ 36*1 /
+DZ
+ 36*1 /
+TOPS
+ 12*0 /
+PORO
+ 36*0.2 /
+)";
+    const auto deck = Opm::Parser{}.parseString(deckString);
+    Opm::EclipseState state(deck);
+    auto eclGrid = state.getInputGrid();
+    grid.processEclipseFormat(&eclGrid, &state, false, false, false);
+}
 } // anonymous namespace
 
 // Under the default backend the request form refines exactly as upstream's vector form.
@@ -145,4 +175,25 @@ BOOST_AUTO_TEST_CASE(conformingForwardsToItsBuilder)
                           box("C", {0,0,0}, {2,2,2}), box("D", {1,1,1}, {3,3,3}) }),
                       std::invalid_argument);
     BOOST_CHECK(builder->recorded.empty());
+}
+
+// A Conforming grid built from a deck with LGRs refines without an explicit builder.
+BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
+{
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Backend::Conforming);
+    processDeck(grid);
+    grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"});
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
+    BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 2*2);
+}
+
+// Input is retained only when the backend is chosen before processEclipseFormat().
+BOOST_AUTO_TEST_CASE(conformingChosenAfterProcessingThrows)
+{
+    Dune::CpGrid grid;
+    processDeck(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"}),
+                      std::logic_error);
 }
