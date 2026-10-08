@@ -60,6 +60,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.cpp
   opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.cpp
   opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.cpp
+  opm/grid/cpgrid/refinement/conforming/RefinedDistribution.cpp
   opm/grid/cpgrid/refinement/GridStateWriter.cpp
   opm/grid/cpgrid/refinement/RefinementBuilder.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
@@ -97,6 +98,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/edge_conformal_refinement_test.cpp
   tests/cpgrid/distributed_builder_test.cpp
   tests/cpgrid/partition_cell_groups_test.cpp
+  tests/cpgrid/refined_distribution_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -252,6 +254,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp
   opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.hpp
   opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.hpp
+  opm/grid/cpgrid/refinement/conforming/RefinedDistribution.hpp
   opm/grid/cpgrid/refinement/GridStateWriter.hpp
   opm/grid/cpgrid/refinement/RefinementBuilder.hpp
   opm/grid/cpgrid/refinement/RefinementRequest.hpp
