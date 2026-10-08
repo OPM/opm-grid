@@ -64,7 +64,9 @@
 #include <cassert>
 #include <cstdint>
 #include <iomanip>
+#include <limits>
 #include <numeric>
+#include <optional>
 #include <tuple>
 
 namespace Dune
@@ -143,16 +145,35 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
                 ((intersection.inside().father().level() == 0) || ((intersection.outside().father().level() == 0)));
             bool coarseAndRefinedCells =  (levelIn*levelOut == 0);
             if (refinedCellsWithAtLeastOneLvl0Father || coarseAndRefinedCells) {
-                // Get the equivalent level-0 cell if intersection.inside() is already at level 0,
-                // or the coarsest ancestor at level 0 if it is a refined cell.
-                // In both cases, intersection.indexInInside() is the correct face index to match:
-                // - coarse inside (level 0): indexInInside() is already the level-0 face index.
-                // - refined inside: fine cells inherit face directions from their parent, so
-                //   indexInInside() equals the parent's face index.
+                // Match the level-0 face by its cell pair: a faulted side has several faces.
                 const auto& insideOrigin = intersection.inside().getOrigin();
-                for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
-                    if (originIntersection.indexInInside() == intersection.indexInInside()) {
-                        return originIntersection;
+                const auto& outsideOrigin = intersection.outside().getOrigin();
+                if (insideOrigin.index() != outsideOrigin.index()) {
+                    const auto leafCentre = intersection.geometry().center();
+                    std::optional<Dune::cpgrid::Intersection> best{};
+                    double bestDistance = std::numeric_limits<double>::max();
+                    for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
+                        if (!originIntersection.neighbor() ||
+                            (originIntersection.outside().index() != outsideOrigin.index())) {
+                            continue;
+                        }
+                        // A fault can split one pair's interface; take the nearest piece.
+                        const double distance = (originIntersection.geometry().center() - leafCentre).two_norm();
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            best = originIntersection;
+                        }
+                    }
+                    if (best) {
+                        return *best;
+                    }
+                }
+                else {
+                    // Same level-0 ancestor: no level-0 face between them, fall back to the side.
+                    for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
+                        if (originIntersection.indexInInside() == intersection.indexInInside()) {
+                            return originIntersection;
+                        }
                     }
                 }
             }
