@@ -710,11 +710,14 @@ namespace cpgrid
             const auto& localIdSet = grid.localIdSet();
             const auto& indexSet = (level==-1)? grid.leafIndexSet() : grid.levelIndexSet(level);
 
+            // A Conforming refined leaf's ids are not in index order; the scatter needs them to be.
+            const bool refinedLeaf = (level == -1) && (grid.maxLevel() > 0)
+                && (grid.lgrBackend() == Opm::Refinement::Backend::Conforming);
             for (; cell != cellEnd; ++cell)
             {
-                const auto& gid = globalIdSet.id(*cell);
-                const auto& lid = localIdSet.id(*cell);
-                const auto& index = indexSet.index(cell);
+                const int index = indexSet.index(cell);
+                const int gid = refinedLeaf ? index : static_cast<int>(globalIdSet.id(*cell));
+                const int lid = refinedLeaf ? index : static_cast<int>(localIdSet.id(*cell));
                 const auto& part = parts[index];
                 if (part != 0 )
                 {
