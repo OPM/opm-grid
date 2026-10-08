@@ -1004,9 +1004,11 @@ namespace Dune
                     bool allowDistributedWells = false,
                     bool useTransToFilterOverlap = true)
         {
+            // A Conforming grid refined before load balancing distributes its leaf.
+            const bool refinedLeaf = (lgr_backend_ == Opm::Refinement::Backend::Conforming) && (maxLevel() > 0);
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
                                    addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells,
-                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ 0,
+                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ refinedLeaf ? -1 : 0,
                                    useTransToFilterOverlap);
             using std::get;
             if (get<0>(ret))
@@ -1632,7 +1634,9 @@ namespace Dune
         if (distributed_data_.empty()) {
             OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
         } else {
-            distributed_data_[0]->scatterData(handle, data_[0].get(),
+            // The distributed view: level zero, or the refined leaf of a Conforming grid.
+            const auto& source = (lgr_backend_ == Opm::Refinement::Backend::Conforming) ? data_.back() : data_[0];
+            distributed_data_[0]->scatterData(handle, source.get(),
                                               distributed_data_[0].get(),
                                               cellScatterGatherInterface(),
                                               pointScatterGatherInterface());

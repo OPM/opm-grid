@@ -171,6 +171,14 @@ public:
     /// be split over several processes. Giving the well an extra layer
     /// of cells distances that well from the subdomain boundary.
     void addNeighboringCellsToWells ();
+
+    /// \brief Set the weight of a vertex that has not been contracted.
+    void setVertexWeight (int gID, WeightType weight)
+    {
+        if (auto pgID = graph.find(gID); pgID != graph.end()) {
+            pgID->second.weight = weight;
+        }
+    }
     void addNeighboringCellsToWells (int layers)
     {
         for (int i=0; i<layers; ++i)
