@@ -221,6 +221,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Entity2IndexDataHandle.hpp
   opm/grid/cpgrid/EntityRep.hpp
   opm/grid/cpgrid/Geometry.hpp
+  opm/grid/cpgrid/refinement/trilinear/GeometryRefinement.hpp
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
   opm/grid/cpgrid/Indexsets.hpp
