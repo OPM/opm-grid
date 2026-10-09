@@ -188,6 +188,12 @@ const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
 }
 
+bool CpGrid::leafHasParentCellIndices() const
+{
+    return current_data_ && !current_data_->empty()
+        && !current_data_->back()->levels_.cell_to_idxInParentCell.empty();
+}
+
 std::vector<std::int64_t> CpGrid::stableCellId() const
 {
     return currentLeafData().stableCellId();

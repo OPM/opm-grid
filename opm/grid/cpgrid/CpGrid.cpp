@@ -1487,6 +1487,27 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
                                             0);
 }
 
+void CpGrid::processEclipseFormat(const grdecl& input_data,
+                                  const std::set<std::pair<int,int>>& pinchNnc,
+                                  const bool pinchActive,
+                                  const bool edge_conformal)
+{
+    std::array<std::set<std::pair<int, int>>, 2> nnc;
+    nnc[0] = pinchNnc;
+    current_data_->back()->processEclipseFormat(input_data,
+                                                nullptr,
+                                                nnc,
+                                                /* remove_ij_boundary = */ false,
+                                                /* turn_normals = */ false,
+                                                pinchActive,
+                                                /* tolerance_unique_ponts = */ 0.0,
+                                                edge_conformal);
+
+    current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
+                                            current_data_->back()->logical_cartesian_size_.size(),
+                                            0);
+}
+
 template<int dim>
 cpgrid::Entity<dim> createEntity(const CpGrid& grid,int index,bool orientation)
 {
