@@ -165,7 +165,7 @@ auto createWell(const std::string& name)
 {
     using namespace Opm;
     return Dune::cpgrid::OpmWellType(name, name, 0, 0, 0, 0, 0., WellType(),
-        Well::ProducerCMode(), Connection::Order(), UnitSystem(),
+        Well::ProducerCMode(), UnitSystem(),
         0., false, false, 0, Well::GasInflowEquation());
 };
 }
