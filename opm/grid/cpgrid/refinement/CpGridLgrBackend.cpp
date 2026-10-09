@@ -206,7 +206,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefin
             if (graded || !request.minpvRemoved.empty()) {
                 OPM_THROW(std::invalid_argument,
                           "Refinement '" + request.name + "' is graded or removes cells by a block "
-                          "MINPV; only the Conforming LGR backend refines that.");
+                          "MINPV; only the Conforming LGR backend refines that "
+                          "(flow: --lgr-backend=conforming).");
             }
             cellsPerDim.push_back(request.cellsPerDim);
             startIJK.push_back(request.startIJK);
