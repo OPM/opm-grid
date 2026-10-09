@@ -46,6 +46,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -101,6 +102,19 @@ TestGrdecl makeUnitGrid(const std::array<int,3>& dims)
     return g;
 }
 
+// Unit grid with a vertical fault in front of column iFault; that column and those after it drop by dz.
+TestGrdecl makeFaultedGrid(const std::array<int,3>& dims, int iFault, double dz)
+{
+    auto g = makeUnitGrid(dims);
+    const std::size_t nx = dims[0];
+    for (std::size_t z = 0; z < g.zcorn.size(); ++z) {
+        if (static_cast<int>((z % (2*nx)) / 2) >= iFault) {
+            g.zcorn[z] += dz;
+        }
+    }
+    return g;
+}
+
 void useConformingBuilder(Dune::CpGrid& grid, std::unique_ptr<Opm::Refinement::Builder> builder)
 {
     grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
@@ -116,6 +130,29 @@ std::map<std::array<long,3>, long> leafIdsByCentre(const Dune::CpGrid& grid)
         ids[{std::lround(x[0]*1e6), std::lround(x[1]*1e6), std::lround(x[2]*1e6)}] = grid.globalIdSet().id(e);
     }
     return ids;
+}
+
+// Leaf vertex ids keyed by position.
+std::map<std::array<long,3>, long> leafVertexIdsByPosition(const Dune::CpGrid& grid)
+{
+    std::map<std::array<long,3>, long> ids;
+    for (const auto& v : Dune::vertices(grid.leafGridView())) {
+        const auto x = v.geometry().center();
+        ids[{std::lround(x[0]*1e6), std::lround(x[1]*1e6), std::lround(x[2]*1e6)}] = grid.globalIdSet().id(v);
+    }
+    return ids;
+}
+
+// Number of entries of mine that are missing from, or differ in, reference; summed over ranks.
+int mismatches(const Dune::CpGrid& grid, const std::map<std::array<long,3>, long>& mine,
+               const std::map<std::array<long,3>, long>& reference)
+{
+    int bad = 0;
+    for (const auto& [x, id] : mine) {
+        const auto it = reference.find(x);
+        bad += it == reference.end() || it->second != id;
+    }
+    return grid.comm().sum(bad);
 }
 
 } // anonymous namespace
@@ -326,15 +363,60 @@ BOOST_AUTO_TEST_CASE(refinedCellIdsIndependentOfPartition)
 
     const auto reference = leafIdsByCentre(serial);
     const auto mine = leafIdsByCentre(grid);
-    int missing = 0, differ = 0;
-    for (const auto& [x, id] : mine) {
-        const auto it = reference.find(x);
-        missing += it == reference.end();
-        differ += it != reference.end() && it->second != id;
-    }
-    BOOST_CHECK_EQUAL(grid.comm().sum(missing), 0);
-    BOOST_CHECK_EQUAL(grid.comm().sum(differ), 0);
+    BOOST_CHECK_EQUAL(mismatches(grid, mine, reference), 0);
     BOOST_CHECK_EQUAL(grid.comm().sum(static_cast<int>(mine.size())), static_cast<int>(reference.size()));
+    BOOST_CHECK_EQUAL(mismatches(grid, leafVertexIdsByPosition(grid), leafVertexIdsByPosition(serial)), 0);
+}
+
+// Corners of the split faces on a faulted box boundary exist only on the leaf; their ids
+// must not depend on the partition either.
+BOOST_AUTO_TEST_CASE(splitCornerIdsIndependentOfPartition)
+{
+    const std::array<int,3> dims = {{8, 8, 2}};
+    const auto g = makeFaultedGrid(dims, 4, 0.6);
+    std::ostringstream deckString;
+    deckString << "RUNSPEC\nDIMENS\n 8 8 2 /\nGRID\nCOORD\n";
+    for (const double v : g.coord) {
+        deckString << ' ' << v;
+    }
+    deckString << " /\nZCORN\n";
+    for (const double v : g.zcorn) {
+        deckString << ' ' << v;
+    }
+    deckString << " /\nPORO\n 128*0.2 /\nCARFIN\n'LGR1' 2 4 1 2 1 2 6 4 4 /\nENDFIN\n";
+    const auto deck = Opm::Parser{}.parseString(deckString.str());
+    Opm::EclipseState state(deck);
+    auto eclGrid = state.getInputGrid();
+    const auto build = [&](Dune::CpGrid& grid) {
+        grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
+        grid.processEclipseFormat(&eclGrid, &state, false, false, false);
+    };
+    const auto refine = [](Dune::CpGrid& grid) {
+        grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,0,0}}, {{4,2,2}}, {"LGR1"}); // high side on the fault
+    };
+
+    Dune::CpGrid serial(MPI_COMM_SELF);
+    build(serial);
+    refine(serial);
+    BOOST_REQUIRE_GT(static_cast<std::size_t>(serial.size(3)),
+                     serial.currentData().back()->cornerHistorySize()); // split corners exist
+
+    Dune::CpGrid grid;
+    const int np = grid.comm().size();
+    if (np < 2) {
+        return;
+    }
+    build(grid);
+    std::vector<int> parts(static_cast<std::size_t>(dims[0])*dims[1]*dims[2]);
+    for (std::size_t c = 0; c < parts.size(); ++c) {
+        const int j = static_cast<int>((c / dims[0]) % dims[1]);
+        parts[c] = (j < 4) ? 0 : 1 + (j - 4) % (np - 1);
+    }
+    grid.loadBalance(parts, false, true, 2);
+    refine(grid);
+
+    BOOST_CHECK_EQUAL(mismatches(grid, leafIdsByCentre(grid), leafIdsByCentre(serial)), 0);
+    BOOST_CHECK_EQUAL(mismatches(grid, leafVertexIdsByPosition(grid), leafVertexIdsByPosition(serial)), 0);
 }
 
 BOOST_AUTO_TEST_CASE(boxTouchingOverlapThrows)

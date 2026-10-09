@@ -19,6 +19,9 @@
 #ifndef OPM_GRID_REFINEMENT_REFINEDIDS_HEADER_INCLUDED
 #define OPM_GRID_REFINEMENT_REFINEDIDS_HEADER_INCLUDED
 
+#include <dune/common/parallel/mpihelper.hh>
+
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -27,35 +30,26 @@ namespace Dune::cpgrid { class CpGridData; }
 namespace Opm::Refinement
 {
 
-/// Global id of a refined cell: base + the Cartesian sizes of the LGRs before
-/// its own + its LGR-local Cartesian index. The same in serial and on any partition.
-class RefinedCellIds
+/// Leaf ids returned by assignRefinedIds().
+struct RefinedLeafIds
 {
-public:
-    /// \param levels Level grids, level zero first; entries from numLevels on are ignored.
-    /// \param base   One above every level-zero id (levelZeroIdEnd).
-    RefinedCellIds(const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levels,
-                   int numLevels, int base);
-
-    int operator()(int level, int levelCell) const;
-
-    /// One above every refined cell id.
-    int end() const { return end_; }
-
-private:
-    std::vector<const std::vector<int>*> cartesian_;
-    std::vector<int> offset_;
-    int end_ = 0;
+    std::vector<int> cells;
+    std::vector<int> points;
+    int end = 0; ///< One above every cell and point id.
 };
 
-/// One above every level-zero cell and point id held by this process.
-int levelZeroIdEnd(const Dune::cpgrid::CpGridData& level0);
-
-/// Id mappings for refined level grids [1, numLevels) and, if withLeaf, the
-/// leaf at data[numLevels]: refined cells from RefinedCellIds, points born on a
-/// refined level moved above the refined cells.
-void setRefinedIdMappings(const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data,
-                          int numLevels, int base, bool withLeaf);
+/// Global ids of refined entities that do not depend on rank or partition, above every
+/// level-zero id: cells by LGR and LGR-local Cartesian index; points by the level they are
+/// born on and their index in that level grid, which is built whole from the global input;
+/// leaf-only corners of faulted split faces by box and coordinate order (splitKeys, one
+/// {box, ordinal} per leaf corner past the corner history).
+/// Sets the mappings of the level grids storage[1..numBoxes]. Collective on comm.
+RefinedLeafIds assignRefinedIds(const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage,
+                                int numBoxes,
+                                const std::vector<std::array<int,2>>& leafToLevel,
+                                const std::vector<std::array<int,2>>& leafCornerHistory,
+                                const std::vector<std::array<int,2>>& splitKeys,
+                                Dune::MPIHelper::MPICommunicator comm);
 
 } // namespace Opm::Refinement
 

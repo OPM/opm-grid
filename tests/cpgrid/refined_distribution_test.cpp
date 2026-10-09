@@ -162,6 +162,23 @@ PORO
     }
     BOOST_CHECK_EQUAL(comm.sum(differ), 0);
 
+    // And every vertex.
+    const auto vertexIds = [](const Dune::CpGrid& g) {
+        std::map<std::array<long,3>, long> ids;
+        for (const auto& v : Dune::vertices(g.leafGridView())) {
+            const auto x = v.geometry().center();
+            ids[{std::lround(x[0]*1e6), std::lround(x[1]*1e6), std::lround(x[2]*1e6)}] = g.globalIdSet().id(v);
+        }
+        return ids;
+    };
+    const auto vertexReference = vertexIds(serial);
+    int vertexDiffer = 0;
+    for (const auto& [x, id] : vertexIds(grid)) {
+        const auto it = vertexReference.find(x);
+        vertexDiffer += it == vertexReference.end() || it->second != id;
+    }
+    BOOST_CHECK_EQUAL(comm.sum(vertexDiffer), 0);
+
     // So does stableCellId(), although the distributed leaf is flat.
     const auto stableByCentre = [](const Dune::CpGrid& g) {
         const auto sid = g.stableCellId();
