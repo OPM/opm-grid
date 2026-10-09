@@ -724,7 +724,11 @@ private:
                           CpGridData* distributed_data);
 
     /// \brief The default maximum message buffer size of Dune's VariableSizeCommunicator.
+#ifdef DUNE_PARALLEL_MAX_COMMUNICATION_BUFFER_SIZE
+    static constexpr std::size_t defaultBufferSize = DUNE_PARALLEL_MAX_COMMUNICATION_BUFFER_SIZE;
+#else
     static constexpr std::size_t defaultBufferSize = 32768;
+#endif
 
     /// \brief Communicates data of a given codimension
     /// \tparam codim The codimension
