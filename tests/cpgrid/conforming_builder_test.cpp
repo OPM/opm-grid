@@ -983,6 +983,9 @@ BOOST_AUTO_TEST_CASE(nestedFullyContainedBuilds)
 
     // Global ids unique over leaf cells and points (delegated across 3 levels).
     checkUniqueGlobalIds(grid);
+
+    // NEST1 refines two LGR1 cells of one level-zero cell, which stableCellId() cannot tell apart.
+    BOOST_CHECK_THROW(grid.stableCellId(), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(faultInsideBoxEndToEnd)
@@ -1096,6 +1099,9 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryBuilds)
     // 0 and 2 face one coarse cell, sub-layer 1 two, and sub-layer 3 one (the domain
     // below depth 4). 20 faces, counted twice (once from each side).
     BOOST_CHECK_EQUAL(refinedCoarseConnections, 5*4*2);
+
+    // Split-face corners exist only on the leaf; they still get unique ids.
+    checkUniqueGlobalIds(grid);
 }
 
 // Note on the boundary throw branches: with vertical pillars + a ZCORN throw

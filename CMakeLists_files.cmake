@@ -62,6 +62,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.cpp
   opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.cpp
   opm/grid/cpgrid/refinement/conforming/RefinedDistribution.cpp
+  opm/grid/cpgrid/refinement/conforming/RefinedIds.cpp
   opm/grid/cpgrid/refinement/GridStateWriter.cpp
   opm/grid/cpgrid/refinement/RefinementRequest.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
@@ -273,6 +274,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.hpp
   opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.hpp
   opm/grid/cpgrid/refinement/conforming/RefinedDistribution.hpp
+  opm/grid/cpgrid/refinement/conforming/RefinedIds.hpp
   opm/grid/cpgrid/refinement/GridStateWriter.hpp
   opm/grid/cpgrid/refinement/RefinementBuilder.hpp
   opm/grid/cpgrid/refinement/RefinementRequest.hpp
