@@ -148,7 +148,7 @@ template<class Handle>
 struct PointViaCellHandleWrapper : public PointViaCellWarner
 {
     using DataType = typename Handle::DataType;
-    using C2PTable = std::vector< std::array<int,8> >;
+    using C2PTable = Opm::SparseTable<int>;//std::vector< std::array<int,8> >;
 
     /// \brief Constructs the data handle
     ///
