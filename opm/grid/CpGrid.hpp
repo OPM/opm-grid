@@ -377,7 +377,7 @@ namespace Dune
         const std::vector<int>& globalCell() const;
 
         /// Rank- and partition-independent cell id of the current view; unlike globalCell(),
-        /// refined siblings get distinct ids.
+        /// refined siblings get distinct ids. Throws for nested LGRs.
         std::vector<std::int64_t> stableCellId() const;
 
         /// @brief Returns either data_ or distributed_data_(if non empty).
