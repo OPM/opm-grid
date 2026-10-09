@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <functional>
 #include <map>
+#include <numeric>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -129,44 +130,29 @@ int cornerSlotMask(CpGridData& grid)
 }
 
 #if HAVE_MPI
-// On a distributed leaf, ids through the local id set follow local numbering
-// and differ between ranks. Coarse entities keep level zero's global ids (leaf
-// corners and level-zero faces keep their level-zero index); new faces and
-// corners are rank-interior and get per-rank ranges above every id in use.
+// On a distributed leaf, ids through the local id set follow local numbering and
+// differ between ranks, so the leaf gets a mapping. Cells and points come from
+// assignRefinedIds; coarse faces keep level zero's ids and new faces, which have
+// no meaning across ranks in CpGrid, get per-rank ranges above every id in use.
 void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
                            std::vector<int> cellIds,
                            const std::vector<SourceRef>& leafFaces,
-                           int numLeafFaces, int numLeafCorners, int idFloor,
+                           int numLeafFaces, std::vector<int> pointIds, int idFloor,
                            const Dune::Communication<Dune::MPIHelper::MPICommunicator>& cc)
 {
-    const auto& ids0 = level0.globalIdSet();
-    const auto& faceIds0 = ids0.template getMapping<1>();
-    const auto& pointIds0 = ids0.template getMapping<3>();
-    const int numCorners0 = level0.size(3);
-
+    const auto& faceIds0 = level0.globalIdSet().template getMapping<1>();
     int maxUsed = idFloor - 1;
-    for (const std::vector<int>* ids : {&ids0.template getMapping<0>(), &faceIds0, &pointIds0,
-                                        static_cast<const std::vector<int>*>(&cellIds)}) {
-        for (const int id : *ids) {
-            maxUsed = std::max(maxUsed, id);
-        }
+    for (const int id : faceIds0) {
+        maxUsed = std::max(maxUsed, id);
     }
     maxUsed = cc.max(maxUsed);
 
     std::vector<int> faceIds(numLeafFaces, -1);
-    std::vector<int> pointIds(numLeafCorners, -1);
     int numNew = 0;
     for (int f = 0; f < numLeafFaces; ++f) {
         const bool coarse = f < static_cast<int>(leafFaces.size()) && leafFaces[f].grid == 0;
         if (coarse) {
             faceIds[f] = faceIds0[leafFaces[f].index];
-        } else {
-            ++numNew;
-        }
-    }
-    for (int p = 0; p < numLeafCorners; ++p) {
-        if (p < numCorners0) {
-            pointIds[p] = pointIds0[p];
         } else {
             ++numNew;
         }
@@ -178,11 +164,6 @@ void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
         next += counts[r];
     }
     for (auto& id : faceIds) {
-        if (id < 0) {
-            id = next++;
-        }
-    }
-    for (auto& id : pointIds) {
         if (id < 0) {
             id = next++;
         }
@@ -852,8 +833,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         double area;
         enum face_tag tag;
         int side;                                // box boundary side: -1 low, +1 high
+        int box;
     };
     std::vector<SyntheticFace> syntheticFaces;
+    std::vector<std::array<int,2>> splitKeys;    // {box, ordinal} per leaf corner past the history
     if (!faultedSides.empty()) {
         // coord -> leaf corner index, over the current pool (exact match: the
         // box-boundary corners are produced by identical resampling arithmetic).
@@ -881,7 +864,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         // stored normal together with each cell's orientation flag, so a normal
         // pointing down-axis makes both neighbours report the opposite face of
         // themselves. The side is kept for the face_to_cell ordering below.
-        const auto emitPolygon = [&](int boxLeaf, int neighborLeaf, int axis, int side,
+        const auto emitPolygon = [&](int box, int boxLeaf, int neighborLeaf, int axis, int side,
                                      const std::vector<std::array<double,3>>& nodes) {
             std::vector<int> pts;
             pts.reserve(nodes.size());
@@ -895,7 +878,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
             syntheticFaces.push_back(SyntheticFace{
                 boxLeaf, neighborLeaf, std::move(pts), pg.normal, pg.center,
-                pg.area, faceTagOf(axis), side});
+                pg.area, faceTagOf(axis), side, box});
         };
         // Emit a box cell's WHOLE (axis, side) boundary face from its level grid.
         // Used to merge an over-refined shell's split pieces (unequal factors
@@ -930,7 +913,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 }
                 syntheticFaces.push_back(SyntheticFace{
                     boxLeaf, neighborLeaf, std::move(pts), normal,
-                    fgeom[f].center(), fgeom[f].volume(), faceTagOf(axis), side});
+                    fgeom[f].center(), fgeom[f].volume(), faceTagOf(axis), side, bIdx});
                 return;
             }
         };
@@ -1065,7 +1048,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                                     conn.faceNodes});
                 }
                 else {
-                    emitPolygon(boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
+                    emitPolygon(b, boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
                 }
             }
         }
@@ -1076,7 +1059,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         for (auto& [keyPair, pieces] : boxBoxGroups) {
             if (pieces.size() == 1) {
                 const auto& p = pieces.front();
-                emitPolygon(p.boxLeaf, p.neighborLeaf, p.axis, p.side, p.nodes);
+                emitPolygon(p.boxIdx, p.boxLeaf, p.neighborLeaf, p.axis, p.side, p.nodes);
             }
             else {
                 const auto& p = pieces.front();
@@ -1085,6 +1068,33 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
         numLeafCorners = static_cast<int>(leafCorners.size());
+
+        // Split corners belong to the lowest box using them and are ordered by coordinate
+        // there, so their ids do not depend on the order the faces were emitted in.
+        const int firstSplit = static_cast<int>(leafCornerHistory.size());
+        std::vector<int> owner(numLeafCorners - firstSplit, numBoxes);
+        for (const auto& sf : syntheticFaces) {
+            for (const int p : sf.points) {
+                if (p >= firstSplit) {
+                    owner[p - firstSplit] = std::min(owner[p - firstSplit], sf.box);
+                }
+            }
+        }
+        splitKeys.assign(owner.size(), {-1, -1});
+        for (int b = 0; b < numBoxes; ++b) {
+            std::vector<int> mine;
+            for (std::size_t s = 0; s < owner.size(); ++s) {
+                if (owner[s] == b) {
+                    mine.push_back(static_cast<int>(s));
+                }
+            }
+            std::ranges::sort(mine, [&](int x, int y) {
+                return coordKey(leafCorners[firstSplit + x]) < coordKey(leafCorners[firstSplit + y]);
+            });
+            for (std::size_t n = 0; n < mine.size(); ++n) {
+                splitKeys[mine[n]] = {b, static_cast<int>(n)};
+            }
+        }
     }
 
     const int numLeafFaces = numSourceFaces + static_cast<int>(syntheticFaces.size());
@@ -1271,8 +1281,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     // collective communication (e.g. opm-models' dofTotalVolume border sync,
     // which sums interior volumes and then communicates them to the overlap).
     // Coarse leaf cells inherit their level-zero global index and attribute;
-    // refined cells are rank-interior (owner only) and get RefinedCellIds,
+    // refined cells are rank-interior (owner only) and get assignRefinedIds' ids,
     // which are above every coarse global id.
+    const auto ids = assignRefinedIds(storage, numBoxes, leafToLevel, leafCornerHistory,
+                                      splitKeys, comm);
 #if HAVE_MPI
     Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm);
     if (cc.size() > 1) {
@@ -1291,10 +1303,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
 
-        const RefinedCellIds refinedIds(storage, numBoxes + 1, cc.max(levelZeroIdEnd(level0)));
         for (int cell = 0; cell < numLeafCells; ++cell) {
             if (leafCells[cell].grid != 0) {
-                leafCellGlobalId[cell] = refinedIds(leafCells[cell].grid, leafCells[cell].index);
+                leafCellGlobalId[cell] = ids.cells[cell];
                 leafCellAttr[cell] = AttributeSet::owner;
             }
         }
@@ -1312,9 +1323,15 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         leaf->computePointPartitionType();
         leaf->computeCommunicationInterfaces(numLeafCorners);
         setDistributedLeafIds(*leaf, level0, leafCellGlobalId, leafFaces, numLeafFaces,
-                              numLeafCorners, refinedIds.end(), cc);
+                              ids.points, ids.end, cc);
     }
+    else
 #endif
+    {
+        std::vector<int> faceIds(numLeafFaces);
+        std::iota(faceIds.begin(), faceIds.end(), numLeafCells);
+        GridStateWriter::setGlobalIdMapping(*leaf, ids.cells, std::move(faceIds), ids.points);
+    }
 
     // ----- Leaf metadata -------------------------------------------------------
     GridStateWriter::setLogicalCartesianSize(*leaf, dims0);
@@ -1832,9 +1849,11 @@ assembleNestedLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     // communication. This mirrors the single-level assembleLeafGrid branch:
     // coarse leaf cells inherit their level-zero global index/attribute; every
     // refined cell (any non-level-0 source, i.e. all nested levels) is rank-
-    // interior (owner only) and gets its RefinedCellIds id. In refine-before-redistribute the leaf is
+    // interior (owner only) and gets its assignRefinedIds id. In refine-before-redistribute the leaf is
     // assembled with a self-communicator (cc.size() == 1), so this is skipped and
     // the distribution happens later in scatterGrid.
+    const auto ids = assignRefinedIds(storage, numBoxes, leafToLevel, leafCornerHistory,
+                                      {}, comm);
 #if HAVE_MPI
     Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm);
     if (cc.size() > 1) {
@@ -1853,10 +1872,9 @@ assembleNestedLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
 
-        const RefinedCellIds refinedIds(storage, numBoxes + 1, cc.max(levelZeroIdEnd(level0)));
         for (int cell = 0; cell < numLeafCells; ++cell) {
             if (leafCells[cell].grid != 0) {
-                leafCellGlobalId[cell] = refinedIds(leafCells[cell].grid, leafCells[cell].index);
+                leafCellGlobalId[cell] = ids.cells[cell];
                 leafCellAttr[cell] = AttributeSet::owner;
             }
         }
@@ -1874,9 +1892,15 @@ assembleNestedLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         leaf->computePointPartitionType();
         leaf->computeCommunicationInterfaces(numLeafCorners);
         setDistributedLeafIds(*leaf, level0, leafCellGlobalId, leafFaces, numLeafFaces,
-                              numLeafCorners, refinedIds.end(), cc);
+                              ids.points, ids.end, cc);
     }
+    else
 #endif
+    {
+        std::vector<int> faceIds(numLeafFaces);
+        std::iota(faceIds.begin(), faceIds.end(), numLeafCells);
+        GridStateWriter::setGlobalIdMapping(*leaf, ids.cells, std::move(faceIds), ids.points);
+    }
 
     // ----- Leaf metadata ---------------------------------------------------
     GridStateWriter::setLogicalCartesianSize(*leaf, dims0);
