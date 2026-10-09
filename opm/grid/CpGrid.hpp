@@ -1496,6 +1496,8 @@ namespace Dune
     private:
         void broadcastRetainedInput_();
         void throwIfConforming_(const std::string& what) const;
+        Dune::FieldVector<double,3> faceCenterEclConforming_(int cell_index, int face,
+                                                             const Dune::cpgrid::Intersection& intersection) const;
         void globalRefineConforming_(int refCount);
 
         /// \brief Scatter a global grid to all processors.
