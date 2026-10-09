@@ -91,14 +91,15 @@ namespace Refinement
 ///  6. findFaultedSides: faultedSides_ and acrossRange_.
 ///  7. buildLeafFaces: leafFaces_, mosaicOutside_, refinedCartToCell_,
 ///     numSourceFaces_, and each box's faceToLeaf.
-///  8. buildSyntheticFaces: syntheticFaces_ and numLeafFaces_.
+///  8. buildSyntheticFaces: syntheticFaces_, splitKeys_ and numLeafFaces_.
 ///  9. buildLeafTopology: the leaf's face_to_cell, face_to_point, cell_to_face,
 ///     face tags, normals and face geometries.
 /// 10. computeCellData: the leaf's cell_to_point and cell geometries,
 ///     leafGlobalCell_, leafChildToParent_, leafCartesianIndexInParentCell_ and
 ///     leafToLevel_.
-/// 11. buildParallelStructures: the leaf's parallel cell index set, partition
-///     types, communication interfaces and global ids (distributed grids only).
+/// 11. buildParallelStructures: the global ids of the leaf and of the level grids,
+///     and the leaf's parallel cell index set, partition types and communication
+///     interfaces (distributed grids only).
 /// 12. recordLeafMetadata: the leaf's metadata, the leaf index of the cells of
 ///     level zero and of the level grids, the parent-to-children relations of
 ///     level zero and of the parent LGRs, and the levels' refinement maximum.
@@ -184,6 +185,7 @@ private:
         double area;
         enum face_tag tag;
         int side;                                // box boundary side: -1 low, +1 high
+        int box;
     };
 
     // The constructor's lookups; each reads the members declared before the one it
@@ -242,6 +244,7 @@ private:
     const std::vector<std::map<int,int>>& refinedCartToCell() const { return refinedCartToCell_; }
     int numSourceFaces() const { return numSourceFaces_; }
     const std::vector<SyntheticFace>& syntheticFaces() const { return syntheticFaces_; }
+    const std::vector<std::array<int,2>>& splitKeys() const { return splitKeys_; }
     int numLeafFaces() const { return numLeafFaces_; }
     int numLeafCorners() const { return numLeafCorners_; }
 
@@ -325,6 +328,7 @@ private:
 
     // Written by buildSyntheticFaces.
     std::vector<SyntheticFace> syntheticFaces_;
+    std::vector<std::array<int,2>> splitKeys_;  // {box, ordinal} per leaf corner past the history
     int numLeafFaces_{0};
 
     // Written by computeCellData; recordLeafMetadata moves them into the leaf.
