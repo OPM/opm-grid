@@ -97,18 +97,19 @@ BOOST_AUTO_TEST_CASE(autoRefine)
     checkGridAfterAutoRefinement(grid, {3,5,7});
 }
 
-BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
+BOOST_AUTO_TEST_CASE(callGlobalRefineBeforeOrAfterAutoRefine_serial) {
 
-    Dune::CpGrid grid;
+    Dune::CpGrid grid, equiv_grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    equiv_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    
 
-    if (grid.comm().size() == 1 ) { // serial
-
+    if (grid.comm().size() == 1) { // serial
+        assert(equiv_grid.comm().size() == 1);
+        
         // nxnynz represents the refinement factors in x-,y-,and z-direction.
         grid.autoRefine(/* nxnynz = */ {3,3,1});
-
         checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
-
         grid.globalRefine(2, /* throwOnFailure = */ true);
 
         Opm::checkGridWithLgrs(grid,
@@ -116,9 +117,43 @@ BOOST_AUTO_TEST_CASE(callGlobalRefineAfterAutoRefine_serial) {
                                /* lgr_name_vec = */ {"GR2", "GR3"},
                                /* preRefineMaxLevel = */ 1,
                                /* isNested = */ true);
+         
+        equiv_grid.globalRefine(2, /* throwOnFailure = */ true);
+        equiv_grid.autoRefine(/* nxnynz = */ {3,3,1});
+        
+        BOOST_CHECK_EQUAL(grid.maxLevel(), equiv_grid.maxLevel());
+
+        Opm::checkLeafGridGeometryEquality(grid, equiv_grid);
     }
 }
 
+BOOST_AUTO_TEST_CASE(callAutoRefineMultipleTimes_serial) {
+
+    Dune::CpGrid grid, equiv_grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    equiv_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+
+
+    if (grid.comm().size() == 1) { // serial
+
+        // nxnynz represents the refinement factors in x-,y-,and z-direction.
+        grid.autoRefine(/* nxnynz = */ {3,3,1});
+        grid.autoRefine(/* nxnynz = */ {1,1,3});
+
+        Opm::checkGridWithLgrs(grid,
+                               /* cells_per_dim_vec = */ {{3,3,1}, {1,1,3}},
+                               /* lgr_name_vec = */ {"GLOBAL_REFINED1", "GLOBAL_REFINED2"},
+                               /* preRefineMaxLevel = */ 0,
+                               /* isNested = */ true);
+
+        equiv_grid.autoRefine(/* nxnynz = */ {1,1,3});
+        equiv_grid.autoRefine(/* nxnynz = */ {3,3,1});
+
+        BOOST_CHECK_EQUAL(grid.maxLevel(), equiv_grid.maxLevel());
+
+        Opm::checkLeafGridGeometryEquality(grid, equiv_grid);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(callAdaptAfterAutoRefine_serial) {
 

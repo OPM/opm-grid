@@ -24,6 +24,11 @@
 #include <string>
 #include <vector>
 
+namespace Dune
+{
+class CpGrid;
+}
+
 namespace Opm
 {
 
@@ -93,6 +98,10 @@ filterLgrDataPerParentGridName(const std::vector<std::array<int,3>>& cells_per_d
 bool areParentGridsAvailableBeforeTheirLgrs(const std::map<std::string,int>& existing_grid_names,
                                             const std::vector<std::string>& new_lgr_names,
                                             const std::vector<std::string>& new_lgrs_parent_grid_names);
+
+bool hasBeenGloballyRefined(const Dune::CpGrid& grid);
+
+std::string getLevelGridName(const Dune::CpGrid& grid, int level);
 
 } // namespace Opm
 
