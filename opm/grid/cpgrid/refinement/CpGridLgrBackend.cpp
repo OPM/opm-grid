@@ -22,6 +22,7 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
+#include <opm/grid/cpgrid/refinement/conforming/RefinedIds.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
@@ -201,11 +202,19 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
     const int preBuildMaxLevel = maxLevel();
     builder->build(*this, requests);
 
+    auto& data = currentData();
+    if (maxLevel() > 0) {
+        // A distributed leaf got its ids from the builder.
+        const int localBase = Opm::Refinement::levelZeroIdEnd(*data.front());
+        Opm::Refinement::setRefinedIdMappings(data, maxLevel() + 1,
+                                              isDistributed() ? comm().max(localBase) : localBase,
+                                              !isDistributed());
+    }
+
     for (std::size_t box = 0; box < requests.size(); ++box) {
         lgr_names_[requests[box].name] = preBuildMaxLevel + static_cast<int>(box) + 1;
     }
     if (global_id_set_ptr_) {
-        auto& data = currentData();
         for (std::size_t gridIdx = preBuildMaxLevel + 1; gridIdx < data.size(); ++gridIdx) {
             global_id_set_ptr_->insertIdSet(*data[gridIdx]);
         }
