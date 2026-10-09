@@ -94,6 +94,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/dual_continuum_grid_test.cpp
   tests/cpgrid/dual_continuum_distribution_test.cpp
+  tests/cpgrid/lgr_backend_comparison_test.cpp
   tests/cpgrid/lgr_backend_switch_test.cpp
   tests/cpgrid/grdecl_refinement_test.cpp
   tests/cpgrid/level_grid_assembler_test.cpp
@@ -102,6 +103,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/edge_conformal_refinement_test.cpp
   tests/cpgrid/distributed_builder_test.cpp
   tests/cpgrid/partition_cell_groups_test.cpp
+  tests/cpgrid/refined_structure_comparison_test.cpp
   tests/cpgrid/refined_distribution_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
