@@ -337,6 +337,12 @@ namespace Dune
                                   bool turn_normals = false,
                                   bool edge_conformal = false);
 
+        /// Process grdecl input with the given pinch-out connections, as a deck run makes them.
+        void processEclipseFormat(const grdecl& input_data,
+                                  const std::set<std::pair<int,int>>& pinchNnc,
+                                  bool pinchActive,
+                                  bool edge_conformal);
+
         //@}
 
         /// \name Cartesian grid extensions.
@@ -525,6 +531,10 @@ namespace Dune
         {
             return !distributed_data_.empty();
         }
+
+        /// True if the current leaf knows each cell's place in its parent, as the flat leaf a
+        /// Conforming grid refined before load balancing does (maxLevel() is 0 there).
+        bool leafHasParentCellIndices() const;
 
         /// @brief The builder the Conforming backend refines with.
         void setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder);

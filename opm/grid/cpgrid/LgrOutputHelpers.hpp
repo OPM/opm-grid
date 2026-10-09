@@ -117,6 +117,18 @@ template <typename Container>
 Container reorderForOutput(const Container& simulatorContainer,
                            const std::vector<int>& toOutput);
 
+/// @brief Undo reorderForOutput(): read output-ordered data back into
+///        simulator (compressed) order.
+///
+/// @param [in] outputContainer  Data in strict Cartesian order, as it appears
+///                              in the output file.
+/// @param [in] toOutput         The same permutation reorderForOutput() was
+///                              given: toOutput[position] is the element index
+///                              belonging at that output position.
+template <typename Container>
+Container reorderFromOutput(const Container& outputContainer,
+                            const std::vector<int>& toOutput);
+
 /// @brief Map level Cartesian index to level compressed index (active cell)
 ///
 /// @param [in] grid
@@ -179,6 +191,21 @@ void populateDataVectorLevelGrids(const Dune::CpGrid& grid,
 /// @param [out]   A vector of Opm::data::Solution objects, one for each refinement level
 ///                (from level 0 to grid.maxLevel()), where each entry contains data reordered
 ///                according to increasing level Cartesian indices for output.
+/// @brief Assemble a leaf-ordered solution from one solution per level grid.
+///
+/// The inverse of extractSolutionLevelGrids(): a leaf cell takes the value its
+/// own level holds for it. Parent cells carry an average of their children in
+/// the file, which nothing reads back -- a cell with children is not in the leaf.
+///
+/// @param [in]  grid
+/// @param [in]  levelSolutions  One per level, level zero first, each in the
+///                              output ordering the file uses.
+/// @param [out] leafSolution    Keys present on every level are assembled;
+///                              others are skipped.
+void assembleSolutionFromLevelGrids(const Dune::CpGrid& grid,
+                                    const std::vector<Opm::data::Solution>& levelSolutions,
+                                    Opm::data::Solution& leafSolution);
+
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,
                                const std::vector<std::vector<int>>& toOutput_refinedLevels,
                                const Opm::data::Solution& leafSolution,
@@ -214,6 +241,18 @@ Container Opm::Lgr::reorderForOutput(const Container& simulatorContainer,
         outputContainer[i] = simulatorContainer[toOutput[i]];
     }
     return outputContainer;
+}
+
+template <typename Container>
+Container Opm::Lgr::reorderFromOutput(const Container& outputContainer,
+                                      const std::vector<int>& toOutput)
+{
+    Container simulatorContainer;
+    simulatorContainer.resize(toOutput.size());
+    for (std::size_t i = 0; i < toOutput.size(); ++i) {
+        simulatorContainer[toOutput[i]] = outputContainer[i];
+    }
+    return simulatorContainer;
 }
 
 template <typename ScalarType>
@@ -312,16 +351,35 @@ void Opm::Lgr::extractRestartValueLevelGrids(const Grid& grid,
                                                            level);
         }
 
-        for (const auto& [rst_key, leafVector] : leafRestartValue.extra) {
+        const auto leafCellCount =
+            static_cast<std::size_t>(grid.leafGridView().size(0));
 
-            std::vector<std::vector<double>> levelVectors{};
-            levelVectors.resize(maxLevel+1);
+        for (const auto& [rst_key, leafVector] : leafRestartValue.extra) {
 
             if (rst_key.key == "OPMEXTRA") {
                 // For OPMEXTRA, leafVector has size 1 instead of
                 // grid.leafGridView().size(0)
                 continue; // skip it
             }
+
+            // Extra vectors that are not per-leaf-cell data must NOT be
+            // distributed across levels by cell index: doing so (via
+            // populateDataVectorLevelGrids) treats them as cell data and resizes
+            // them to each level's cell count, corrupting them. The prime example
+            // is THRESHPR, a global threshold-pressure matrix of size
+            // num_equil_regions^2; cell-distributing it produced an 8866-element
+            // vector (the level-0 cell count) and tripped the
+            // 'THPRES vector has invalid size' check in RestartIO. Such global
+            // quantities are the same on every level, so copy them verbatim.
+            if (leafVector.size() != leafCellCount) {
+                for (int level = 0; level <= maxLevel; ++level) {
+                    restartValue_levels[level].addExtra(rst_key.key, rst_key.dim, leafVector);
+                }
+                continue;
+            }
+
+            std::vector<std::vector<double>> levelVectors{};
+            levelVectors.resize(maxLevel+1);
             Opm::Lgr::populateDataVectorLevelGrids<double>(grid,
                                                            maxLevel,
                                                            leafVector,
