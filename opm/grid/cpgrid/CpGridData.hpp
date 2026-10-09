@@ -69,6 +69,7 @@
 //#include "GlobalIdMapping.hpp"
 #include "Geometry.hpp"
 
+#include <algorithm>
 #include <array>
 #include <initializer_list>
 #include <set>
@@ -722,6 +723,13 @@ private:
     void scatterCodimData(DataHandle& data, CpGridData* global_data,
                           CpGridData* distributed_data);
 
+    /// \brief The default maximum message buffer size of Dune's VariableSizeCommunicator.
+#ifdef DUNE_PARALLEL_MAX_COMMUNICATION_BUFFER_SIZE
+    static constexpr std::size_t defaultBufferSize = DUNE_PARALLEL_MAX_COMMUNICATION_BUFFER_SIZE;
+#else
+    static constexpr std::size_t defaultBufferSize = 32768;
+#endif
+
     /// \brief Communicates data of a given codimension
     /// \tparam codim The codimension
     /// \tparam DataHandle The type of the data handle describing, gathering,
@@ -742,9 +750,10 @@ private:
     ///  and gathering the data.
     /// \param dir The direction of the communication.
     /// \param interface The information about the communication interface
+    /// \param bufferSize The maximum size of each message buffer
     template<int codim, class DataHandle>
     void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
-                          const InterfaceMap& interface);
+                          const InterfaceMap& interface, std::size_t bufferSize = defaultBufferSize);
 
 #endif
 
@@ -917,14 +926,38 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                                   const Interface& interface)
 {
-    this->template communicateCodim<codim>(data, dir, interface.interfaces());
+    // The communicator allocates message buffers of its maximum size, 32768
+    // items by default, for each neighbour on every call. With a fixed size
+    // per entity, the largest message on this interface is known, and the
+    // buffers are cut down to it. Only senders may be asked for that size,
+    // so it is shared between processes. The same reduction tells whether
+    // any process has variable-size data, which keeps all processes on the
+    // same path.
+    const bool fixed = data.fixedSize();
+    std::size_t maxEntities = 1;
+    std::array<std::size_t, 2> shared {0, fixed ? 0u : 1u}; // {entity size, variable size}
+    for (const auto& entry : interface.interfaces()) {
+        const auto& lists = entry.second;
+        maxEntities = std::max({maxEntities, lists.first.size(), lists.second.size()});
+        const auto& send = (dir == ForwardCommunication) ? lists.first : lists.second;
+        if (fixed && shared[0] == 0 && send.size() > 0) {
+            shared[0] = data.size(send[0]);
+        }
+    }
+    ccobj_.max(shared.data(), shared.size());
+
+    std::size_t bufferSize = defaultBufferSize;
+    if (shared[1] == 0) {
+        bufferSize = std::min(maxEntities * std::max<std::size_t>(shared[0], 1), bufferSize);
+    }
+    this->template communicateCodim<codim>(data, dir, interface.interfaces(), bufferSize);
 }
 
 template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
-                                  const InterfaceMap& interface)
+                                  const InterfaceMap& interface, std::size_t bufferSize)
 {
-    Communicator comm(ccobj_, interface);
+    Communicator comm(ccobj_, interface, bufferSize);
 
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
