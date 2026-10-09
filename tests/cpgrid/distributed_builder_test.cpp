@@ -42,6 +42,8 @@
 #include <iostream>
 #include <cmath>
 #include <map>
+#include <set>
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <string>
@@ -103,6 +105,17 @@ void useConformingBuilder(Dune::CpGrid& grid, std::unique_ptr<Opm::Refinement::B
 {
     grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
     grid.setRefinementBuilder(std::move(builder));
+}
+
+// Interior leaf cell ids keyed by cell centre (distinct on a unit grid).
+std::map<std::array<long,3>, long> leafIdsByCentre(const Dune::CpGrid& grid)
+{
+    std::map<std::array<long,3>, long> ids;
+    for (const auto& e : Dune::elements(grid.leafGridView(), Dune::Partitions::interior)) {
+        const auto x = e.geometry().center();
+        ids[{std::lround(x[0]*1e6), std::lround(x[1]*1e6), std::lround(x[2]*1e6)}] = grid.globalIdSet().id(e);
+    }
+    return ids;
 }
 
 } // anonymous namespace
@@ -242,6 +255,86 @@ BOOST_AUTO_TEST_CASE(rankInteriorLeafVerticesConsistent)
     BOOST_CHECK_EQUAL(idClash, 0);
     BOOST_CHECK_EQUAL(posClash, 0);
     BOOST_CHECK_EQUAL(badOwner, 0);
+}
+
+// Refined cell ids depend on the LGR and the cell's place in it, not on the partition.
+BOOST_AUTO_TEST_CASE(refinedCellIdsIndependentOfPartition)
+{
+    const std::array<int,3> dims = {{16, 16, 2}};
+    auto g = makeUnitGrid(dims);
+    const auto refine = [&g](Dune::CpGrid& grid) {
+        useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
+            g.dims, g.coord, g.zcorn, g.actnum));
+        grid.addLgrsUpdateLeafView({{2,2,2}, {3,3,1}, {2,2,1}},
+                                   {{2,2,0}, {11,11,0}, {1,1,1}},
+                                   {{5,5,2}, {14,14,1}, {3,3,3}},
+                                   {"LGR1", "LGR2", "NEST1"},
+                                   {"GLOBAL", "GLOBAL", "LGR1"});
+    };
+
+    Dune::CpGrid serial(MPI_COMM_SELF);
+    serial.createCartesian(dims, {{1.0, 1.0, 1.0}});
+    refine(serial);
+    BOOST_REQUIRE_EQUAL(serial.maxLevel(), 3);
+    const auto& ids = serial.globalIdSet();
+
+    long offset = 0; // one above every level-zero id, then past each LGR's Cartesian box
+    for (const auto& e : Dune::elements(serial.levelGridView(0))) {
+        offset = std::max(offset, static_cast<long>(ids.id(e)) + 1);
+    }
+    for (const auto& v : Dune::vertices(serial.levelGridView(0))) {
+        offset = std::max(offset, static_cast<long>(ids.id(v)) + 1);
+    }
+    for (int level = 1; level <= serial.maxLevel(); ++level) {
+        int wrong = 0;
+        for (const auto& e : Dune::elements(serial.levelGridView(level))) {
+            wrong += ids.id(e) != offset + e.getLevelCartesianIdx();
+        }
+        BOOST_CHECK_EQUAL(wrong, 0);
+        const auto& d = serial.currentData()[level]->logicalCartesianSize();
+        offset += static_cast<long>(d[0])*d[1]*d[2];
+    }
+    std::set<long> cellIds, pointIds;
+    int leafDiffers = 0;
+    for (const auto& e : Dune::elements(serial.leafGridView())) {
+        cellIds.insert(ids.id(e));
+        leafDiffers += ids.id(e) != ids.id(e.getLevelElem());
+    }
+    for (const auto& v : Dune::vertices(serial.leafGridView())) {
+        pointIds.insert(ids.id(v));
+    }
+    BOOST_CHECK_EQUAL(leafDiffers, 0);
+    BOOST_CHECK_EQUAL(cellIds.size(), static_cast<std::size_t>(serial.size(0)));
+    BOOST_CHECK_EQUAL(pointIds.size(), static_cast<std::size_t>(serial.size(3)));
+    BOOST_CHECK(std::ranges::none_of(pointIds, [&cellIds](long id) { return cellIds.count(id) > 0; }));
+
+    Dune::CpGrid grid;
+    grid.createCartesian(dims, {{1.0, 1.0, 1.0}});
+    const int np = grid.comm().size();
+    if (np < 2) {
+        return;
+    }
+    // 8x8 quadrants: LGR1 (and NEST1) on rank 0, LGR2 on rank 3 % np.
+    std::vector<int> parts(static_cast<std::size_t>(dims[0])*dims[1]*dims[2]);
+    for (std::size_t c = 0; c < parts.size(); ++c) {
+        const int i = static_cast<int>(c % dims[0]);
+        const int j = static_cast<int>((c / dims[0]) % dims[1]);
+        parts[c] = (i/8 + 2*(j/8)) % np;
+    }
+    grid.loadBalance(parts, false, true, 2);
+    refine(grid);
+
+    const auto reference = leafIdsByCentre(serial);
+    const auto mine = leafIdsByCentre(grid);
+    int missing = 0, differ = 0;
+    for (const auto& [x, id] : mine) {
+        const auto it = reference.find(x);
+        missing += it == reference.end();
+        differ += it != reference.end() && it->second != id;
+    }
+    BOOST_CHECK_EQUAL(grid.comm().sum(missing), 0);
+    BOOST_CHECK_EQUAL(grid.comm().sum(differ), 0);
+    BOOST_CHECK_EQUAL(grid.comm().sum(static_cast<int>(mine.size())), static_cast<int>(reference.size()));
 }
 
 BOOST_AUTO_TEST_CASE(boxTouchingOverlapThrows)

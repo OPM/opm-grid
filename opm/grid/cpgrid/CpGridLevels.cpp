@@ -67,6 +67,7 @@
 #include <limits>
 #include <numeric>
 #include <optional>
+#include <stdexcept>
 #include <tuple>
 
 namespace Dune
@@ -203,19 +204,26 @@ namespace cpgrid
 {
 std::vector<std::int64_t> CpGridData::stableCellId() const
 {
-    // Refined cells: tagged (parent Cartesian index, index in parent); others: Cartesian index.
+    // Refined cells: tagged (level-zero Cartesian index, index in parent); others: Cartesian index.
+    // idxInParent rather than child_to_parent, which a distributed refined leaf does not carry.
     constexpr int childBits = 20;
     constexpr std::int64_t refinedTag = std::int64_t(1) << 62;
-    const auto& childToParent = levels_.child_to_parent_cells;
+    const auto& idxInParent = levels_.cell_to_idxInParentCell;
     std::vector<std::int64_t> ids(global_cell_.size());
     for (std::size_t c = 0; c < ids.size(); ++c) {
-        if (childToParent.empty() || childToParent[c][0] == -1) {
+        const std::int64_t child = idxInParent.empty() ? -1 : idxInParent[c];
+        if (child < 0) {
             ids[c] = global_cell_[c];
             continue;
         }
-        const std::int64_t child = levels_.cell_to_idxInParentCell[c];
-        assert(child >= 0 && child < (std::int64_t(1) << childBits));
+        assert(child < (std::int64_t(1) << childBits));
         ids[c] = refinedTag | (std::int64_t(global_cell_[c]) << childBits) | child;
+    }
+    // The key cannot tell apart cells under different parents in a nested LGR.
+    auto sorted = ids;
+    std::ranges::sort(sorted);
+    if (std::ranges::adjacent_find(sorted) != sorted.end()) {
+        throw std::logic_error("stableCellId() does not support nested LGRs.");
     }
     return ids;
 }

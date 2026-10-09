@@ -1558,6 +1558,18 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         DefaultContainerHandle<std::vector<int>>
             idxInParentHandle(view_data.levels_.cell_to_idxInParentCell, levels_.cell_to_idxInParentCell);
         grid.scatterData(idxInParentHandle);
+
+        // Keep the serial leaf's cell ids, which do not depend on the partition.
+        std::vector<int> viewCellIds(view_data.size(0));
+        for (int c = 0; c < view_data.size(0); ++c) {
+            viewCellIds[c] = view_data.global_id_set_->id(Entity<0>(view_data, c, true));
+        }
+        std::vector<int> cellIds(cell_indexset.size());
+        DefaultContainerHandle<std::vector<int>> cellIdHandle(viewCellIds, cellIds);
+        grid.scatterData(cellIdHandle);
+        auto faceIds = global_id_set_->getMapping<1>();
+        auto pointIds = global_id_set_->getMapping<3>();
+        global_id_set_->swap(cellIds, faceIds, pointIds);
     }
 
     // Scatter face tags, normals, and boundary ids.

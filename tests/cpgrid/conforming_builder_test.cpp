@@ -37,6 +37,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <stdexcept>
 #include <vector>
 
 namespace
@@ -959,6 +960,9 @@ BOOST_AUTO_TEST_CASE(nestedFullyContainedBuilds)
         pointIds.insert(ids.id(vertex));
     }
     BOOST_CHECK_EQUAL(pointIds.size(), static_cast<std::size_t>(grid.size(3)));
+
+    // NEST1 refines two LGR1 cells of one level-zero cell, which stableCellId() cannot tell apart.
+    BOOST_CHECK_THROW(grid.stableCellId(), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(faultInsideBoxEndToEnd)
@@ -1059,6 +1063,13 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryBuilds)
         BOOST_CHECK_EQUAL(count % 2, 0); // each shared face seen from both sides
     }
     BOOST_CHECK_GT(refinedToCoarse, 0);  // the box connects to coarse neighbours
+
+    // Split-face corners exist only on the leaf; they still get unique ids.
+    std::set<std::int64_t> pointIds;
+    for (const auto& vertex : Dune::vertices(grid.leafGridView())) {
+        pointIds.insert(grid.globalIdSet().id(vertex));
+    }
+    BOOST_CHECK_EQUAL(pointIds.size(), static_cast<std::size_t>(grid.size(3)));
 }
 
 // Note on the boundary throw branches: with vertical pillars + a ZCORN throw

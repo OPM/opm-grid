@@ -31,7 +31,10 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <algorithm>
+#include <array>
+#include <map>
 #include <cmath>
+#include <cstdint>
 #include <string>
 
 struct MPIFixture
@@ -137,4 +140,43 @@ PORO
         BOOST_CHECK_LT(comm.max(interior), 1.3 * average);
         BOOST_CHECK_GT(comm.min(interior), 0.7 * average);
     }
+
+    // Every cell keeps the id it has in the serially refined grid.
+    Dune::CpGrid serial(MPI_COMM_SELF);
+    serial.setLgrBackend(Opm::Refinement::Backend::Conforming);
+    serial.processEclipseFormat(&eclGrid, &state, false, false, false);
+    serial.addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{6, 12, 4}}, {"LGR1"});
+    const auto byCentre = [](const Dune::CpGrid& g) {
+        std::map<std::array<long,3>, long> ids;
+        for (const auto& e : Dune::elements(g.leafGridView(), Dune::Partitions::interior)) {
+            const auto x = e.geometry().center();
+            ids[{std::lround(x[0]*1e6), std::lround(x[1]*1e6), std::lround(x[2]*1e6)}] = g.globalIdSet().id(e);
+        }
+        return ids;
+    };
+    const auto reference = byCentre(serial);
+    int differ = 0;
+    for (const auto& [x, id] : byCentre(grid)) {
+        const auto it = reference.find(x);
+        differ += it == reference.end() || it->second != id;
+    }
+    BOOST_CHECK_EQUAL(comm.sum(differ), 0);
+
+    // So does stableCellId(), although the distributed leaf is flat.
+    const auto stableByCentre = [](const Dune::CpGrid& g) {
+        const auto sid = g.stableCellId();
+        std::map<std::array<long,3>, std::int64_t> ids;
+        for (const auto& e : Dune::elements(g.leafGridView(), Dune::Partitions::interior)) {
+            const auto x = e.geometry().center();
+            ids[{std::lround(x[0]*1e6), std::lround(x[1]*1e6), std::lround(x[2]*1e6)}] = sid[e.index()];
+        }
+        return ids;
+    };
+    const auto stableReference = stableByCentre(serial);
+    int stableDiffer = 0;
+    for (const auto& [x, id] : stableByCentre(grid)) {
+        const auto it = stableReference.find(x);
+        stableDiffer += it == stableReference.end() || it->second != id;
+    }
+    BOOST_CHECK_EQUAL(comm.sum(stableDiffer), 0);
 }
