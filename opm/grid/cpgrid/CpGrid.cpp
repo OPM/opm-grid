@@ -1178,6 +1178,9 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
     };
 
     assert (current_data_->back()->cell_to_point_[cell_index].size() == 8);
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming && maxLevel() > 0) {
+        return faceCenterEclConforming_(cell_index, face, intersection);
+    }
     Dune::FieldVector<double,3> center(0.0);
 
     bool isCoarseCellInside = (intersection.inside().level() == 0);

@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -72,6 +73,51 @@ void CpGrid::globalRefineConforming_(int refCount)
     }
     const auto dims = logicalCartesianSize();
     addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{dims[0], dims[1], dims[2]}}, {"GR1"});
+}
+
+// Same-level neighbours share a whole face of the cell, so they take its corner average like two
+// coarse cells; an LGR boundary face takes its own points, or its centroid when it is not planar.
+Dune::FieldVector<double,3> CpGrid::faceCenterEclConforming_(int cell_index, int face,
+                                                             const Dune::cpgrid::Intersection& intersection) const
+{
+    static const int faceVxMap[6][4] = { {0, 2, 4, 6}, {1, 3, 5, 7}, {0, 1, 4, 5},
+                                         {2, 3, 6, 7}, {0, 1, 2, 3}, {4, 5, 6, 7} };
+    const bool sameLevelNeighbours = intersection.neighbor() &&
+        (intersection.inside().level() == intersection.outside().level());
+    const bool coarseOnBoundary = intersection.boundary() && !intersection.neighbor() &&
+        (intersection.inside().level() == 0);
+    if (!sameLevelNeighbours && !coarseOnBoundary) {
+        const auto& fp = current_data_->back()->face_to_point_[intersection.id()];
+        if (fp.size() == 4) {
+            std::array<Dune::FieldVector<double,3>,4> v;
+            int k = 0;
+            for (auto it = fp.begin(); it != fp.end(); ++it) {
+                v[k++] = vertexPosition(*it);
+            }
+            const auto e1 = v[1] - v[0];
+            const auto e2 = v[2] - v[0];
+            const Dune::FieldVector<double,3> nrm{ e1[1]*e2[2] - e1[2]*e2[1],
+                                                   e1[2]*e2[0] - e1[0]*e2[2],
+                                                   e1[0]*e2[1] - e1[1]*e2[0] };
+            const double nn = nrm.two_norm();
+            const double dev = (nn > 0.0) ? std::abs((v[3] - v[0]) * nrm) / nn : 0.0;
+            if (dev <= 1e-9 * std::max(e1.two_norm() + e2.two_norm(), 1.0)) {
+                auto center = v[0];
+                center += v[1];
+                center += v[2];
+                center += v[3];
+                center /= 4.0;
+                return center;
+            }
+        }
+        return intersection.geometry().center();
+    }
+    Dune::FieldVector<double,3> center(0.0);
+    for (int i = 0; i < 4; ++i) {
+        center += vertexPosition(current_data_->back()->cell_to_point_[cell_index][faceVxMap[face][i]]);
+    }
+    center /= 4.0;
+    return center;
 }
 
 void CpGrid::setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder)
