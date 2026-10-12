@@ -99,6 +99,9 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
         }
     }
     if (parts.size() != 0){ // Avoid merge if the second part is empty. Only root merges.
+        // Zoltan lists exported cells in the order the graph callbacks give
+        // them, which need not be by global index.
+        std::ranges::sort(myExportList.begin(), myExportList.begin() + numExport);
         std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
         std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
     }
