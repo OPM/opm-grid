@@ -34,6 +34,7 @@
 
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
+#include <opm/grid/common/ZoltanPartition.hpp>
 
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 
@@ -363,6 +364,37 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
     if (cc.rank() != root)
         impCells.swap(importedCells);
     BOOST_REQUIRE(importedCells == importSol);
+}
+
+// Zoltan lists exported cells in the order the graph callbacks give them,
+// which for the graph of grid need not be by global index.
+BOOST_AUTO_TEST_CASE(ImportExportListsFromUnorderedExports)
+{
+    Dune::CpGrid grid;
+    std::array<int, 3> dims { 3, 3, 2 };
+    std::array<double, 3> size { 1., 1., 1. };
+    grid.createCartesian(dims, size);
+    const auto& cc = grid.comm();
+
+    constexpr int root = 0;
+    if (cc.rank() != root)
+        return;
+
+    const std::vector<int> exportGids { 16, 11, 7, 4, 2 };
+    const std::vector<int> exportToPart(exportGids.size(), 1);
+    const auto [parts, parallelWells, exportList, importList, wellConnections] =
+        Dune::cpgrid::makeImportAndExportLists<int>(grid, cc, nullptr, {}, nullptr, root,
+                                                    static_cast<int>(exportGids.size()), 0,
+                                                    exportGids.data(), exportGids.data(),
+                                                    exportToPart.data(), nullptr);
+
+    BOOST_CHECK(std::ranges::is_sorted(exportList));
+    BOOST_CHECK(std::ranges::is_sorted(importList));
+    BOOST_REQUIRE_EQUAL(exportList.size(), 18u);
+    for (const auto& [gid, part, attribute] : exportList) {
+        const bool exported = std::ranges::find(exportGids, gid) != exportGids.end();
+        BOOST_CHECK_EQUAL(part, exported ? 1 : root);
+    }
 }
 #endif // HAVE_MPI
 
