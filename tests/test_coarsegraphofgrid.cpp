@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     BOOST_REQUIRE(cgog.size()==8); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==1); // weight of all nodes is one 
 
-    const std::vector< std::map<int, double> > edges = cgog.getCoarseEdges();
+    const auto& edges = cgog.getCoarseEdges();
 
     BOOST_REQUIRE(edges[0].size()==3);
     auto edgeL = edges[2];
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(MergeTwoNodes)
     BOOST_REQUIRE(cgog.size()==7); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==2); // weight of node 0 is two 
 
-    const auto edges = cgog.getCoarseEdges();
+    const auto& edges = cgog.getCoarseEdges();
 
     auto edge0 = edges[0];
     BOOST_REQUIRE(edge0.size()==4);
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(CoarseEdgeWeights)
     BOOST_REQUIRE(cgog.size()==7); // number of graph vertices
     BOOST_REQUIRE(cgog.getCoarseNodes()[0].size()==3); // Node weight of node 0 is 3 
 
-    const std::vector< std::map<int, double> > edges = cgog.getCoarseEdges();
+    const auto& edges = cgog.getCoarseEdges();
     auto edge0 = edges[0];
 
     BOOST_REQUIRE(edge0.size()==3); // The merged node has three edges

@@ -30,6 +30,32 @@
 
 namespace Opm {
 
+namespace detail {
+
+float computeLogMinTransm(const double* transmissibilities,
+                          const Dune::EdgeWeightMethod edgeWeightMethod, int numFaces)
+{
+    float minTransm = std::numeric_limits<float>::max();
+
+    if (!transmissibilities || edgeWeightMethod!=Dune::EdgeWeightMethod::logTransEdgeWgt) {
+        return minTransm;
+    }
+
+    for (int face = 0; face < numFaces; ++face) {
+        const float transm = transmissibilities[face];
+        if (transm > 0 && transm < minTransm)
+        {
+            minTransm = transm;
+        }
+    }
+    if (minTransm == std::numeric_limits<float>::max()) {
+        OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the WeightType.");
+    }
+    return std::log(minTransm);
+}
+
+} // namespace detail
+
 template<typename Grid>
 void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
                                      const Dune::EdgeWeightMethod edgeWeightMethod,
@@ -37,22 +63,8 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
 {
     // Find the lowest positive transmissibility in the grid.
     // This includes boundary faces, even though they will not appear in the graph.
-    WeightType logMinTransm = std::numeric_limits<WeightType>::max();
-    if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
-    {
-        for (int face = 0; face < grid.numFaces(); ++face)
-        {
-            WeightType transm = transmissibilities[face];
-            if (transm > 0 && transm < logMinTransm)
-            {
-                logMinTransm = transm;
-            }
-        }
-        if (logMinTransm == std::numeric_limits<WeightType>::max()) {
-            OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the WeightType.");
-        }
-        logMinTransm = std::log(logMinTransm);
-    }
+    WeightType logMinTransm = Opm::detail::computeLogMinTransm(transmissibilities,
+                                                               edgeWeightMethod, grid.numFaces());
 
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
@@ -115,22 +127,8 @@ void GraphOfGrid<Dune::CpGrid>::createGraph (const double* transmissibilities,
 {
     // Find the lowest positive transmissibility in the grid.
     // This includes boundary faces, even though they will not appear in the graph.
-    WeightType logMinTransm = std::numeric_limits<WeightType>::max();
-    if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
-    {
-        for (int face = 0; face < grid.numFaces(level); ++face)
-        {
-            WeightType transm = transmissibilities[face];
-            if (transm > 0 && transm < logMinTransm)
-            {
-                logMinTransm = transm;
-            }
-        }
-        if (logMinTransm == std::numeric_limits<WeightType>::max()) {
-            OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the WeightType.");
-        }
-        logMinTransm = std::log(logMinTransm);
-    }
+    WeightType logMinTransm = Opm::detail::computeLogMinTransm(transmissibilities,
+                                                               edgeWeightMethod, grid.numFaces());
 
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph

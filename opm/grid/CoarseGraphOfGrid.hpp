@@ -27,6 +27,7 @@
 #define OPM_COARSE_GRAPH_OF_GRID_HEADER
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 #include <queue>
 
@@ -47,11 +48,14 @@ struct WgtIdx {
 /// Similar to GraphOfGrid, but here nodes are merged if
 /// the transmissibility on the edge connecting them is below
 /// a certain threshold.
+/// Note that coarsening is always done using the values of the TransGraph matrix.
+/// The edgeWeightMethod is only used to give edge weights to the coarse graph.
 template<typename Grid>
 class CoarseGraphOfGrid{
 
     using TransGraph = Dune::BCRSMatrix<Dune::FieldMatrix<double, 1, 1>>;
     using Row = typename TransGraph::row_type;
+    using WeightType = float;
 
 public:
 
@@ -86,7 +90,7 @@ public:
         return coarseNodes;
     }
 
-    const std::vector<std::map<int, double> >& getCoarseEdges() const
+    const std::vector<std::map<int, WeightType> >& getCoarseEdges() const
     {
         return cedges;
     }
@@ -103,9 +107,6 @@ public:
         return wells;
     }
 private:
-
-    /// \brief set logMinTransm if edgeWeightMethod == logTransEdgeWgt. Copied from GraphOfGrid.cpp
-    void setMintransLog(const double* transmissibilities);
 
     /// \brief Merge vertices that share a common well 
     void mergeWellCellsForCoarseGraph(std::vector<int>& hasWell,
@@ -127,6 +128,11 @@ private:
     /// transmissibility larger than coarseThreshold.
     /// Coarse vertices will not be larger than coarsePartitionMaxNodeSize.
     /// Also meges wells if allowDistributedWells == true.
+    ///
+    /// \param edgeWeightMethod determines the edge weights of the coarse graph.
+    ///        Not used in for coarsening
+    /// \param coarseThreshold If transGraph[i][j] > coarseThreshold we want to merge i and j.
+    /// \param coarsePartitionMaxNodeSize Nodes in the coarse graph will be larger than this value.
     void createCoarseGraph(const Dune::EdgeWeightMethod edgeWeightMethod,
                            double coarseThreshold,
                            int coarsePartitionMaxNodeSize,
@@ -139,9 +145,8 @@ private:
     std::list<std::set<int>> wells;
 
     const TransGraph* transGraph;
-    double logMinTransm;
     std::vector<int> map_to_coarse_;
-    std::vector<std::map<int, double> > cedges;
+    std::vector<std::map<int, WeightType> > cedges;
     std::vector<std::vector<int>> coarseNodes;
     
 };

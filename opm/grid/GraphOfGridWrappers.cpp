@@ -167,7 +167,7 @@ void getCoarseGraphNumEdges(void *pGraph,
     assert(dimGlobalID==1); // ID is a single int
     const CoarseGraphOfGrid<Dune::CpGrid>& gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
 
-    const std::vector<std::map<int, double> >& edges = gog.getCoarseEdges();
+    const auto& edges = gog.getCoarseEdges();
 
     for (size_t idx = 0; idx < edges.size(); ++idx)
     {
@@ -193,7 +193,7 @@ void getCoarseGraphEdgeList(void *pGraph,
     assert(dimGlobalID==1); // ID is a single int
     assert(weightDim==1); // edge weight is a single float
     const CoarseGraphOfGrid<Dune::CpGrid>&  gog = *static_cast<const CoarseGraphOfGrid<Dune::CpGrid>*>(pGraph);
-    const std::vector<std::map<int, double> >& edges = gog.getCoarseEdges();
+    const auto& edges = gog.getCoarseEdges();
     int id=0;
 
     const auto& rank = gog.getGrid().comm().rank();
@@ -619,7 +619,6 @@ makeImportAndExportLists(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
     std::vector<std::vector<int>> importListFromRoot(cc.size());
-    std::vector<int> sizeOfImport(cc.size(), 0);
     if (rank==root)
     {
         std::vector<int> coarsePartRes(gog.size(), root);
@@ -627,7 +626,6 @@ makeImportAndExportLists(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
         for ( int i=0; i < numExport; ++i )
         {
             coarsePartRes[exportGlobalGids[i]] = exportToPart[i];
-            sizeOfImport[exportToPart[i]] += cnodes[exportGlobalGids[i]].size(); 
         }
 
         const std::vector<int> m2c = gog.getMapToCoarse();
@@ -648,29 +646,11 @@ makeImportAndExportLists(const CoarseGraphOfGrid<Dune::CpGrid>& gog,
             }
         }
     }
-    std::vector<int> newImportList;
-    int newNumImport;
-    if (cc.rank() == root) {
-        std::vector<MPI_Request> requestSize(2 * (cc.size() - 1));
-        
-        for (int i = 0; i < cc.size() - 1; ++i) {
-            int ii = i + (int)(i >= root); // ii takes values {0,...,mpisize-1} but skips root
-            int tag = 15; // a random number
-            MPI_Isend(&sizeOfImport[ii], 1, MPI_INT, ii, tag, cc, &requestSize[2 * i]);
-            MPI_Isend(importListFromRoot[ii].data(), sizeOfImport[ii], MPI_INT,ii, tag + 1, cc, &requestSize[2 * i + 1]);
-        }
-        newNumImport = 0;
-        MPI_Waitall(requestSize.size(), requestSize.data(), MPI_STATUS_IGNORE);
-    } else {
-        int tag = 15; // a random number
-        MPI_Recv(&newNumImport, 1, MPI_INT, root, tag, cc, MPI_STATUS_IGNORE);
-        newImportList.resize(newNumImport);
-        MPI_Recv(newImportList.data(), newNumImport, MPI_INT, root, tag + 1, cc, MPI_STATUS_IGNORE);
-    }
+    auto newImportList = Impl::communicateExportedCells(importListFromRoot, cc, root);
 
-    for ( int i=0; i < newNumImport; ++i )
+    for (const auto& cell : newImportList)
     {
-        myImportList.emplace_back(newImportList[i], root, static_cast<char>(AttributeSet::owner), -1);
+        myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
     }
     std::vector<std::pair<std::string, bool>> parallel_wells;
     if( wells )

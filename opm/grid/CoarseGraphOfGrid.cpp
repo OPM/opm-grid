@@ -31,29 +31,6 @@
 namespace Opm {
 
 template<typename Grid>
-void CoarseGraphOfGrid<Grid>::setMintransLog(const double* transmissibilities)
-{
-    // Find the lowest positive transmissibility in the grid.
-    // This includes boundary faces, even though they will not appear in the graph.
-    logMinTransm = std::numeric_limits<double>::max();
-    if (transmissibilities)
-    {
-        for (int face = 0; face < grid.numFaces(); ++face)
-        {
-            double transm = transmissibilities[face];
-            if (transm > 0 && transm < logMinTransm)
-            {
-                logMinTransm = transm;
-            }
-        }
-        if (logMinTransm == std::numeric_limits<double>::max()) {
-            OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the double.");
-        }
-        logMinTransm = std::log(logMinTransm);
-    }
-}
-
-template<typename Grid>
 void CoarseGraphOfGrid<Grid>::mergeWellCellsForCoarseGraph(std::vector<int>& hasWell,
                                                            std::vector<std::vector<int>>& wellPerf,
                                                            const Dune::cpgrid::WellConnections& wellConn)
@@ -227,8 +204,8 @@ void CoarseGraphOfGrid<Grid>::createCoarseGraph(const Dune::EdgeWeightMethod edg
     const auto& rank = grid.comm().rank();
 
     // If we are using logTransEdgeWgt, set MintransLog for coarse graph edge weights
-    if (edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
-        setMintransLog(transmissibilities);
+    float logMinTransm = Opm::detail::computeLogMinTransm(transmissibilities,
+                                                          edgeWeightMethod, grid.numFaces());
 
     // List to keep track of visited vertices in original fine graph
     std::vector<bool> visited(N, false);
@@ -287,7 +264,7 @@ void CoarseGraphOfGrid<Grid>::createCoarseGraph(const Dune::EdgeWeightMethod edg
 
             // ce represents the edges of cIdx. If cIdx has connection with cNab,
             // wgt=ce[cNab] exists and is greater than 0.
-            std::map<int, double> ce;
+            std::map<int, float> ce;
 
             // Loop over edges of all vertices from fine graph contained in coarse node cIdx
             for (const std::tuple<int,int,double>& fe : es) {
@@ -297,7 +274,7 @@ void CoarseGraphOfGrid<Grid>::createCoarseGraph(const Dune::EdgeWeightMethod edg
                 // Transmissibility of fine edge
                 double transVal = std::get<2>(fe);
                 // Besed on edgeWeightMethod, choose weight of coarse edgeWeight
-                double weight;
+                float weight;
                 switch (edgeWeightMethod) {
                 case 0:
                     weight = 1.0;

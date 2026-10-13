@@ -30,6 +30,16 @@
 
 namespace Opm {
 
+namespace detail {
+
+/// \brief Find the lowest positive transmissibility in the grid.
+///
+/// Includes boundary faces, even though they will not appear in the graph.
+float computeLogMinTransm(const double* transmissibilities,
+                          const Dune::EdgeWeightMethod edgeWeightMethod, int numFaces);
+
+} // namespace detail
+
 /// \brief A class storing a graph representation of the grid
 ///
 /// Stores the list of all cell global IDs and for each cell
