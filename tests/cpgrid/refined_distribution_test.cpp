@@ -138,3 +138,62 @@ PORO
         BOOST_CHECK_GT(comm.min(interior), 0.7 * average);
     }
 }
+
+// Refined before load balancing, a box with a host MINPV removes is refined on
+// the rank holding the grid like any other, and distributed whole.
+BOOST_AUTO_TEST_CASE(boxWithRemovedHostRefinesBeforeLoadBalancing)
+{
+    const std::string deckString = R"(RUNSPEC
+DIMENS
+ 12 12 4 /
+GRID
+CARFIN
+'LGR1' 1 6 1 12 1 4 12 24 8 /
+ENDFIN
+DX
+ 576*1 /
+DY
+ 576*1 /
+DZ
+ 576*1 /
+TOPS
+ 144*0 /
+PORO
+ 576*0.2 /
+BOX
+ 2 2 2 2 2 2 /
+PORO
+ 0.001 /
+ENDBOX
+MINPV
+ 0.01 /
+)";
+    const auto deck = Opm::Parser{}.parseString(deckString);
+    Opm::EclipseState state(deck);
+    auto eclGrid = state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
+    grid.processEclipseFormat(&eclGrid, &state, false, false, false);
+    BOOST_REQUIRE_EQUAL(grid.comm().sum(grid.size(0)), 575);
+    grid.addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{6, 12, 4}}, {"LGR1"});
+
+    GeometryCheckHandle handle;
+    if (grid.comm().size() > 1) {
+        grid.loadBalance(handle, Dune::EdgeWeightMethod::uniformEdgeWgt, nullptr, {}, /*serialPartitioning=*/false);
+    }
+
+    int interior = 0;
+    double volume = 0.0;
+    for (const auto& element : Dune::elements(grid.leafGridView(), Dune::Partitions::interior)) {
+        ++interior;
+        volume += element.geometry().volume();
+    }
+    const auto& comm = grid.comm();
+    // 288 cells outside the box, 287 hosts left inside it.
+    BOOST_CHECK_EQUAL(comm.sum(interior), 288 + 287*8);
+    BOOST_CHECK_CLOSE(comm.sum(volume), 575.0, 1e-10);
+    if (comm.size() > 1) {
+        BOOST_CHECK_EQUAL(comm.sum(handle.mismatches), 0);
+    }
+}
