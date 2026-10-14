@@ -41,6 +41,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/UnstructuredGrid.c
   opm/grid/cart_grid.c
   opm/grid/common/GridPartitioning.cpp
+  opm/grid/common/UnstructuredGridPartitioning.cpp
   opm/grid/common/MetisPartition.cpp
   opm/grid/common/WellConnections.cpp
   opm/grid/common/ZoltanGraphFunctions.cpp
@@ -140,6 +141,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
   tests/test_regionmapping.cpp
+  tests/test_unstructuredgridpartitioning.cpp
   tests/test_repairzcorn.cpp
   tests/test_subgridpart.cpp
   tests/test_ug.cpp
@@ -194,6 +196,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/common/GridAdapter.hpp
   opm/grid/common/GridEnums.hpp
   opm/grid/common/GridPartitioning.hpp
+  opm/grid/common/UnstructuredGridPartitioning.hpp
   opm/grid/common/LevelCartesianIndexMapper.hpp
   opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp
