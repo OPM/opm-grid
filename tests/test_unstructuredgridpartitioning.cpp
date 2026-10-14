@@ -165,3 +165,38 @@ BOOST_AUTO_TEST_CASE(ExtractLocalGridRejectsBadInput)
     BOOST_CHECK_THROW(extractLocalGrid(*g, {0, 0}), std::invalid_argument);
     BOOST_CHECK_THROW(extractLocalGrid(*g, {5}), std::invalid_argument);
 }
+
+BOOST_AUTO_TEST_CASE(PackUnpackRoundtrip)
+{
+    GridPtr g(create_grid_cart3d(3, 2, 2));
+    const std::vector<int> cells{7, 3, 4, 8, 0};
+    auto local = extractLocalGrid(*g, cells);
+    const std::vector<char> owner{1, 1, 0, 1, 0};
+
+    const auto packed = packGrid(*local.grid, owner);
+    const auto unpacked = unpackGrid(packed.ints, packed.doubles);
+    const auto& a = *local.grid;
+    const auto& b = *unpacked.grid;
+
+    BOOST_CHECK(unpacked.isOwner == owner);
+    BOOST_REQUIRE_EQUAL(a.number_of_cells, b.number_of_cells);
+    BOOST_REQUIRE_EQUAL(a.number_of_faces, b.number_of_faces);
+    BOOST_REQUIRE_EQUAL(a.number_of_nodes, b.number_of_nodes);
+    BOOST_CHECK(std::equal(a.cartdims, a.cartdims + 3, b.cartdims));
+    BOOST_CHECK(std::equal(a.global_cell, a.global_cell + a.number_of_cells, b.global_cell));
+    BOOST_CHECK(std::equal(a.face_cells, a.face_cells + 2 * a.number_of_faces, b.face_cells));
+    BOOST_CHECK(std::equal(a.cell_facepos, a.cell_facepos + a.number_of_cells + 1, b.cell_facepos));
+    BOOST_CHECK(std::equal(a.cell_faces, a.cell_faces + a.cell_facepos[a.number_of_cells], b.cell_faces));
+    BOOST_CHECK(std::equal(a.cell_facetag, a.cell_facetag + a.cell_facepos[a.number_of_cells], b.cell_facetag));
+    BOOST_CHECK(std::equal(a.face_nodepos, a.face_nodepos + a.number_of_faces + 1, b.face_nodepos));
+    BOOST_CHECK(std::equal(a.face_nodes, a.face_nodes + a.face_nodepos[a.number_of_faces], b.face_nodes));
+    BOOST_CHECK(std::equal(a.node_coordinates, a.node_coordinates + 3 * a.number_of_nodes, b.node_coordinates));
+    BOOST_CHECK(std::equal(a.face_areas, a.face_areas + a.number_of_faces, b.face_areas));
+    BOOST_CHECK(std::equal(a.cell_volumes, a.cell_volumes + a.number_of_cells, b.cell_volumes));
+    BOOST_CHECK(std::equal(a.cell_centroids, a.cell_centroids + 3 * a.number_of_cells, b.cell_centroids));
+
+    // Corrupt data is rejected.
+    auto broken = packed.ints;
+    broken.pop_back();
+    BOOST_CHECK_THROW(unpackGrid(broken, packed.doubles), std::invalid_argument);
+}

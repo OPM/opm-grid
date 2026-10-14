@@ -21,6 +21,9 @@
 
 #include <opm/grid/UnstructuredGrid.h>
 
+#include <dune/common/parallel/communication.hh>
+#include <dune/common/parallel/mpihelper.hh>
+
 #include <memory>
 #include <vector>
 
@@ -89,6 +92,51 @@ struct LocalGrid
 /// \param cells  Distinct global cell indices.
 LocalGrid extractLocalGrid(const UnstructuredGrid& grid,
                            const std::vector<int>& cells);
+
+/// A local grid in a flat form that can be sent between processes.
+struct PackedGrid
+{
+    std::vector<int> ints;
+    std::vector<double> doubles;
+};
+
+/// Flatten a grid.
+///
+/// \param grid     The grid to pack.
+/// \param isOwner  For each cell whether the process owns it (1) or whether
+///                 it is an overlap cell (0).
+PackedGrid packGrid(const UnstructuredGrid& grid, const std::vector<char>& isOwner);
+
+/// A grid together with the ownership of its cells.
+struct OwnedGrid
+{
+    std::unique_ptr<UnstructuredGrid, GridDeleter> grid;
+    /// For each cell whether the process owns it (1) or whether it is an overlap cell (0).
+    std::vector<char> isOwner;
+};
+
+/// Inverse of packGrid().
+OwnedGrid unpackGrid(const std::vector<int>& ints, const std::vector<double>& doubles);
+
+/// Distribute a grid from rank 0 to all ranks of a communicator.
+///
+/// Every rank receives the cells it owns according to the partitioning plus
+/// the requested layers of overlap cells. This is a collective operation, and
+/// all ranks throw if the input is invalid.
+///
+/// \param grid          The global grid, only used on rank 0 (may be null elsewhere).
+/// \param cellPart      For each cell of the global grid the rank that owns
+///                      it. Only used on rank 0. Values must be smaller than
+///                      the size of the communicator.
+/// \param overlapLayers Number of overlap layers.
+/// \param ownersFirst   Order the owned cells before the overlap cells.
+///                      Otherwise the cells are in increasing global order.
+/// \param comm          The communicator.
+OwnedGrid distributeGrid(const UnstructuredGrid* grid,
+                         const std::vector<int>& cellPart,
+                         int overlapLayers,
+                         bool ownersFirst,
+                         const Dune::Communication<Dune::MPIHelper::MPICommunicator>& comm);
 
 } // namespace Dune::unstructured
 
