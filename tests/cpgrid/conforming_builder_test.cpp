@@ -1265,6 +1265,47 @@ BOOST_AUTO_TEST_CASE(faultThrowTallerThanBoxKeepsConnections)
     BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 2, 1, 3, 5), areaBefore, 1e-8);
 }
 
+// A fault inside a box whose throw puts the cells above and below the box across
+// it: the refined cells there connect to those coarse cells, one face per pair,
+// with the level-zero face area.
+BOOST_AUTO_TEST_CASE(faultInsideBoxReachesCellsAcrossThrow)
+{
+    auto depth = [](int i_, int j_, int k_) {
+        (void)j_;
+        const double base = 2.0*(cellOf(k_) + sideOf(k_));
+        return (cellOf(i_) >= 2) ? base + 0.6 : base;
+    };
+    auto parent = makeGrid({4, 2, 4}, depth);
+
+    Dune::CpGrid grid;
+    auto rawParent = parent.raw();
+    grid.processEclipseFormat(rawParent, false);
+    const double volumeBefore = totalVolume(grid);
+    const double areaUpThrown = areaAcrossIFace(grid, 1, 2, 1, 3);
+    const double areaDownThrown = areaAcrossIFace(grid, 2, 1, 1, 3);
+
+    useConformingBuilder(grid, parent);
+
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,4}}, {{1,0,1}}, {{3,2,3}}, {"LGR1"}));
+    checkValidFaultedLeaf(grid, volumeBefore);
+    BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 1, 2, 1, 3), areaUpThrown, 1e-8);
+    BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 2, 1, 1, 3), areaDownThrown, 1e-8);
+
+    std::map<std::pair<int,int>, int> pairCount;
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+            if (is.neighbor()) {
+                const int a = is.inside().index();
+                const int b = is.outside().index();
+                pairCount[{std::min(a, b), std::max(a, b)}] += 1;
+            }
+        }
+    }
+    for (const auto& [cells, count] : pairCount) {
+        BOOST_CHECK_EQUAL(count, 2);
+    }
+}
+
 // Two boxes that meet only through a throw, with in-face subdivisions that do
 // not nest: refused, rather than sealing the interface between them.
 BOOST_AUTO_TEST_CASE(boxesMeetingOnlyAcrossThrowMustNest)
@@ -1319,9 +1360,10 @@ BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
 }
 
 // A box over both columns of a fault, but not over every layer the throw joins: across
-// the throw its cells face cells outside the box through faces inside it. That is
-// refused, naming the cells. Over every layer the box is built.
-BOOST_AUTO_TEST_CASE(throwInsideBoxJoiningCellsOutsideIsRefused)
+// the throw its cells face cells outside the box through faces inside it. They are joined
+// to those cells, as over every layer: every cell is closed, each cell pair shares one
+// face, and the faces across the fault keep the level-zero area.
+BOOST_AUTO_TEST_CASE(throwInsideBoxJoiningCellsOutsideIsBuilt)
 {
     // Columns i >= 2 are 0.6 deeper; layers 2 thick.
     auto parent = makeGrid({4, 3, 2}, [](int i_, int, int k_) {
@@ -1336,34 +1378,21 @@ BOOST_AUTO_TEST_CASE(throwInsideBoxJoiningCellsOutsideIsRefused)
                                    /* endIJK_vec = */        {end},
                                    /* lgr_name_vec = */      {"LGR1"});
     };
-    const auto namesTheCells = [](const std::string& box, const std::string& outside) {
-        return [box, outside](const std::invalid_argument& e) {
-            const std::string what = e.what();
-            return (what.find("joins its cell " + box + " to the cell " + outside) != std::string::npos)
-                && (what.find("must cover every layer") != std::string::npos);
-        };
-    };
-    // Lower layer only: the box cell (3,1,1) (from 1) faces (2,1,2) above the box; upper
-    // layer only: the box cell (2,1,2) faces (3,1,1) below it.
-    {
-        Dune::CpGrid grid;
-        BOOST_CHECK_EXCEPTION(refine(grid, {1,0,0}, {3,3,1}), std::invalid_argument,
-                              namesTheCells("(3,1,1)", "(2,1,2)"));
-    }
-    {
-        Dune::CpGrid grid;
-        BOOST_CHECK_EXCEPTION(refine(grid, {1,0,1}, {3,3,2}), std::invalid_argument,
-                              namesTheCells("(2,1,2)", "(3,1,1)"));
-    }
-    // Every layer: the faces across the fault keep the level-zero area, 3 x (4 - 0.6).
     Dune::CpGrid grid;
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
+    // The faces across the fault: 3 x (4 - 0.6).
     BOOST_REQUIRE_CLOSE(areaAcrossIFace(grid, 2, 1, 0, 2), 3.0*3.4, 1e-10);
-    Dune::CpGrid refined;
-    refine(refined, {1,0,0}, {3,3,2});
-    checkValidFaultedLeaf(refined, volumeBefore);
-    BOOST_CHECK_CLOSE(areaAcrossIFace(refined, 2, 1, 0, 2), 3.0*3.4, 1e-10);
+    // Lower layer only: the box cell (3,1,1) (from 1) faces (2,1,2) above the box; upper
+    // layer only: the box cell (2,1,2) faces (3,1,1) below it; and every layer.
+    for (const auto& [start, end] : std::vector<std::pair<std::array<int,3>, std::array<int,3>>>{
+             {{1,0,0}, {3,3,1}}, {{1,0,1}, {3,3,2}}, {{1,0,0}, {3,3,2}}}) {
+        Dune::CpGrid refined;
+        refine(refined, start, end);
+        checkValidFaultedLeaf(refined, volumeBefore);
+        checkEveryInteriorFaceTwoSided(refined);
+        BOOST_CHECK_CLOSE(areaAcrossIFace(refined, 2, 1, 0, 2), 3.0*3.4, 1e-10);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(processGrdeclSplitsFaultedCoarseFineColumnPair)

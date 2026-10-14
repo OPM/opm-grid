@@ -85,10 +85,11 @@ namespace Refinement
 ///     numLeafCorners_, and each box's cornerToLeaf.
 ///  3. buildLeafCells: leafCells_, leafIdxOfCell0_, leafIdxOfLevelCell_,
 ///     level0ToChildren_, numLeafCells_ and nestedParentToChildren_.
-///  4. refuseThrowsLeavingBoxes: nothing; it refuses a fault or pinch-out inside
-///     a box that joins a box cell to a cell outside the box.
-///  5. findDroppedFaces: faceDropped_.
-///  6. findFaultedSides: faultedSides_ and acrossRange_.
+///  4. findDroppedFaces: faceDropped_.
+///  5. findFaultedSides: faultedSides_, acrossRange_ and interiorFaults_.
+///  6. refuseThrowsLeavingBoxes: nothing; it refuses a fault or pinch-out inside
+///     a box that joins a box cell to a cell outside the box, except a fault inside
+///     a top-level box that buildSyntheticFaces rebuilds (interiorFaults_).
 ///  7. buildLeafFaces: leafFaces_, mosaicOutside_, refinedCartToCell_,
 ///     numSourceFaces_, and each box's faceToLeaf.
 ///  8. buildSyntheticFaces: syntheticFaces_, splitKeys_ and numLeafFaces_.
@@ -198,9 +199,9 @@ private:
     void collectBoxData();
     void buildCornerPool();
     void buildLeafCells();
-    void refuseThrowsLeavingBoxes() const;
     void findDroppedFaces();
     void findFaultedSides();
+    void refuseThrowsLeavingBoxes() const;
     void buildLeafFaces();
     void buildSyntheticFaces();
     void buildLeafTopology();
@@ -239,6 +240,7 @@ private:
     const std::vector<bool>& faceDropped() const { return faceDropped_; }
     const std::set<std::tuple<int,int,int>>& faultedSides() const { return faultedSides_; }
     const std::map<std::tuple<int,int,int>, CellRange>& acrossRange() const { return acrossRange_; }
+    const std::map<std::tuple<int,int,int,int>, CellRange>& interiorFaults() const { return interiorFaults_; }
     const std::vector<SourceRef>& leafFaces() const { return leafFaces_; }
     const std::vector<int>& mosaicOutside() const { return mosaicOutside_; }
     const std::vector<std::map<int,int>>& refinedCartToCell() const { return refinedCartToCell_; }
@@ -316,6 +318,10 @@ private:
     // faces: a throw taller than one cell next to the box puts them outside the box's
     // own layers.
     std::map<std::tuple<int,int,int>, CellRange> acrossRange_;
+    // Parent sides behind a fault inside a top-level box, by (box, axis, side, parent
+    // layer along axis), with the parent IJK range of the cells across: a throw inside
+    // the box can put them outside the box's layers.
+    std::map<std::tuple<int,int,int,int>, CellRange> interiorFaults_;
 
     // Written by buildLeafFaces.
     std::vector<SourceRef> leafFaces_;
