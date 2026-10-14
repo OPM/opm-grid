@@ -352,9 +352,13 @@ DZ
 -- The layers are 2 ft thick, in each layer there is 1 cell
 1*2 1*2 1*2 1*2 1*2
 /
-TOPS
-40*1
+BOX
+1 1 1 1 1 1
 /
+TOPS
+1*1
+/
+ENDBOX
 ACTNUM
 5*1
 /
