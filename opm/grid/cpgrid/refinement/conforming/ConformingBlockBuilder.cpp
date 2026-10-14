@@ -133,26 +133,15 @@ int presentHostCells(const Dune::cpgrid::CpGridData& parent,
 // refine-before-redistribute classification: before load balancing the global
 // grid lives on rank 0 (all cells) and is empty on the other ranks. Classify a
 // box purely by cell *presence* (ignoring partition type, which is not yet set):
-// the rank that holds all of the box's cells refines it; ranks with none carry
-// an empty placeholder level grid. A partial presence (some but not all cells)
-// is not expected here and is rejected.
+// the rank that holds the box's cells refines it; ranks with none carry an
+// empty placeholder level grid. A host missing on the rank that holds the grid
+// is inactive or removed by MINPV, not on another rank.
 BoxPresence boxCellPresence(const Dune::cpgrid::CpGridData& level0,
                             const std::array<int,3>& dims,
                             const Opm::Refinement::BlockRefinement& req)
 {
-    const int boxCells = (req.endIJK[0] - req.startIJK[0])
-                       * (req.endIJK[1] - req.startIJK[1])
-                       * (req.endIJK[2] - req.startIJK[2]);
-    const int present = presentHostCells(level0, dims, req);
-    if (present == 0) {
-        return BoxPresence::Absent;
-    }
-    if (present == boxCells) {
-        return BoxPresence::Owned;
-    }
-    throw std::logic_error("Refinement box '" + req.name + "' is only partially present on "
-                           "this rank before load balancing; refine-before-redistribute "
-                           "expects the full global grid on a single rank.");
+    return (presentHostCells(level0, dims, req) > 0) ? BoxPresence::Owned
+                                                     : BoxPresence::Absent;
 }
 
 } // anonymous namespace
