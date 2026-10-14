@@ -27,6 +27,8 @@
 #include <dune/common/parallel/communication.hh>
 
 #if HAVE_MPI
+#include <dune/common/parallel/interface.hh>
+#include <dune/common/parallel/variablesizecommunicator.hh>
 #include <dune/istl/owneroverlapcopy.hh>
 #endif
 
@@ -34,6 +36,7 @@
 #include <opm/grid/polyhedralgrid/capabilities.hh>
 #include <opm/grid/polyhedralgrid/declaration.hh>
 #include <opm/grid/polyhedralgrid/entity.hh>
+#include <opm/grid/polyhedralgrid/entity2indexdatahandle.hh>
 #include <opm/grid/polyhedralgrid/entityseed.hh>
 #include <opm/grid/polyhedralgrid/geometry.hh>
 #include <opm/grid/polyhedralgrid/gridview.hh>
@@ -686,6 +689,9 @@ namespace Dune
 
     /** \brief communicate information on a grid level
      *
+     *  Only data on cells (codimension 0) is communicated. In the global
+     *  view, or in a serial run, there is nothing to communicate.
+     *
      *  \param      dataHandle  communication data handle (user defined)
      *  \param[in]  interface   communication interface (one of
      *                          InteriorBorder_InteriorBorder_Interface,
@@ -698,32 +704,52 @@ namespace Dune
      *  \param[in]  level       grid level to communicate
      */
     template< class DataHandle>
-    void communicate ( DataHandle& /* dataHandle */,
-                       InterfaceType /* interface */,
-                       CommunicationDirection /* direction */,
+    void communicate ( DataHandle& dataHandle,
+                       InterfaceType interface,
+                       CommunicationDirection direction,
                        int /* level */ ) const
     {
-        OPM_THROW(std::runtime_error, "communicate not implemented for polyhedreal grid!");
+      communicate( dataHandle, interface, direction );
     }
 
     /** \brief communicate information on leaf entities
      *
      *  \param      dataHandle  communication data handle (user defined)
-     *  \param[in]  interface   communication interface (one of
-     *                          InteriorBorder_InteriorBorder_Interface,
-     *                          InteriorBorder_All_Interface,
-     *                          Overlap_OverlapFront_Interface,
-     *                          Overlap_All_Interface,
-     *                          All_All_Interface)
+     *  \param[in]  interface   communication interface
      *  \param[in]  direction   communication direction (one of
      *                          ForwardCommunication, BackwardCommunication)
      */
     template< class DataHandle>
-    void communicate ( DataHandle& /* dataHandle */,
-                       InterfaceType /* interface */,
-                       CommunicationDirection /* direction */ ) const
+    void communicate ( DataHandle& dataHandle,
+                       InterfaceType interface,
+                       CommunicationDirection direction ) const
     {
-        OPM_THROW(std::runtime_error, "communicate not implemented for polyhedreal grid!");
+#if HAVE_MPI
+      if( cellInterfaces_.empty() )
+      {
+        return;
+      }
+      if( dataHandle.contains( dim, 0 ) )
+      {
+        PolyhedralGridEntity2IndexDataHandle< PolyhedralGrid, DataHandle, 0 > wrapper( *this, dataHandle );
+        Dune::VariableSizeCommunicator<> communicator( comm_, std::as_const( cellInterfaces_.at( static_cast< std::size_t >( interface ) ) ).interfaces() );
+        if( direction == ForwardCommunication )
+          communicator.forward( wrapper );
+        else
+          communicator.backward( wrapper );
+      }
+      for( int codim = 1; codim <= dim; ++codim )
+      {
+        if( dataHandle.contains( dim, codim ) )
+        {
+          OPM_THROW(std::runtime_error, "communicate is only implemented for cells of the polyhedral grid!");
+        }
+      }
+#else
+      static_cast<void>( dataHandle );
+      static_cast<void>( interface );
+      static_cast<void>( direction );
+#endif
     }
 
     /// \brief Switch to the global view.
@@ -2060,9 +2086,25 @@ namespace Dune
         indexSet.add( globalId, typename ParallelIndexSet::LocalIndex( cell, owner ? AttributeSet::owner : AttributeSet::copy, true ) );
       }
       indexSet.endResize();
+      cellInterfaces_.clear();
       if( remoteIndices && comm_.size() > 1 )
       {
-        cellComm_->remoteIndices().template rebuild< false >();
+        auto& remote = cellComm_->remoteIndices();
+        remote.template rebuild< false >();
+
+        // The order must match Dune::InterfaceType.
+        for( int i = 0; i < 5; ++i )
+        {
+          cellInterfaces_.emplace_back( comm_ );
+        }
+        using Owner = EnumItem< AttributeSet, AttributeSet::owner >;
+        using Copy = EnumItem< AttributeSet, AttributeSet::copy >;
+        using All = AllSet< AttributeSet >;
+        cellInterfaces_[ InteriorBorder_InteriorBorder_Interface ].build( remote, Owner(), Owner() );
+        cellInterfaces_[ InteriorBorder_All_Interface ].build( remote, Owner(), All() );
+        cellInterfaces_[ Overlap_OverlapFront_Interface ].build( remote, Copy(), Copy() );
+        cellInterfaces_[ Overlap_All_Interface ].build( remote, Copy(), All() );
+        cellInterfaces_[ All_All_Interface ].build( remote, All(), All() );
       }
     }
 #endif
@@ -2081,6 +2123,7 @@ namespace Dune
       int overlapLayers = 0;
 #if HAVE_MPI
       std::unique_ptr< CellCommunicationType > cellComm;
+      std::vector< Dune::Interface > cellInterfaces;
 #endif
     };
 
@@ -2098,6 +2141,7 @@ namespace Dune
       std::swap( overlapLayers_, other.overlapLayers );
 #if HAVE_MPI
       std::swap( cellComm_, other.cellComm );
+      std::swap( cellInterfaces_, other.cellInterfaces );
 #endif
       globalIdSet_.update();
       localIdSet_.update();
@@ -2126,6 +2170,8 @@ namespace Dune
 #if HAVE_MPI
     // Created on demand in the global view, always present in the distributed view.
     mutable std::unique_ptr< CellCommunicationType > cellComm_;
+    // Communication interfaces of the cells, indexed by InterfaceType. Only in a distributed view.
+    mutable std::vector< Dune::Interface > cellInterfaces_;
 #endif
 
     // The inactive view (the distributed one while the global view is active).

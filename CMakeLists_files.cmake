@@ -247,6 +247,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/polyhedralgrid/declaration.hh
   opm/grid/polyhedralgrid/dgfparser.hh
   opm/grid/polyhedralgrid/entity.hh
+  opm/grid/polyhedralgrid/entity2indexdatahandle.hh
   opm/grid/polyhedralgrid/entitypointer.hh
   opm/grid/polyhedralgrid/entityseed.hh
   opm/grid/polyhedralgrid/geometry.hh
