@@ -23,10 +23,12 @@
 #include <opm/common/ErrorMacros.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <numeric>
 #include <stdexcept>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -238,6 +240,197 @@ LocalGrid extractLocalGrid(const UnstructuredGrid& grid,
     std::copy_n(grid.cartdims, 3, local.cartdims);
 
     return result;
+}
+
+
+namespace
+{
+
+constexpr int packHeaderSize = 11;
+
+} // anonymous namespace
+
+PackedGrid packGrid(const UnstructuredGrid& grid, const std::vector<char>& isOwner)
+{
+    const int dim = grid.dimensions;
+    const int nC = grid.number_of_cells;
+    const int nF = grid.number_of_faces;
+    const int nN = grid.number_of_nodes;
+    const int nFN = static_cast<int>(grid.face_nodepos[nF]);
+    const int nCF = grid.cell_facepos[nC];
+    const bool hasTags = (grid.cell_facetag != nullptr);
+
+    if (static_cast<int>(isOwner.size()) != nC) {
+        OPM_THROW(std::invalid_argument, "packGrid(): one ownership flag per cell is required.");
+    }
+
+    PackedGrid packed;
+    auto& ints = packed.ints;
+    ints.reserve(packHeaderSize + nFN + nF + 1 + 2 * nF + nCF + nC + 1 + (hasTags ? nCF : 0) + 2 * nC);
+    ints.insert(ints.end(), {dim, nC, nF, nN, nFN, nCF, hasTags ? 1 : 0,
+                             grid.cartdims[0], grid.cartdims[1], grid.cartdims[2],
+                             grid.global_cell ? 1 : 0});
+    ints.insert(ints.end(), grid.face_nodes, grid.face_nodes + nFN);
+    ints.insert(ints.end(), grid.face_nodepos, grid.face_nodepos + nF + 1);
+    ints.insert(ints.end(), grid.face_cells, grid.face_cells + 2 * nF);
+    ints.insert(ints.end(), grid.cell_faces, grid.cell_faces + nCF);
+    ints.insert(ints.end(), grid.cell_facepos, grid.cell_facepos + nC + 1);
+    if (hasTags) {
+        ints.insert(ints.end(), grid.cell_facetag, grid.cell_facetag + nCF);
+    }
+    if (grid.global_cell) {
+        ints.insert(ints.end(), grid.global_cell, grid.global_cell + nC);
+    }
+    ints.insert(ints.end(), isOwner.begin(), isOwner.end());
+
+    auto& doubles = packed.doubles;
+    doubles.reserve(dim * (nN + 2 * nF + nC) + nF + nC);
+    doubles.insert(doubles.end(), grid.node_coordinates, grid.node_coordinates + dim * nN);
+    doubles.insert(doubles.end(), grid.face_centroids, grid.face_centroids + dim * nF);
+    doubles.insert(doubles.end(), grid.face_normals, grid.face_normals + dim * nF);
+    doubles.insert(doubles.end(), grid.face_areas, grid.face_areas + nF);
+    doubles.insert(doubles.end(), grid.cell_centroids, grid.cell_centroids + dim * nC);
+    doubles.insert(doubles.end(), grid.cell_volumes, grid.cell_volumes + nC);
+    return packed;
+}
+
+OwnedGrid unpackGrid(const std::vector<int>& ints, const std::vector<double>& doubles)
+{
+    if (static_cast<int>(ints.size()) < packHeaderSize) {
+        OPM_THROW(std::invalid_argument, "unpackGrid(): truncated data.");
+    }
+    const int dim = ints[0];
+    const int nC = ints[1];
+    const int nF = ints[2];
+    const int nN = ints[3];
+    const int nFN = ints[4];
+    const int nCF = ints[5];
+    const bool hasTags = ints[6] != 0;
+    const bool hasGlobalCell = ints[10] != 0;
+
+    const std::size_t expectedInts = packHeaderSize + nFN + (nF + 1) + 2 * nF + nCF + (nC + 1)
+        + (hasTags ? nCF : 0) + (hasGlobalCell ? nC : 0) + nC;
+    const std::size_t expectedDoubles = dim * (nN + 2 * nF + nC) + nF + nC;
+    if (ints.size() != expectedInts || doubles.size() != expectedDoubles) {
+        OPM_THROW(std::invalid_argument, "unpackGrid(): inconsistent data sizes.");
+    }
+
+    OwnedGrid result;
+    result.grid.reset(allocate_grid(dim, nC, nF, nFN, nCF, nN));
+    if (!result.grid) {
+        OPM_THROW(std::runtime_error, "unpackGrid(): grid allocation failed.");
+    }
+    UnstructuredGrid& g = *result.grid;
+    std::copy_n(ints.begin() + 7, 3, g.cartdims);
+
+    auto in = ints.begin() + packHeaderSize;
+    std::copy_n(in, nFN, g.face_nodes);          in += nFN;
+    std::copy_n(in, nF + 1, g.face_nodepos);     in += nF + 1;
+    std::copy_n(in, 2 * nF, g.face_cells);       in += 2 * nF;
+    std::copy_n(in, nCF, g.cell_faces);          in += nCF;
+    std::copy_n(in, nC + 1, g.cell_facepos);     in += nC + 1;
+    if (hasTags) {
+        std::copy_n(in, nCF, g.cell_facetag);    in += nCF;
+    }
+    else {
+        std::free(g.cell_facetag);
+        g.cell_facetag = nullptr;
+    }
+    if (hasGlobalCell) {
+        g.global_cell = static_cast<int*>(std::malloc(nC * sizeof(int)));
+        if (g.global_cell == nullptr) {
+            OPM_THROW(std::runtime_error, "unpackGrid(): grid allocation failed.");
+        }
+        std::copy_n(in, nC, g.global_cell);      in += nC;
+    }
+    result.isOwner.assign(in, in + nC);
+
+    auto d = doubles.begin();
+    std::copy_n(d, dim * nN, g.node_coordinates); d += dim * nN;
+    std::copy_n(d, dim * nF, g.face_centroids);   d += dim * nF;
+    std::copy_n(d, dim * nF, g.face_normals);     d += dim * nF;
+    std::copy_n(d, nF, g.face_areas);             d += nF;
+    std::copy_n(d, dim * nC, g.cell_centroids);   d += dim * nC;
+    std::copy_n(d, nC, g.cell_volumes);
+    return result;
+}
+
+OwnedGrid distributeGrid(const UnstructuredGrid* grid,
+                         const std::vector<int>& cellPart,
+                         const int overlapLayers,
+                         const bool ownersFirst,
+                         const Dune::Communication<Dune::MPIHelper::MPICommunicator>& comm)
+{
+    const int size = comm.size();
+    const bool isRoot = (comm.rank() == 0);
+
+    // Validate on the root and tell everybody, so that all ranks throw
+    // instead of some of them waiting for data that never arrives.
+    int invalid = 0;
+    if (isRoot) {
+        invalid = (grid == nullptr) || (static_cast<int>(cellPart.size()) != grid->number_of_cells);
+        for (const int part : cellPart) {
+            invalid = invalid || part < 0 || part >= size;
+        }
+    }
+    comm.broadcast(&invalid, 1, 0);
+    if (invalid) {
+        OPM_THROW(std::invalid_argument,
+                  "distributeGrid(): rank 0 needs the grid and a partition with one value "
+                  "in [0, number of ranks) for each cell.");
+    }
+
+    // One packed grid per rank, only filled on the root.
+    std::vector<PackedGrid> packed(isRoot ? size : 0);
+    if (isRoot) {
+        const auto overlap = computeOverlapCells(*grid, cellPart, size, overlapLayers);
+        std::vector<std::vector<int>> owned(size);
+        for (int c = 0; c < grid->number_of_cells; ++c) {
+            owned[cellPart[c]].push_back(c);
+        }
+        for (int rank = 0; rank < size; ++rank) {
+            std::vector<int> cells = owned[rank];
+            cells.insert(cells.end(), overlap[rank].begin(), overlap[rank].end());
+            if (!ownersFirst) {
+                std::sort(cells.begin(), cells.end());
+            }
+            std::vector<char> isOwner(cells.size());
+            for (std::size_t i = 0; i < cells.size(); ++i) {
+                isOwner[i] = (cellPart[cells[i]] == rank);
+            }
+            packed[rank] = packGrid(*extractLocalGrid(*grid, cells).grid, isOwner);
+        }
+    }
+
+    if (size == 1) {
+        return unpackGrid(packed[0].ints, packed[0].doubles);
+    }
+
+    // Tell each rank how much data to expect and send it.
+    std::vector<int> counts(isRoot ? 2 * size : 0);
+    for (std::size_t rank = 0; rank < packed.size(); ++rank) {
+        counts[2 * rank] = static_cast<int>(packed[rank].ints.size());
+        counts[2 * rank + 1] = static_cast<int>(packed[rank].doubles.size());
+    }
+    std::array<int, 2> myCounts{};
+    comm.scatter(counts.data(), myCounts.data(), 2, 0);
+
+    auto scatterData = [&](auto member, const int myCount) {
+        using Value = typename std::remove_reference_t<decltype((packed[0].*member)[0])>;
+        std::vector<Value> send;
+        std::vector<int> sendLen(isRoot ? size : 0), displ(isRoot ? size : 0);
+        for (std::size_t rank = 0; rank < packed.size(); ++rank) {
+            displ[rank] = static_cast<int>(send.size());
+            sendLen[rank] = static_cast<int>((packed[rank].*member).size());
+            send.insert(send.end(), (packed[rank].*member).begin(), (packed[rank].*member).end());
+        }
+        std::vector<Value> recv(myCount);
+        comm.scatterv(send.data(), sendLen.data(), displ.data(), recv.data(), myCount, 0);
+        return recv;
+    };
+    const auto ints = scatterData(&PackedGrid::ints, myCounts[0]);
+    const auto doubles = scatterData(&PackedGrid::doubles, myCounts[1]);
+    return unpackGrid(ints, doubles);
 }
 
 } // namespace Dune::unstructured

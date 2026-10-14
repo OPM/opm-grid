@@ -5,9 +5,12 @@
 
 #include <algorithm>
 #include <array>
+#include <iostream>
 #include <iterator>
+#include <memory>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -22,6 +25,10 @@
 #include <dune/grid/common/grid.hh>
 
 #include <dune/common/parallel/communication.hh>
+
+#if HAVE_MPI
+#include <dune/istl/owneroverlapcopy.hh>
+#endif
 
 //- polyhedralgrid includes
 #include <opm/grid/polyhedralgrid/capabilities.hh>
@@ -42,6 +49,7 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/GridManager.hpp>
 #include <opm/grid/cornerpoint_grid.h>
+#include <opm/grid/common/UnstructuredGridPartitioning.hpp>
 #include <opm/grid/MinpvProcessor.hpp>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -313,6 +321,14 @@ namespace Dune
     //! communicator with all other processes having some part of the grid
     using Communication = typename Traits::Communication;
     using CommunicationType = Communication;
+
+#if HAVE_MPI
+    //! owner-overlap-copy communication of the cells, used by the parallel linear algebra
+    using CellCommunicationType = Dune::OwnerOverlapCopyCommunication<int,int>;
+    using ParallelIndexSet = typename CellCommunicationType::ParallelIndexSet;
+    using RemoteIndices = Dune::RemoteIndices<ParallelIndexSet>;
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+#endif
 
     typedef typename Traits :: GlobalCoordinate GlobalCoordinate;
 
@@ -706,6 +722,29 @@ namespace Dune
       return hasDistributedView_;
     }
 
+#if HAVE_MPI
+    /// \brief Get the owner-overlap-copy communication for the cells of the active view.
+    ///
+    /// Suitable e.g. for parallel linear algebra. In the global view all
+    /// cells are owned and there are no remote indices.
+    CellCommunicationType& cellCommunication()
+    {
+      ensureCellCommunication();
+      return *cellComm_;
+    }
+
+    const CellCommunicationType& cellCommunication() const
+    {
+      ensureCellCommunication();
+      return *cellComm_;
+    }
+
+    ParallelIndexSet& getCellIndexSet() { return cellCommunication().indexSet(); }
+    const ParallelIndexSet& getCellIndexSet() const { return cellCommunication().indexSet(); }
+    RemoteIndices& getCellRemoteIndices() { return cellCommunication().remoteIndices(); }
+    const RemoteIndices& getCellRemoteIndices() const { return cellCommunication().remoteIndices(); }
+#endif
+
     /// \brief Check whether the distributed view is the active one.
     bool distributedViewActive() const
     {
@@ -718,8 +757,15 @@ namespace Dune
     /// cells of this process only. The active view is not changed, call
     /// switchToDistributedView() to use the new view.
     ///
+    /// In a parallel build this sets up the parallel index set and the remote
+    /// indices of the cells, which requires communication: all processes
+    /// must call this method together.
+    ///
     /// \param gridPtr  The local part of the grid on this process.
-    void setDistributedView( UnstructuredGridPtr&& gridPtr )
+    /// \param isOwner  For each cell whether this process owns it (nonzero) or
+    ///                 whether it is an overlap cell (zero). By default all
+    ///                 cells are owned.
+    void setDistributedView( UnstructuredGridPtr&& gridPtr, std::vector< char > isOwner = {} )
     {
       const bool wasDistributed = distributedViewActive_;
       switchToGlobalView();
@@ -730,6 +776,11 @@ namespace Dune
       fresh.grid = fresh.gridPtr.get();
       swapView( fresh );
       init();
+      isOwner_ = std::move( isOwner );
+      isOwner_.resize( size( 0 ), 1 );
+#if HAVE_MPI
+      setupCellCommunication( true );
+#endif
       swapView( fresh );
 
       distributedView_ = std::move( fresh );
@@ -804,6 +855,59 @@ namespace Dune
       return false;
     }
 
+    /// \brief Distribute the grid over the processes according to a given partitioning.
+    ///
+    /// The cells are distributed from rank 0, so the global grid is only
+    /// used there. Afterwards each process holds its owned cells and
+    /// \p overlapLayers layers of overlap cells, and the distributed view is
+    /// the active one. This is a collective operation.
+    ///
+    /// \param parts          For each cell of the global grid the rank that owns it.
+    ///                       Only needed on rank 0.
+    /// \param ownersFirst    Order owner cells before overlap cells. Otherwise the
+    ///                       cells are in increasing order of the global index.
+    /// \param addCornerCells Adding corner cells to the overlap is not supported.
+    /// \param overlapLayers  Number of overlap layers.
+    /// \return true if the grid was distributed
+    bool loadBalance ( const std::vector< int >& parts,
+                       bool ownersFirst = false,
+                       bool addCornerCells = false,
+                       int overlapLayers = 1 )
+    {
+#if HAVE_MPI
+      if( addCornerCells )
+      {
+        OPM_THROW(std::logic_error, "Adding corner cells to the overlap is not supported by PolyhedralGrid.");
+      }
+      if( comm_.size() == 1 )
+      {
+        std::cerr << "PolyhedralGrid::loadBalance() only makes sense in a parallel run. "
+                  << "This run only uses one process.\n";
+        return false;
+      }
+      if( hasDistributedView_ )
+      {
+        std::cerr << "There is already a distributed version of the grid."
+                  << " Maybe loadBalance was called before?\n";
+        return false;
+      }
+
+      switchToGlobalView();
+      auto distributed = Dune::unstructured::distributeGrid( comm_.rank() == 0 ? grid_ : nullptr,
+                                                             parts, overlapLayers, ownersFirst, comm_ );
+      setDistributedView( UnstructuredGridPtr( distributed.grid.release() ),
+                          std::move( distributed.isOwner ) );
+      switchToDistributedView();
+      return true;
+#else
+      static_cast<void>( parts );
+      static_cast<void>( ownersFirst );
+      static_cast<void>( addCornerCells );
+      static_cast<void>( overlapLayers );
+      return false;
+#endif
+    }
+
     /** \brief rebalance the load each process has to handle
      *
      *  A parallel grid is redistributed such that each process has about
@@ -819,6 +923,7 @@ namespace Dune
      *  \returns \b true, if the grid has changed.
      */
     template< class DofManager >
+      requires ( ! std::is_same_v< std::remove_cvref_t< DofManager >, std::vector< int > > )
     bool loadBalance ( DofManager& /* dofManager */ )
     {
       return false;
@@ -1907,6 +2012,37 @@ namespace Dune
     }
 
   protected:
+#if HAVE_MPI
+    void ensureCellCommunication() const
+    {
+      if( ! cellComm_ )
+      {
+        setupCellCommunication( false );
+      }
+    }
+
+    // Build the cell index set of the active view, optionally with the
+    // remote indices (which needs communication).
+    void setupCellCommunication( const bool remoteIndices ) const
+    {
+      cellComm_ = std::make_unique< CellCommunicationType >( comm_ );
+      auto& indexSet = cellComm_->indexSet();
+      indexSet.beginResize();
+      for( int cell = 0; cell < grid_->number_of_cells; ++cell )
+      {
+        const bool owner = isOwner_.empty() || isOwner_[ cell ];
+        // use the same global ids as the global id set
+        const int globalId = grid_->global_cell ? grid_->global_cell[ cell ] : cell;
+        indexSet.add( globalId, typename ParallelIndexSet::LocalIndex( cell, owner ? AttributeSet::owner : AttributeSet::copy, true ) );
+      }
+      indexSet.endResize();
+      if( remoteIndices && comm_.size() > 1 )
+      {
+        cellComm_->remoteIndices().template rebuild< false >();
+      }
+    }
+#endif
+
     // All data that depends on the UnstructuredGrid of a view.
     struct ViewData
     {
@@ -1917,6 +2053,10 @@ namespace Dune
       std::vector< std::vector< int > > cellVertices;
       std::vector< GlobalCoordinate > unitOuterNormals;
       size_t nBndSegments = 0;
+      std::vector< char > isOwner;
+#if HAVE_MPI
+      std::unique_ptr< CellCommunicationType > cellComm;
+#endif
     };
 
     // Exchange the active view with the given one.
@@ -1929,6 +2069,10 @@ namespace Dune
       std::swap( cellVertices_, other.cellVertices );
       std::swap( unitOuterNormals_, other.unitOuterNormals );
       std::swap( nBndSegments_, other.nBndSegments );
+      std::swap( isOwner_, other.isOwner );
+#if HAVE_MPI
+      std::swap( cellComm_, other.cellComm );
+#endif
       globalIdSet_.update();
       localIdSet_.update();
     }
@@ -1949,6 +2093,13 @@ namespace Dune
     mutable LocalIdSet localIdSet_;
 
     size_t nBndSegments_;
+
+    // For each cell of the active view whether it is owned (empty: all cells are owned).
+    std::vector< char > isOwner_;
+#if HAVE_MPI
+    // Created on demand in the global view, always present in the distributed view.
+    mutable std::unique_ptr< CellCommunicationType > cellComm_;
+#endif
 
     // The inactive view (the distributed one while the global view is active).
     ViewData distributedView_;
