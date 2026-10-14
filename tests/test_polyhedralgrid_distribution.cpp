@@ -26,6 +26,8 @@
 #include <opm/grid/polyhedralgrid.hh>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
+#include <dune/grid/common/datahandleif.hh>
+
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
@@ -342,4 +344,256 @@ BOOST_AUTO_TEST_CASE(IntersectionsAtPartitionBorders)
             BOOST_CHECK_EQUAL(boundary + neighbors, 6);
         }
     }
+}
+
+namespace
+{
+
+// The Cartesian index of a cell. A serial grid has no global_cell array.
+int globalCellOf(const Grid& grid, const int cell)
+{
+    const int* globalCell = grid.globalCellPtr();
+    return globalCell ? globalCell[cell] : cell;
+}
+
+// One int per cell. The received value replaces, or is added to, the local one.
+class CellValueHandle : public Dune::CommDataHandleIF<CellValueHandle, int>
+{
+public:
+    CellValueHandle(const Grid& grid, std::vector<int>& values, const bool add = false)
+        : grid_(grid), values_(values), add_(add)
+    {}
+
+    bool contains(int, int codim) const { return codim == 0; }
+    bool fixedSize(int, int) const { return true; }
+
+    template <class Entity>
+    std::size_t size(const Entity&) const { return 1; }
+
+    template <class Buffer, class Entity>
+    void gather(Buffer& buffer, const Entity& entity) const
+    {
+        buffer.write(values_[grid_.leafIndexSet().index(entity)]);
+    }
+
+    template <class Buffer, class Entity>
+    void scatter(Buffer& buffer, const Entity& entity, std::size_t)
+    {
+        int value;
+        buffer.read(value);
+        auto& target = values_[grid_.leafIndexSet().index(entity)];
+        target = add_ ? target + value : value;
+    }
+
+private:
+    const Grid& grid_;
+    std::vector<int>& values_;
+    bool add_;
+};
+
+// 1 + globalCell % 3 values per cell, which tests communication of variable sizes.
+class CellVectorHandle : public Dune::CommDataHandleIF<CellVectorHandle, int>
+{
+public:
+    CellVectorHandle(const Grid& grid, std::vector<std::vector<int>>& values)
+        : grid_(grid), values_(values)
+    {}
+
+    bool contains(int, int codim) const { return codim == 0; }
+    bool fixedSize(int, int) const { return false; }
+
+    template <class Entity>
+    std::size_t size(const Entity& entity) const
+    {
+        return values_[grid_.leafIndexSet().index(entity)].size();
+    }
+
+    template <class Buffer, class Entity>
+    void gather(Buffer& buffer, const Entity& entity) const
+    {
+        for (const int v : values_[grid_.leafIndexSet().index(entity)]) {
+            buffer.write(v);
+        }
+    }
+
+    template <class Buffer, class Entity>
+    void scatter(Buffer& buffer, const Entity& entity, std::size_t n)
+    {
+        auto& target = values_[grid_.leafIndexSet().index(entity)];
+        target.resize(n);
+        for (auto& v : target) {
+            buffer.read(v);
+        }
+    }
+
+private:
+    const Grid& grid_;
+    std::vector<std::vector<int>>& values_;
+};
+
+int globalColumn(const Grid& grid, const int local)
+{
+    return globalCellOf(grid, local) % nx;
+}
+
+// Number of other processes that have the (owned) cell in their overlap, for
+// one overlap layer.
+int numOverlapCopies(const int i, const int rank, const int numRanks)
+{
+    return int(i > 0 && stripOwner(i - 1, numRanks) != rank)
+         + int(i < nx - 1 && stripOwner(i + 1, numRanks) != rank);
+}
+
+} // anonymous namespace
+
+BOOST_AUTO_TEST_CASE(CommunicateOwnerToAll)
+{
+    Grid grid = makeGrid();
+    const int rank = grid.comm().rank();
+    const int numRanks = grid.comm().size();
+    if (numRanks > 1) {
+        BOOST_REQUIRE(grid.loadBalance(makePartition(grid), true));
+    }
+
+    std::vector<int> values(grid.size(0), -1);
+    for (int c = 0; c < grid.size(0); ++c) {
+        if (grid.entityPartitionType<0>(c) == Dune::InteriorEntity) {
+            values[c] = globalCellOf(grid, c);
+        }
+    }
+
+    // Through the grid view, as simulators do.
+    CellValueHandle handle(grid, values);
+    grid.leafGridView().communicate(handle, Dune::InteriorBorder_All_Interface,
+                                    Dune::ForwardCommunication);
+
+    for (int c = 0; c < grid.size(0); ++c) {
+        BOOST_CHECK_EQUAL(values[c], globalCellOf(grid, c));
+    }
+    static_cast<void>(rank);
+}
+
+BOOST_AUTO_TEST_CASE(CommunicateAllToOwnerAdds)
+{
+    Grid grid = makeGrid();
+    const int rank = grid.comm().rank();
+    const int numRanks = grid.comm().size();
+    if (numRanks == 1) {
+        return;
+    }
+    BOOST_REQUIRE(grid.loadBalance(makePartition(grid), true));
+
+    std::vector<int> values(grid.size(0), 1);
+    CellValueHandle handle(grid, values, /* add = */ true);
+    grid.communicate(handle, Dune::InteriorBorder_All_Interface, Dune::BackwardCommunication);
+
+    for (int c = 0; c < grid.size(0); ++c) {
+        if (grid.entityPartitionType<0>(c) == Dune::InteriorEntity) {
+            // The cell itself plus its copies on the other processes.
+            BOOST_CHECK_EQUAL(values[c], 1 + numOverlapCopies(globalColumn(grid, c), rank, numRanks));
+        }
+        else {
+            BOOST_CHECK_EQUAL(values[c], 1);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(CommunicateAllToAll)
+{
+    Grid grid = makeGrid();
+    const int rank = grid.comm().rank();
+    const int numRanks = grid.comm().size();
+    if (numRanks == 1) {
+        return;
+    }
+    BOOST_REQUIRE(grid.loadBalance(makePartition(grid), true));
+
+    // Every cell that is on two processes gets the value of the other one.
+    std::vector<int> values(grid.size(0), rank);
+    CellValueHandle handle(grid, values);
+    grid.communicate(handle, Dune::All_All_Interface, Dune::ForwardCommunication);
+
+    for (int c = 0; c < grid.size(0); ++c) {
+        const int i = globalColumn(grid, c);
+        int expected = rank;
+        if (grid.entityPartitionType<0>(c) == Dune::OverlapEntity) {
+            expected = stripOwner(i, numRanks);
+        }
+        else if (numOverlapCopies(i, rank, numRanks) == 1) {
+            expected = (i > 0 && stripOwner(i - 1, numRanks) != rank) ? stripOwner(i - 1, numRanks)
+                                                                     : stripOwner(i + 1, numRanks);
+        }
+        BOOST_CHECK_EQUAL(values[c], expected);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(CommunicateBetweenOverlapCells)
+{
+    Grid grid = makeGrid();
+    const int rank = grid.comm().rank();
+    if (grid.comm().size() != 4) {
+        return;
+    }
+    // With two layers, the cells in the columns 2 and 3 are overlap cells on
+    // rank 0 and 2, and the ones in the columns 4 and 5 on rank 1 and 3.
+    BOOST_REQUIRE(grid.loadBalance(makePartition(grid), true, false, 2));
+
+    std::vector<int> values(grid.size(0), rank);
+    CellValueHandle handle(grid, values);
+    grid.communicate(handle, Dune::Overlap_OverlapFront_Interface, Dune::ForwardCommunication);
+
+    for (int c = 0; c < grid.size(0); ++c) {
+        const int i = globalColumn(grid, c);
+        int expected = rank;
+        if (grid.entityPartitionType<0>(c) == Dune::OverlapEntity) {
+            if ((i == 2 || i == 3) && (rank == 0 || rank == 2)) {
+                expected = 2 - rank;
+            }
+            if ((i == 4 || i == 5) && (rank == 1 || rank == 3)) {
+                expected = 4 - rank;
+            }
+        }
+        BOOST_CHECK_EQUAL(values[c], expected);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(CommunicateVariableSize)
+{
+    Grid grid = makeGrid();
+    if (grid.comm().size() > 1) {
+        BOOST_REQUIRE(grid.loadBalance(makePartition(grid), true));
+    }
+
+    auto expected = [&](const int c) {
+        std::vector<int> v(1 + globalCellOf(grid, c) % 3);
+        for (std::size_t k = 0; k < v.size(); ++k) {
+            v[k] = 10 * globalCellOf(grid, c) + static_cast<int>(k);
+        }
+        return v;
+    };
+
+    std::vector<std::vector<int>> values(grid.size(0));
+    for (int c = 0; c < grid.size(0); ++c) {
+        if (grid.entityPartitionType<0>(c) == Dune::InteriorEntity) {
+            values[c] = expected(c);
+        }
+    }
+    CellVectorHandle handle(grid, values);
+    grid.communicate(handle, Dune::InteriorBorder_All_Interface, Dune::ForwardCommunication);
+    for (int c = 0; c < grid.size(0); ++c) {
+        BOOST_CHECK(values[c] == expected(c));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(CommunicateInGlobalViewDoesNothing)
+{
+    Grid grid = makeGrid();
+    if (grid.comm().size() > 1) {
+        BOOST_REQUIRE(grid.loadBalance(makePartition(grid), true));
+        grid.switchToGlobalView();
+    }
+    std::vector<int> values(grid.size(0), 7);
+    CellValueHandle handle(grid, values, true);
+    BOOST_CHECK_NO_THROW(grid.communicate(handle, Dune::All_All_Interface, Dune::ForwardCommunication));
+    BOOST_CHECK(std::all_of(values.begin(), values.end(), [](int v) { return v == 7; }));
 }
