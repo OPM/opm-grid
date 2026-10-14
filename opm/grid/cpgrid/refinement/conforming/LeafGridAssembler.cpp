@@ -670,6 +670,63 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         }
     }
 
+    // A fault inside a box can put a parent's lateral neighbour across the throw
+    // outside the box's layers. The level grid only sees a hole there, so that side
+    // of the parent column is rebuilt like a faulted box side, keyed by (box, axis,
+    // side, parent layer along axis), with the IJK range of the cells across. Left
+    // alone where a cell across is refined by another box.
+    std::map<std::tuple<int,int,int,int>, std::array<std::array<int,2>,3>> interiorFaults;
+    std::set<std::tuple<int,int,int,int>> interiorToBox;
+    for (int c = 0; c < numCells0; ++c) {
+        const int b = boxOfCell[c];
+        if (b < 0) {
+            continue;
+        }
+        const int cart = level0.globalCell()[c];
+        const std::array<int,3> ijk = { cart % dims0[0],
+                                        (cart / dims0[0]) % dims0[1],
+                                        cart / (dims0[0]*dims0[1]) };
+        const auto row = cellToFace0[EntityRep<0>(c, true)];
+        for (int e = 0; e < row.size(); ++e) {
+            const int face = row[e].index();
+            const enum face_tag tag = tags0.get(face);
+            if (tag == NNC_FACE || tag == K_FACE) {
+                continue;
+            }
+            const int axis = axisOf(tag);
+            const int side = row[e].orientation() ? 1 : -1;
+            const bool onBoundary = (side < 0)
+                ? (ijk[axis] == requests[b].startIJK[axis])
+                : (ijk[axis] == requests[b].endIJK[axis] - 1);
+            if (onBoundary) {
+                continue;
+            }
+            const auto cells = faceToCell0[EntityRep<1>(face, true)];
+            for (int q = 0; q < cells.size(); ++q) {
+                const int cell = cells[q].index();
+                if (cell == c || cell == kRemoteCell || boxOfCell[cell] == b) {
+                    continue;
+                }
+                const auto key = std::make_tuple(b, axis, side, ijk[axis]);
+                if (boxOfCell[cell] >= 0) {
+                    interiorToBox.insert(key);
+                }
+                const int ncart = level0.globalCell()[cell];
+                const std::array<int,3> nijk = { ncart % dims0[0],
+                                                 (ncart / dims0[0]) % dims0[1],
+                                                 ncart / (dims0[0]*dims0[1]) };
+                auto [it, fresh] = interiorFaults.try_emplace(key);
+                for (int d = 0; d < 3; ++d) {
+                    it->second[d][0] = fresh ? nijk[d] : std::min(it->second[d][0], nijk[d]);
+                    it->second[d][1] = fresh ? nijk[d] : std::max(it->second[d][1], nijk[d]);
+                }
+            }
+        }
+    }
+    for (const auto& key : interiorToBox) {
+        interiorFaults.erase(key);
+    }
+
     for (int b = 0; b < numBoxes; ++b) {
         BoxData& box = boxes[b];
         auto& faceToCellL = GridStateWriter::faceToCell(*box.level);
@@ -789,7 +846,17 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                         }
                     }
                 }
-                // else: internal hole boundary -> stays a boundary face.
+                else {
+                    // Internal hole boundary: stays a boundary face, unless it is
+                    // a parent's side behind a fault inside the box (rebuilt below).
+                    const auto& offset = box.subs[axis].parentOffset;
+                    const int own = offset[lattice[axis] - side];
+                    if ((offset[lattice[axis]] != own)
+                        && interiorFaults.count(std::make_tuple(b, axis, side,
+                                                                requests[b].startIJK[axis] + own))) {
+                        continue;
+                    }
+                }
             }
             box.faceToLeaf[face] = static_cast<int>(leafFaces.size());
             leafFaces.push_back({b + 1, face});
@@ -837,7 +904,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     };
     std::vector<SyntheticFace> syntheticFaces;
     std::vector<std::array<int,2>> splitKeys;    // {box, ordinal} per leaf corner past the history
-    if (!faultedSides.empty()) {
+    if (!faultedSides.empty() || !interiorFaults.empty()) {
         // coord -> leaf corner index, over the current pool (exact match: the
         // box-boundary corners are produced by identical resampling arithmetic).
         std::map<std::array<double,3>, int> cornerByCoord;
@@ -1050,6 +1117,88 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 else {
                     emitPolygon(b, boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
                 }
+            }
+        }
+
+        // A parent side behind a fault inside a box: the processor runs on the box
+        // part from that parent layer to the box side, with the box's subdivision
+        // and every other cell unrefined, so each refined cell meets each coarse
+        // cell across the throw in one face. Faces toward the box's own cells are
+        // the level grid's; a hole the box's MINPV left stays a boundary face.
+        for (const auto& [key, range] : interiorFaults) {
+            const auto& [b, axis, side, layer] = key;
+            const auto& pos = boxes[b].pos[axis];
+            const int first = pos.firstColumn[layer - requests[b].startIJK[axis]];
+            const int lo = (side < 0) ? first : 0;
+            const int hi = (side < 0) ? static_cast<int>(boxes[b].subs[axis].size())
+                                      : first + pos.parentCount[first];
+            BlockRefinement part = requests[b];
+            part.cellsPerDim = {1, 1, 1};
+            part.minpvRemoved.clear();
+            for (int d = 0; d < 3; ++d) {
+                part.subdivision[d] = boxes[b].subs[d];
+            }
+            auto& sub = part.subdivision[axis];
+            const int shift = (side < 0) ? layer - requests[b].startIJK[axis] : 0;
+            sub.parentOffset.assign(boxes[b].subs[axis].parentOffset.begin() + lo,
+                                    boxes[b].subs[axis].parentOffset.begin() + hi);
+            for (int& p : sub.parentOffset) {
+                p -= shift;
+            }
+            sub.fracLo.assign(boxes[b].subs[axis].fracLo.begin() + lo,
+                              boxes[b].subs[axis].fracLo.begin() + hi);
+            sub.fracHi.assign(boxes[b].subs[axis].fracHi.begin() + lo,
+                              boxes[b].subs[axis].fracHi.begin() + hi);
+            part.startIJK[axis] = (side < 0) ? layer : requests[b].startIJK[axis];
+            part.endIJK[axis] = (side < 0) ? requests[b].endIJK[axis] : layer + 1;
+
+            const auto conns = faultedBoundaryConnections(
+                parentDims, coord, zcorn, actnum, part, axis, side,
+                /*edgeConformal=*/true, &range);
+            const auto& rd = boxes[b].refinedDims;
+            const auto refinedCell = [&](std::array<int,3> lattice) {
+                return refinedCartToCell[b].find(lattice[0] + rd[0]*lattice[1]
+                                                 + rd[0]*rd[1]*lattice[2]);
+            };
+            for (const auto& conn : conns) {
+                auto boxCell = conn.boxCell;
+                boxCell[axis] += lo;
+                const auto cit = refinedCell(boxCell);
+                if (cit == refinedCartToCell[b].end()) {
+                    continue; // refined cell inactive
+                }
+                const int boxLeaf = leafIdxOfLevelCell[b][cit->second];
+                if (boxLeaf < 0) {
+                    continue;
+                }
+                int neighborLeaf = -1;
+                if (conn.coarseNeighborCart >= 0) {
+                    const int l0 = compressed0[conn.coarseNeighborCart];
+                    if (l0 < 0) {
+                        continue; // neighbour inactive
+                    }
+                    if (boxOfCell[l0] == b) {
+                        std::array<int,3> other{};
+                        for (int d = 0; d < 3; ++d) {
+                            const int p = (d == 0) ? conn.coarseNeighborCart % dims0[0]
+                                        : (d == 1) ? (conn.coarseNeighborCart / dims0[0]) % dims0[1]
+                                                   : conn.coarseNeighborCart / (dims0[0]*dims0[1]);
+                            other[d] = boxes[b].pos[d].firstColumn[p - requests[b].startIJK[d]]
+                                     + conn.coarseNeighborSub[d];
+                        }
+                        other[axis] = (side < 0) ? lo - 1 : hi;
+                        if (refinedCell(other) != refinedCartToCell[b].end()) {
+                            continue; // the level grid's own face
+                        }
+                    }
+                    else {
+                        neighborLeaf = leafIdxOfCell0[l0];
+                        if (neighborLeaf < 0) {
+                            continue;
+                        }
+                    }
+                }
+                emitPolygon(b, boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
             }
         }
 
