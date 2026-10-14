@@ -330,7 +330,7 @@ namespace Dune
                              const std::vector<double>& poreVolumes = std::vector<double>{},
                              const bool edge_conformal = false)
       : gridPtr_      { createGrid(inputGrid, poreVolumes, static_cast<int>(edge_conformal)) }
-      , grid_         { *gridPtr_ }
+      , grid_         { gridPtr_.get() }
       , comm_         { MPIHelper::getCommunicator() }
       , leafIndexSet_ { *this }
       , globalIdSet_  { *this }
@@ -348,7 +348,7 @@ namespace Dune
     explicit PolyhedralGrid ( const std::vector< int >& n,
                               const std::vector< double >& dx )
     : gridPtr_( createGrid( n, dx ) ),
-      grid_( *gridPtr_ ),
+      grid_( gridPtr_.get() ),
       comm_( MPIHelper::getCommunicator()),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -366,7 +366,7 @@ namespace Dune
      */
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
-      grid_( *gridPtr_ ),
+      grid_( gridPtr_.get() ),
       comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -385,7 +385,7 @@ namespace Dune
      */
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
     : gridPtr_(),
-      grid_( grid ),
+      grid_( &grid ),
       comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -399,7 +399,7 @@ namespace Dune
 
     /** \name Casting operators
      *  \{ */
-    operator const UnstructuredGridType& () const { return grid_; }
+    operator const UnstructuredGridType& () const { return *grid_; }
 
     /** \} */
 
@@ -441,15 +441,15 @@ namespace Dune
     {
       if( codim == 0 )
       {
-        return grid_.number_of_cells;
+        return grid_->number_of_cells;
       }
       else if ( codim == 1 )
       {
-        return grid_.number_of_faces;
+        return grid_->number_of_faces;
       }
       else if ( codim == dim )
       {
-        return grid_.number_of_nodes;
+        return grid_->number_of_nodes;
       }
       else
       {
@@ -693,13 +693,65 @@ namespace Dune
     /// \brief Switch to the global view.
     void switchToGlobalView()
     {
-        OPM_THROW(std::runtime_error, "switch to global view not implemented for polyhedreal grid!");
+      if( distributedViewActive_ )
+      {
+        swapView( distributedView_ );
+        distributedViewActive_ = false;
+      }
+    }
+
+    /// \brief Check whether a distributed view exists.
+    bool hasDistributedView() const
+    {
+      return hasDistributedView_;
+    }
+
+    /// \brief Check whether the distributed view is the active one.
+    bool distributedViewActive() const
+    {
+      return distributedViewActive_;
+    }
+
+    /// \brief Install a distributed view of the grid.
+    ///
+    /// The grid takes ownership of the given grid, which must contain the
+    /// cells of this process only. The active view is not changed, call
+    /// switchToDistributedView() to use the new view.
+    ///
+    /// \param gridPtr  The local part of the grid on this process.
+    void setDistributedView( UnstructuredGridPtr&& gridPtr )
+    {
+      const bool wasDistributed = distributedViewActive_;
+      switchToGlobalView();
+
+      // Make the new grid the active one to let init() derive its data.
+      ViewData fresh;
+      fresh.gridPtr = std::move( gridPtr );
+      fresh.grid = fresh.gridPtr.get();
+      swapView( fresh );
+      init();
+      swapView( fresh );
+
+      distributedView_ = std::move( fresh );
+      hasDistributedView_ = true;
+      if( wasDistributed )
+      {
+        switchToDistributedView();
+      }
     }
 
     /// \brief Switch to the distributed view.
     void switchToDistributedView()
     {
-        OPM_THROW(std::runtime_error, "switch to distributed view not implemented for polyhedreal grid!");
+      if( ! hasDistributedView_ )
+      {
+        OPM_THROW(std::logic_error, "No distributed view available in grid");
+      }
+      if( ! distributedViewActive_ )
+      {
+        swapView( distributedView_ );
+        distributedViewActive_ = true;
+      }
     }
 
     /** \brief obtain CollectiveCommunication object
@@ -850,13 +902,13 @@ namespace Dune
 
     const int* globalCell() const
     {
-      assert( grid_.global_cell != 0 );
-      return grid_.global_cell;
+      assert( grid_->global_cell != 0 );
+      return grid_->global_cell;
     }
 
     const int* globalCellPtr() const
     {
-      return grid_.global_cell;
+      return grid_->global_cell;
     }
 
     void getIJK(const int c, std::array<int,3>& ijk) const
@@ -979,7 +1031,7 @@ namespace Dune
       if (codim==0)
         return cellVertices_[ index ].size();
       if (codim==1)
-        return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
+        return grid_->face_nodepos[ index+1 ] - grid_->face_nodepos[ index ];
       if (codim==dim)
          return 1;
       return 0;
@@ -1009,7 +1061,7 @@ namespace Dune
       GlobalCoordinate center( 0 );
       for( int i=0; i<4; ++i )
       {
-        center += copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate::dimension * cellVertices_[ cell ][ sideCorners[ side ][ i ] ] );
+        center += copyToGlobalCoordinate( grid_->node_coordinates + GlobalCoordinate::dimension * cellVertices_[ cell ][ sideCorners[ side ][ i ] ] );
       }
       center /= 4;
       return center;
@@ -1032,11 +1084,11 @@ namespace Dune
      */
     GlobalCoordinate faceAreaNormalEcl ( const int face ) const
     {
-      const int first = grid_.face_nodepos[ face ];
-      const int numNodes = grid_.face_nodepos[ face + 1 ] - first;
+      const int first = grid_->face_nodepos[ face ];
+      const int numNodes = grid_->face_nodepos[ face + 1 ] - first;
       auto node = [ this, first ]( const int i )
       {
-        return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate::dimension * grid_.face_nodes[ first + i ] );
+        return copyToGlobalCoordinate( grid_->node_coordinates + GlobalCoordinate::dimension * grid_->face_nodes[ first + i ] );
       };
       auto cross = []( const GlobalCoordinate& a, const GlobalCoordinate& b )
       {
@@ -1089,7 +1141,7 @@ namespace Dune
       if (codim==0)
       {
         const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
-          return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+          return copyToGlobalCoordinate( grid_->node_coordinates + coordIndex );
       }
       if (codim==1)
       {
@@ -1098,13 +1150,13 @@ namespace Dune
         // TODO: Improve this for performance reasons
         const int crners = corners( seed );
         const int crner  = (crners == 4 && EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
-        const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
-        return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+        const int faceVertex = grid_->face_nodes[ grid_->face_nodepos[seed.index() ] + crner ];
+        return copyToGlobalCoordinate( grid_->node_coordinates + GlobalCoordinate :: dimension * faceVertex );
       }
       if (codim==dim)
       {
         const int coordIndex = GlobalCoordinate :: dimension * seed.index();
-        return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+        return copyToGlobalCoordinate( grid_->node_coordinates + coordIndex );
       }
       return GlobalCoordinate( 0 );
     }
@@ -1118,7 +1170,7 @@ namespace Dune
         if (codim==0)
           return 1;
         if (codim==1)
-          return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+          return grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
         if (codim==dim)
           return cellVertices_[ index ].size();
       }
@@ -1127,7 +1179,7 @@ namespace Dune
         if (codim==1)
           return 1;
         if (codim==dim)
-          return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
+          return grid_->face_nodepos[ index+1 ] - grid_->face_nodepos[ index ];
       }
       else if ( seed.codimension == dim )
       {
@@ -1155,7 +1207,7 @@ namespace Dune
       {
         if ( codim == 1 )
         {
-          return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ baseSeed.index() ] + i ] );
+          return EntitySeed( grid_->cell_faces[ grid_->cell_facepos[ baseSeed.index() ] + i ] );
         }
         else if ( codim == dim )
         {
@@ -1164,7 +1216,7 @@ namespace Dune
       }
       else if ( EntitySeedArg::codimension == 1 && codim == dim )
       {
-        return EntitySeed( grid_.face_nodes[ grid_.face_nodepos[ baseSeed.index() + i ] ]);
+        return EntitySeed( grid_->face_nodes[ grid_->face_nodepos[ baseSeed.index() + i ] ]);
       }
 
       DUNE_THROW(NotImplemented,"codimension not available");
@@ -1183,7 +1235,7 @@ namespace Dune
       }
       else if ( codim == dim )
       {
-        return EntitySeed( grid_.face_nodes[ grid_.face_nodepos[ faceSeed.index() ] + i ] );
+        return EntitySeed( grid_->face_nodes[ grid_->face_nodepos[ faceSeed.index() ] + i ] );
       }
       else
       {
@@ -1205,9 +1257,9 @@ namespace Dune
 
     bool isBoundaryFace(const int face ) const
     {
-      assert( face >= 0 && face < grid_.number_of_faces );
+      assert( face >= 0 && face < grid_->number_of_faces );
       const int facePos = 2 * face;
-      return ((grid_.face_cells[ facePos ] < 0) || (grid_.face_cells[ facePos+1 ] < 0));
+      return ((grid_->face_cells[ facePos ] < 0) || (grid_->face_cells[ facePos+1 ] < 0));
     }
 
     bool isBoundaryFace(const typename Codim<1>::EntitySeed& faceSeed ) const
@@ -1221,7 +1273,7 @@ namespace Dune
       const auto faceSeed = this->template subEntitySeed<1>( seed, face );
       assert( faceSeed.isValid() );
       const int facePos = 2 * faceSeed.index();
-      const int idx = std::min( grid_.face_cells[ facePos ], grid_.face_cells[ facePos+1 ]);
+      const int idx = std::min( grid_->face_cells[ facePos ], grid_->face_cells[ facePos+1 ]);
       // check that this is actually the boundary
       assert( idx < 0 );
       return -(idx+1); // +1 to include 0 boundary segment index
@@ -1270,23 +1322,23 @@ namespace Dune
 
     int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      return ( grid_.cell_facetag ) ? cartesianIndexInInside( seed, i ) : i;
+      return ( grid_->cell_facetag ) ? cartesianIndexInInside( seed, i ) : i;
     }
 
     int cartesianIndexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
       assert( i>= 0 && i<subEntities( seed, 1 ) );
-      return grid_.cell_facetag[ grid_.cell_facepos[ seed.index() ] + i ] ;
+      return grid_->cell_facetag[ grid_->cell_facepos[ seed.index() ] + i ] ;
     }
 
     typename Codim<0>::EntitySeed
     neighbor( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
       const int face = this->template subEntitySeed<1>( seed, i ).index();
-      int nb = grid_.face_cells[ 2 * face ];
+      int nb = grid_->face_cells[ 2 * face ];
       if( nb == seed.index() )
       {
-        nb = grid_.face_cells[ 2 * face + 1 ];
+        nb = grid_->face_cells[ 2 * face + 1 ];
       }
 
       typedef typename Codim<0>::EntitySeed EntitySeed;
@@ -1296,7 +1348,7 @@ namespace Dune
     int
     indexInOutside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      if( grid_.cell_facetag )
+      if( grid_->cell_facetag )
       {
         // if cell_facetag is present we assume pseudo Cartesian corner point case
         const int in_inside = cartesianIndexInInside( seed, i );
@@ -1325,8 +1377,8 @@ namespace Dune
     {
       const int face  = this->template subEntitySeed<1>( seed, i ).index();
       const int normalIdx = face * GlobalCoordinate :: dimension ;
-      GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
-      const int nb = grid_.face_cells[ 2*face ];
+      GlobalCoordinate normal = copyToGlobalCoordinate( grid_->face_normals + normalIdx );
+      const int nb = grid_->face_cells[ 2*face ];
       if( nb != seed.index() )
       {
         normal *= -1.0;
@@ -1339,7 +1391,7 @@ namespace Dune
     unitOuterNormal( const EntitySeed& seed, const int i ) const
     {
       const int face  = this->template subEntitySeed<1>( seed, i ).index();
-      if( seed.index() == grid_.face_cells[ 2*face ] )
+      if( seed.index() == grid_->face_cells[ 2*face ] )
       {
         return unitOuterNormals_[ face ];
       }
@@ -1363,15 +1415,15 @@ namespace Dune
 
       if( codim == 0 )
       {
-        return copyToGlobalCoordinate( grid_.cell_centroids + index );
+        return copyToGlobalCoordinate( grid_->cell_centroids + index );
       }
       else if ( codim == 1 )
       {
-        return copyToGlobalCoordinate( grid_.face_centroids + index );
+        return copyToGlobalCoordinate( grid_->face_centroids + index );
       }
       else if( codim == dim )
       {
-        return copyToGlobalCoordinate( grid_.node_coordinates + index );
+        return copyToGlobalCoordinate( grid_->node_coordinates + index );
       }
       else
       {
@@ -1404,11 +1456,11 @@ namespace Dune
 
         if( codim == 0 )
         {
-          return grid_.cell_volumes[ seed.index() ];
+          return grid_->cell_volumes[ seed.index() ];
         }
         else if ( codim == 1 )
         {
-          return grid_.face_areas[ seed.index() ];
+          return grid_->face_areas[ seed.index() ];
         }
         else
         {
@@ -1424,7 +1476,7 @@ namespace Dune
       // copy Cartesian dimensions
       for( int i=0; i<3; ++i )
       {
-        cartDims_[ i ] = grid_.cartdims[ i ];
+        cartDims_[ i ] = grid_->cartdims[ i ];
       }
 
       // setup list of cell vertices
@@ -1433,7 +1485,7 @@ namespace Dune
       cellVertices_.resize( numCells );
 
       // sort vertices such that they comply with the dune reference cube
-      if( grid_.cell_facetag )
+      if( grid_->cell_facetag )
       {
         typedef std::array<int, 3> KeyType;
         std::map< const KeyType, const int > vertexFaceTags;
@@ -1464,9 +1516,9 @@ namespace Dune
           if( dim == 2 )
           {
             // for 2d Cartesian grids the face ordering is wrong
-            int f = grid_.cell_facepos[ c ];
-            std::swap( grid_.cell_faces[ f+1 ], grid_.cell_faces[ f+2 ] );
-            std::swap( grid_.cell_facetag[ f+1 ], grid_.cell_facetag[ f+2 ] );
+            int f = grid_->cell_facepos[ c ];
+            std::swap( grid_->cell_faces[ f+1 ], grid_->cell_faces[ f+2 ] );
+            std::swap( grid_->cell_facetag[ f+1 ], grid_->cell_facetag[ f+2 ] );
           }
 
           typedef std::map< int, std::set<int> > vertexlist_t;
@@ -1482,16 +1534,16 @@ namespace Dune
             typedef std::pair<int,int> EdgeType;
             std::vector< std::map< EdgeType, int > > sideEdges( dim*2 );
 
-            for (unsigned hf = grid_.cell_facepos[ c ]; hf < grid_.cell_facepos[c+1]; ++hf)
+            for (unsigned hf = grid_->cell_facepos[ c ]; hf < grid_->cell_facepos[c+1]; ++hf)
             {
-              const int f = grid_.cell_faces[ hf ];
-              const int faceTag = grid_.cell_facetag[ hf ];
-              const unsigned first = grid_.face_nodepos[f];
-              const unsigned last = grid_.face_nodepos[f+1];
+              const int f = grid_->cell_faces[ hf ];
+              const int faceTag = grid_->cell_facetag[ hf ];
+              const unsigned first = grid_->face_nodepos[f];
+              const unsigned last = grid_->face_nodepos[f+1];
               for (unsigned nodepos = first; nodepos < last; ++nodepos )
               {
-                const int a = grid_.face_nodes[ nodepos ];
-                const int b = grid_.face_nodes[ nodepos + 1 < last ? nodepos + 1 : first ];
+                const int a = grid_->face_nodes[ nodepos ];
+                const int b = grid_->face_nodes[ nodepos + 1 < last ? nodepos + 1 : first ];
                 ++sideEdges[ faceTag ][ std::minmax( a, b ) ];
               }
             }
@@ -1570,14 +1622,14 @@ namespace Dune
 
             std::vector< vertexmap_t > cell_pts( dim*2 );
 
-            for (unsigned hf = grid_.cell_facepos[ c ]; hf < grid_.cell_facepos[c+1]; ++hf)
+            for (unsigned hf = grid_->cell_facepos[ c ]; hf < grid_->cell_facepos[c+1]; ++hf)
             {
-              const int f = grid_.cell_faces[ hf ];
-              const int faceTag = grid_.cell_facetag[ hf ];
+              const int f = grid_->cell_faces[ hf ];
+              const int faceTag = grid_->cell_facetag[ hf ];
 
-              for (unsigned nodepos = grid_.face_nodepos[f]; nodepos < grid_.face_nodepos[f+1]; ++nodepos )
+              for (unsigned nodepos = grid_->face_nodepos[f]; nodepos < grid_->face_nodepos[f+1]; ++nodepos )
               {
-                const int node = grid_.face_nodes[ nodepos ];
+                const int node = grid_->face_nodes[ nodepos ];
                 iterator it = cell_pts[ faceTag ].find( node );
                 if( it == cell_pts[ faceTag ].end() )
                 {
@@ -1640,7 +1692,7 @@ namespace Dune
           geomTypes_[codim].push_back(tmp);
         }
       }
-      else // if ( grid_.cell_facetag )
+      else // if ( grid_->cell_facetag )
       {
         int maxVx = 0 ;
         int minVx = std::numeric_limits<int>::max();
@@ -1648,11 +1700,11 @@ namespace Dune
         for (int c = 0; c < numCells; ++c)
         {
           std::set<int> cell_pts;
-          for (unsigned hf = grid_.cell_facepos[ c ]; hf < grid_.cell_facepos[c+1]; ++hf)
+          for (unsigned hf = grid_->cell_facepos[ c ]; hf < grid_->cell_facepos[c+1]; ++hf)
           {
-             int f = grid_.cell_faces[ hf ];
-             const int* fnbeg = grid_.face_nodes + grid_.face_nodepos[f];
-             const int* fnend = grid_.face_nodes + grid_.face_nodepos[f+1];
+             int f = grid_->cell_faces[ hf ];
+             const int* fnbeg = grid_->face_nodes + grid_->face_nodepos[f];
+             const int* fnend = grid_->face_nodes + grid_->face_nodepos[f+1];
              cell_pts.insert(fnbeg, fnend);
           }
 
@@ -1675,14 +1727,14 @@ namespace Dune
 
               for( int d=0; d<dim; ++d )
               {
-                center[ d ] += grid_.node_coordinates[ vertex*dim + d ];
-                p[ i ][ d ]  = grid_.node_coordinates[ vertex*dim + d ];
+                center[ d ] += grid_->node_coordinates[ vertex*dim + d ];
+                p[ i ][ d ]  = grid_->node_coordinates[ vertex*dim + d ];
               }
             }
             center *= 0.25;
             for( int d=0; d<dim; ++d )
             {
-              grid_.cell_centroids[ c*dim + d ] = center[ d ];
+              grid_->cell_centroids[ c*dim + d ] = center[ d ];
             }
 
             Dune::GeometryType simplex;
@@ -1690,21 +1742,21 @@ namespace Dune
 
             typedef Dune::AffineGeometry< ctype, dim, dimworld>  AffineGeometryType;
             AffineGeometryType geometry( simplex, p );
-            grid_.cell_volumes[ c ] = geometry.volume();
+            grid_->cell_volumes[ c ] = geometry.volume();
           }
         }
 
         // check face normals
         {
-          const int faces = grid_.number_of_faces;
+          const int faces = grid_->number_of_faces;
           for( int face = 0 ; face < faces; ++face )
           {
-            const int a = grid_.face_cells[ 2*face     ];
-            const int b = grid_.face_cells[ 2*face + 1 ];
+            const int a = grid_->face_cells[ 2*face     ];
+            const int b = grid_->face_cells[ 2*face + 1 ];
 
             assert( a >=0 || b >=0 );
 
-            if( grid_.face_areas[ face ] < 0 )
+            if( grid_->face_areas[ face ] < 0 )
               std::abort();
 
             GlobalCoordinate centerDiff( 0 );
@@ -1712,14 +1764,14 @@ namespace Dune
             {
               for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] = grid_.cell_centroids[ b*dimworld + d ];
+                centerDiff[ d ] = grid_->cell_centroids[ b*dimworld + d ];
               }
             }
             else
             {
               for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] = grid_.face_centroids[ face*dimworld + d ];
+                centerDiff[ d ] = grid_->face_centroids[ face*dimworld + d ];
               }
             }
 
@@ -1727,21 +1779,21 @@ namespace Dune
             {
               for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] -= grid_.cell_centroids[ a*dimworld + d ];
+                centerDiff[ d ] -= grid_->cell_centroids[ a*dimworld + d ];
               }
             }
             else
             {
               for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] -= grid_.face_centroids[ face*dimworld + d ];
+                centerDiff[ d ] -= grid_->face_centroids[ face*dimworld + d ];
               }
             }
 
             GlobalCoordinate normal( 0 );
             for( int d=0; d<dimworld; ++d )
             {
-              normal[ d ] = grid_.face_normals[ face*dimworld + d ];
+              normal[ d ] = grid_->face_normals[ face*dimworld + d ];
             }
 
             if( centerDiff.two_norm() < 1e-10 )
@@ -1750,8 +1802,8 @@ namespace Dune
             // if diff and normal point in different direction, flip faces
             if( centerDiff * normal < 0 )
             {
-              grid_.face_cells[ 2*face     ] = b;
-              grid_.face_cells[ 2*face + 1 ] = a;
+              grid_->face_cells[ 2*face     ] = b;
+              grid_->face_cells[ 2*face + 1 ] = a;
             }
           }
         }
@@ -1794,14 +1846,14 @@ namespace Dune
           }
         }
 
-      } // end else of ( grid_.cell_facetag )
+      } // end else of ( grid_->cell_facetag )
 
       nBndSegments_ = 0;
-      unitOuterNormals_.resize( grid_.number_of_faces );
-      for( int face = 0; face < grid_.number_of_faces; ++face )
+      unitOuterNormals_.resize( grid_->number_of_faces );
+      for( int face = 0; face < grid_->number_of_faces; ++face )
       {
         const int normalIdx = face * GlobalCoordinate :: dimension ;
-        GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
+        GlobalCoordinate normal = copyToGlobalCoordinate( grid_->face_normals + normalIdx );
         normal /= normal.two_norm();
         unitOuterNormals_[ face ] = normal;
 
@@ -1812,13 +1864,13 @@ namespace Dune
           const int facePos = 2 * face ;
           // store negative number to indicate boundary
           // the abstract value is the segment index
-          if( grid_.face_cells[ facePos ] < 0 )
+          if( grid_->face_cells[ facePos ] < 0 )
           {
-            grid_.face_cells[ facePos ] = -nBndSegments_;
+            grid_->face_cells[ facePos ] = -nBndSegments_;
           }
-          else if ( grid_.face_cells[ facePos+1 ] < 0 )
+          else if ( grid_->face_cells[ facePos+1 ] < 0 )
           {
-            grid_.face_cells[ facePos+1 ] = -nBndSegments_;
+            grid_->face_cells[ facePos+1 ] = -nBndSegments_;
           }
         }
       }
@@ -1832,9 +1884,9 @@ namespace Dune
         out << "cell " << c << " : faces = " << std::endl;
         for (int hf=grid.cell_facepos[ c ]; hf < grid.cell_facepos[c+1]; ++hf)
         {
-           int f = grid_.cell_faces[ hf ];
-           const int* fnbeg = grid_.face_nodes + grid_.face_nodepos[f];
-           const int* fnend = grid_.face_nodes + grid_.face_nodepos[f+1];
+           int f = grid_->cell_faces[ hf ];
+           const int* fnbeg = grid_->face_nodes + grid_->face_nodepos[f];
+           const int* fnend = grid_->face_nodes + grid_->face_nodepos[f+1];
            out << f << "  vx = " ;
            while( fnbeg != fnend )
            {
@@ -1855,8 +1907,35 @@ namespace Dune
     }
 
   protected:
+    // All data that depends on the UnstructuredGrid of a view.
+    struct ViewData
+    {
+      UnstructuredGridPtr gridPtr;
+      const UnstructuredGridType* grid = nullptr;
+      std::array< int, 3 > cartDims {};
+      std::vector< std::vector< GeometryType > > geomTypes;
+      std::vector< std::vector< int > > cellVertices;
+      std::vector< GlobalCoordinate > unitOuterNormals;
+      size_t nBndSegments = 0;
+    };
+
+    // Exchange the active view with the given one.
+    void swapView( ViewData& other )
+    {
+      std::swap( gridPtr_, other.gridPtr );
+      std::swap( grid_, other.grid );
+      std::swap( cartDims_, other.cartDims );
+      std::swap( geomTypes_, other.geomTypes );
+      std::swap( cellVertices_, other.cellVertices );
+      std::swap( unitOuterNormals_, other.unitOuterNormals );
+      std::swap( nBndSegments_, other.nBndSegments );
+      globalIdSet_.update();
+      localIdSet_.update();
+    }
+
     UnstructuredGridPtr gridPtr_;
-    const UnstructuredGridType& grid_;
+    // The UnstructuredGrid of the active view (global or distributed).
+    const UnstructuredGridType* grid_;
 
     CommunicationType comm_;
     std::array< int, 3 > cartDims_;
@@ -1870,6 +1949,11 @@ namespace Dune
     mutable LocalIdSet localIdSet_;
 
     size_t nBndSegments_;
+
+    // The inactive view (the distributed one while the global view is active).
+    ViewData distributedView_;
+    bool hasDistributedView_ = false;
+    bool distributedViewActive_ = false;
 
   private:
     // no copying
