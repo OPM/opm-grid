@@ -480,7 +480,7 @@ BOOST_AUTO_TEST_CASE(leafAssemblyRefusalThrowsOnEveryRank)
     if (np < 2) {
         return;
     }
-    // Rank 0 holds the columns i < 6, the box among them; the other ranks hold the rest.
+    // Rank 0 holds the columns i < 6, the boxes among them; the other ranks hold the rest.
     std::vector<int> parts(static_cast<std::size_t>(dims[0])*dims[1]*dims[2]);
     for (std::size_t c = 0; c < parts.size(); ++c) {
         const int i = static_cast<int>(c % dims[0]);
@@ -490,12 +490,15 @@ BOOST_AUTO_TEST_CASE(leafAssemblyRefusalThrowsOnEveryRank)
     useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
         g.dims, g.coord, g.zcorn, g.actnum));
 
-    // The box covers both columns of the fault in the first layer only: across the throw
-    // its cell (3,1,1) (I,J,K from 1) faces the cell (2,1,2), outside the box. The leaf
-    // assembly refuses that on rank 0. Each rank checks its own exception: a check that
-    // communicates would meet the collective operations a rank without the refusal is in.
+    // LGR1 refines the columns i = 0..3 into 12x3x6 cells, the fault between its i = 5
+    // and i = 6. NEST refines its cells i = 4..7, j = 1, k = 1..4: across the throw its
+    // cells face LGR1 cells outside it, k = 0 or 5. The leaf assembly refuses that nested
+    // box on rank 0. Each rank checks its own exception: a check that communicates would
+    // meet the collective operations a rank without the refusal is in.
     const int rank = grid.comm().rank();
-    BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView({{3,1,3}}, {{1,0,0}}, {{3,3,1}}, {"LGR1"}),
+    BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView({{3,1,3}, {2,2,2}}, {{0,0,0}, {4,1,1}},
+                                                     {{4,3,2}, {8,2,5}}, {"LGR1", "NEST"},
+                                                     {"GLOBAL", "LGR1"}),
                           std::runtime_error,
                           [rank](const std::runtime_error& e) {
                               const std::string what = e.what();
