@@ -384,6 +384,65 @@ BOOST_AUTO_TEST_CASE(twoSeparatedBoxesAndGuards)
     BOOST_CHECK_EQUAL(cellIds.size(), static_cast<std::size_t>(grid.size(0)));
 }
 
+// A box with no host left is an empty LGR: its level grid has no cells and
+// the leaf keeps every other cell. The hosts are either inactive or collapsed
+// to zero thickness, which is how MINPV leaves the cells it removes.
+BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
+{
+    const auto isHost = [](int i, int j) { return (i < 2) && (j < 2); };
+    for (const bool collapsed : {false, true}) {
+        auto parent = makeVerticalPillarGrid({4, 4, 1}, [&](int i_, int j_, int k_) {
+            const bool host = isHost(cellOf(i_), cellOf(j_));
+            return (collapsed && host) ? 0.0 : 10.0*sideOf(k_);
+        });
+        if (!collapsed) {
+            parent.actnum.assign(16, 1);
+            for (int j = 0; j < 4; ++j) {
+                for (int i = 0; i < 4; ++i) {
+                    parent.actnum[i + 4*j] = isHost(i, j) ? 0 : 1;
+                }
+            }
+        }
+        auto rawParent = parent.raw();
+
+        // The empty box alone.
+        {
+            Dune::CpGrid grid;
+            grid.processEclipseFormat(rawParent, false);
+            BOOST_REQUIRE_EQUAL(grid.size(0), 12);
+            useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
+                parent.dims, parent.coord, parent.zcorn, parent.actnum));
+
+            grid.addLgrsUpdateLeafView({{3,3,1}}, {{0,0,0}}, {{2,2,1}}, {"LGR1"});
+
+            BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
+            BOOST_CHECK_EQUAL(grid.getLgrNameToLevel().at("LGR1"), 1);
+            BOOST_CHECK_EQUAL(grid.size(1, 0), 0);
+            BOOST_CHECK_EQUAL(grid.size(0), 12);
+        }
+
+        // Next to a box that refines.
+        {
+            Dune::CpGrid grid;
+            grid.processEclipseFormat(rawParent, false);
+            const double volumeBefore = totalVolume(grid);
+            useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
+                parent.dims, parent.coord, parent.zcorn, parent.actnum));
+
+            grid.addLgrsUpdateLeafView({{3,3,1}, {2,2,2}},
+                                       {{0,0,0}, {3,3,0}},
+                                       {{2,2,1}, {4,4,1}},
+                                       {"EMPTY", "B"});
+
+            BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
+            BOOST_CHECK_EQUAL(grid.size(1, 0), 0);
+            BOOST_CHECK_EQUAL(grid.size(2, 0), 8);
+            BOOST_CHECK_EQUAL(grid.size(0), 12 - 1 + 8);
+            BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
+        }
+    }
+}
+
 // Two diagonally-adjacent boxes share only an edge (the CARFIN deck
 // configuration). The refined corners along the shared edge that are
 // interior to a parent cell must merge into single leaf vertices.

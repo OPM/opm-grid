@@ -108,6 +108,28 @@ BoxPresence classifyBox(const Dune::cpgrid::CpGridData& level0,
                            "use CpGrid::setPartitionCellGroups to keep the box on one rank.");
 }
 
+// Cells of the parent grid inside the box: the hosts left after processing
+// (inactive cells and cells MINPV removes are not in the grid).
+int presentHostCells(const Dune::cpgrid::CpGridData& parent,
+                     const std::array<int,3>& dims,
+                     const Opm::Refinement::BlockRefinement& req)
+{
+    int present = 0;
+    const auto& globalCell = parent.globalCell();
+    for (int c = 0; c < parent.size(0); ++c) {
+        const int cart = globalCell[c];
+        const int i = cart % dims[0];
+        const int j = (cart / dims[0]) % dims[1];
+        const int k = cart / (dims[0]*dims[1]);
+        if (i >= req.startIJK[0] && i < req.endIJK[0]
+            && j >= req.startIJK[1] && j < req.endIJK[1]
+            && k >= req.startIJK[2] && k < req.endIJK[2]) {
+            ++present;
+        }
+    }
+    return present;
+}
+
 // refine-before-redistribute classification: before load balancing the global
 // grid lives on rank 0 (all cells) and is empty on the other ranks. Classify a
 // box purely by cell *presence* (ignoring partition type, which is not yet set):
@@ -121,19 +143,7 @@ BoxPresence boxCellPresence(const Dune::cpgrid::CpGridData& level0,
     const int boxCells = (req.endIJK[0] - req.startIJK[0])
                        * (req.endIJK[1] - req.startIJK[1])
                        * (req.endIJK[2] - req.startIJK[2]);
-    int present = 0;
-    const auto& globalCell = level0.globalCell();
-    for (int c = 0; c < level0.size(0); ++c) {
-        const int cart = globalCell[c];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
-        if (i >= req.startIJK[0] && i < req.endIJK[0]
-            && j >= req.startIJK[1] && j < req.endIJK[1]
-            && k >= req.startIJK[2] && k < req.endIJK[2]) {
-            ++present;
-        }
-    }
+    const int present = presentHostCells(level0, dims, req);
     if (present == 0) {
         return BoxPresence::Absent;
     }
@@ -358,6 +368,14 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             } else if (refineBefore) {
                 presence = nested ? presenceOf.at(req.parentGridName)
                                   : boxCellPresence(*storage[0], dims_, req);
+            }
+            // A box with no host left (all inactive, or removed by MINPV) has
+            // nothing to refine: it becomes an empty LGR, as on a rank that
+            // does not hold it. The corner-point processing below needs at
+            // least one cell.
+            if ((presence == BoxPresence::Owned)
+                && (presentHostCells(*storage[parentLevel], pg.dims, req) == 0)) {
+                presence = BoxPresence::Absent;
             }
             presenceOf[req.name] = presence;
             RefinedBlockGrdecl childRefined;
