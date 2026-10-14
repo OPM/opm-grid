@@ -1261,6 +1261,48 @@ BOOST_AUTO_TEST_CASE(faultThrowTallerThanBoxKeepsConnections)
     BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 2, 1, 3, 5), areaBefore, 1e-8);
 }
 
+// A fault inside a box whose throw puts the cells above and below the box across
+// it: the refined cells there connect to those coarse cells, one face per pair,
+// with the level-zero face area.
+BOOST_AUTO_TEST_CASE(faultInsideBoxReachesCellsAcrossThrow)
+{
+    auto depth = [](int i_, int j_, int k_) {
+        (void)j_;
+        const double base = 2.0*(cellOf(k_) + sideOf(k_));
+        return (cellOf(i_) >= 2) ? base + 0.6 : base;
+    };
+    auto parent = makeVerticalPillarGrid({4, 2, 4}, depth);
+
+    Dune::CpGrid grid;
+    auto rawParent = parent.raw();
+    grid.processEclipseFormat(rawParent, false);
+    const double volumeBefore = totalVolume(grid);
+    const double areaUpThrown = areaAcrossIFace(grid, 1, 2, 1, 3);
+    const double areaDownThrown = areaAcrossIFace(grid, 2, 1, 1, 3);
+
+    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
+        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,4}}, {{1,0,1}}, {{3,2,3}}, {"LGR1"}));
+    checkValidFaultedLeaf(grid, volumeBefore);
+    BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 1, 2, 1, 3), areaUpThrown, 1e-8);
+    BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 2, 1, 1, 3), areaDownThrown, 1e-8);
+
+    std::map<std::pair<int,int>, int> pairCount;
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+            if (is.neighbor()) {
+                const int a = is.inside().index();
+                const int b = is.outside().index();
+                pairCount[{std::min(a, b), std::max(a, b)}] += 1;
+            }
+        }
+    }
+    for (const auto& [cells, count] : pairCount) {
+        BOOST_CHECK_EQUAL(count, 2);
+    }
+}
+
 // Two boxes that meet only through a throw, with in-face subdivisions that do
 // not nest: refused, rather than sealing the interface between them.
 BOOST_AUTO_TEST_CASE(boxesMeetingOnlyAcrossThrowMustNest)
