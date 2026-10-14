@@ -173,12 +173,13 @@ BOOST_AUTO_TEST_CASE(PackUnpackRoundtrip)
     auto local = extractLocalGrid(*g, cells);
     const std::vector<char> owner{1, 1, 0, 1, 0};
 
-    const auto packed = packGrid(*local.grid, owner);
+    const auto packed = packGrid(*local.grid, owner, cells);
     const auto unpacked = unpackGrid(packed.ints, packed.doubles);
     const auto& a = *local.grid;
     const auto& b = *unpacked.grid;
 
     BOOST_CHECK(unpacked.isOwner == owner);
+    BOOST_CHECK(unpacked.globalCells == cells);
     BOOST_REQUIRE_EQUAL(a.number_of_cells, b.number_of_cells);
     BOOST_REQUIRE_EQUAL(a.number_of_faces, b.number_of_faces);
     BOOST_REQUIRE_EQUAL(a.number_of_nodes, b.number_of_nodes);
