@@ -29,12 +29,15 @@
 #include <dune/grid/common/datahandleif.hh>
 
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
 // Run with 1, 2 or 4 processes. With one process there is nothing to distribute.
 
 using Grid = Dune::PolyhedralGrid<3, 3>;
+
+#if HAVE_MPI
 
 namespace
 {
@@ -597,3 +600,174 @@ BOOST_AUTO_TEST_CASE(CommunicateInGlobalViewDoesNothing)
     BOOST_CHECK_NO_THROW(grid.communicate(handle, Dune::All_All_Interface, Dune::ForwardCommunication));
     BOOST_CHECK(std::all_of(values.begin(), values.end(), [](int v) { return v == 7; }));
 }
+
+namespace
+{
+
+// As in the simulators, only rank 0 holds the global grid. The other ranks
+// have a grid without cells.
+std::unique_ptr<Grid> makeGridOnRoot()
+{
+    if (Dune::MPIHelper::getCommunication().rank() == 0) {
+        return std::make_unique<Grid>(std::vector<int>{nx, ny, 1}, std::vector<double>{1.0, 1.0, 1.0});
+    }
+    Grid::UnstructuredGridPtr empty(allocate_grid(3, 0, 0, 0, 0, 0));
+    empty->cartdims[0] = nx;
+    empty->cartdims[1] = ny;
+    empty->cartdims[2] = 1;
+    return std::make_unique<Grid>(std::move(empty));
+}
+
+// Moves variable sized data per cell: gather() reads the values of the cell in
+// `from`, and scatter() writes the received values to the cell in `to`. Which
+// grid view the cells are of is up to the caller.
+class FromToHandle : public Dune::CommDataHandleIF<FromToHandle, int>
+{
+public:
+    FromToHandle(const Grid& grid,
+                 std::vector<std::vector<int>>& from,
+                 std::vector<std::vector<int>>& to)
+        : grid_(grid), from_(from), to_(to)
+    {}
+
+    bool contains(int, int codim) const { return codim == 0; }
+    bool fixedSize(int, int) const { return false; }
+
+    template <class Entity>
+    std::size_t size(const Entity& entity) const
+    {
+        return from_[grid_.leafIndexSet().index(entity)].size();
+    }
+
+    template <class Buffer, class Entity>
+    void gather(Buffer& buffer, const Entity& entity) const
+    {
+        for (const int v : from_[grid_.leafIndexSet().index(entity)]) {
+            buffer.write(v);
+        }
+    }
+
+    template <class Buffer, class Entity>
+    void scatter(Buffer& buffer, const Entity& entity, std::size_t n)
+    {
+        auto& target = to_[grid_.leafIndexSet().index(entity)];
+        target.resize(n);
+        for (auto& v : target) {
+            buffer.read(v);
+        }
+    }
+
+private:
+    const Grid& grid_;
+    std::vector<std::vector<int>>& from_;
+    std::vector<std::vector<int>>& to_;
+};
+
+// The data of a global cell: 1 + c % 3 values, which depend on the cell and a tag.
+std::vector<int> cellValues(const int globalCell, const int tag)
+{
+    std::vector<int> v(1 + globalCell % 3);
+    for (std::size_t k = 0; k < v.size(); ++k) {
+        v[k] = tag + 10 * globalCell + static_cast<int>(k);
+    }
+    return v;
+}
+
+} // anonymous namespace
+
+BOOST_AUTO_TEST_CASE(ScatterDataFromRoot)
+{
+    auto grid = makeGridOnRoot();
+    const int rank = grid->comm().rank();
+    if (grid->comm().size() == 1) {
+        return;
+    }
+    BOOST_REQUIRE(grid->loadBalance(makePartition(*grid), true));
+
+    // Rank 0 has the data of the global grid; the other ranks have none.
+    grid->switchToGlobalView();
+    std::vector<std::vector<int>> globalValues(rank == 0 ? nx * ny : 0);
+    for (int c = 0; c < static_cast<int>(globalValues.size()); ++c) {
+        globalValues[c] = cellValues(c, 100000);
+    }
+    std::vector<std::vector<int>> localValues;
+
+    grid->switchToDistributedView();
+    localValues.resize(grid->size(0));
+    grid->switchToGlobalView();
+    FromToHandle handle(*grid, globalValues, localValues);
+    grid->scatterData(handle);
+
+    // The view is as it was before.
+    BOOST_CHECK(!grid->distributedViewActive());
+    grid->switchToDistributedView();
+    BOOST_REQUIRE_EQUAL(static_cast<int>(localValues.size()), grid->size(0));
+    for (int c = 0; c < grid->size(0); ++c) {
+        BOOST_CHECK(localValues[c] == cellValues(globalCellOf(*grid, c), 100000));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(GatherDataToRoot)
+{
+    auto grid = makeGridOnRoot();
+    const int rank = grid->comm().rank();
+    if (grid->comm().size() == 1) {
+        return;
+    }
+    BOOST_REQUIRE(grid->loadBalance(makePartition(*grid), true));
+
+    // Owned cells have data, overlap cells do not.
+    std::vector<std::vector<int>> localValues(grid->size(0));
+    for (int c = 0; c < grid->size(0); ++c) {
+        if (grid->entityPartitionType<0>(c) == Dune::InteriorEntity) {
+            localValues[c] = cellValues(globalCellOf(*grid, c), 200000);
+        }
+    }
+    grid->switchToGlobalView();
+    std::vector<std::vector<int>> globalValues(rank == 0 ? nx * ny : 0);
+    grid->switchToDistributedView();
+
+    FromToHandle handle(*grid, localValues, globalValues);
+    grid->gatherData(handle);
+
+    BOOST_CHECK(grid->distributedViewActive());
+    if (rank == 0) {
+        for (int c = 0; c < nx * ny; ++c) {
+            BOOST_CHECK(globalValues[c] == cellValues(c, 200000));
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(LoadBalanceWithData)
+{
+    auto grid = makeGridOnRoot();
+    const int rank = grid->comm().rank();
+    if (grid->comm().size() == 1) {
+        return;
+    }
+
+    std::vector<std::vector<int>> globalValues(rank == 0 ? nx * ny : 0);
+    for (int c = 0; c < static_cast<int>(globalValues.size()); ++c) {
+        globalValues[c] = cellValues(c, 300000);
+    }
+    std::vector<std::vector<int>> localValues;
+
+    // The distributed grid does not exist yet, so there is room for all cells.
+    localValues.resize(nx * ny);
+    FromToHandle handle(*grid, globalValues, localValues);
+    BOOST_REQUIRE(grid->loadBalance(handle, makePartition(*grid), true));
+    BOOST_CHECK(grid->distributedViewActive());
+
+    for (int c = 0; c < grid->size(0); ++c) {
+        BOOST_CHECK(localValues[c] == cellValues(globalCellOf(*grid, c), 300000));
+    }
+}
+
+#else
+
+// The distribution needs MPI, so there is nothing to test without it.
+BOOST_AUTO_TEST_CASE(RequiresMpi)
+{
+}
+
+#endif // HAVE_MPI

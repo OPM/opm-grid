@@ -20,9 +20,41 @@
 #define DUNE_POLYHEDRALGRID_ENTITY2INDEXDATAHANDLE_HH
 
 #include <cstddef>
+#include <iterator>
+#include <vector>
 
 namespace Dune
 {
+
+  /// \brief Buffer for the data of one entity, as used by the data handles
+  ///        when data is moved between the global and the distributed view.
+  template< class T >
+  class PolyhedralGridMoveBuffer
+  {
+  public:
+    typedef typename std::vector< T >::const_iterator const_iterator;
+
+    /// An empty buffer that can hold the given number of values to write.
+    explicit PolyhedralGridMoveBuffer ( const std::size_t size )
+      : buffer_( size ), position_( 0 )
+    {}
+
+    /// A buffer to read the values in the given range from.
+    template< class Iterator >
+    PolyhedralGridMoveBuffer ( Iterator begin, Iterator end )
+      : buffer_( begin, end ), position_( 0 )
+    {}
+
+    void read ( T& value ) { value = buffer_[ position_++ ]; }
+    void write ( const T& value ) { buffer_[ position_++ ] = value; }
+
+    const_iterator begin () const { return buffer_.begin(); }
+    const_iterator end () const { return buffer_.end(); }
+
+  private:
+    std::vector< T > buffer_;
+    std::size_t position_;
+  };
 
   /// \brief Adapts a Dune data handle, which works on entities, to the
   ///        index based interface of VariableSizeCommunicator.

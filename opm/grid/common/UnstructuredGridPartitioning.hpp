@@ -102,10 +102,13 @@ struct PackedGrid
 
 /// Flatten a grid.
 ///
-/// \param grid     The grid to pack.
-/// \param isOwner  For each cell whether the process owns it (1) or whether
-///                 it is an overlap cell (0).
-PackedGrid packGrid(const UnstructuredGrid& grid, const std::vector<char>& isOwner);
+/// \param grid        The grid to pack.
+/// \param isOwner     For each cell whether the process owns it (1) or whether
+///                    it is an overlap cell (0).
+/// \param globalCells For each cell its index in the global grid.
+PackedGrid packGrid(const UnstructuredGrid& grid,
+                    const std::vector<char>& isOwner,
+                    const std::vector<int>& globalCells);
 
 /// A grid together with the ownership of its cells.
 struct OwnedGrid
@@ -113,6 +116,11 @@ struct OwnedGrid
     std::unique_ptr<UnstructuredGrid, GridDeleter> grid;
     /// For each cell whether the process owns it (1) or whether it is an overlap cell (0).
     std::vector<char> isOwner;
+    /// For each cell its index in the global grid.
+    std::vector<int> globalCells;
+    /// Only on rank 0 after distributeGrid(): for each rank the global index
+    /// of each of its cells, in the order of the cells of that rank.
+    std::vector<std::vector<int>> cellsOfRank;
 };
 
 /// Inverse of packGrid().

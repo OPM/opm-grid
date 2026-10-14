@@ -947,6 +947,8 @@ namespace Dune
                                                              parts, overlapLayers, ownersFirst, comm_ );
       setDistributedView( UnstructuredGridPtr( distributed.grid.release() ),
                           std::move( distributed.isOwner ), overlapLayers );
+      distributedView_.globalCellIndex = std::move( distributed.globalCells );
+      rankCells_ = std::move( distributed.cellsOfRank );
       switchToDistributedView();
       return true;
 #else
@@ -956,6 +958,34 @@ namespace Dune
       static_cast<void>( overlapLayers );
       return false;
 #endif
+    }
+
+    /// \brief Distribute the grid and the data attached to it.
+    ///
+    /// Distributes the grid as loadBalance(parts, ...) does, and then moves the
+    /// data of the data handle to the cells of the distributed grid with
+    /// scatterData().
+    ///
+    /// \param data           The data handle that describes the data.
+    /// \param parts          For each cell of the global grid the rank that owns it.
+    ///                       Only needed on rank 0.
+    /// \param ownersFirst    Order owner cells before overlap cells.
+    /// \param addCornerCells Adding corner cells to the overlap is not supported.
+    /// \param overlapLayers  Number of overlap layers.
+    /// \return true if the grid was distributed
+    template< class DataHandle >
+    bool loadBalance ( DataHandle& data,
+                       const std::vector< int >& parts,
+                       bool ownersFirst = false,
+                       bool addCornerCells = false,
+                       int overlapLayers = 1 )
+    {
+      const bool distributed = loadBalance( parts, ownersFirst, addCornerCells, overlapLayers );
+      if( distributed )
+      {
+        scatterData( data );
+      }
+      return distributed;
     }
 
     /** \brief rebalance the load each process has to handle
@@ -1080,19 +1110,168 @@ namespace Dune
     /// distributed views.
     //@{
     ///
-    /// \brief Moves data from the global (all data on process) view to the distributed view.
+    /// \brief Moves data from the global view, which is on rank 0, to the distributed views.
     ///
-    /// This method does not do communication but assumes that the global grid
-    /// is present on every process and simply copies data to the distributed view.
-    /// \tparam DataHandle The type of the data handle describing the data and responsible for
-    ///         gathering and scattering the data.
+    /// The data handle is asked to gather the data of the cells of the global
+    /// grid on rank 0, and to scatter them to the cells of the distributed
+    /// grid on all ranks, overlap cells included. Hence gather() is called
+    /// while the global view is the active one and scatter() while the
+    /// distributed view is, and the handle must not rely on anything else.
+    /// This is a collective operation. The active view is restored.
+    ///
+    /// \tparam DataHandle The type of the data handle describing the data and
+    ///         responsible for gathering and scattering the data.
     /// \param handle The data handle describing the data and responsible for
     ///         gathering and scattering the data.
     template<class DataHandle>
     void scatterData([[maybe_unused]] DataHandle& handle) const
     {
-        OPM_THROW(std::runtime_error, "ScatterData not implemented for polyhedral grid!");
+#if HAVE_MPI
+      using DataType = typename DataHandle::DataType;
+      if( ! hasDistributedView_ || ! handle.contains( dim, 0 ) )
+      {
+        return;
+      }
+      // The view is switched temporarily, which does not change the grid as seen from outside.
+      auto& self = const_cast< PolyhedralGrid& >( *this );
+      const bool wasDistributed = distributedViewActive_;
+      const int size = comm_.size();
+
+      // Rank 0 collects the data for every rank.
+      std::vector< int > numCells( size, 0 ), numData( size, 0 ), cellDispl( size, 0 ), dataDispl( size, 0 );
+      std::vector< int > cellSizes;
+      std::vector< DataType > data;
+      if( comm_.rank() == 0 )
+      {
+        self.switchToGlobalView();
+        for( int rank = 0; rank < size; ++rank )
+        {
+          cellDispl[ rank ] = static_cast< int >( cellSizes.size() );
+          dataDispl[ rank ] = static_cast< int >( data.size() );
+          for( const int cell : rankCells_[ rank ] )
+          {
+            const auto entity = this->entity( typename Codim< 0 >::EntitySeed( cell ) );
+            const std::size_t n = handle.size( entity );
+            PolyhedralGridMoveBuffer< DataType > buffer( n );
+            handle.gather( buffer, entity );
+            cellSizes.push_back( static_cast< int >( n ) );
+            data.insert( data.end(), buffer.begin(), buffer.end() );
+          }
+          numCells[ rank ] = static_cast< int >( rankCells_[ rank ].size() );
+          numData[ rank ] = static_cast< int >( data.size() ) - dataDispl[ rank ];
+        }
+      }
+
+      int myNumCells = 0, myNumData = 0;
+      comm_.scatter( numCells.data(), &myNumCells, 1, 0 );
+      comm_.scatter( numData.data(), &myNumData, 1, 0 );
+      std::vector< int > mySizes( myNumCells );
+      std::vector< DataType > myData( myNumData );
+      comm_.scatterv( cellSizes.data(), numCells.data(), cellDispl.data(), mySizes.data(), myNumCells, 0 );
+      comm_.scatterv( data.data(), numData.data(), dataDispl.data(), myData.data(), myNumData, 0 );
+
+      // Every rank, rank 0 included, receives its cells in the distributed view.
+      self.switchToDistributedView();
+      std::size_t position = 0;
+      for( int cell = 0; cell < myNumCells; ++cell )
+      {
+        const auto entity = this->entity( typename Codim< 0 >::EntitySeed( cell ) );
+        PolyhedralGridMoveBuffer< DataType > buffer( myData.begin() + position, myData.begin() + position + mySizes[ cell ] );
+        handle.scatter( buffer, entity, mySizes[ cell ] );
+        position += mySizes[ cell ];
+      }
+      if( ! wasDistributed )
+      {
+        self.switchToGlobalView();
+      }
+#endif
     }
+
+    /// \brief Moves data from the distributed views to the global view on rank 0.
+    ///
+    /// The data handle is asked to gather the data of the owned cells of the
+    /// distributed grid on each rank, and to scatter them to the cells of the
+    /// global grid on rank 0. Hence gather() is called while the distributed
+    /// view is the active one and scatter() while the global view is. This is
+    /// a collective operation. The active view is restored.
+    ///
+    /// \param handle The data handle describing the data and responsible for
+    ///         gathering and scattering the data.
+    template<class DataHandle>
+    void gatherData([[maybe_unused]] DataHandle& handle) const
+    {
+#if HAVE_MPI
+      using DataType = typename DataHandle::DataType;
+      if( ! hasDistributedView_ || ! handle.contains( dim, 0 ) )
+      {
+        return;
+      }
+      auto& self = const_cast< PolyhedralGrid& >( *this );
+      const bool wasDistributed = distributedViewActive_;
+      const int size = comm_.size();
+
+      // Each rank collects the data of its owned cells.
+      self.switchToDistributedView();
+      std::vector< int > globalIndex, cellSizes;
+      std::vector< DataType > data;
+      for( int cell = 0; cell < grid_->number_of_cells; ++cell )
+      {
+        if( entityPartitionType< 0 >( cell ) != InteriorEntity )
+        {
+          continue;
+        }
+        const auto entity = this->entity( typename Codim< 0 >::EntitySeed( cell ) );
+        const std::size_t n = handle.size( entity );
+        PolyhedralGridMoveBuffer< DataType > buffer( n );
+        handle.gather( buffer, entity );
+        globalIndex.push_back( globalCellIndex_[ cell ] );
+        cellSizes.push_back( static_cast< int >( n ) );
+        data.insert( data.end(), buffer.begin(), buffer.end() );
+      }
+
+      // Rank 0 receives everything.
+      const int myNumCells = static_cast< int >( globalIndex.size() );
+      const int myNumData = static_cast< int >( data.size() );
+      std::vector< int > numCells( size ), numData( size ), cellDispl( size, 0 ), dataDispl( size, 0 );
+      comm_.gather( &myNumCells, numCells.data(), 1, 0 );
+      comm_.gather( &myNumData, numData.data(), 1, 0 );
+      int totalCells = 0, totalData = 0;
+      for( int rank = 0; rank < size; ++rank )
+      {
+        cellDispl[ rank ] = totalCells;
+        dataDispl[ rank ] = totalData;
+        totalCells += numCells[ rank ];
+        totalData += numData[ rank ];
+      }
+      std::vector< int > allIndex( comm_.rank() == 0 ? totalCells : 0 ), allSizes( allIndex.size() );
+      std::vector< DataType > allData( comm_.rank() == 0 ? totalData : 0 );
+      comm_.gatherv( globalIndex.data(), myNumCells, allIndex.data(), numCells.data(), cellDispl.data(), 0 );
+      comm_.gatherv( cellSizes.data(), myNumCells, allSizes.data(), numCells.data(), cellDispl.data(), 0 );
+      comm_.gatherv( data.data(), myNumData, allData.data(), numData.data(), dataDispl.data(), 0 );
+
+      if( comm_.rank() == 0 )
+      {
+        self.switchToGlobalView();
+        std::size_t position = 0;
+        for( int i = 0; i < totalCells; ++i )
+        {
+          const auto entity = this->entity( typename Codim< 0 >::EntitySeed( allIndex[ i ] ) );
+          PolyhedralGridMoveBuffer< DataType > buffer( allData.begin() + position, allData.begin() + position + allSizes[ i ] );
+          handle.scatter( buffer, entity, allSizes[ i ] );
+          position += allSizes[ i ];
+        }
+      }
+      if( wasDistributed )
+      {
+        self.switchToDistributedView();
+      }
+      else
+      {
+        self.switchToGlobalView();
+      }
+#endif
+    }
+
 
   protected:
     UnstructuredGridType*
@@ -2121,6 +2300,7 @@ namespace Dune
       size_t nBndSegments = 0;
       std::vector< char > isOwner;
       int overlapLayers = 0;
+      std::vector< int > globalCellIndex;
 #if HAVE_MPI
       std::unique_ptr< CellCommunicationType > cellComm;
       std::vector< Dune::Interface > cellInterfaces;
@@ -2139,6 +2319,7 @@ namespace Dune
       std::swap( nBndSegments_, other.nBndSegments );
       std::swap( isOwner_, other.isOwner );
       std::swap( overlapLayers_, other.overlapLayers );
+      std::swap( globalCellIndex_, other.globalCellIndex );
 #if HAVE_MPI
       std::swap( cellComm_, other.cellComm );
       std::swap( cellInterfaces_, other.cellInterfaces );
@@ -2167,6 +2348,10 @@ namespace Dune
     // For each cell of the active view whether it is owned (empty: all cells are owned).
     std::vector< char > isOwner_;
     int overlapLayers_ = 0;
+    // For each cell of the distributed view its index in the global view.
+    std::vector< int > globalCellIndex_;
+    // Rank 0 only: for each rank the global indices of its cells, in the order of the distributed view.
+    std::vector< std::vector< int > > rankCells_;
 #if HAVE_MPI
     // Created on demand in the global view, always present in the distributed view.
     mutable std::unique_ptr< CellCommunicationType > cellComm_;
