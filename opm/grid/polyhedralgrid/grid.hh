@@ -632,7 +632,7 @@ namespace Dune
      */
     int overlapSize ( int /* codim */) const
     {
-      return 0;
+      return overlapLayers_;
     }
 
     /** \brief obtain size of ghost region for the leaf grid
@@ -651,7 +651,27 @@ namespace Dune
      */
     int overlapSize ( int /* level */, int /* codim */ ) const
     {
-      return 0;
+      return overlapLayers_;
+    }
+
+    /** \brief obtain the partition type of an entity of the active view
+     *
+     *  Cells owned by this process are interior, the other cells of a
+     *  distributed view are overlap cells. All other entities are interior.
+     *
+     *  \param[in]  index  index of the entity
+     */
+    template< int codim >
+    PartitionType entityPartitionType ( const int index ) const
+    {
+      if constexpr( codim == 0 )
+      {
+        return ( isOwner_.empty() || isOwner_[ index ] ) ? InteriorEntity : OverlapEntity;
+      }
+      else
+      {
+        return InteriorEntity;
+      }
     }
 
     /** \brief obtain size of ghost region for a grid level
@@ -765,7 +785,9 @@ namespace Dune
     /// \param isOwner  For each cell whether this process owns it (nonzero) or
     ///                 whether it is an overlap cell (zero). By default all
     ///                 cells are owned.
-    void setDistributedView( UnstructuredGridPtr&& gridPtr, std::vector< char > isOwner = {} )
+    /// \param overlapLayers  Number of layers of overlap cells. By default 1 if
+    ///                 there are cells that are not owned, otherwise 0.
+    void setDistributedView( UnstructuredGridPtr&& gridPtr, std::vector< char > isOwner = {}, int overlapLayers = -1 )
     {
       const bool wasDistributed = distributedViewActive_;
       switchToGlobalView();
@@ -778,6 +800,8 @@ namespace Dune
       init();
       isOwner_ = std::move( isOwner );
       isOwner_.resize( size( 0 ), 1 );
+      overlapLayers_ = overlapLayers >= 0 ? overlapLayers
+                       : ( std::count( isOwner_.begin(), isOwner_.end(), 0 ) > 0 ? 1 : 0 );
 #if HAVE_MPI
       setupCellCommunication( true );
 #endif
@@ -896,7 +920,7 @@ namespace Dune
       auto distributed = Dune::unstructured::distributeGrid( comm_.rank() == 0 ? grid_ : nullptr,
                                                              parts, overlapLayers, ownersFirst, comm_ );
       setDistributedView( UnstructuredGridPtr( distributed.grid.release() ),
-                          std::move( distributed.isOwner ) );
+                          std::move( distributed.isOwner ), overlapLayers );
       switchToDistributedView();
       return true;
 #else
@@ -2054,6 +2078,7 @@ namespace Dune
       std::vector< GlobalCoordinate > unitOuterNormals;
       size_t nBndSegments = 0;
       std::vector< char > isOwner;
+      int overlapLayers = 0;
 #if HAVE_MPI
       std::unique_ptr< CellCommunicationType > cellComm;
 #endif
@@ -2070,6 +2095,7 @@ namespace Dune
       std::swap( unitOuterNormals_, other.unitOuterNormals );
       std::swap( nBndSegments_, other.nBndSegments );
       std::swap( isOwner_, other.isOwner );
+      std::swap( overlapLayers_, other.overlapLayers );
 #if HAVE_MPI
       std::swap( cellComm_, other.cellComm );
 #endif
@@ -2096,6 +2122,7 @@ namespace Dune
 
     // For each cell of the active view whether it is owned (empty: all cells are owned).
     std::vector< char > isOwner_;
+    int overlapLayers_ = 0;
 #if HAVE_MPI
     // Created on demand in the global view, always present in the distributed view.
     mutable std::unique_ptr< CellCommunicationType > cellComm_;
