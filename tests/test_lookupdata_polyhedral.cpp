@@ -159,8 +159,11 @@ BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
         "4*1 /\n"
         "DZ\n"
         "16*1 /\n"
+        "BOX\n"
+        "1 4 1 4 1 1 /\n"
         "TOPS\n"
-        "16*100.0 /\n";
+        "16*100.0 /\n"
+        "ENDBOX\n";
 
     Opm::Parser parser;
     auto deck = parser.parseString(deckString);

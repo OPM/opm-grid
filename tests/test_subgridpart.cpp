@@ -194,8 +194,11 @@ DYV
 2*1 /
 DZ
 8*1 /
+BOX
+1 2 1 2 1 1 /
 TOPS
 4*100.0 /
+ENDBOX
 )";
 
     const auto deck = Opm::Parser{}.parseString(deckString);
