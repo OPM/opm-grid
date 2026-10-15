@@ -22,8 +22,24 @@
 
 #include <opm/common/ErrorMacros.hpp>
 
+#if defined(HAVE_METIS) && HAVE_MPI
+// METIS installed as part of Scotch needs some of its definitions.
+#if IS_SCOTCH_METIS_HEADER
+extern "C" {
+#include <scotch.h>
+}
+#ifndef SCOTCH_METIS_VERSION
+#define SCOTCH_METIS_VERSION 5
+#endif
+#endif
+extern "C" {
+#include <metis.h>
+}
+#endif
+
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <numeric>
@@ -443,6 +459,85 @@ OwnedGrid distributeGrid(const UnstructuredGrid* grid,
     auto result = unpackGrid(ints, doubles);
     result.cellsOfRank = std::move(cellsOfRank);
     return result;
+}
+
+bool metisAvailable()
+{
+#if defined(HAVE_METIS) && HAVE_MPI
+    return true;
+#else
+    return false;
+#endif
+}
+
+std::vector<int> partitionWithMetis([[maybe_unused]] const UnstructuredGrid& grid,
+                                    [[maybe_unused]] const int numParts,
+                                    [[maybe_unused]] const double imbalanceTol)
+{
+#if defined(HAVE_METIS) && HAVE_MPI
+    const int numCells = grid.number_of_cells;
+    if (numParts < 1 || numParts > numCells) {
+        OPM_THROW(std::invalid_argument,
+                  "partitionWithMetis(): the number of parts must be between one and the number of cells.");
+    }
+    if (numParts == 1) {
+        return std::vector<int>(numCells, 0);
+    }
+
+    // The graph of the cells. Cells that share more than one face get one edge, weighted by the number of faces.
+#if IS_SCOTCH_METIS_HEADER
+    using Index = SCOTCH_Num;
+#elif defined(IDXTYPEWIDTH)
+    using Index = ::idx_t;
+#else
+    using Index = int;
+#endif
+    std::vector<Index> xadj(numCells + 1, 0);
+    std::vector<Index> adjncy;
+    std::vector<Index> adjwgt;
+    std::vector<int> neighbors;
+    for (int cell = 0; cell < numCells; ++cell) {
+        neighbors.clear();
+        for (auto pos = grid.cell_facepos[cell]; pos < grid.cell_facepos[cell + 1]; ++pos) {
+            const int other = neighbor(grid, grid.cell_faces[pos], cell);
+            if (other >= 0 && other != cell) {
+                neighbors.push_back(other);
+            }
+        }
+        std::sort(neighbors.begin(), neighbors.end());
+        for (std::size_t i = 0; i < neighbors.size();) {
+            std::size_t j = i;
+            while (j < neighbors.size() && neighbors[j] == neighbors[i]) {
+                ++j;
+            }
+            adjncy.push_back(neighbors[i]);
+            adjwgt.push_back(static_cast<Index>(j - i));
+            i = j;
+        }
+        xadj[cell + 1] = static_cast<Index>(adjncy.size());
+    }
+
+    Index options[METIS_NOPTIONS];
+    METIS_SetDefaultOptions(options);
+    // The imbalance is given in parts per thousand above one.
+    options[METIS_OPTION_UFACTOR] = std::max<Index>(1, static_cast<Index>(std::lround((imbalanceTol - 1.0) * 1000.0)));
+
+    Index numVertices = numCells;
+    Index numConstraints = 1;
+    Index numPartsMetis = numParts;
+    Index objective = 0;
+    std::vector<Index> part(numCells, 0);
+    const int status = METIS_PartGraphKway(&numVertices, &numConstraints, xadj.data(), adjncy.data(),
+                                           /* vwgt = */ nullptr, /* vsize = */ nullptr, adjwgt.data(),
+                                           &numPartsMetis, /* tpwgts = */ nullptr, /* ubvec = */ nullptr,
+                                           options, &objective, part.data());
+    if (status != METIS_OK) {
+        OPM_THROW(std::runtime_error, "partitionWithMetis(): METIS failed to partition the grid.");
+    }
+    return std::vector<int>(part.begin(), part.end());
+#else
+    OPM_THROW(std::runtime_error, "partitionWithMetis(): the grid library was built without METIS.");
+#endif
 }
 
 } // namespace Dune::unstructured

@@ -146,6 +146,25 @@ OwnedGrid distributeGrid(const UnstructuredGrid* grid,
                          bool ownersFirst,
                          const Dune::Communication<Dune::MPIHelper::MPICommunicator>& comm);
 
+/// Whether partitionWithMetis() is available, i.e. whether the library was built with METIS.
+bool metisAvailable();
+
+/// Partition the cells of a grid with METIS, such that the parts have about
+/// the same number of cells and as few faces as possible are between cells of
+/// different parts.
+///
+/// There is no communication, call it on one process only. The graph has the
+/// cells as vertices, and an edge for each pair of cells that share a face,
+/// weighted by the number of faces they share.
+///
+/// \param grid           The grid.
+/// \param numParts       The number of parts, which cannot exceed the number of cells.
+/// \param imbalanceTol   Allowed ratio of the largest part to the average size, for instance 1.1.
+/// \return For each cell the part it belongs to. Throws if metisAvailable() is false.
+std::vector<int> partitionWithMetis(const UnstructuredGrid& grid,
+                                    int numParts,
+                                    double imbalanceTol = 1.1);
+
 } // namespace Dune::unstructured
 
 #endif // OPM_UNSTRUCTUREDGRIDPARTITIONING_HEADER_INCLUDED
