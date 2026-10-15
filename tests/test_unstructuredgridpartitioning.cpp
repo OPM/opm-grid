@@ -201,3 +201,59 @@ BOOST_AUTO_TEST_CASE(PackUnpackRoundtrip)
     broken.pop_back();
     BOOST_CHECK_THROW(unpackGrid(broken, packed.doubles), std::invalid_argument);
 }
+
+namespace
+{
+
+// The number of faces between cells of different parts.
+int edgeCut(const UnstructuredGrid& g, const std::vector<int>& part)
+{
+    int cut = 0;
+    for (int f = 0; f < g.number_of_faces; ++f) {
+        const int a = g.face_cells[2 * f];
+        const int b = g.face_cells[2 * f + 1];
+        cut += (a >= 0 && b >= 0 && part[a] != part[b]);
+    }
+    return cut;
+}
+
+} // anonymous namespace
+
+BOOST_AUTO_TEST_CASE(MetisPartition)
+{
+    if (!metisAvailable()) {
+        BOOST_CHECK_THROW(partitionWithMetis(*GridPtr(create_grid_cart3d(2, 2, 2)).grid, 2), std::runtime_error);
+        return;
+    }
+
+    GridPtr g(create_grid_cart3d(8, 6, 4));
+    const auto& G = *g;
+    const int numCells = G.number_of_cells;
+
+    for (const int numParts : {1, 2, 4, 5}) {
+        const auto part = partitionWithMetis(G, numParts);
+        BOOST_REQUIRE_EQUAL(static_cast<int>(part.size()), numCells);
+
+        std::vector<int> size(numParts, 0);
+        for (const int p : part) {
+            BOOST_REQUIRE(p >= 0 && p < numParts);
+            ++size[p];
+        }
+        for (const int s : size) {
+            BOOST_CHECK(s > 0);
+            BOOST_CHECK(s <= 1.15 * numCells / numParts + 1);
+        }
+
+        if (numParts > 1) {
+            // Better than cutting the cells in consecutive blocks.
+            std::vector<int> blocks(numCells);
+            for (int c = 0; c < numCells; ++c) {
+                blocks[c] = c * numParts / numCells;
+            }
+            BOOST_CHECK_LE(edgeCut(G, part), edgeCut(G, blocks));
+        }
+    }
+
+    BOOST_CHECK_THROW(partitionWithMetis(G, 0), std::invalid_argument);
+    BOOST_CHECK_THROW(partitionWithMetis(G, numCells + 1), std::invalid_argument);
+}
