@@ -985,6 +985,102 @@ namespace Dune
       return 0;
     }
 
+    /** \brief The center of a side of a cell, defined as for the CpGrid
+     *
+     *  This is the average of the four corners of the cell on that side, as CpGrid::faceCenterEcl()
+     *  gives. At a fault, where a side of a cell consists of several faces, it is the center of the
+     *  whole side and not of the face that the cell shares with a neighbor. Only for grids in
+     *  three dimensions with cells that have the corners of a cube.
+     *
+     *  \param[in]  cell  index of the cell
+     *  \param[in]  side  the side of the cell, numbered as the faces of the reference cube
+     *                    (the x direction first: 0 and 1 are the sides in the x direction)
+     */
+    GlobalCoordinate faceCenterEcl ( const int cell, const int side ) const
+    {
+      if( dim != 3 || cellVertices_[ cell ].size() != 8 )
+      {
+        OPM_THROW(std::logic_error, "faceCenterEcl is only available for cells with eight corners.");
+      }
+      // The corners of each side of the reference cube
+      static const int sideCorners[ 6 ][ 4 ] = { {0, 2, 4, 6}, {1, 3, 5, 7},
+                                                 {0, 1, 4, 5}, {2, 3, 6, 7},
+                                                 {0, 1, 2, 3}, {4, 5, 6, 7} };
+      GlobalCoordinate center( 0 );
+      for( int i=0; i<4; ++i )
+      {
+        center += copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate::dimension * cellVertices_[ cell ][ sideCorners[ side ][ i ] ] );
+      }
+      center /= 4;
+      return center;
+    }
+
+    /** \brief As above, for use where CpGrid::faceCenterEcl() takes the intersection as well. */
+    template< class Intersection >
+    GlobalCoordinate faceCenterEcl ( const int cell, const int side, const Intersection& ) const
+    {
+      return faceCenterEcl( cell, side );
+    }
+
+    /** \brief The area normal of a face, defined as for the CpGrid
+     *
+     *  This follows CpGrid::faceAreaNormalEcl(): the vector product of the diagonals of a face with
+     *  four nodes, which differs from the area weighted normal if the face is not plane.
+     *  The sign is not defined.
+     *
+     *  \param[in]  face  index of the face
+     */
+    GlobalCoordinate faceAreaNormalEcl ( const int face ) const
+    {
+      const int first = grid_.face_nodepos[ face ];
+      const int numNodes = grid_.face_nodepos[ face + 1 ] - first;
+      auto node = [ this, first ]( const int i )
+      {
+        return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate::dimension * grid_.face_nodes[ first + i ] );
+      };
+      auto cross = []( const GlobalCoordinate& a, const GlobalCoordinate& b )
+      {
+        GlobalCoordinate c( 0 );
+        if( dimworld == 3 )
+        {
+          c[ 0 ] = a[ 1 ] * b[ 2 ] - a[ 2 ] * b[ 1 ];
+          c[ 1 ] = a[ 2 ] * b[ 0 ] - a[ 0 ] * b[ 2 ];
+          c[ 2 ] = a[ 0 ] * b[ 1 ] - a[ 1 ] * b[ 0 ];
+        }
+        return c;
+      };
+
+      GlobalCoordinate areaNormal( 0 );
+      if( dimworld != 3 || numNodes < 3 )
+      {
+        return areaNormal;
+      }
+      if( numNodes == 3 )
+      {
+        areaNormal = cross( node( 0 ) - node( 2 ), node( 1 ) - node( 2 ) );
+        areaNormal *= 0.5;
+      }
+      else if( numNodes == 4 )
+      {
+        areaNormal = cross( node( 0 ) - node( 2 ), node( 1 ) - node( 3 ) );
+        areaNormal *= 0.5;
+      }
+      else
+      {
+        const int h = ( numNodes - 1 ) / 2;
+        const int k = ( numNodes % 2 ) ? 0 : numNodes - 1;
+        // first the quadrilaterals
+        for( int i = 1; i < h; ++i )
+        {
+          areaNormal += cross( node( 2*i ) - node( 0 ), node( 2*i + 1 ) - node( 2*i - 1 ) );
+        }
+        // and then the last triangle or quadrilateral
+        areaNormal += cross( node( 2*h ) - node( 0 ), node( k ) - node( 2*h - 1 ) );
+        areaNormal *= 0.5;
+      }
+      return areaNormal;
+    }
+
     template <class EntitySeed>
     GlobalCoordinate
     corner ( const EntitySeed& seed, const int i ) const
