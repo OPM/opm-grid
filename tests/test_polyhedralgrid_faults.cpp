@@ -28,11 +28,15 @@
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
+#include "CornerPointTestGrid.hpp"
+
 #include <array>
 #include <cmath>
 #include <vector>
 
 using Grid = Dune::PolyhedralGrid<3, 3>;
+using Opm::TestGrids::CornerPointGrid;
+using Opm::TestGrids::layersWithShift;
 
 namespace
 {
@@ -44,53 +48,6 @@ struct MpiFixture
         int argc = boost::unit_test::framework::master_test_suite().argc;
         char** argv = boost::unit_test::framework::master_test_suite().argv;
         Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-// A corner-point grid with vertical pillars at the integer positions x = 0..nx, y = 0..ny.
-// The depth of the corner (ix, jy, zs) of the cell (i, j, k), where ix and jy tell which of
-// the pillars of the cell and zs whether it is the top or the bottom, is given by depth().
-struct CornerPointGrid
-{
-    std::array<int, 3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    // For each cell its eight corners, in the order of the Dune reference cube: ix + 2 * jy + 4 * zs.
-    std::vector<std::array<double, 3>> expectedCorners;
-
-    template <class Depth>
-    CornerPointGrid(const int nx, const int ny, const int nz, Depth depth)
-        : dims{nx, ny, nz}
-    {
-        for (int py = 0; py <= ny; ++py) {
-            for (int px = 0; px <= nx; ++px) {
-                for (const double z : {-10.0, 10.0}) {
-                    coord.insert(coord.end(), {double(px), double(py), z});
-                }
-            }
-        }
-
-        // The order of ZCORN: layers from top to bottom, within each the rows of corners in y,
-        // and within each row the corners in x. Each cell has two corners in each direction.
-        zcorn.resize(8 * nx * ny * nz);
-        expectedCorners.resize(8 * nx * ny * nz);
-        for (int k = 0; k < nz; ++k) {
-            for (int zs = 0; zs < 2; ++zs) {
-                for (int j = 0; j < ny; ++j) {
-                    for (int jy = 0; jy < 2; ++jy) {
-                        for (int i = 0; i < nx; ++i) {
-                            for (int ix = 0; ix < 2; ++ix) {
-                                const double z = depth(i, j, k, zs, ix, jy);
-                                const std::size_t index = ((2 * k + zs) * 2 * ny + 2 * j + jy) * 2 * nx + 2 * i + ix;
-                                zcorn[index] = z;
-                                const std::size_t cell = i + nx * (j + ny * k);
-                                expectedCorners[8 * cell + ix + 2 * jy + 4 * zs] = {double(i + ix), double(j + jy), z};
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 };
 
@@ -123,13 +80,6 @@ double totalVolume(const Grid& grid)
     return volume;
 }
 
-// Layers of unit thickness, with the corners moved down by shift(i, j, k, ix, jy).
-template <class Shift>
-auto layersWithShift(Shift shift)
-{
-    return [shift](int i, int j, int k, int zs, int ix, int jy) { return k + zs + shift(i, j, k, ix, jy); };
-}
-
 } // anonymous namespace
 
 BOOST_GLOBAL_FIXTURE(MpiFixture);
@@ -146,6 +96,24 @@ BOOST_AUTO_TEST_CASE(RegularGridHasTheCornersInOrder)
 // The right column is moved down by half a layer, so the faces between the columns are split
 // where the layers of the neighbor start. The dividing lines meet the edges of the cells in the
 // middle, and no cell corner is on a dividing line.
+//
+// Seen along y, with the depth z downwards:
+//
+//        x=0       x=1       x=2
+//  z=0   +---------+
+//        |         |
+//  z=0.5 |  (0,0)  +---------+
+//        |         |         |
+//  z=1   +---------+  (1,0)  |
+//        |         |         |
+//  z=1.5 |  (0,1)  +---------+
+//        |         |         |
+//  z=2   +---------+  (1,1)  |
+//                  |         |
+//  z=2.5           +---------+
+//
+// The face at x=1 is split at z=0.5, 1, 1.5 and 2 into three pieces, one for each pair
+// of neighbors: (0,0)-(1,0), (0,1)-(1,0) and (0,1)-(1,1), with (i,k) the cell.
 BOOST_AUTO_TEST_CASE(FaultWithDividingLinesInTheMiddleOfTheEdges)
 {
     const CornerPointGrid cp(2, 1, 2, layersWithShift([](int i, int, int, int, int) { return i == 1 ? 0.5 : 0.0; }));
@@ -157,6 +125,26 @@ BOOST_AUTO_TEST_CASE(FaultWithDividingLinesInTheMiddleOfTheEdges)
 
 // The right column is moved down by half a layer at one of the pillars and not at the other,
 // so the dividing lines are slanted and some of them end in a corner of a cell.
+//
+// Seen along y, at the pillars y=0 and y=1:
+//
+//   y=0, right column moved down     y=1, no shift
+//
+//        x=0       x=1       x=2          x=0       x=1       x=2
+//  z=0   +---------+                      +---------+---------+
+//        |         |                      |         |         |
+//  z=0.5 |         +---------+            |         |         |
+//        |         |         |            |         |         |
+//  z=1   +---------+         |            +---------+---------+
+//        |         |         |            |         |         |
+//  z=1.5 |         +---------+            |         |         |
+//        |         |         |            |         |         |
+//  z=2   +---------+         |            +---------+---------+
+//                  |         |
+//  z=2.5           +---------+
+//
+// The dividing lines of the face at x=1 go from the boundary of the left column at z=1 (and 2)
+// at y=1, where the layers meet, to the middle of the cell edge at y=0. They end in a corner there.
 BOOST_AUTO_TEST_CASE(FaultWithDividingLinesEndingInCorners)
 {
     const CornerPointGrid cp(2, 1, 2, layersWithShift([](int i, int, int, int, int jy) { return i == 1 ? 0.5 * (1 - jy) : 0.0; }));
@@ -167,6 +155,19 @@ BOOST_AUTO_TEST_CASE(FaultWithDividingLinesEndingInCorners)
 }
 
 // A fault in both horizontal directions, with tilted layers on the other side.
+//
+// Seen from above, with the shift of each cell. The column i=1 is moved down by 0.35 at the
+// pillar x=1 and 0.70 at x=2, and the row j=2 by 0.45 at y=2 and 0.90 at y=3, so the cell (1,2)
+// has both shifts added.
+//
+//  y=3  +---------+---------+---------+
+//       |  y-shift|  x+y    |  y-shift|
+//  y=2  +---------+---------+---------+
+//       |         |  x-shift|         |
+//  y=1  +---------+---------+---------+
+//       |         |  x-shift|         |
+//  y=0  +---------+---------+---------+
+//      x=0       x=1       x=2       x=3
 BOOST_AUTO_TEST_CASE(FaultsInBothDirections)
 {
     const CornerPointGrid cp(3, 3, 2, layersWithShift([](int i, int j, int, int ix, int jy) {
@@ -181,6 +182,21 @@ BOOST_AUTO_TEST_CASE(FaultsInBothDirections)
 // corners of that cell are the same node and the cell has six nodes only. The layer
 // boundaries are at the depths 0, 1, 2 and 3, except that at the collapsed pillar the
 // boundary 2 is at the depth 1, where the boundary 1 is.
+//
+// Seen along y at y=0, where the pillar x=1 is the collapsed one:
+//
+//        x=0                 x=1
+//  z=0   +-------------------+
+//        |        k=0        |
+//  z=1   +-------------------+  <- the boundaries 1 and 2 meet here
+//        | k=1          ..--''
+//        |         ..--''
+//        |   ..--''     k=2
+//  z=2   +-''                |
+//        |                   |
+//  z=3   +-------------------+
+//
+// The cell k=1 is a triangle in this view, and its two corners at x=1 are the same node.
 BOOST_AUTO_TEST_CASE(CollapsedEdge)
 {
     const CornerPointGrid cp(1, 1, 3, [](int, int, int k, int zs, int ix, int jy) {
@@ -194,6 +210,15 @@ BOOST_AUTO_TEST_CASE(CollapsedEdge)
 // The whole side of a cell at x = 1 has collapsed to a line, because the top and the bottom
 // are at the same depth at both pillars there. The cell is a wedge. That side has no face, and
 // the two nodes of the line are the corners of both the top and the bottom.
+//
+// Seen along y:
+//
+//        x=0         x=1
+//  z=0   +--.
+//        |    ``--.
+//  z=0.5 |           ``+  <- top and bottom at x=1 are both at z=0.5
+//        |       ..--''
+//  z=1   +---''
 BOOST_AUTO_TEST_CASE(CollapsedSide)
 {
     const CornerPointGrid cp(1, 1, 1, [](int, int, int, int zs, int ix, int) {
@@ -206,7 +231,21 @@ BOOST_AUTO_TEST_CASE(CollapsedSide)
     BOOST_CHECK_CLOSE(totalVolume(grid), 0.5, 1e-8);
 }
 
-// The same wedge in a grid, with neighbors in the three directions.
+// The same wedge in a grid, with neighbors in the three directions. Only the corners of
+// the cell in the middle are moved, so there are faults between it and the cells around it.
+//
+// Seen along y, at the row j=1, with the cells (i,k):
+//
+//        x=0     x=1     x=2     x=3
+//  z=0   +-------+-------+-------+
+//        |       |       |       |
+//  z=1   +-------+-------+-------+
+//        |       |``--.  |       |
+//  z=1.5 |       | (1,1) `+      |
+//        |       |  ..--'|       |
+//  z=2   +-------+-------+-------+
+//        |       |       |       |
+//  z=3   +-------+-------+-------+
 BOOST_AUTO_TEST_CASE(CollapsedSideWithNeighbors)
 {
     const CornerPointGrid cp(3, 3, 3, [](int i, int j, int k, int zs, int ix, int) {
@@ -236,6 +275,17 @@ BOOST_AUTO_TEST_CASE(CollapsedSideWithNeighbors)
 // A sliver: the cell has thickness at one pillar only, and its top and bottom are at the same depth
 // at the three other pillars. The sides at x = 1 and y = 1 have collapsed, so they have no face, and
 // the node at the pillar where they meet is on the top and the bottom only.
+//
+// Seen from above, with the depths of the top and the bottom at each pillar:
+//
+//  y=1   o 0.2 ------------ o 0.1
+//        |                  |
+//        |                  |
+//  y=0   o 0 and 0.01 ----- o 0.3
+//       x=0                x=1
+//
+// Only at the pillar x=0, y=0 the cell has thickness. The sides at x=1 and y=1 are triangles
+// with no area, so they have no face, and the node at x=1, y=1 is on the top and the bottom only.
 BOOST_AUTO_TEST_CASE(CollapsedAtThreePillars)
 {
     const CornerPointGrid cp(1, 1, 1, [](int, int, int, int zs, int ix, int jy) {
