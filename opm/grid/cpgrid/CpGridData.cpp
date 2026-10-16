@@ -972,6 +972,68 @@ struct AttributeDataHandle
 };
 
 
+// Partition types of every point of a cell, walked face by face on the fly, so no
+// cell-to-point table is built.  The order matches on all ranks sharing the cell.
+struct CellPointAttributeDataHandle
+{
+    using DataType = std::pair<int,char>;
+
+    CellPointAttributeDataHandle(int rank, const PartitionTypeIndicator& indicator,
+                                 std::vector<std::map<int, char> >& vals,
+                                 const OrientedEntityTable<0, 1>& cell_to_face,
+                                 const Opm::SparseTable<int>& face_to_point,
+                                 const CpGridData& grid)
+        : rank_(rank), indicator_(indicator), vals_(vals),
+          c2f_(cell_to_face), f2p_(face_to_point), grid_(grid)
+    {}
+
+    bool fixedSize()
+    {
+        return false;
+    }
+    std::size_t size(std::size_t i)
+    {
+        std::size_t n = 0;
+        forEachPoint(i, [&n](int) { ++n; });
+        return n;
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        forEachPoint(i, [&](int p)
+        { buffer.write(std::make_pair(rank_, char(getPartitionType(indicator_, p, grid_)))); });
+    }
+    template<class B>
+    void scatter(B& buffer, std::size_t i, std::size_t)
+    {
+        forEachPoint(i, [&](int p)
+        {
+            DataType rank_attr;
+            buffer.read(rank_attr);
+            vals_[p].insert(rank_attr);
+        });
+    }
+
+private:
+    template<class F>
+    void forEachPoint(std::size_t i, F&& f) const
+    {
+        for (const auto& face : c2f_[EntityRep<0>(i, true)]) {
+            for (const int p : f2p_[face.index()]) {
+                f(p);
+            }
+        }
+    }
+
+    int rank_;
+    const PartitionTypeIndicator& indicator_;
+    std::vector<std::map<int, char> >& vals_;
+    const OrientedEntityTable<0, 1>& c2f_;
+    const Opm::SparseTable<int>& f2p_;
+    const CpGridData& grid_;
+};
+
+
 template<class T, class Functor, class FromSet, class ToSet>
 struct InterfaceFunctor
 {
@@ -1697,10 +1759,12 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
     face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
     */
+    // All points of each cell, not only its eight corners: with hanging nodes a face
+    // can hold points that are no corner of the neighbouring cell.
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
-    AttributeDataHandle<std::vector<std::array<int,8> > >
+    CellPointAttributeDataHandle
         point_handle(ccobj_.rank(), *partition_type_indicator_,
-                     point_attributes, cell_to_point_, *this);
+                     point_attributes, cell_to_face_, face_to_point_, *this);
     if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(cell_interfaces_))
         .interfaces().size() )
     {
