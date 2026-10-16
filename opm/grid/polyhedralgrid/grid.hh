@@ -3,7 +3,12 @@
 #ifndef DUNE_POLYHEDRALGRID_GRID_HH
 #define DUNE_POLYHEDRALGRID_GRID_HH
 
+#include <algorithm>
+#include <array>
+#include <iterator>
 #include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 // Warning suppression for Dune includes.
@@ -980,6 +985,102 @@ namespace Dune
       return 0;
     }
 
+    /** \brief The center of a side of a cell, defined as for the CpGrid
+     *
+     *  This is the average of the four corners of the cell on that side, as CpGrid::faceCenterEcl()
+     *  gives. At a fault, where a side of a cell consists of several faces, it is the center of the
+     *  whole side and not of the face that the cell shares with a neighbor. Only for grids in
+     *  three dimensions with cells that have the corners of a cube.
+     *
+     *  \param[in]  cell  index of the cell
+     *  \param[in]  side  the side of the cell, numbered as the faces of the reference cube
+     *                    (the x direction first: 0 and 1 are the sides in the x direction)
+     */
+    GlobalCoordinate faceCenterEcl ( const int cell, const int side ) const
+    {
+      if( dim != 3 || cellVertices_[ cell ].size() != 8 )
+      {
+        OPM_THROW(std::logic_error, "faceCenterEcl is only available for cells with eight corners.");
+      }
+      // The corners of each side of the reference cube
+      static const int sideCorners[ 6 ][ 4 ] = { {0, 2, 4, 6}, {1, 3, 5, 7},
+                                                 {0, 1, 4, 5}, {2, 3, 6, 7},
+                                                 {0, 1, 2, 3}, {4, 5, 6, 7} };
+      GlobalCoordinate center( 0 );
+      for( int i=0; i<4; ++i )
+      {
+        center += copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate::dimension * cellVertices_[ cell ][ sideCorners[ side ][ i ] ] );
+      }
+      center /= 4;
+      return center;
+    }
+
+    /** \brief As above, for use where CpGrid::faceCenterEcl() takes the intersection as well. */
+    template< class Intersection >
+    GlobalCoordinate faceCenterEcl ( const int cell, const int side, const Intersection& ) const
+    {
+      return faceCenterEcl( cell, side );
+    }
+
+    /** \brief The area normal of a face, defined as for the CpGrid
+     *
+     *  This follows CpGrid::faceAreaNormalEcl(): the vector product of the diagonals of a face with
+     *  four nodes, which differs from the area weighted normal if the face is not plane.
+     *  The sign is not defined.
+     *
+     *  \param[in]  face  index of the face
+     */
+    GlobalCoordinate faceAreaNormalEcl ( const int face ) const
+    {
+      const int first = grid_.face_nodepos[ face ];
+      const int numNodes = grid_.face_nodepos[ face + 1 ] - first;
+      auto node = [ this, first ]( const int i )
+      {
+        return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate::dimension * grid_.face_nodes[ first + i ] );
+      };
+      auto cross = []( const GlobalCoordinate& a, const GlobalCoordinate& b )
+      {
+        GlobalCoordinate c( 0 );
+        if( dimworld == 3 )
+        {
+          c[ 0 ] = a[ 1 ] * b[ 2 ] - a[ 2 ] * b[ 1 ];
+          c[ 1 ] = a[ 2 ] * b[ 0 ] - a[ 0 ] * b[ 2 ];
+          c[ 2 ] = a[ 0 ] * b[ 1 ] - a[ 1 ] * b[ 0 ];
+        }
+        return c;
+      };
+
+      GlobalCoordinate areaNormal( 0 );
+      if( dimworld != 3 || numNodes < 3 )
+      {
+        return areaNormal;
+      }
+      if( numNodes == 3 )
+      {
+        areaNormal = cross( node( 0 ) - node( 2 ), node( 1 ) - node( 2 ) );
+        areaNormal *= 0.5;
+      }
+      else if( numNodes == 4 )
+      {
+        areaNormal = cross( node( 0 ) - node( 2 ), node( 1 ) - node( 3 ) );
+        areaNormal *= 0.5;
+      }
+      else
+      {
+        const int h = ( numNodes - 1 ) / 2;
+        const int k = ( numNodes % 2 ) ? 0 : numNodes - 1;
+        // first the quadrilaterals
+        for( int i = 1; i < h; ++i )
+        {
+          areaNormal += cross( node( 2*i ) - node( 0 ), node( 2*i + 1 ) - node( 2*i - 1 ) );
+        }
+        // and then the last triangle or quadrilateral
+        areaNormal += cross( node( 2*h ) - node( 0 ), node( k ) - node( 2*h - 1 ) );
+        areaNormal *= 0.5;
+      }
+      return areaNormal;
+    }
+
     template <class EntitySeed>
     GlobalCoordinate
     corner ( const EntitySeed& seed, const int i ) const
@@ -1368,66 +1469,164 @@ namespace Dune
             std::swap( grid_.cell_facetag[ f+1 ], grid_.cell_facetag[ f+2 ] );
           }
 
-          typedef std::map<int,int> vertexmap_t;
-          typedef typename vertexmap_t :: iterator iterator;
-
-          std::vector< vertexmap_t > cell_pts( dim*2 );
-
-          for (unsigned hf = grid_.cell_facepos[ c ]; hf < grid_.cell_facepos[c+1]; ++hf)
-          {
-            const int f = grid_.cell_faces[ hf ];
-            const int faceTag = grid_.cell_facetag[ hf ];
-
-            for (unsigned nodepos = grid_.face_nodepos[f]; nodepos < grid_.face_nodepos[f+1]; ++nodepos )
-            {
-              const int node = grid_.face_nodes[ nodepos ];
-              iterator it = cell_pts[ faceTag ].find( node );
-              if( it == cell_pts[ faceTag ].end() )
-              {
-                 cell_pts[ faceTag ].insert( std::make_pair( node, 1 ) );
-              }
-              else
-              {
-                // increase vertex reference counter
-                (*it).second++;
-              }
-            }
-          }
-
           typedef std::map< int, std::set<int> > vertexlist_t;
           vertexlist_t vertexList;
 
-          for( int faceTag = 0; faceTag<dim*2; ++faceTag )
+          if( dim == 3 )
           {
-            for( iterator it = cell_pts[ faceTag ].begin(),
-                 end = cell_pts[ faceTag ].end(); it != end; ++it )
-            {
+            // A side of a cell consists of several faces if the cell is at a fault. The corners of
+            // the cell are the nodes on the boundary of three sides, one for each direction. Other
+            // nodes of the faces are on the edges of the cell (where the neighbors on the other
+            // side of the fault meet) or inside a side. A corner can be the end of a line that
+            // divides a side, so counting how many faces of a side have a node does not find them.
+            typedef std::pair<int,int> EdgeType;
+            std::vector< std::map< EdgeType, int > > sideEdges( dim*2 );
 
-              // only consider vertices with one appearance
-              if( (*it).second == 1 )
+            for (unsigned hf = grid_.cell_facepos[ c ]; hf < grid_.cell_facepos[c+1]; ++hf)
+            {
+              const int f = grid_.cell_faces[ hf ];
+              const int faceTag = grid_.cell_facetag[ hf ];
+              const unsigned first = grid_.face_nodepos[f];
+              const unsigned last = grid_.face_nodepos[f+1];
+              for (unsigned nodepos = first; nodepos < last; ++nodepos )
               {
-                vertexList[ (*it).first ].insert( faceTag );
+                const int a = grid_.face_nodes[ nodepos ];
+                const int b = grid_.face_nodes[ nodepos + 1 < last ? nodepos + 1 : first ];
+                ++sideEdges[ faceTag ][ std::minmax( a, b ) ];
+              }
+            }
+
+            // The edges that belong to one face of a side only are on the boundary of the side.
+            for( int faceTag = 0; faceTag<dim*2; ++faceTag )
+            {
+              for( const auto& edge : sideEdges[ faceTag ] )
+              {
+                if( edge.second == 1 )
+                {
+                  vertexList[ edge.first.first ].insert( faceTag );
+                  vertexList[ edge.first.second ].insert( faceTag );
+                }
+              }
+            }
+
+            // A node on the boundary of a side in each direction is a corner. It is more than one
+            // corner if the cell is collapsed there, such as at the end of a pinched layer.
+            // If a whole side of the cell is collapsed, to an edge or a point, it has no face. The
+            // nodes in its place do not belong to any side in that direction and are corners of
+            // the side that has no face.
+            std::array< bool, dim*2 > hasSide;
+            for( int faceTag = 0; faceTag<dim*2; ++faceTag )
+            {
+              hasSide[ faceTag ] = ! sideEdges[ faceTag ].empty();
+            }
+
+            cellVertices_[ c ].assign( 8, -1 );
+            for( auto& [node, sides] : vertexList )
+            {
+              // The nodes on the edges of the cell are on the boundary of two sides only, in different
+              // directions. A node that is on both sides in a direction is collapsed in that direction,
+              // which makes it a corner even if it is on no other side because they have collapsed.
+              const bool collapsed = ( sides.count( 0 ) && sides.count( 1 ) ) || ( sides.count( 2 ) && sides.count( 3 ) )
+                                     || ( sides.count( 4 ) && sides.count( 5 ) );
+              if( sides.size() < dim && ! collapsed )
+              {
+                continue;
+              }
+              for( int direction = 0; direction<dim; ++direction )
+              {
+                const int low = 2*direction;
+                if( ! sides.count( low ) && ! sides.count( low + 1 ) && hasSide[ low ] != hasSide[ low + 1 ] )
+                {
+                  sides.insert( hasSide[ low ] ? low + 1 : low );
+                }
+              }
+
+              for( int i=0; i<8; ++i )
+              {
+                if( sides.count( vertexFacePattern[ i ][ 0 ] ) && sides.count( vertexFacePattern[ i ][ 1 ] )
+                    && sides.count( vertexFacePattern[ i ][ 2 ] ) )
+                {
+                  if( cellVertices_[ c ][ i ] >= 0 && cellVertices_[ c ][ i ] != node )
+                  {
+                    OPM_THROW(std::runtime_error,
+                              "PolyhedralGrid: corner " + std::to_string( i ) + " of cell " + std::to_string( c )
+                              + " is not unique. Cells that are twisted are not supported.");
+                  }
+                  cellVertices_[ c ][ i ] = node;
+                }
+              }
+            }
+            if( std::count( cellVertices_[ c ].begin(), cellVertices_[ c ].end(), -1 ) > 0 )
+            {
+              OPM_THROW(std::runtime_error,
+                        "PolyhedralGrid: cell " + std::to_string( c ) + " is missing a corner. "
+                        "Cells that are collapsed in a way that removes a side are not supported.");
+            }
+          }
+          else
+          {
+            typedef std::map<int,int> vertexmap_t;
+            typedef typename vertexmap_t :: iterator iterator;
+
+            std::vector< vertexmap_t > cell_pts( dim*2 );
+
+            for (unsigned hf = grid_.cell_facepos[ c ]; hf < grid_.cell_facepos[c+1]; ++hf)
+            {
+              const int f = grid_.cell_faces[ hf ];
+              const int faceTag = grid_.cell_facetag[ hf ];
+
+              for (unsigned nodepos = grid_.face_nodepos[f]; nodepos < grid_.face_nodepos[f+1]; ++nodepos )
+              {
+                const int node = grid_.face_nodes[ nodepos ];
+                iterator it = cell_pts[ faceTag ].find( node );
+                if( it == cell_pts[ faceTag ].end() )
+                {
+                   cell_pts[ faceTag ].insert( std::make_pair( node, 1 ) );
+                }
+                else
+                {
+                  // increase vertex reference counter
+                  (*it).second++;
+                }
+              }
+            }
+
+            for( int faceTag = 0; faceTag<dim*2; ++faceTag )
+            {
+              for( iterator it = cell_pts[ faceTag ].begin(),
+                   end = cell_pts[ faceTag ].end(); it != end; ++it )
+              {
+
+                // only consider vertices with one appearance
+                if( (*it).second == 1 )
+                {
+                  vertexList[ (*it).first ].insert( faceTag );
+                }
               }
             }
           }
 
-          assert( int(vertexList.size()) == ( dim == 2 ? 4 : 8) );
-
-          cellVertices_[ c ].resize( vertexList.size() );
-          for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )
+          // The corners of a cell in three dimensions were found above.
+          if( dim != 3 )
           {
-            assert( (*it).second.size() == dim );
-            KeyType key; key.fill( 4 ); // fill with 4 which is the first z coord
+            assert( int(vertexList.size()) == ( dim == 2 ? 4 : 8) );
 
-            std::ranges::copy(it->second, key.begin());
-            auto vx = vertexFaceTags.find( key );
-            assert( vx != vertexFaceTags.end() );
-            if( vx != vertexFaceTags.end() )
+            cellVertices_[ c ].resize( vertexList.size() );
+            for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )
             {
-              if( (*vx).second >= int(cellVertices_[ c ].size()) )
-                cellVertices_[ c ].resize( (*vx).second+1 );
-              // store node number on correct local position
-              cellVertices_[ c ][ (*vx).second ] = (*it).first ;
+              assert( (*it).second.size() == dim );
+              KeyType key; key.fill( 4 ); // fill with 4 which is the first z coord
+
+              std::ranges::copy(it->second, key.begin());
+              auto vx = vertexFaceTags.find( key );
+              assert( vx != vertexFaceTags.end() );
+              if( vx != vertexFaceTags.end() )
+              {
+                if( (*vx).second >= int(cellVertices_[ c ].size()) )
+                  cellVertices_[ c ].resize( (*vx).second+1 );
+                // store node number on correct local position
+                cellVertices_[ c ][ (*vx).second ] = (*it).first ;
+              }
             }
           }
         }

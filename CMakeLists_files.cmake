@@ -135,6 +135,8 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_lookupdata_polyhedral.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
+  tests/test_polyhedralgrid_face_geometry.cpp
+  tests/test_polyhedralgrid_faults.cpp
   tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
   tests/test_regionmapping.cpp
