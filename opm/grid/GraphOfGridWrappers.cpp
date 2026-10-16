@@ -190,6 +190,111 @@ void addWellConnections(GraphOfGrid<Dune::CpGrid>& gog,
     }
 }
 
+std::vector<std::set<int>> partitionCellGroupsWithHalo(const Dune::CpGrid& grid)
+{
+    std::vector<std::set<int>> result;
+    const auto& groups = grid.partitionCellGroups();
+    if (groups.empty()) {
+        return result;
+    }
+    // Groups are Cartesian ids; the graph uses compressed level-zero ids, also in
+    // refine-before-redistribute where the leaf is already refined.
+    const auto& level0 = *grid.currentData().front();
+    const auto& cpgdim = level0.logicalCartesianSize();
+    const auto& globalCell = level0.globalCell();
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    for (std::size_t i = 0; i < globalCell.size(); ++i) {
+        cartesian_to_compressed[globalCell[i]] = static_cast<int>(i);
+    }
+
+    const int halo = grid.partitionCellGroupHalo();
+    std::vector<std::vector<int>> faceNeighbors;
+    std::vector<std::vector<int>> cellPoints;
+    std::vector<std::vector<int>> pointCells;
+    if (halo > 0) {
+        const auto view = grid.levelGridView(0);
+        const auto& index = view.indexSet();
+        faceNeighbors.resize(index.size(0));
+        cellPoints.resize(index.size(0));
+        pointCells.resize(index.size(3));
+        for (const auto& element : Dune::elements(view)) {
+            const int cell = index.index(element);
+            for (const auto& is : Dune::intersections(view, element)) {
+                if (is.neighbor()) {
+                    faceNeighbors[cell].push_back(index.index(is.outside()));
+                }
+            }
+            for (unsigned v = 0; v < element.subEntities(3); ++v) {
+                const int point = index.subIndex(element, v, 3);
+                cellPoints[cell].push_back(point);
+                pointCells[point].push_back(cell);
+            }
+        }
+    }
+
+    for (const auto& group : groups) {
+        std::set<int> compressed;
+        for (const int cartesian : group) {
+            const int gID = cartesian_to_compressed[cartesian];
+            if (gID != -1) { // skip inactive cells of the group
+                compressed.insert(gID);
+            }
+        }
+        std::vector<int> front(compressed.begin(), compressed.end());
+        for (int layer = 0; layer < halo && !front.empty(); ++layer) {
+            std::vector<int> next;
+            const auto visit = [&](int nb) {
+                if (compressed.insert(nb).second) {
+                    next.push_back(nb);
+                }
+            };
+            for (const int cell : front) {
+                for (const int nb : faceNeighbors[cell]) {
+                    visit(nb);
+                }
+                for (const int point : cellPoints[cell]) {
+                    for (const int nb : pointCells[point]) {
+                        visit(nb);
+                    }
+                }
+            }
+            front = std::move(next);
+        }
+        if (!compressed.empty()) {
+            result.push_back(std::move(compressed));
+        }
+    }
+    return result;
+}
+
+void addRefinedCellWeights(GraphOfGrid<Dune::CpGrid>& gog)
+{
+    const auto& grid = gog.getGrid();
+    if (grid.lgrBackend() != Opm::Refinement::Backend::Conforming || grid.maxLevel() == 0) {
+        return;
+    }
+    const auto level0 = grid.levelGridView(0);
+    std::vector<int> leafCells(level0.size(0), 0);
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        ++leafCells[element.getOrigin().index()];
+    }
+    const auto& ids = grid.currentData().front()->globalIdSet();
+    for (const auto& element : Dune::elements(level0)) {
+        if (const int n = leafCells[element.index()]; n > 1) {
+            gog.setVertexWeight(ids.id(element), static_cast<float>(n));
+        }
+    }
+}
+
+void addPartitionCellGroups(GraphOfGrid<Dune::CpGrid>& gog)
+{
+    for (auto& group : partitionCellGroupsWithHalo(gog.getGrid())) {
+        // checkIntersection = true: groups may share cells (touching boxes, or a
+        // well crossing a box); overlapping groups are merged.
+        gog.addWell(group, /* checkWellIntersections = */ true);
+    }
+}
+
 void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
                      std::vector<int>& gIDtoRank,
                      const int& root)
@@ -561,6 +666,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
     GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod, level);
+    addRefinedCellWeights(gog);
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                                       : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
@@ -569,6 +675,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
         addWellConnections(gog, wellConnections);
         gog.addNeighboringCellsToWells(layers);
     }
+    addPartitionCellGroups(gog);
 
     // call partitioner
     setGraphOfGridZoltanGraphFunctions(zz, gog, partitionIsEmpty);
@@ -712,11 +819,13 @@ applySerialZoltan (const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
+    addRefinedCellWeights(gog);
     if (!allowDistributedWells){
         // skip cell contraction if wells can be distributed over multiple processes
         addWellConnections(gog, wellConnections);
         gog.addNeighboringCellsToWells(layers);
     }
+    addPartitionCellGroups(gog);
 
     // call partitioner
     setGraphOfGridZoltanGraphFunctions(zz, gog, false);

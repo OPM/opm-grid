@@ -15,8 +15,8 @@ PartitionType PartitionTypeIndicator::getPartitionType(const Entity<0>& cell_ent
         return PartitionType(cell_indicator_[cell_entity.index()]);
     // If level zero grid has been distributed and some LGRs have been added, refined cells
     // inherit its parent cell partition type.
-    if (grid_data_->level_ >0) { // level_ > 0 only for refined level grids.
-        return PartitionType(grid_data_->level_data_ptr_->front()->partition_type_indicator_->getPartitionType(cell_entity.getOrigin()));
+    if (grid_data_->levels_.level >0) { // level_ > 0 only for refined level grids.
+        return PartitionType(grid_data_->levels_.level_data_ptr->front()->partition_type_indicator_->getPartitionType(cell_entity.getOrigin()));
     }
     return InteriorEntity;
 }
@@ -43,7 +43,7 @@ PartitionType getProcessorBoundaryPartitionType(PartitionType)
 
 PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
 {
-    if((cell_indicator_.size()) || (grid_data_->level_ > 0))
+    if((cell_indicator_.size()) || (grid_data_->levels_.level > 0))
     {
         // We determine the partition type by the type of the
         // connected cells:

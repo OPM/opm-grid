@@ -135,6 +135,15 @@ void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& well
         const auto& connectionSet = well.getConnections( );
         for (size_t c=0; c<connectionSet.size(); c++) {
             const auto& connection = connectionSet.get(c);
+            // Connections completed inside a local grid refinement (COMPDATL,
+            // lgr_level != 0) carry LGR-local (i,j,k) that do not address the
+            // level-zero Cartesian grid used here for load balancing.  They are
+            // kept on a single rank via the LGR partition cell groups (see
+            // addPartitionCellGroups), so skip them in the level-zero well
+            // graph instead of indexing the coarse map out of bounds.
+            if (connection.get_lgr_level() != 0) {
+                continue;
+            }
             int i = connection.getI();
             int j = connection.getJ();
             int k = connection.getK();
