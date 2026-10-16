@@ -21,6 +21,8 @@
 #include "config.h"
 #endif
 
+#include <opm/grid/CpGrid.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -113,6 +115,28 @@ bool areParentGridsAvailableBeforeTheirLgrs(const std::map<std::string,int>& exi
         }
     }
     return true; // all parent grids valid (exist before their LGRs)
+}
+
+bool hasBeenGloballyRefined(const Dune::CpGrid& grid)
+{
+    int maxLevel = grid.maxLevel();
+    // If there exists at least one element with a level strictly less than maxLevel,
+    // the leaf grid is not globally (uniformly) refined.
+    // In this case, the grid consists of cells from multiple refinement levels.
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        if (element.level() != maxLevel)
+            return false;
+    }
+    return true;
+}
+
+std::string getLevelGridName(const Dune::CpGrid& grid, int level)
+{
+    for (const auto& [name, lvl] : grid.getLgrNameToLevel()) {
+        if (lvl==level) 
+            return name;  
+    }
+    OPM_THROW(std::logic_error, "Grid name with level: " + std::to_string(level) + " not found.");
 }
 
 } // namespace Opm
