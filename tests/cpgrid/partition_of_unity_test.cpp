@@ -189,13 +189,19 @@ BOOST_AUTO_TEST_CASE(FaultedGridVerticesReached)
     // message.  Hanging nodes on the fault violate this if the interface was
     // built from the canonical corners only.
     int unreached = 0;
+    int nonInterior = 0;
     for (const auto& vertex : vertices(grid.leafGridView())) {
         const int idx = grid.leafIndexSet().index(vertex);
-        if (vertex.partitionType() != Dune::InteriorEntity
-            && received[idx] == 0) {
-            ++unreached;
+        if (vertex.partitionType() != Dune::InteriorEntity) {
+            ++nonInterior;
+            if (received[idx] == 0) {
+                ++unreached;
+            }
         }
     }
+
+    BOOST_CHECK_MESSAGE(nonInterior > 0,
+                        "rank " << rank << ": no non-interior vertices to test");
 
     BOOST_CHECK_MESSAGE(unreached == 0,
                         "rank " << rank << ": " << unreached
