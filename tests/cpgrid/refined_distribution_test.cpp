@@ -142,7 +142,7 @@ PORO
     }
 
     // Every cell keeps the id it has in the serially refined grid.
-    Dune::CpGrid serial(MPI_COMM_SELF);
+    Dune::CpGrid serial(Dune::MPIHelper::getLocalCommunicator());
     serial.setLgrBackend(Opm::Refinement::Backend::Conforming);
     serial.processEclipseFormat(&eclGrid, &state, false, false, false);
     serial.addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{6, 12, 4}}, {"LGR1"});
