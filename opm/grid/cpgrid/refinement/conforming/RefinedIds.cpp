@@ -23,6 +23,7 @@
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
+#include <opm/grid/cpgrid/Indexsets.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 
 #include <dune/common/parallel/communication.hh>
