@@ -38,28 +38,9 @@
 #include "config.h"
 #endif
 
-
-#if HAVE_MPI
-#include <opm/grid/utility/platform_dependent/disable_warnings.h>
-#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
-#endif
-
-#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
-#include "ParentToChildrenCellGlobalIdHandle.hpp"
-#include "NestedRefinementUtilities.hpp"
-#include <opm/grid/common/MetisPartition.hpp>
-#include <opm/grid/common/ZoltanPartition.hpp>
-#include <opm/grid/GraphOfGridWrappers.hpp>
-//#include <opm/grid/common/ZoltanGraphFunctions.hpp>
-#include <opm/grid/common/GridPartitioning.hpp>
-//#include <opm/grid/common/WellConnections.hpp>
-#include <opm/grid/common/CommunicationUtils.hpp>
 
-//#include <fstream>
-//#include <iostream>
 #include <algorithm>
 #include <iomanip>
 #include <numeric>
