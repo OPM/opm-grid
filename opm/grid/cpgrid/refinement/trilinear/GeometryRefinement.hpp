@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: Geometry.hpp
+// File: GeometryRefinement.hpp
 //
 // Created: Fri May 29 23:29:24 2009
 //
