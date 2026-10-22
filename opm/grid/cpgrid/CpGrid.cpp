@@ -1497,7 +1497,9 @@ const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
 
 const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face, int level) const
 {
+    assert((level >= 0) && (level < static_cast<int>(current_data_->size())));
     const auto& data = *(*current_data_)[level];
+    assert((face >= 0) && (face < static_cast<int>(data.face_to_point_.size())));
     const auto pos = [&data](int vertex) -> const Dune::FieldVector<double,3>& {
         return data.geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
     };
