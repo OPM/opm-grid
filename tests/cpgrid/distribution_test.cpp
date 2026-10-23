@@ -23,6 +23,7 @@
 #include <dune/grid/common/mcmgmapper.hh>
 
 #include <numeric>
+#include <stdexcept>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_METIS)
 const int partition_methods[] = {1,2};
@@ -335,6 +336,61 @@ private:
     std::vector<int>& cont_;
 };
 
+// Answers size() only for the cells it sends, which is all the data handle
+// interface requires. Over InteriorBorder_All, interior cells send forward
+// and overlap cells send backward.
+class SenderOnlySizeDataHandle
+{
+public:
+    SenderOnlySizeDataHandle(const Dune::CpGrid& grid, bool forward)
+        : grid_(grid)
+        , forward_(forward)
+    {
+    }
+
+    typedef int DataType;
+    bool fixedSize(int /*dim*/, int /*codim*/)
+    {
+        return true;
+    }
+
+    template <class T>
+    std::size_t size(const T& t)
+    {
+        if ((t.partitionType() == Dune::InteriorEntity) != forward_) {
+            throw std::logic_error("size() requested for a receiving cell");
+        }
+        return 2;
+    }
+    template <class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(grid_.globalIdSet().id(t));
+        buffer.write(grid_.globalIdSet().id(t));
+    }
+    template <class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t s)
+    {
+        BOOST_CHECK_EQUAL(s, 2u);
+        for (std::size_t i = 0; i < s; ++i) {
+            DataType id;
+            buffer.read(id);
+            BOOST_CHECK_EQUAL(id, grid_.globalIdSet().id(t));
+        }
+        ++received;
+    }
+    bool contains(int dim, int codim)
+    {
+        return dim == 3 && codim == 0;
+    }
+
+    int received = 0;
+
+private:
+    const Dune::CpGrid& grid_;
+    bool forward_;
+};
+
 #if HAVE_MPI
 BOOST_AUTO_TEST_CASE(serialZoltanAndMetis)
 {
@@ -412,6 +468,40 @@ BOOST_AUTO_TEST_CASE(testDistributedComm)
         for ( const auto& index: indexSet)
             BOOST_REQUIRE(cont[index.local()] == 1);
     }
+}
+#endif
+
+#if HAVE_MPI
+BOOST_AUTO_TEST_CASE(sizeOnlyRequestedForSendingCells)
+{
+    Dune::CpGrid grid;
+    std::array<int, 3> dims = {{8, 4, 2}};
+    std::array<double, 3> sizes = {{1.0, 1.0, 1.0}};
+    grid.createCartesian(dims, sizes);
+
+    // One slab of i-columns per process.
+    const int numProcs = grid.comm().size();
+    std::vector<int> parts(dims[0] * dims[1] * dims[2]);
+    for (std::size_t cell = 0; cell < parts.size(); ++cell) {
+        parts[cell] = static_cast<int>(cell % dims[0]) * numProcs / dims[0];
+    }
+    grid.loadBalance(parts,
+                     /*ownersFirst = */ false,
+                     /* addCornerCells = */ false,
+                     /* overlapLayerSize= */ 1);
+
+    int overlapCells = 0;
+    for (const auto& cell : Dune::elements(grid.leafGridView())) {
+        overlapCells += cell.partitionType() != Dune::InteriorEntity;
+    }
+
+    SenderOnlySizeDataHandle forward(grid, /*forward = */ true);
+    grid.communicate(forward, Dune::InteriorBorder_All_Interface, Dune::ForwardCommunication);
+    BOOST_CHECK_EQUAL(forward.received, overlapCells);
+
+    SenderOnlySizeDataHandle backward(grid, /*forward = */ false);
+    grid.communicate(backward, Dune::InteriorBorder_All_Interface, Dune::BackwardCommunication);
+    BOOST_CHECK_EQUAL(grid.comm().sum(backward.received), grid.comm().sum(overlapCells));
 }
 #endif
 
@@ -1019,6 +1109,5 @@ int main(int argc, char** argv)
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, errhandler);
 #endif // HAVE_MPI
 
-    boost::unit_test::unit_test_main(&init_unit_test_func,
-                                     argc, argv);
+    return boost::unit_test::unit_test_main(&init_unit_test_func, argc, argv);
 }
