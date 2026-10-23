@@ -51,6 +51,7 @@
 #include <opm/grid/cpgrid/CpGridDataTraits.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
+#include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
@@ -501,6 +502,21 @@ namespace Dune
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec,
                                    const std::vector<std::string>& lgr_parent_grid_name_vec = std::vector<std::string>{});
+
+        /// @brief The same refinement given as block requests. Under the Conforming backend the
+        ///        requests may also be graded, carry a block MINPV, or take pillars from the box layer.
+        void addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement> requests);
+
+        /// @brief Choose the refinement algorithm; only before the grid is refined.
+        void setLgrBackend(Opm::Refinement::Backend backend);
+
+        Opm::Refinement::Backend lgrBackend() const
+        {
+            return lgr_backend_;
+        }
+
+        /// @brief The builder the Conforming backend refines with.
+        void setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder);
 
         /// @brief Global refine the grid with different refinement factors in each direction.
         ///
@@ -1495,6 +1511,8 @@ namespace Dune
         std::vector<std::shared_ptr<cpgrid::CpGridData>>* current_data_;
         /** @brief To get the level given the lgr-name. Default, {"GLOBAL", 0}. */
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
+        Opm::Refinement::Backend lgr_backend_ = Opm::Refinement::Backend::Trilinear;
+        std::shared_ptr<Opm::Refinement::Builder> refinement_builder_;
         /**
          * @brief Interface for scattering and gathering cell data.
          *

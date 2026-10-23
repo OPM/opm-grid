@@ -53,6 +53,8 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgpreprocess/uniquepoints.c
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridLevels.cpp
+  opm/grid/cpgrid/refinement/CpGridLgrBackend.cpp
+  opm/grid/cpgrid/refinement/RefinementBuilder.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridDataRefinement.cpp
   opm/grid/cpgrid/CpGridData.cpp
@@ -80,6 +82,7 @@ list(APPEND MAIN_SOURCE_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/lgr_backend_switch_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -229,6 +232,8 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Iterators.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/cpgrid/LevelHierarchy.hpp
+  opm/grid/cpgrid/refinement/RefinementBuilder.hpp
+  opm/grid/cpgrid/refinement/RefinementRequest.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/NestedRefinementUtilities.hpp
