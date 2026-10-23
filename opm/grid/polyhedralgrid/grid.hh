@@ -937,8 +937,11 @@ namespace Dune
         }
       */
 
-      UnstructuredGridType* cgrid = create_grid_cornerpoint
-        (&g, z_tolerance, static_cast<int>(edge_conformal));
+      // As the CpGrid does it: the keyword PINCH connects the cells across collapsed inactive cells, and the
+      // grid with edge conformal cells has them merged.
+      const bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
+      UnstructuredGridType* cgrid = create_grid_cornerpoint_pinch
+        (&g, z_tolerance, static_cast<int>(edge_conformal), static_cast<int>(pinchActive));
 
       if (cgrid == nullptr) {
         OPM_THROW(std::runtime_error, "Failed to construct grid.");
