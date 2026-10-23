@@ -1,0 +1,144 @@
+/*
+  Copyright 2026 Equinor ASA.
+
+  This file is part of the Open Porous Media project (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
+#include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
+#include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
+#include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
+
+#include <opm/common/ErrorMacros.hpp>
+
+#include <algorithm>
+#include <array>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace Dune
+{
+
+void CpGrid::setLgrBackend(Opm::Refinement::Backend backend)
+{
+    if (maxLevel() > 0 && backend != lgr_backend_) {
+        OPM_THROW(std::logic_error, "The LGR backend cannot change once the grid is refined.");
+    }
+    lgr_backend_ = backend;
+    // Only the Conforming builder resamples the corner-point input.
+    current_data_->front()->retain_cp_input_ = (backend == Opm::Refinement::Backend::Conforming);
+}
+
+void CpGrid::setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder)
+{
+    refinement_builder_ = std::move(builder);
+}
+
+// The input is retained on rank 0's undistributed level zero; every rank's builder resamples it.
+// Entered on all ranks, whether or not the current view already holds it.
+void CpGrid::broadcastRetainedInput_()
+{
+    auto input = std::make_shared<Opm::Refinement::RetainedCornerPointInput>();
+    int present = 0;
+    if (comm().rank() == 0 && !data_.empty()) {
+        if (const auto source = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*data_[0])) {
+            *input = *source;
+            present = 1;
+        }
+    }
+    comm().broadcast(&present, 1, 0);
+    if (!present) {
+        return;
+    }
+    comm().broadcast(input->dims.data(), 3, 0);
+    int edgeConformal = input->edgeConformal ? 1 : 0;
+    comm().broadcast(&edgeConformal, 1, 0);
+    input->edgeConformal = (edgeConformal != 0);
+    std::array<int,3> sizes{static_cast<int>(input->coord.size()),
+                            static_cast<int>(input->zcorn.size()),
+                            static_cast<int>(input->actnum.size())};
+    comm().broadcast(sizes.data(), 3, 0);
+    input->coord.resize(sizes[0]);
+    input->zcorn.resize(sizes[1]);
+    input->actnum.resize(sizes[2]);
+    if (sizes[0] > 0) comm().broadcast(input->coord.data(), sizes[0], 0);
+    if (sizes[1] > 0) comm().broadcast(input->zcorn.data(), sizes[1], 0);
+    if (sizes[2] > 0) comm().broadcast(input->actnum.data(), sizes[2], 0);
+    Opm::Refinement::GridStateWriter::setRetainedCornerPointInput(*current_data_->front(), input);
+}
+
+void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement> requests)
+{
+    Opm::Refinement::validateBlockRefinements(requests);
+
+    if (lgr_backend_ == Opm::Refinement::Backend::Trilinear) {
+        std::vector<std::array<int,3>> cellsPerDim, startIJK, endIJK;
+        std::vector<std::string> names, parents;
+        for (const auto& request : requests) {
+            const bool graded = std::any_of(request.subdivision.begin(), request.subdivision.end(),
+                                            [](const auto& sub) { return !sub.empty(); });
+            if (graded || !request.minpvRemoved.empty() || request.pillarsFromBoxLayer) {
+                OPM_THROW(std::invalid_argument,
+                          "Refinement '" + request.name + "' is graded, removes cells by a block "
+                          "MINPV or takes its pillars from the box layer; only the Conforming LGR "
+                          "backend refines that.");
+            }
+            cellsPerDim.push_back(request.cellsPerDim);
+            startIJK.push_back(request.startIJK);
+            endIJK.push_back(request.endIJK);
+            names.push_back(request.name);
+            parents.push_back(request.parentGridName);
+        }
+        addLgrsUpdateLeafView(cellsPerDim, startIJK, endIJK, names, parents);
+        return;
+    }
+
+    if (comm().size() > 1) {
+        broadcastRetainedInput_();
+    }
+    auto builder = refinement_builder_;
+    if (!builder) {
+        if (const auto input = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*current_data_->front())) {
+            builder = std::make_shared<Opm::Refinement::ConformingBlockBuilder>(
+                input->dims, input->coord, input->zcorn, input->actnum, input->edgeConformal);
+        }
+    }
+    if (!builder) {
+        OPM_THROW(std::logic_error, "The Conforming LGR backend has no refinement builder and no "
+                  "retained corner-point input; select the backend before processEclipseFormat().");
+    }
+    const int preBuildMaxLevel = maxLevel();
+    builder->build(*this, requests);
+
+    for (std::size_t box = 0; box < requests.size(); ++box) {
+        lgr_names_[requests[box].name] = preBuildMaxLevel + static_cast<int>(box) + 1;
+    }
+    if (global_id_set_ptr_) {
+        auto& data = currentData();
+        for (std::size_t gridIdx = preBuildMaxLevel + 1; gridIdx < data.size(); ++gridIdx) {
+            global_id_set_ptr_->insertIdSet(*data[gridIdx]);
+        }
+    }
+}
+
+} // namespace Dune

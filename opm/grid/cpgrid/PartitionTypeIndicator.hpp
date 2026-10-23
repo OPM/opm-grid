@@ -38,6 +38,8 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include<vector>
 #include <dune/grid/common/gridenums.hh>
 
+namespace Opm { namespace Refinement { struct GridStateWriter; } }
+
 namespace Dune
 {
 namespace cpgrid
@@ -94,6 +96,7 @@ private:
     std::vector<char> point_indicator_;
     friend class CpGridData;
     friend class FacePartitionTypeIterator;
+    friend struct ::Opm::Refinement::GridStateWriter;
 };
 } // end namespace Dune
 } // end namespace cpgrid
