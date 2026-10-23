@@ -162,6 +162,7 @@ list(APPEND TEST_DATA_FILES
 # originally generated with the command:
 # find tutorials examples -name '*.c*' -printf '\t%p\n' | sort
 list(APPEND EXAMPLE_SOURCE_FILES
+  examples/export_grid.cpp
   examples/finitevolume/finitevolume.cc
   examples/griditer.cpp
 )
