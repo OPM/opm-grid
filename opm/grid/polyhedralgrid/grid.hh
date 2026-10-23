@@ -325,11 +325,16 @@ namespace Dune
      *
      *  \param[in]  deck         Opm Eclipse deck
      *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
+     *  \param[in]  edge_conformal  make the grid with edge conformal cells, which merges the cells that MINPV removes
+     *  \param[in]  mergeMinpvCells  merge the cells that MINPV removes into the cell below, which gets their volume
+     *                              in the geometry. Otherwise, as the CpGrid does it, they are collapsed and the cells
+     *                              above and below are connected across them (default).
      */
     explicit PolyhedralGrid (const Opm::EclipseGrid& inputGrid,
                              const std::vector<double>& poreVolumes = std::vector<double>{},
-                             const bool edge_conformal = false)
-      : gridPtr_      { createGrid(inputGrid, poreVolumes, static_cast<int>(edge_conformal)) }
+                             const bool edge_conformal = false,
+                             const bool mergeMinpvCells = false)
+      : gridPtr_      { createGrid(inputGrid, poreVolumes, static_cast<int>(edge_conformal), mergeMinpvCells) }
       , grid_         { *gridPtr_ }
       , comm_         { MPIHelper::getCommunicator() }
       , leafIndexSet_ { *this }
@@ -891,7 +896,8 @@ namespace Dune
     UnstructuredGridType*
     createGrid(const Opm::EclipseGrid&    inputGrid,
                const std::vector<double>& poreVolumes,
-               const bool                 edge_conformal) const
+               const bool                 edge_conformal,
+               const bool                 mergeMinpvCells) const
     {
       grdecl g{};
 
@@ -909,21 +915,31 @@ namespace Dune
 
       const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
 
+      // The keyword PINCH connects the cells across collapsed inactive cells, as it does for the CpGrid. The grid with edge
+      // conformal cells has the cells merged.
+      bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
+
       if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::Inactive))
       {
         Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
         const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
-        // Currently the pinchProcessor is not used and only opmfil is supported
-        // The polyhedralgrid only only supports the opmfil option
-        //bool opmfil = inputGrid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
-        bool opmfil = true;
+        // The cells with a pore volume below MINPV are merged into the cell below, or collapsed. The cells above
+        // and below the collapsed cells are connected, which is what the CpGrid does by default.
+        const bool merge = edge_conformal || mergeMinpvCells;
+        const bool nogap = ! inputGrid.isPinchActive() || inputGrid.getPinchGapMode() == Opm::PinchMode::NOGAP;
         const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
         std::vector<double> thickness(cartGridSize);
         for (size_t i = 0; i < cartGridSize; ++i) {
           thickness[i] = inputGrid.getCellThickness(i);
         }
-        mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
-                   minpvv, actnum, opmfil, zcorn.data());
+        const auto result = mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
+                                       minpvv, actnum, merge, zcorn.data(), nogap);
+        // The collapsed cells are connected across by the faces of the cells, as for the keyword PINCH, also if
+        // the deck has none.
+        if( ! merge && ! result.nnc.empty() )
+        {
+          pinchActive = true;
+        }
       }
 
       /*
@@ -937,9 +953,6 @@ namespace Dune
         }
       */
 
-      // As the CpGrid does it: the keyword PINCH connects the cells across collapsed inactive cells, and the
-      // grid with edge conformal cells has them merged.
-      const bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
       UnstructuredGridType* cgrid = create_grid_cornerpoint_pinch
         (&g, z_tolerance, static_cast<int>(edge_conformal), static_cast<int>(pinchActive));
 
