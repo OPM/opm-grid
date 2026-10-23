@@ -81,6 +81,26 @@ extern "C" {
                             int edge_conformal);
 
     /**
+     * Construct grid representation from corner-point specification, with
+     * connections across collapsed inactive cells.
+     *
+     * As create_grid_cornerpoint(), and in addition the cells above and below a
+     * zone of inactive cells that has collapsed, as with a thickness of zero,
+     * are neighbors, with a face between them, if pinch_active is non-zero. This
+     * is what the keyword PINCH does. The faces between cells that are not
+     * neighbors in the logical Cartesian grid have the tag K_FACE.
+     *
+     * @param[in] pinch_active Non-zero to connect the cells across collapsed
+     *                inactive cells, zero to leave the grid with no cell
+     *                connections across them.
+     */
+    struct UnstructuredGrid *
+    create_grid_cornerpoint_pinch(const struct grdecl *in,
+                                  double tol,
+                                  int edge_conformal,
+                                  int pinch_active);
+
+    /**
      * Compute derived geometric primitives in a grid.
      *
      * This function computes values for each of the following quantities
