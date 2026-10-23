@@ -1492,9 +1492,20 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
 
 const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
 {
+    return faceAreaNormalEcl(face, static_cast<int>(current_data_->size()) - 1);
+}
+
+const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face, int level) const
+{
+    assert((level >= 0) && (level < static_cast<int>(current_data_->size())));
+    const auto& data = *(*current_data_)[level];
+    assert((face >= 0) && (face < static_cast<int>(data.face_to_point_.size())));
+    const auto pos = [&data](int vertex) -> const Dune::FieldVector<double,3>& {
+        return data.geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
+    };
     // same implementation as ResInsight
     const int nd = Dune::FieldVector<double,3>::dimension;
-    const int nv =  numFaceVertices(face);
+    const int nv = data.face_to_point_[face].size();
     switch (nv)
     {
     case 0:
@@ -1506,10 +1517,10 @@ const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
         break;
     case 3:
         {
-            Dune::FieldVector<double,3> a = vertexPosition(current_data_->back()->face_to_point_[face][0])
-                - vertexPosition(current_data_->back()->face_to_point_[face][2]);
-            Dune::FieldVector<double,3> b = vertexPosition(current_data_->back()->face_to_point_[face][1])
-                - vertexPosition(current_data_->back()->face_to_point_[face][2]);
+            Dune::FieldVector<double,3> a = pos(data.face_to_point_[face][0])
+                - pos(data.face_to_point_[face][2]);
+            Dune::FieldVector<double,3> b = pos(data.face_to_point_[face][1])
+                - pos(data.face_to_point_[face][2]);
             Dune::FieldVector<double,3> areaNormal = cross(a,b);
             for (int i=0; i<nd; ++i) {
                 areaNormal[i] /= 2;
@@ -1519,10 +1530,10 @@ const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
         break;
     case 4:
         {
-            Dune::FieldVector<double,3> a = vertexPosition(current_data_->back()->face_to_point_[face][0])
-                - vertexPosition(current_data_->back()->face_to_point_[face][2]);
-            Dune::FieldVector<double,3> b = vertexPosition(current_data_->back()->face_to_point_[face][1])
-                - vertexPosition(current_data_->back()->face_to_point_[face][3]);
+            Dune::FieldVector<double,3> a = pos(data.face_to_point_[face][0])
+                - pos(data.face_to_point_[face][2]);
+            Dune::FieldVector<double,3> b = pos(data.face_to_point_[face][1])
+                - pos(data.face_to_point_[face][3]);
             Dune::FieldVector<double,3> areaNormal = cross(a,b);
             areaNormal *= 0.5;
             return areaNormal;
@@ -1537,18 +1548,18 @@ const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
             // First quads
             for (int i = 1; i < h; ++i)
             {
-                Dune::FieldVector<double,3> a = vertexPosition(current_data_->back()->face_to_point_[face][2*i])
-                    - vertexPosition(current_data_->back()->face_to_point_[face][0]);
-                Dune::FieldVector<double,3> b = vertexPosition(current_data_->back()->face_to_point_[face][2*i+1])
-                    - vertexPosition(current_data_->back()->face_to_point_[face][2*i-1]);
+                Dune::FieldVector<double,3> a = pos(data.face_to_point_[face][2*i])
+                    - pos(data.face_to_point_[face][0]);
+                Dune::FieldVector<double,3> b = pos(data.face_to_point_[face][2*i+1])
+                    - pos(data.face_to_point_[face][2*i-1]);
                 areaNormal += cross(a,b);
             }
 
             // Last triangle or quad
-            Dune::FieldVector<double,3> a = vertexPosition(current_data_->back()->face_to_point_[face][2*h])
-                - vertexPosition(current_data_->back()->face_to_point_[face][0]);
-            Dune::FieldVector<double,3> b = vertexPosition(current_data_->back()->face_to_point_[face][k])
-                - vertexPosition(current_data_->back()->face_to_point_[face][2*h-1]);
+            Dune::FieldVector<double,3> a = pos(data.face_to_point_[face][2*h])
+                - pos(data.face_to_point_[face][0]);
+            Dune::FieldVector<double,3> b = pos(data.face_to_point_[face][k])
+                - pos(data.face_to_point_[face][2*h-1]);
             areaNormal += cross(a,b);
 
             areaNormal *= 0.5;
