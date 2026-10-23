@@ -54,7 +54,6 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
-  opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/Intersection.cpp
@@ -118,6 +117,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/save_lgr_coord_zcorn_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
+  tests/cpgrid/partition_of_unity_test.cpp
   tests/cpgrid/shifted_cart_test.cpp
   tests/cpgrid/zoltan_test.cpp
   tests/p2pcommunicator_test.cc
