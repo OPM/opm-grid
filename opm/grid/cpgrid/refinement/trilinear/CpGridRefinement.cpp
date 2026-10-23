@@ -56,6 +56,10 @@ namespace Dune
 
 void CpGrid::globalRefine (int refCount, bool throwOnFailure)
 {
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        globalRefineConforming_(refCount);
+        return;
+    }
     if (refCount < 0) {
         OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
     }
@@ -245,6 +249,7 @@ void CpGrid::populateLeafGlobalIdSet()
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
 {
+    throwIfConforming_("mark()");
     Opm::Lgr::throwIfIsCoarseAtLgrBoundary(leafGridView(), element, throwOnFailure);
 
     // For serial run, mark elements also in the level they were born.
@@ -264,11 +269,15 @@ bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFa
 
 int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 {
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        return 0;
+    }
     return current_data_->back()->getMark(element);
 }
 
 bool CpGrid::preAdapt()
 {
+    throwIfConforming_("preAdapt()");
     // Check if elements in pre-adapt existing grids have been marked for refinment.
     // Serial run: currentData() = data_. Parallel run: currentData() = distributed_data_.
     bool isPreAdapted = false; // 0
@@ -281,6 +290,7 @@ bool CpGrid::preAdapt()
 
 bool CpGrid::adapt()
 {
+    throwIfConforming_("adapt()");
     if(!preAdapt()) { // marked cells set can be empty
         return false; // the grid does not change at all.
     }
@@ -854,6 +864,9 @@ bool CpGrid::refineAndUpdateGrid(bool throwOnFailure,
 
 void CpGrid::postAdapt()
 {
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        return;
+    }
     // - Resize with the new amount of cells on the leaf grid view
     // - Set marks equal to zero (representing 'doing nothing')
     current_data_ ->back()-> postAdapt();
@@ -999,6 +1012,10 @@ void CpGrid::getFirstChildGlobalIds([[maybe_unused]] std::vector<int>& parentToF
 
 void CpGrid::syncDistributedGlobalCellIds()
 {
+    // The Conforming builder agrees on ids while it refines.
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        return;
+    }
 #if HAVE_MPI
     std::vector<int> parentToFirstChildGlobalIds;
     getFirstChildGlobalIds(parentToFirstChildGlobalIds);
@@ -1066,6 +1083,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::string>& lgr_name_vec,
                                    const std::vector<std::string>& lgr_parent_grid_name_vec)
 {
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming) {
+        addLgrsUpdateLeafView(Opm::Refinement::blockRefinements(cells_per_dim_vec, startIJK_vec, endIJK_vec,
+                                                                lgr_name_vec, lgr_parent_grid_name_vec));
+        return;
+    }
+
     // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked,
     // then current_data_ == distributed_data_.
     // For serial run, level zero grid is stored in data_[0]. In this case, current_data_ == data_.

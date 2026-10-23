@@ -42,8 +42,13 @@
 #include "LgrHelpers.hpp"
 
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
 #include <iomanip>
+#include <limits>
 #include <numeric>
+#include <optional>
+#include <stdexcept>
 #include <tuple>
 
 namespace Dune
@@ -122,16 +127,35 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
                 ((intersection.inside().father().level() == 0) || ((intersection.outside().father().level() == 0)));
             bool coarseAndRefinedCells =  (levelIn*levelOut == 0);
             if (refinedCellsWithAtLeastOneLvl0Father || coarseAndRefinedCells) {
-                // Get the equivalent level-0 cell if intersection.inside() is already at level 0,
-                // or the coarsest ancestor at level 0 if it is a refined cell.
-                // In both cases, intersection.indexInInside() is the correct face index to match:
-                // - coarse inside (level 0): indexInInside() is already the level-0 face index.
-                // - refined inside: fine cells inherit face directions from their parent, so
-                //   indexInInside() equals the parent's face index.
+                // Match the level-0 face by its cell pair: a faulted side has several faces.
                 const auto& insideOrigin = intersection.inside().getOrigin();
-                for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
-                    if (originIntersection.indexInInside() == intersection.indexInInside()) {
-                        return originIntersection;
+                const auto& outsideOrigin = intersection.outside().getOrigin();
+                if (insideOrigin.index() != outsideOrigin.index()) {
+                    const auto leafCentre = intersection.geometry().center();
+                    std::optional<Dune::cpgrid::Intersection> best{};
+                    double bestDistance = std::numeric_limits<double>::max();
+                    for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
+                        if (!originIntersection.neighbor() ||
+                            (originIntersection.outside().index() != outsideOrigin.index())) {
+                            continue;
+                        }
+                        // A fault can split one pair's interface; take the nearest piece.
+                        const double distance = (originIntersection.geometry().center() - leafCentre).two_norm();
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            best = originIntersection;
+                        }
+                    }
+                    if (best) {
+                        return *best;
+                    }
+                }
+                else {
+                    // Same level-0 ancestor: no level-0 face between them, fall back to the side.
+                    for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
+                        if (originIntersection.indexInInside() == intersection.indexInInside()) {
+                            return originIntersection;
+                        }
                     }
                 }
             }
@@ -145,5 +169,45 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
 }
+
+bool CpGrid::leafHasParentCellIndices() const
+{
+    return current_data_ && !current_data_->empty()
+        && !current_data_->back()->levels_.cell_to_idxInParentCell.empty();
+}
+
+std::vector<std::int64_t> CpGrid::stableCellId() const
+{
+    return currentLeafData().stableCellId();
+}
+
+namespace cpgrid
+{
+std::vector<std::int64_t> CpGridData::stableCellId() const
+{
+    // Refined cells: tagged (level-zero Cartesian index, index in parent); others: Cartesian index.
+    // idxInParent rather than child_to_parent, which a distributed refined leaf does not carry.
+    constexpr int childBits = 20;
+    constexpr std::int64_t refinedTag = std::int64_t(1) << 62;
+    const auto& idxInParent = levels_.cell_to_idxInParentCell;
+    std::vector<std::int64_t> ids(global_cell_.size());
+    for (std::size_t c = 0; c < ids.size(); ++c) {
+        const std::int64_t child = idxInParent.empty() ? -1 : idxInParent[c];
+        if (child < 0) {
+            ids[c] = global_cell_[c];
+            continue;
+        }
+        assert(child < (std::int64_t(1) << childBits));
+        ids[c] = refinedTag | (std::int64_t(global_cell_[c]) << childBits) | child;
+    }
+    // The key cannot tell apart cells under different parents in a nested LGR.
+    auto sorted = ids;
+    std::ranges::sort(sorted);
+    if (std::ranges::adjacent_find(sorted) != sorted.end()) {
+        throw std::logic_error("stableCellId() does not support nested LGRs.");
+    }
+    return ids;
+}
+} // namespace cpgrid
 
 } // namespace Dune
