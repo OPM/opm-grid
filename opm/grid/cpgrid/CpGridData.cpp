@@ -48,7 +48,6 @@ CpGridData::CpGridData(const CpGridData& g)
 CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
-      level_data_ptr_(),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 #if HAVE_MPI
     , cell_comm_(Dune::MPIHelper::getCommunicator())
@@ -57,13 +56,12 @@ CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
 #if HAVE_MPI
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
-    level_data_ptr_ = &data;
+    levels_.level_data_ptr = &data;
 }
 
 CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
-      level_data_ptr_(),
       ccobj_(comm), use_unique_boundary_ids_(false)
 #if HAVE_MPI
     , cell_comm_(comm)
@@ -72,7 +70,7 @@ CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared
 #if HAVE_MPI
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
-    level_data_ptr_ = &data;
+    levels_.level_data_ptr = &data;
 }
 
 #if HAVE_MPI
@@ -465,7 +463,6 @@ private:
     const Container& gatherPoints_;
     Container& scatterPoints_;
 };
-
 
 struct CellGeometryHandle
 {
@@ -971,7 +968,6 @@ struct AttributeDataHandle
     const CpGridData& grid_;
 };
 
-
 template<class T, class Functor, class FromSet, class ToSet>
 struct InterfaceFunctor
 {
@@ -1138,7 +1134,6 @@ private:
     int index_;
 };
 
-
 /**
  * \brief Applies a functor the each pair of the interface.
  * \tparam Functor The type of the functor to apply.
@@ -1162,7 +1157,6 @@ void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
         }
     }
 }
-
 
 /**
  * \brief Creates the communication interface for either faces or points.
@@ -1307,7 +1301,6 @@ void computeFace2Cell(CpGrid& grid,
     }
 #endif
 }
-
 
 std::map<int,int> computeCell2Face(const CpGrid& grid,
                                    const OrientedEntityTable<0, 1>& globalCell2Faces,
@@ -1542,7 +1535,6 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
                       view_data.face_to_point_, face_to_point_, point_indicator,
                       noExistingFaces);
 
-
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
     // Set up the new topology arrays
@@ -1711,32 +1703,6 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 #endif
 }
 
-std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
-{
-    // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
-    std::array<int,3> ijk = Opm::Lgr::getIJK(idx_in_parent_cell, cells_per_dim);
-
-    std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
-        {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
-         // corner '1'
-         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
-         // corner '2'
-         { double(ijk[0])/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
-         // corner '3'
-         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
-         // corner '4'
-         { double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
-         // corner '5'
-         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
-         // corner '6'
-         { double(ijk[0])/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
-         // corner '7'
-         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] }
-        }
-    };
-    return corners_in_parent_reference_elem;
-}
-
 void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
 {
     // For level zero and the leaf grids, use logicalCartesianSize from level zero grid.
@@ -1749,11 +1715,11 @@ void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
     // The else branch is needed to ensure the leaf grid view uses the logical Cartesian size
     // of the original level-zero grid.
 
-    if (level_) { // refined level grids with level > 0
+    if (levels_.level) { // refined level grids with level > 0
         ijk = Opm::Lgr::getIJK(global_cell_[c], logical_cartesian_size_);
     }
     else { // level zero and leaf grids
-        ijk = Opm::Lgr::getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
+        ijk = Opm::Lgr::getIJK(global_cell_[c], levels_.level_data_ptr->front()->logicalCartesianSize());
     }
 }
 
@@ -1888,81 +1854,6 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim,
         faceInMarkedElemAndRefinedFaces[face.index()].push_back(std::make_pair(parentCellElem.index(), children_faces));
     }
     return {refined_grid_ptr, parent_to_refined_corners};
-}
-
-bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element, bool throwOnFailure)
-{
-    if (refCount == -1) {
-        if (throwOnFailure)
-            OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
-        return false; // Coarsening is not supported yet.
-    }
-    // Prevent refinement if the cell has a non-neighbor connection (NNC).
-    if (hasNNCs({element.index()}) && (refCount == 1)) {
-        if (throwOnFailure)
-            OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported yet.");
-        return false;
-    }
-    assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
-    if (mark_.empty()) {
-        mark_.resize(this->size(0));
-    }
-    mark_[element.index()] = refCount;
-    return (mark_[element.index()] == refCount);
-}
-
-int CpGridData::getMark(const cpgrid::Entity<0>& element) const
-{
-    return mark_.empty() ? 0 : mark_[element.index()];
-}
-
-bool CpGridData::preAdapt()
-{
-    // Communicate marked elements across all processes.
-    if (ccobj_.size()>1) {
-
-        auto local_empty = mark_.empty();
-        // The attribute mark_ can be empty in processes with no elements marked
-        // for refinement. In that case, resize before communication occurs.
-        if (ccobj_.max(!local_empty)){
-            if (local_empty)
-                mark_.resize(size(0));
-        }
-
-        // Detect the maximum mark across processes, and rewrite
-        // the local entry in mark_, i.e.,
-        // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
-        ElementMarkHandle element_mark_handle(mark_);
-
-        // An element may be marked somewhere in opm-simulators because it does not fulfill a
-        // certain property, regardless of whether it belongs to the interior or overlap
-        // partition. Therefore, we use the All_All_Interface.
-        communicate(element_mark_handle,
-                    Dune::All_All_Interface,
-                    Dune::ForwardCommunication);
-    }
-
-    if(mark_.empty()) {
-        return false;
-    }
-    else {
-        for (int elemIdx = 0; elemIdx <  this-> size(0); ++elemIdx) {
-            const auto& element = Dune::cpgrid::Entity<0>(*this, elemIdx, true);
-            if (getMark(element) != 0)  // 1 (to be refined), 0 (do nothing), -1 (to be coarsened - not supported yet)
-                return true;
-        }
-    }
-    return false;
-}
-
-bool CpGridData::adapt()
-{
-    return preAdapt();
-}
-
-void CpGridData::postAdapt()
-{
-    mark_.resize(this->size(0), 0);
 }
 
 std::array<double,3> CpGridData::computeEclCentroid(const int idx) const

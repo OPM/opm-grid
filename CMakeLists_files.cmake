@@ -52,6 +52,9 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgpreprocess/preprocess.c
   opm/grid/cpgpreprocess/uniquepoints.c
   opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/CpGridLevels.cpp
+  opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
+  opm/grid/cpgrid/refinement/trilinear/CpGridDataRefinement.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/DataHandleWrappers.cpp
@@ -218,12 +221,14 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Entity2IndexDataHandle.hpp
   opm/grid/cpgrid/EntityRep.hpp
   opm/grid/cpgrid/Geometry.hpp
+  opm/grid/cpgrid/refinement/trilinear/GeometryRefinement.hpp
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
+  opm/grid/cpgrid/LevelHierarchy.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/NestedRefinementUtilities.hpp

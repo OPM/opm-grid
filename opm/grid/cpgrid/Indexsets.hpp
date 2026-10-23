@@ -298,7 +298,7 @@ namespace Dune
                         assert( grid_.getGridIdx() == (static_cast<int>(grid_.levelData().size()) -1) );
                         // In this case, we search for the ids defined in previous levels
                         // (since each entities must keep its id along the entire hiearchy)
-                        const std::array<int,2> level_levelIdx = grid_.leaf_to_level_cells_[e.index()];
+                        const std::array<int,2> level_levelIdx = grid_.levels_.leaf_to_level_cells[e.index()];
                         const auto& levelEntity =  cpgrid::Entity<0>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
                         return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
                     }
@@ -324,7 +324,7 @@ namespace Dune
                     }
                     // Level 1, 2, ...., maxLevel refined grids.
                     if ( (gridIdx>0) && (gridIdx < static_cast<int>(grid_.levelData().size() -1)) ) {
-                        const auto& level_levelIdx = grid_.corner_history_[e.index()];
+                        const auto& level_levelIdx = grid_.levels_.corner_history[e.index()];
                         if(level_levelIdx[0] != -1) { // corner equiv to a pre-exisiting level corner
                             const auto& levelEntity =  cpgrid::Entity<3>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
                             return  grid_.levelData()[level_levelIdx[0]]->localIdSet().id(levelEntity);
@@ -348,7 +348,7 @@ namespace Dune
                         assert( grid_.getGridIdx() == (static_cast<int>(grid_.levelData().size()) -1) );
                         // In this case, we search for the ids defined in previous levels
                         // (since each entities must keep its id along the entire hiearchy)
-                        const std::array<int,2> level_levelIdx = grid_.corner_history_[e.index()];
+                        const std::array<int,2> level_levelIdx = grid_.levels_.corner_history[e.index()];
                         const auto& levelEntity =  cpgrid::Entity<3>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
                         return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
                     }

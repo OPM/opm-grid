@@ -482,7 +482,7 @@ int Entity<codim>::level() const
     //
     // - leaf_to_level_cells_ is non-empty only on the leaf grid view of a grid that has been refined.
     // - level_ is set equal to zero when instantiating a pgrid, and rewriten when it corresponds to a refined level grid.
-    return pgrid_->leaf_to_level_cells_.empty()? pgrid_->level_ : pgrid_->leaf_to_level_cells_[this-> index()][0];
+    return pgrid_->levels_.leaf_to_level_cells.empty()? pgrid_->levels_.level : pgrid_->levels_.leaf_to_level_cells[this-> index()][0];
 }
 
 // isLeaf()
@@ -496,18 +496,18 @@ int Entity<codim>::level() const
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
-    if (pgrid_ -> parent_to_children_cells_.empty()){ // Grid cells without nested refinement
+    if (pgrid_ -> levels_.parent_to_children_cells.empty()){ // Grid cells without nested refinement
         return true;
     }
     else {
-        return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Not involved in any LGR
+        return (std::get<0>((pgrid_ -> levels_.parent_to_children_cells)[this-> index()]) == -1);  // Not involved in any LGR
     }
 }
 
 template<int codim>
 bool Entity<codim>::isNew() const
 {
-    int data_count = pgrid_->level_data_ptr_->size();
+    int data_count = pgrid_->levels_.level_data_ptr->size();
     if (data_count == 1) { // CpGrid has only level zero grid.
         return false; // no element is new
     }
@@ -517,7 +517,7 @@ bool Entity<codim>::isNew() const
         // may itself be refined further within the same step at a higher level.
         // To handle this case, we also check whether the element is a leaf
         // (i.e., it has no children).
-        return isLeaf() && (pgrid_->refinement_max_level_ == data_count - 2); // minus "level zero" and "leaf"
+        return isLeaf() && (pgrid_->levels_.refinement_max_level == data_count - 2); // minus "level zero" and "leaf"
     }
 }
 
@@ -530,7 +530,7 @@ bool Entity<codim>::mightVanish() const
 template<int codim>
 bool Entity<codim>::hasFather() const
 {
-    if ((pgrid_ -> child_to_parent_cells_.empty()) || (pgrid_ -> child_to_parent_cells_[this->index()][0] == -1)){
+    if ((pgrid_ -> levels_.child_to_parent_cells.empty()) || (pgrid_ -> levels_.child_to_parent_cells[this->index()][0] == -1)){
         return false;
     }
     else{
@@ -542,9 +542,9 @@ template<int codim>
 Entity<0> Entity<codim>::father() const
 {
     if (this->hasFather()){
-        const int& coarser_level = pgrid_ -> child_to_parent_cells_[this->index()][0];
-        const int& parent_cell_index = pgrid_ -> child_to_parent_cells_[this->index()][1];
-        return Entity<0>( *((*(pgrid_ -> level_data_ptr_))[coarser_level].get()), parent_cell_index, true);
+        const int& coarser_level = pgrid_ -> levels_.child_to_parent_cells[this->index()][0];
+        const int& parent_cell_index = pgrid_ -> levels_.child_to_parent_cells[this->index()][1];
+        return Entity<0>( *((*(pgrid_ -> levels_.level_data_ptr))[coarser_level].get()), parent_cell_index, true);
     }
     else{
         OPM_THROW(std::logic_error, "Entity has no father.");
@@ -554,7 +554,7 @@ Entity<0> Entity<codim>::father() const
 template<int codim>
 int Dune::cpgrid::Entity<codim>::getIdxInParentCell() const
 {
-    return pgrid_ -> cell_to_idxInParentCell_[this->index()];
+    return pgrid_ -> levels_.cell_to_idxInParentCell[this->index()];
 }
 
 
@@ -570,9 +570,9 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     // 'static': The returned object Geometry<3,3> stores a pointer to in_father_reference_elem_corner_indices. Therefore,
     // this variable is declared static to prolongate its lifetime beyond this function (static storage duration).
 
-    auto idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
+    auto idx_in_parent_cell = pgrid_ -> levels_.cell_to_idxInParentCell[this->index()];
     if (idx_in_parent_cell !=-1) {
-        const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
+        const auto& cells_per_dim =  (*(pgrid_ -> levels_.level_data_ptr))[this->level()] -> levels_.cells_per_dim;
         const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idx_in_parent_cell, cells_per_dim);
         FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
             { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
@@ -612,13 +612,13 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
         assert(ancestor.level() == 0);
         return ancestor;
     }
-    else if (!(pgrid_ -> leaf_to_level_cells_.empty())) { // Entity is a coarse cell
+    else if (!(pgrid_ -> levels_.leaf_to_level_cells.empty())) { // Entity is a coarse cell
         // (born in level zero grid, never involved in refinement) belonging to the leaf grid.
         // leaf_to_level_cells_ [leaf idx] = { level where entity was born, cell idx in that level}
-        const int& level = pgrid_->leaf_to_level_cells_[this->index()][0];
+        const int& level = pgrid_->levels_.leaf_to_level_cells[this->index()][0];
         assert(level == 0);
-        const int& levelElemIdx = pgrid_->leaf_to_level_cells_[this->index()][1];
-        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> level_data_ptr_))[level].get()), levelElemIdx, true);
+        const int& levelElemIdx = pgrid_->levels_.leaf_to_level_cells[this->index()][1];
+        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> levels_.level_data_ptr))[level].get()), levelElemIdx, true);
     }
     else { // Entity belongs to level zero grid.
         return *this;
@@ -631,10 +631,10 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLevelElem() const
     // Check that the element belongs to the leaf grid view
     // This is needed to get the index of the element in the level it was born.
     // leaf_to_level_cells_ [leaf idx] = {level where the entity was born, equivalent cell idx in that level}
-    if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
+    if (!(pgrid_ -> levels_.leaf_to_level_cells.empty())) // entity on the LeafGridView
     {
-        const int& entityLevelIdx = pgrid_->leaf_to_level_cells_[this->index()][1];
-        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> level_data_ptr_))[this->level()].get()), entityLevelIdx, true);
+        const int& entityLevelIdx = pgrid_->levels_.leaf_to_level_cells[this->index()][1];
+        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> levels_.level_data_ptr))[this->level()].get()), entityLevelIdx, true);
     }
     else {
         return *this;
@@ -644,7 +644,7 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLevelElem() const
 template<int codim>
 int Dune::cpgrid::Entity<codim>::getLevelCartesianIdx() const
 {
-    const auto& level_data = (*(pgrid_ -> level_data_ptr_))[level()].get();
+    const auto& level_data = (*(pgrid_ -> levels_.level_data_ptr))[level()].get();
     return level_data -> global_cell_[getLevelElem().index()];
 }
 
