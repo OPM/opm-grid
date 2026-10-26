@@ -20,7 +20,7 @@
 #include "config.h"
 #endif
 
-#include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
+#include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 
 #include <memory>
 #include <stdexcept>
