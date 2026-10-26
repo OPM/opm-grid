@@ -80,48 +80,48 @@ struct SourceRef
 
 // processEclipseFormat reverses face nodes for left-handed or upward-ZCORN input, which
 // swaps the halves of cell_to_point along J. Returns the XOR mask from logical corner
-// (bit0 = I, bit1 = J, bit2 = K) to cell_to_point slot, detected from logical neighbours.
+// (bit0 = I, bit1 = J, bit2 = K) to cell_to_point slot, detected from the cells' whole
+// faces toward +I and +J, so a grid one cell thick in a direction is read as well.
 int cornerSlotMask(CpGridData& grid)
 {
     const auto& c2p = GridStateWriter::cellToPoint(grid);
-    const auto& gc = grid.globalCell();
-    const auto dims = grid.logicalCartesianSize();
-    std::map<int,int> cellOfCart;
-    for (int c = 0; c < static_cast<int>(gc.size()); ++c) {
-        cellOfCart.emplace(gc[c], c);
-    }
+    auto& c2f = GridStateWriter::cellToFace(grid);
+    auto& f2p = GridStateWriter::faceToPoint(grid);
+    Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
     int mask = 0;
     for (int axis = 0; axis < 2; ++axis) {
         const int bit = 1 << axis;
-        const int stride = axis == 0 ? 1 : dims[0];
+        const enum face_tag tag = (axis == 0) ? I_FACE : J_FACE;
         int agree = 0;
         int flipped = 0;
-        for (const auto& [cart, cell] : cellOfCart) {
-            const int ijk = axis == 0 ? cart % dims[0] : (cart / dims[0]) % dims[1];
-            if (ijk + 1 >= dims[axis]) {
-                continue;
-            }
-            const auto nb = cellOfCart.find(cart + stride);
-            if (nb == cellOfCart.end()) {
-                continue;
-            }
-            const auto& nbPoints = c2p[nb->second];
-            const auto shared = [&](int side) {
-                for (int corner = 0; corner < 8; ++corner) {
-                    if (((corner & bit) != 0) == (side == 1) &&
-                        std::find(nbPoints.begin(), nbPoints.end(), c2p[cell][corner]) == nbPoints.end()) {
-                        return false;
-                    }
+        for (int cell = 0; (cell < static_cast<int>(c2p.size())) && (agree + flipped < 16); ++cell) {
+            const auto row = c2f[EntityRep<0>(cell, true)];
+            int highFace = -1;
+            int highFaces = 0;
+            for (int e = 0; e < row.size(); ++e) {
+                if ((tags.get(row[e].index()) == tag) && row[e].orientation()) {
+                    highFace = row[e].index();
+                    ++highFaces;
                 }
-                return true;
-            };
-            const bool high = shared(1);
-            const bool low = shared(0);
-            agree += high && !low;
-            flipped += low && !high;
-            if (agree + flipped >= 16) {
-                break;
             }
+            if (highFaces != 1) {
+                continue;   // split by a fault: not the cell's whole face
+            }
+            const auto points = f2p[highFace];
+            if (points.size() != 4) {
+                continue;
+            }
+            int withBit = 0;
+            int withoutBit = 0;
+            for (const int point : points) {
+                const auto slot = std::find(c2p[cell].begin(), c2p[cell].end(), point);
+                if (slot == c2p[cell].end()) {
+                    break;
+                }
+                ((std::distance(c2p[cell].begin(), slot) & bit) != 0) ? ++withBit : ++withoutBit;
+            }
+            agree += (withBit == 4);
+            flipped += (withoutBit == 4);
         }
         if (flipped > agree) {
             mask |= bit;
@@ -603,7 +603,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         else {
             auto childrenIt = boxes[b].childrenOfParent.find(c);
             if (childrenIt == boxes[b].childrenOfParent.end()) {
-                continue; // active parent without active children cannot happen; inactive handled by absence
+                // The box's MINPV removed every child: refined, into nothing.
+                parentToChildren[c] = std::make_tuple(b + 1, std::vector<int>{});
+                continue;
             }
             for (const int child : childrenIt->second) {
                 const int nb = nestedBoxOf[b][child];
@@ -695,18 +697,31 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     // ----- Identify replaced level-zero faces and mosaic pairings ---------
     // A level-zero face is dropped if any adjacent cell is a refined parent.
     // For parent faces toward an unrefined neighbor, the refined boundary
-    // faces of the box take over, paired with that neighbor.
+    // faces of the box take over, paired with that neighbor. A parent with no
+    // child left leaves the face to the unrefined neighbor, as its boundary face.
     std::vector<bool> faceDropped(numFaces0, false);
     for (int face = 0; face < numFaces0; ++face) {
         const auto row = faceToCell0[EntityRep<1>(face, true)];
+        bool refinedSide = false;   // a parent with children
+        bool emptySide = false;     // a parent with no child left
+        bool coarseSide = false;
         for (int e = 0; e < row.size(); ++e) {
             const int cell = row[e].index();
             // A remote (off-rank) neighbor is never a local box cell.
-            if (cell != kRemoteCell && boxOfCell[cell] >= 0) {
-                faceDropped[face] = true;
-                break;
+            if (cell == kRemoteCell) {
+                continue;
+            }
+            if (boxOfCell[cell] < 0) {
+                coarseSide = true;
+            }
+            else if (std::get<1>(parentToChildren[cell]).empty()) {
+                emptySide = true;
+            }
+            else {
+                refinedSide = true;
             }
         }
+        faceDropped[face] = refinedSide || (emptySide && !coarseSide);
     }
 
     // Conformity bookkeeping: (parent, axis, side) -> verified once.
@@ -1352,6 +1367,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 : (src.grid == 0)
                     ? leafIdxOfCell0[srcCell]
                     : leafIdxOfLevelCell[src.grid - 1][srcCell];
+            if (leafCell < 0) {
+                continue;   // a parent with no child left: the face is the other cell's boundary
+            }
             rowBuffer.push_back(EntityRep<0>(leafCell, srcRow[e].orientation()));
         }
         if (mosaicOutside[face] >= 0) {

@@ -131,16 +131,43 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
                 const auto& outsideOrigin = intersection.outside().getOrigin();
                 if (insideOrigin.index() != outsideOrigin.index()) {
                     const auto leafCentre = intersection.geometry().center();
+                    const auto& level0 = *currentData().front();
+                    // Whether the leaf face's centre, seen along the piece's normal, lies in it.
+                    const auto holdsLeafCentre = [&](const Dune::cpgrid::Intersection& piece) {
+                        const auto normal = piece.centerUnitOuterNormal();
+                        const auto points = level0.faceToPoint(piece.id());
+                        const auto& corners = level0.geomVector<3>();
+                        const int n = points.size();
+                        int positive = 0;
+                        int negative = 0;
+                        for (int i = 0; i < n; ++i) {
+                            const auto a = corners[Dune::cpgrid::EntityRep<3>(points[i], true)].center();
+                            const auto b = corners[Dune::cpgrid::EntityRep<3>(points[(i + 1) % n], true)].center();
+                            const auto edge = b - a;
+                            const auto toCentre = leafCentre - a;
+                            const double turn = normal[0]*(edge[1]*toCentre[2] - edge[2]*toCentre[1])
+                                              + normal[1]*(edge[2]*toCentre[0] - edge[0]*toCentre[2])
+                                              + normal[2]*(edge[0]*toCentre[1] - edge[1]*toCentre[0]);
+                            const double scale = 1e-12 * edge.two_norm() * toCentre.two_norm();
+                            positive += (turn > scale);
+                            negative += (turn < -scale);
+                        }
+                        return (positive == 0) || (negative == 0);
+                    };
                     std::optional<Dune::cpgrid::Intersection> best{};
+                    bool bestHolds = false;
                     double bestDistance = std::numeric_limits<double>::max();
                     for (const auto& originIntersection : intersections(this->levelGridView(0), insideOrigin)) {
                         if (!originIntersection.neighbor() ||
                             (originIntersection.outside().index() != outsideOrigin.index())) {
                             continue;
                         }
-                        // A fault can split one pair's interface; take the nearest piece.
+                        // A fault can split one pair's interface: take the piece that holds the
+                        // leaf face, or else the nearest.
+                        const bool holds = holdsLeafCentre(originIntersection);
                         const double distance = (originIntersection.geometry().center() - leafCentre).two_norm();
-                        if (distance < bestDistance) {
+                        if ((holds && !bestHolds) || ((holds == bestHolds) && (distance < bestDistance))) {
+                            bestHolds = holds;
                             bestDistance = distance;
                             best = originIntersection;
                         }
