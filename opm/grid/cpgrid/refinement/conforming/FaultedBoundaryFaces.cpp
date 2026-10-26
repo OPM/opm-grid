@@ -26,8 +26,11 @@
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 
 namespace Opm
 {
@@ -57,17 +60,12 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
 
     std::array<int,3> miniStart = boxStartIJK;
     std::array<int,3> miniEnd   = boxEndIJK;
-    if (side < 0) {
+    // On the edge of the grid there is no shell: the whole side faces the domain.
+    if ((side < 0) && (miniStart[axis] > 0)) {
         miniStart[axis] -= 1;
-        if (miniStart[axis] < 0) {
-            return result; // shell off-grid: the box boundary is the domain edge
-        }
     }
-    else {
+    else if ((side > 0) && (miniEnd[axis] < parentDims[axis])) {
         miniEnd[axis] += 1;
-        if (miniEnd[axis] > parentDims[axis]) {
-            return result;
-        }
     }
     for (int p = 0; p < 3; ++p) {
         if (p == axis) continue;
@@ -97,7 +95,8 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
             const int parent = p - miniStart[d];
             const bool inside = (p >= boxStartIJK[d]) && (p < boxEndIJK[d]);
             const int first = inside ? boxPos.firstColumn[p - boxStartIJK[d]] : 0;
-            const int count = inside ? boxPos.parentCount[first] : box.cellsPerDim[d];
+            // A graded box may leave cellsPerDim unset; the shell then keeps whole cells.
+            const int count = inside ? boxPos.parentCount[first] : std::max(1, box.cellsPerDim[d]);
 
             for (int sub = 0; sub < count; ++sub) {
                 mini.parentOffset.push_back(parent);
@@ -117,7 +116,8 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
                                       axisPositions(miniSub[1]),
                                       axisPositions(miniSub[2]) };
 
-    const RefinedBlockGrdecl refined = refineBlock(parentDims, coord, zcorn, actnum, req);
+    // The box's own sub-pillars, so the pieces' corners are the box's corners.
+    const RefinedBlockGrdecl refined = refineBlock(parentDims, coord, zcorn, actnum, req, &box);
     const std::array<int,3> mdims = refined.dims;
 
     grdecl raw;
@@ -126,9 +126,11 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
     raw.zcorn = refined.zcorn.data();
     raw.actnum = refined.actnum.empty() ? nullptr : refined.actnum.data();
 
+    // No merging tolerance, as for the box's level grid: equal depths stay equal points.
     struct processed_grid out;
-    if (!process_grdecl(/*pinchActive=*/1, edgeConformal ? 1 : 0, 1e-6, &raw, nullptr, &out)) {
-        return result;
+    if (!process_grdecl(/*pinchActive=*/1, edgeConformal ? 1 : 0, 0.0, &raw, nullptr, &out)) {
+        OPM_THROW(std::runtime_error, "Processing the faulted side of refinement '" + box.name
+                  + "' as a corner-point grid failed.");
     }
 
     const enum face_tag axisFaceTag = (axis == 0) ? I_FACE

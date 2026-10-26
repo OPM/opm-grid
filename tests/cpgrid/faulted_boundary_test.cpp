@@ -157,10 +157,10 @@ BOOST_AUTO_TEST_CASE(unfaultedBoundaryGivesOneToOne)
     }
 }
 
-BOOST_AUTO_TEST_CASE(domainBoundarySideHasNoConnections)
+BOOST_AUTO_TEST_CASE(domainBoundarySideFacesTheDomain)
 {
     // The box's j-minus side is the domain edge (box starts at j=0): no shell,
-    // so no connections.
+    // so each boundary cell gets one face toward the domain.
     auto depth = [](int, int, int k_) { return 2.0*(cellOf(k_) + sideOf(k_)); };
     auto g = makeGrid({5, 2, 2}, depth);
 
@@ -168,5 +168,12 @@ BOOST_AUTO_TEST_CASE(domainBoundarySideHasNoConnections)
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
         Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/1, /*side=*/-1, /*edgeConformal=*/false);
 
-    BOOST_CHECK(conns.empty());
+    std::set<std::array<int,3>> cells;
+    for (const auto& c : conns) {
+        BOOST_CHECK_EQUAL(c.coarseNeighborCart, -1);
+        BOOST_CHECK_EQUAL(c.boxCell[1], 0);
+        cells.insert(c.boxCell);
+    }
+    BOOST_CHECK_EQUAL(conns.size(), 16u);
+    BOOST_CHECK_EQUAL(cells.size(), 16u);
 }

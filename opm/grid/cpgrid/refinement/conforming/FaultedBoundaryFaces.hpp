@@ -54,8 +54,9 @@ struct BoundaryConnection
 /// Builds a mini-grdecl covering the box plus a one-cell coarse shell on the
 /// (axis, side) side, refined to cellsPerDim, runs process_grdecl (which splits
 /// faces at faults and resolution jumps), and returns the faces between the box
-/// boundary cells and the shell (coarse-neighbour) cells. Returns an empty
-/// vector if the shell falls outside the parent grid (a domain boundary).
+/// boundary cells and the shell (coarse-neighbour) cells, with the box's own
+/// sub-pillars. A piece facing the domain has no neighbour; on the edge of the
+/// grid there is no shell and every piece faces the domain.
 ///
 /// axis in {0,1,2}; side in {-1, +1}. edgeConformal selects edge-conformal
 /// processing, matching the leaf's final edgeConformalizeLeaf pass. across, if

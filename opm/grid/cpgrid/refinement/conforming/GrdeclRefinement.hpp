@@ -44,9 +44,10 @@ struct RefinedBlockGrdecl
 /// block of a corner-point description onto refined sub-pillars.
 ///
 /// Semantics are corner-point-native (what deck LGRs mean):
-///  - Sub-pillars are straight lines whose endpoints interpolate the four
-///    surrounding parent pillar endpoints bilinearly; refined pillars on
-///    parent pillar positions reproduce the parent pillars exactly.
+///  - A sub-pillar is the straight line through the bilinear interpolation of
+///    its parent column's corners on the top and the bottom of the column's
+///    first non-collapsed layer; refined pillars on parent pillar positions
+///    reproduce the parent pillars exactly.
 ///  - Refined zcorn values interpolate the parent cell's eight zcorn values
 ///    trilinearly in the lateral/vertical fractions.
 ///
@@ -62,11 +63,14 @@ struct RefinedBlockGrdecl
 /// @param zcorn       Parent ZCORN, 8*nx*ny*nz doubles.
 /// @param actnum      Parent ACTNUM (nx*ny*nz ints) or nullptr (all active).
 /// @param request     The block to refine (startIJK/endIJK within parentDims).
+/// @param pillarBox   The box whose sub-pillars the block must reproduce, when the
+///                    block is a larger grid around that box; nullptr for the request.
 RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
                                const double* coord,
                                const double* zcorn,
                                const int* actnum,
-                               const BlockRefinement& request);
+                               const BlockRefinement& request,
+                               const BlockRefinement* pillarBox = nullptr);
 
 } // namespace Refinement
 } // namespace Opm

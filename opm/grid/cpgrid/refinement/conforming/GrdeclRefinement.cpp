@@ -63,8 +63,10 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
                                const double* coord,
                                const double* zcorn,
                                const int* actnum,
-                               const BlockRefinement& request)
+                               const BlockRefinement& request,
+                               const BlockRefinement* pillarBox)
 {
+    const BlockRefinement& lines = pillarBox ? *pillarBox : request;
     const auto& [nx, ny, nz] = parentDims;
     for (int c = 0; c < 3; ++c) {
         if (request.startIJK[c] < 0 || request.endIJK[c] > parentDims[c]
@@ -103,11 +105,13 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
         return std::array<double,3>{ pil[0] + t*(pil[3] - pil[0]), pil[1] + t*(pil[4] - pil[1]), z };
     };
 
-    // A line on a parent boundary inside the box belongs to the lower column, as in the
-    // reference; across a fault the two columns' corners differ.
+    // A line on a parent boundary inside the block belongs to the lower column, as in the
+    // reference; across a fault the two columns' corners differ. The first line of the box
+    // belongs to the box, also when the block reaches beyond it.
     const auto pillarPos = [&](int refinedIdx, int dim) {
         auto pos = lateralPos(refinedIdx, subs[dim], request.startIJK[dim]);
-        if ((pos.frac == 0.0) && (pos.cell > request.startIJK[dim])) {
+        if ((pos.frac == 0.0) && (pos.cell > request.startIJK[dim])
+            && (pos.cell != lines.startIJK[dim])) {
             pos = { pos.cell - 1, 1.0 };
         }
         return pos;
@@ -132,8 +136,8 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
             if ((a == 0.0 || a == 1.0) && (b == 0.0 || b == 1.0)) {
                 continue;
             }
-            const int kFirst = request.pillarsFromBoxLayer ? request.startIJK[2] : 0;
-            const int kEnd = request.pillarsFromBoxLayer ? request.endIJK[2] : nz;
+            const int kFirst = lines.pillarsFromBoxLayer ? lines.startIJK[2] : 0;
+            const int kEnd = lines.pillarsFromBoxLayer ? lines.endIJK[2] : nz;
             for (int ck = kFirst; ck < kEnd; ++ck) {
                 std::array<std::array<double,3>,2> ends{};
                 for (int dk = 0; dk < 2; ++dk) {

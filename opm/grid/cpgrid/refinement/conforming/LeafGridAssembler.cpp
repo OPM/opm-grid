@@ -29,10 +29,13 @@
 #include <opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -218,24 +221,98 @@ constexpr int kFaultedSide = -2;
 
 // Area-weighted normal (Newell), centroid and area of a planar-ish polygon.
 struct PolyGeom { Dune::FieldVector<double,3> center; Dune::FieldVector<double,3> normal; double area; };
-PolyGeom polygonGeometry(const std::vector<std::array<double,3>>& pts)
+PolyGeom polygonGeometry(const std::vector<Dune::FieldVector<double,3>>& pts)
 {
     PolyGeom g;
     g.center = 0.0;
     g.normal = 0.0;
     const int n = static_cast<int>(pts.size());
+    Dune::FieldVector<double,3> mean(0.0);
     for (int i = 0; i < n; ++i) {
         const auto& a = pts[i];
         const auto& b = pts[(i + 1) % n];
         g.normal[0] += (a[1] - b[1]) * (a[2] + b[2]);
         g.normal[1] += (a[2] - b[2]) * (a[0] + b[0]);
         g.normal[2] += (a[0] - b[0]) * (a[1] + b[1]);
-        for (int d = 0; d < 3; ++d) g.center[d] += a[d];
+        mean += a;
     }
-    for (int d = 0; d < 3; ++d) g.center[d] /= (n > 0 ? n : 1);
+    mean /= (n > 0 ? n : 1);
     g.area = 0.5 * g.normal.two_norm();
     if (g.area > 0.0) g.normal /= g.normal.two_norm();  // unit
+    // Centroid: the triangles from the vertex mean, weighted by their area along the normal.
+    double weight = 0.0;
+    for (int i = 0; i < n; ++i) {
+        const auto& a = pts[i];
+        const auto& b = pts[(i + 1) % n];
+        const auto e1 = a - mean;
+        const auto e2 = b - mean;
+        const Dune::FieldVector<double,3> cross{ e1[1]*e2[2] - e1[2]*e2[1],
+                                                 e1[2]*e2[0] - e1[0]*e2[2],
+                                                 e1[0]*e2[1] - e1[1]*e2[0] };
+        const double w = 0.5 * (cross * g.normal);
+        auto centre = mean;
+        centre += a;
+        centre += b;
+        centre *= w / 3.0;
+        g.center += centre;
+        weight += w;
+    }
+    if (weight > 0.0) {
+        g.center /= weight;
+    }
+    else {
+        g.center = mean;
+    }
     return g;
+}
+
+// The outline of polygons that tile one planar region, all wound the same way: edges two
+// polygons share cancel, and what remains must close into a single loop.
+std::optional<std::vector<int>> mergedOutline(const std::vector<std::vector<int>>& polygons)
+{
+    std::map<std::pair<int,int>, int> edges;
+    for (const auto& polygon : polygons) {
+        const int n = static_cast<int>(polygon.size());
+        for (int i = 0; i < n; ++i) {
+            const int a = polygon[i];
+            const int b = polygon[(i + 1) % n];
+            if (a == b) {
+                continue;
+            }
+            const auto reverse = edges.find({b, a});
+            if (reverse != edges.end()) {
+                if (--reverse->second == 0) {
+                    edges.erase(reverse);
+                }
+            }
+            else {
+                ++edges[{a, b}];
+            }
+        }
+    }
+    std::map<int,int> next;
+    for (const auto& [edge, count] : edges) {
+        if ((count != 1) || !next.emplace(edge.first, edge.second).second) {
+            return std::nullopt;
+        }
+    }
+    if (next.empty()) {
+        return std::nullopt;
+    }
+    std::vector<int> outline;
+    int node = next.begin()->first;
+    do {
+        outline.push_back(node);
+        const auto it = next.find(node);
+        if ((it == next.end()) || (outline.size() > next.size())) {
+            return std::nullopt;
+        }
+        node = it->second;
+    } while (node != outline.front());
+    if (outline.size() != next.size()) {
+        return std::nullopt;
+    }
+    return outline;
 }
 
 } // anonymous namespace
@@ -636,6 +713,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     // Parent IJK range of the cells really across each box side, from the level-zero
     // faces: a throw taller than the box puts them outside the box's own layers.
     std::map<std::tuple<int,int,int>, std::array<std::array<int,2>,3>> acrossRange;
+    // Boxes across each box side: a side shared with a faulted side is rebuilt with it.
+    std::map<std::tuple<int,int,int>, std::set<int>> boxesAcross;
     const auto extendAcross = [&](int b, int parent, int axis, int side) {
         const auto row = cellToFace0[EntityRep<0>(parent, true)];
         for (int e = 0; e < row.size(); ++e) {
@@ -655,6 +734,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                                                  (cart / dims0[0]) % dims0[1],
                                                  cart / (dims0[0]*dims0[1]) };
                 const auto key = std::make_tuple(b, axis, side);
+                if ((boxOfCell[cell] >= 0) && (boxOfCell[cell] != b)) {
+                    boxesAcross[key].insert(boxOfCell[cell]);
+                }
                 auto [it, fresh] = acrossRange.try_emplace(key);
                 for (int d = 0; d < 3; ++d) {
                     it->second[d][0] = fresh ? nijk[d] : std::min(it->second[d][0], nijk[d]);
@@ -684,6 +766,20 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     faultedSides.emplace(b, axis, side);
                 }
                 extendAcross(b, c, axis, side);
+            }
+        }
+    }
+    // Both sides of a box-to-box interface take the same path, so its faces are
+    // emitted once, by the side that owns them.
+    for (bool grown = true; grown; ) {
+        grown = false;
+        for (const auto& [b, axis, side] : std::set<std::tuple<int,int,int>>(faultedSides)) {
+            const auto across = boxesAcross.find(std::make_tuple(b, axis, side));
+            if (across == boxesAcross.end()) {
+                continue;
+            }
+            for (const int nb : across->second) {
+                grown = faultedSides.emplace(nb, axis, -side).second || grown;
             }
         }
     }
@@ -874,77 +970,30 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             cornerByCoord.emplace(key3, idx);
             return idx;
         };
-        // Emit one synthetic face from a polygon given by node coordinates.
-        // The normal points along +axis, never box -> neighbour: CpGrid derives a
-        // face's min/max side (and hence Intersection::indexInInside) from the
-        // stored normal together with each cell's orientation flag, so a normal
-        // pointing down-axis makes both neighbours report the opposite face of
-        // themselves. The side is kept for the face_to_cell ordering below.
-        const auto emitPolygon = [&](int boxLeaf, int neighborLeaf, int axis, int side,
-                                     const std::vector<std::array<double,3>>& nodes) {
+        // The pieces of a box cell's side toward one neighbour: a coarse cell, the
+        // child of another box, or none (the domain). The helper grid cuts the
+        // neighbour at its own sub-layers, so one cell pair can come in several
+        // pieces; they are merged below, so a cell pair shares exactly one face.
+        struct FaceGroup
+        {
+            int box;
+            int boxCellLevel;
+            std::vector<std::vector<int>> pieces;   // leaf corner indices
+        };
+        std::map<std::tuple<int,int,int,int>, FaceGroup> faceGroups; // box leaf, neighbour leaf, axis, side
+        const auto addPiece = [&](int b, int boxCellLevel, int boxLeaf, int neighborLeaf,
+                                  int axis, int side,
+                                  const std::vector<std::array<double,3>>& nodes) {
+            auto& group = faceGroups[std::make_tuple(boxLeaf, neighborLeaf, axis, side)];
+            group.box = b;
+            group.boxCellLevel = boxCellLevel;
             std::vector<int> pts;
             pts.reserve(nodes.size());
             for (const auto& nd : nodes) {
                 pts.push_back(poolCorner(nd));
             }
-            PolyGeom pg = polygonGeometry(nodes);
-            if (pg.normal[axis] < 0.0) {
-                pg.normal *= -1.0;
-                std::reverse(pts.begin(), pts.end());
-            }
-            syntheticFaces.push_back(SyntheticFace{
-                boxLeaf, neighborLeaf, std::move(pts), pg.normal, pg.center,
-                pg.area, faceTagOf(axis), side});
+            group.pieces.push_back(std::move(pts));
         };
-        // Emit a box cell's WHOLE (axis, side) boundary face from its level grid.
-        // Used to merge an over-refined shell's split pieces (unequal factors
-        // across a fault) that all abut the SAME coarser neighbour child back into
-        // one face, so the cell pair shares exactly one face.
-        const auto emitWholeBoxFace = [&](int bIdx, int boxCellLevel, int boxLeaf,
-                                          int neighborLeaf, int axis, int side) {
-            auto& cf = GridStateWriter::cellToFace(*boxes[bIdx].level);
-            auto& f2p = GridStateWriter::faceToPoint(*boxes[bIdx].level);
-            Dune::cpgrid::EntityVariableBase<enum face_tag>& tags =
-                GridStateWriter::faceTag(*boxes[bIdx].level);
-            const Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& fnorm =
-                GridStateWriter::faceNormals(*boxes[bIdx].level);
-            const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>& fgeom =
-                GridStateWriter::geometry(*boxes[bIdx].level)
-                  .geomVector(std::integral_constant<int,1>());
-            const auto row = cf[EntityRep<0>(boxCellLevel, true)];
-            for (int e = 0; e < row.size(); ++e) {
-                const int f = row[e].index();
-                if (axisOf(tags.get(f)) != axis || row[e].orientation() != (side > 0)) {
-                    continue;
-                }
-                std::vector<int> pts;
-                auto fp = f2p[f];
-                for (int n = 0; n < fp.size(); ++n) {
-                    pts.push_back(boxes[bIdx].cornerToLeaf[fp[n]]);
-                }
-                Dune::FieldVector<double,3> normal = fnorm[f];
-                if (normal[axis] < 0.0) {
-                    normal *= -1.0;
-                    std::reverse(pts.begin(), pts.end());
-                }
-                syntheticFaces.push_back(SyntheticFace{
-                    boxLeaf, neighborLeaf, std::move(pts), normal,
-                    fgeom[f].center(), fgeom[f].volume(), faceTagOf(axis), side});
-                return;
-            }
-        };
-
-        // Box<->box faulted connections, grouped by (box cell, neighbour child).
-        // The emitting box's shell is refined to ITS factors; when it is finer
-        // than the neighbour, one box-cell face can be split into several pieces
-        // that all abut the SAME coarser neighbour child -- those are merged into
-        // the box cell's whole face below. Coarse-neighbour and domain
-        // connections are emitted directly.
-        struct BoxBoxPiece {
-            int boxLeaf, neighborLeaf, boxIdx, boxCellLevel, axis, side;
-            std::vector<std::array<double,3>> nodes;
-        };
-        std::map<std::pair<int,int>, std::vector<BoxBoxPiece>> boxBoxGroups;
 
         for (const auto& [b, axis, side] : faultedSides) {
             const auto rangeIt = acrossRange.find(std::make_tuple(b, axis, side));
@@ -968,12 +1017,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 // coarseNeighborCart == -1: this part of the box boundary faces
                 // the domain (the fault scarp) -> a boundary face (no outside).
                 int neighborLeaf = -1;   // cell opposite the box across the fault
-                bool boxBox = false;
-                if (conn.coarseNeighborCart >= 0) {
-                    const int l0 = compressed0[conn.coarseNeighborCart];
-                    if (l0 < 0) {
-                        continue; // neighbour inactive
-                    }
+                // A neighbour that is not in the grid (inactive or removed) leaves the
+                // piece facing the domain.
+                const int l0 = (conn.coarseNeighborCart >= 0) ? compressed0[conn.coarseNeighborCart] : -1;
+                if (l0 >= 0) {
                     neighborLeaf = leafIdxOfCell0[l0];
                     if (neighborLeaf < 0) {
                         // Neighbour is refined away: a box<->box faulted interface
@@ -1054,33 +1101,61 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                         if (neighborLeaf < 0) {
                             continue;
                         }
-                        boxBox = true;
                     }
                 }
 
-                if (boxBox) {
-                    boxBoxGroups[{boxLeaf, neighborLeaf}].push_back(
-                        BoxBoxPiece{boxLeaf, neighborLeaf, b, cit->second, axis, side,
-                                    conn.faceNodes});
-                }
-                else {
-                    emitPolygon(boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
-                }
+                addPiece(b, cit->second, boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
             }
         }
 
-        // Emit the box<->box interface: one face per (box cell, neighbour child).
-        // A single piece is emitted as-is; multiple pieces (the over-refined shell
-        // split one face) are merged into the box cell's whole boundary face.
-        for (auto& [keyPair, pieces] : boxBoxGroups) {
-            if (pieces.size() == 1) {
-                const auto& p = pieces.front();
-                emitPolygon(p.boxLeaf, p.neighborLeaf, p.axis, p.side, p.nodes);
+        // One face per group. The normal points along +axis, never box -> neighbour:
+        // CpGrid derives a face's min/max side (and hence Intersection::indexInInside)
+        // from the stored normal together with each cell's orientation flag, so a
+        // normal pointing down-axis makes both neighbours report the opposite face of
+        // themselves. +axis is out of the box cell on its high side and into it on its
+        // low side, whatever the grid's handedness. The side is kept for the
+        // face_to_cell ordering below.
+        const auto coordinates = [&](const std::vector<int>& pts) {
+            std::vector<Dune::FieldVector<double,3>> xs;
+            xs.reserve(pts.size());
+            for (const int p : pts) {
+                xs.push_back(leafCorners[p].center());
+            }
+            return xs;
+        };
+        for (auto& [key, group] : faceGroups) {
+            const auto& [boxLeaf, neighborLeaf, axis, side] = key;
+            const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& boxCells =
+                GridStateWriter::geometry(*boxes[group.box].level).geomVector(std::integral_constant<int,0>());
+            const auto boxCellCentre = boxCells[group.boxCellLevel].center();
+            for (auto& piece : group.pieces) {
+                const PolyGeom pg = polygonGeometry(coordinates(piece));
+                auto outward = pg.center;
+                outward -= boxCellCentre;
+                if ((pg.normal * outward) * side < 0.0) {
+                    std::reverse(piece.begin(), piece.end());
+                }
+            }
+            std::vector<std::vector<int>> faces;
+            if (group.pieces.size() == 1) {
+                faces = std::move(group.pieces);
+            }
+            else if (auto outline = mergedOutline(group.pieces)) {
+                faces.push_back(std::move(*outline));
+            }
+            else if (neighborLeaf < 0) {
+                faces = std::move(group.pieces);    // separate stretches facing the domain
             }
             else {
-                const auto& p = pieces.front();
-                emitWholeBoxFace(p.boxIdx, p.boxCellLevel, p.boxLeaf, p.neighborLeaf,
-                                 p.axis, p.side);
+                OPM_THROW(std::logic_error, "The faulted side of refinement '"
+                          + requests[group.box].name + "' joins a refined cell to one "
+                          "neighbour through separate pieces, which cannot form one face.");
+            }
+            for (auto& pts : faces) {
+                const PolyGeom pg = polygonGeometry(coordinates(pts));
+                syntheticFaces.push_back(SyntheticFace{
+                    boxLeaf, neighborLeaf, std::move(pts), pg.normal, pg.center,
+                    pg.area, faceTagOf(axis), side});
             }
         }
         numLeafCorners = static_cast<int>(leafCorners.size());
