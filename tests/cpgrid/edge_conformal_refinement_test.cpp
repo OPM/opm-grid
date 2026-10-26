@@ -18,8 +18,9 @@
 
   Local grid refinement on edge-conformal grids. With edge_conformal=true a
   fault inserts the neighbour columns' nodes onto the shared pillar edges,
-  so faces carry more than four nodes. These tests probe whether the
-  refinement builder copes (review §3 flagged this as untested).
+  so faces carry more than four nodes. These tests check that the
+  refinement builder copes, and that its edge-conformal pass leaves no
+  hanging node and folds no face.
 */
 #include <config.h>
 
@@ -36,6 +37,7 @@
 #include <dune/common/parallel/mpihelper.hh>
 
 #include <array>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -116,6 +118,78 @@ double totalVolume(const Dune::CpGrid& grid)
     return v;
 }
 
+// Leaf faces whose polygon, from the listed nodes in order, does not have the
+// face's stored area or does not wind along its stored normal: a node inserted
+// out of order folds the polygon.
+int foldedFaces(Dune::CpGrid& grid)
+{
+    auto& leaf = *grid.currentData().back();
+    auto& geometry = Opm::Refinement::GridStateWriter::geometry(leaf);
+    const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& corners =
+        geometry.geomVector(std::integral_constant<int,3>());
+    const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>& faces =
+        geometry.geomVector(std::integral_constant<int,1>());
+    const Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& normals =
+        Opm::Refinement::GridStateWriter::faceNormals(leaf);
+    auto& f2p = Opm::Refinement::GridStateWriter::faceToPoint(leaf);
+    int folded = 0;
+    for (int face = 0; face < f2p.size(); ++face) {
+        auto row = f2p[face];
+        const int n = row.size();
+        Dune::FieldVector<double,3> newell(0.0);
+        for (int e = 0; e < n; ++e) {
+            const auto& a = corners[row[e]].center();
+            const auto& b = corners[row[(e + 1) % n]].center();
+            newell[0] += (a[1] - b[1]) * (a[2] + b[2]);
+            newell[1] += (a[2] - b[2]) * (a[0] + b[0]);
+            newell[2] += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        const double area = faces[face].volume();
+        if ((std::abs(0.5*newell.two_norm() - area) > 1e-9*area) || (newell * normals[face] <= 0.0)) {
+            ++folded;
+        }
+    }
+    return folded;
+}
+
+// Leaf nodes that lie strictly on some face edge but are not listed in that face.
+int hangingNodes(Dune::CpGrid& grid)
+{
+    auto& leaf = *grid.currentData().back();
+    const auto& cg = Opm::Refinement::GridStateWriter::geometry(leaf)
+                           .geomVector(std::integral_constant<int,3>());
+    const int nc = cg.size();
+    std::vector<Dune::FieldVector<double,3>> P(nc);
+    for (int i = 0; i < nc; ++i) P[i] = cg.get(i).center();
+    std::vector<char> used(nc, 0);
+    auto& f2p = Opm::Refinement::GridStateWriter::faceToPoint(leaf);
+    for (int face = 0; face < f2p.size(); ++face) {
+        for (const int p : f2p[face]) used[p] = 1;
+    }
+    int hanging = 0;
+    for (int face = 0; face < f2p.size(); ++face) {
+        auto row = f2p[face];
+        const int n = row.size();
+        std::set<int> inFace(row.begin(), row.end());
+        for (int e = 0; e < n; ++e) {
+            const int a = row[e], b = row[(e + 1) % n];
+            auto d = P[b]; d -= P[a];
+            const double len2 = d.two_norm2();
+            if (len2 <= 0) continue;
+            for (int c = 0; c < nc; ++c) {
+                if (!used[c] || inFace.count(c)) continue;
+                auto ac = P[c]; ac -= P[a];
+                const double t = (ac * d) / len2;
+                if (t <= 1e-9 || t >= 1.0 - 1e-9) continue;
+                auto proj = d; proj *= t; proj += P[a];
+                auto diff = P[c]; diff -= proj;
+                if (diff.two_norm() < 1e-9) ++hanging;
+            }
+        }
+    }
+    return hanging;
+}
+
 } // anonymous namespace
 
 BOOST_GLOBAL_FIXTURE(MPIFixture);
@@ -139,7 +213,7 @@ BOOST_AUTO_TEST_CASE(refineBoxAwayFromFaultOnEdgeConformalGrid)
     const double v0 = totalVolume(grid);
 
     useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum));
+        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
 
     // Box = the single cell (0,0,0)..(0,1,1) on the unfaulted left side,
     // i in [0,1): its boundary faces toward the fault are at i=1, which is
@@ -148,6 +222,8 @@ BOOST_AUTO_TEST_CASE(refineBoxAwayFromFaultOnEdgeConformalGrid)
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
+    BOOST_CHECK_EQUAL(hangingNodes(grid), 0);
+    BOOST_CHECK_EQUAL(foldedFaces(grid), 0);
 }
 
 // The box *contains* the fault (fault plane interior, boundaries
@@ -167,7 +243,7 @@ BOOST_AUTO_TEST_CASE(refineBoxContainingFaultOnEdgeConformalGrid)
     const double v0 = totalVolume(grid);
 
     useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum));
+        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
 
     // Box i in [1,3): fault plane i=2 is inside, boundaries i=1 and i=3 are
     // unfaulted.
@@ -175,6 +251,8 @@ BOOST_AUTO_TEST_CASE(refineBoxContainingFaultOnEdgeConformalGrid)
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
+    BOOST_CHECK_EQUAL(hangingNodes(grid), 0);
+    BOOST_CHECK_EQUAL(foldedFaces(grid), 0);
 }
 
 // Torture case: a pillar with all four surrounding columns faulted to
@@ -218,7 +296,7 @@ BOOST_AUTO_TEST_CASE(fourColumnsFaultedAroundAPillarEdgeConformal)
     const double v0 = totalVolume(grid);
 
     useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum));
+        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
 
     // Refine the flat corner cell (0,0): its boundaries (i=1, j=1) are
     // unfaulted, away from the complex pillar.
@@ -226,6 +304,8 @@ BOOST_AUTO_TEST_CASE(fourColumnsFaultedAroundAPillarEdgeConformal)
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
+    BOOST_CHECK_EQUAL(hangingNodes(grid), 0);
+    BOOST_CHECK_EQUAL(foldedFaces(grid), 0);
 }
 
 // The edge-conformal toggle: with it on, refinement makes the leaf
@@ -249,19 +329,13 @@ BOOST_AUTO_TEST_CASE(edgeConformalToggleInsertsBoundaryNodes)
         useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
             g.dims, g.coord, g.zcorn, g.actnum, edgeConformal));
         grid.addLgrsUpdateLeafView({{3,3,3}}, {{1,1,0}}, {{2,2,2}}, {"LGR1"});
-        return std::make_pair(
-            Opm::Refinement::GridStateWriter::faceToPoint(*grid.currentData().back()).dataSize(),
-            totalVolume(grid));
+        // The inserted nodes keep each face's polygon: same area, same winding.
+        BOOST_CHECK_EQUAL(foldedFaces(grid), 0);
+        return Opm::Refinement::GridStateWriter::faceToPoint(*grid.currentData().back()).dataSize();
     };
 
-    const auto [nodesOff, volOff] = faceNodesAfterRefine(false);
-    const auto [nodesOn, volOn] = faceNodesAfterRefine(true);
-
     // On inserts hanging nodes into coarse faces -> strictly more face nodes.
-    BOOST_CHECK_GT(nodesOn, nodesOff);
-    // Geometry is unchanged by the post-pass.
-    BOOST_CHECK_CLOSE(volOn, volOff, 1e-10);
-    BOOST_CHECK_CLOSE(volOn, 3.0*3.0*2.0, 1e-8);
+    BOOST_CHECK_GT(faceNodesAfterRefine(true), faceNodesAfterRefine(false));
 }
 
 // The global edge-conformal property: after the pass, NO leaf node lies in
@@ -337,10 +411,12 @@ BOOST_AUTO_TEST_CASE(refineBoxBoundaryOnFaultBuilds)
     const double v0 = totalVolume(grid);
 
     useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum));
+        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
 
     // Box i in [0,2): right boundary is the fault plane i=2.
     BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,0,0}}, {{2,2,2}}, {"LGR1"}));
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
+    BOOST_CHECK_EQUAL(hangingNodes(grid), 0);
+    BOOST_CHECK_EQUAL(foldedFaces(grid), 0);
 }

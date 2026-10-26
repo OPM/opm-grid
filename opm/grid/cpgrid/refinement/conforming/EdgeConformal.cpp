@@ -51,44 +51,77 @@ void edgeConformalizeLeaf(Dune::cpgrid::CpGridData& leaf)
     if (numCorners == 0) {
         return;
     }
+    auto& faceToPoint = GridStateWriter::faceToPoint(leaf);
+
+    // Only corners some face uses: level-zero corners of refined cells stay in the
+    // pool, unused, and must not land in a face.
+    std::vector<char> used(numCorners, 0);
+    for (int face = 0; face < faceToPoint.size(); ++face) {
+        for (const int p : faceToPoint[face]) {
+            used[p] = 1;
+        }
+    }
 
     std::vector<Coord> P(numCorners);
     Coord lo = cornerGeom.get(0).center();
     Coord hi = lo;
+    int numUsed = 0;
     for (int i = 0; i < numCorners; ++i) {
         P[i] = cornerGeom.get(i).center();
         for (int c = 0; c < 3; ++c) {
             lo[c] = std::min(lo[c], P[i][c]);
             hi[c] = std::max(hi[c], P[i][c]);
         }
+        numUsed += used[i];
     }
     double diag = 0.0;
     for (int c = 0; c < 3; ++c) {
         diag += (hi[c] - lo[c]) * (hi[c] - lo[c]);
     }
     diag = std::sqrt(diag);
-    if (diag <= 0.0) {
+    if ((diag <= 0.0) || (numUsed == 0)) {
         return;
     }
-
-    // Spatial hash so each edge only tests nearby nodes.
-    const double h = diag / 256.0 + 1e-30;
     const double tol = 1e-9 * diag;
-    using Bucket = std::tuple<long long, long long, long long>;
-    const auto bucketOf = [&](const Coord& p) {
-        return Bucket{ std::llround(std::floor((p[0] - lo[0]) / h)),
-                       std::llround(std::floor((p[1] - lo[1]) / h)),
-                       std::llround(std::floor((p[2] - lo[2]) / h)) };
+
+    // Buckets sized per direction so each holds about one corner: a thin, wide model
+    // gets thin, wide buckets instead of buckets as tall as it is wide.
+    double spanProduct = 1.0;
+    int spanned = 0;
+    for (int c = 0; c < 3; ++c) {
+        if (hi[c] - lo[c] > tol) {
+            spanProduct *= hi[c] - lo[c];
+            ++spanned;
+        }
+    }
+    const double side = std::pow(spanProduct / numUsed, 1.0 / std::max(spanned, 1));
+    std::array<long long,3> count{};
+    std::array<double,3> h{};
+    for (int c = 0; c < 3; ++c) {
+        const double span = hi[c] - lo[c];
+        count[c] = (span > tol) ? std::clamp<long long>(std::llround(span / side), 1, 1 << 20) : 1;
+        h[c] = (span > tol) ? span / count[c] : 1.0;
+    }
+    const auto bucketIndex = [&](int c, double x) {
+        return std::clamp<long long>(static_cast<long long>(std::floor((x - lo[c]) / h[c])),
+                                     0, count[c] - 1);
     };
-    std::map<Bucket, std::vector<int>> hash;
+    const auto bucketOf = [&](long long bx, long long by, long long bz) {
+        return bx + count[0]*(by + count[1]*bz);
+    };
+    // Used corners by bucket.
+    std::map<long long, std::vector<int>> buckets;
     for (int i = 0; i < numCorners; ++i) {
-        hash[bucketOf(P[i])].push_back(i);
+        if (used[i]) {
+            buckets[bucketOf(bucketIndex(0, P[i][0]), bucketIndex(1, P[i][1]),
+                             bucketIndex(2, P[i][2]))].push_back(i);
+        }
     }
 
-    auto& faceToPoint = GridStateWriter::faceToPoint(leaf);
     Opm::SparseTable<int> rebuilt;
     std::vector<int> newRow;
     std::vector<std::pair<double,int>> mids;
+    bool inserted = false;
 
     for (int face = 0; face < faceToPoint.size(); ++face) {
         auto row = faceToPoint[face];
@@ -107,19 +140,19 @@ void edgeConformalizeLeaf(Dune::cpgrid::CpGridData& leaf)
             }
 
             // Candidate nodes: all buckets overlapping the edge's bounding box.
-            const long long x0 = std::llround(std::floor((std::min(P[a][0], P[b][0]) - lo[0] - tol) / h));
-            const long long x1 = std::llround(std::floor((std::max(P[a][0], P[b][0]) - lo[0] + tol) / h));
-            const long long y0 = std::llround(std::floor((std::min(P[a][1], P[b][1]) - lo[1] - tol) / h));
-            const long long y1 = std::llround(std::floor((std::max(P[a][1], P[b][1]) - lo[1] + tol) / h));
-            const long long z0 = std::llround(std::floor((std::min(P[a][2], P[b][2]) - lo[2] - tol) / h));
-            const long long z1 = std::llround(std::floor((std::max(P[a][2], P[b][2]) - lo[2] + tol) / h));
+            std::array<long long,3> first{};
+            std::array<long long,3> last{};
+            for (int c = 0; c < 3; ++c) {
+                first[c] = bucketIndex(c, std::min(P[a][c], P[b][c]) - tol);
+                last[c] = bucketIndex(c, std::max(P[a][c], P[b][c]) + tol);
+            }
 
             mids.clear();
-            for (long long bx = x0; bx <= x1; ++bx) {
-                for (long long by = y0; by <= y1; ++by) {
-                    for (long long bz = z0; bz <= z1; ++bz) {
-                        const auto it = hash.find({bx, by, bz});
-                        if (it == hash.end()) {
+            for (long long bx = first[0]; bx <= last[0]; ++bx) {
+                for (long long by = first[1]; by <= last[1]; ++by) {
+                    for (long long bz = first[2]; bz <= last[2]; ++bz) {
+                        const auto it = buckets.find(bucketOf(bx, by, bz));
+                        if (it == buckets.end()) {
                             continue;
                         }
                         for (const int c : it->second) {
@@ -149,11 +182,14 @@ void edgeConformalizeLeaf(Dune::cpgrid::CpGridData& leaf)
             for (const auto& [t, c] : mids) {
                 newRow.push_back(c);
             }
+            inserted = inserted || !mids.empty();
         }
         rebuilt.appendRow(newRow.begin(), newRow.end());
     }
 
-    faceToPoint.swap(rebuilt);
+    if (inserted) {
+        faceToPoint.swap(rebuilt);
+    }
 }
 
 } // namespace Refinement
