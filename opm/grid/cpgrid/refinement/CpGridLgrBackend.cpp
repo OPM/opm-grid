@@ -21,6 +21,7 @@
 #endif
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/NestedRefinementUtilities.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <opm/common/ErrorMacros.hpp>
@@ -76,6 +77,22 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
 
     if (!refinement_builder_) {
         OPM_THROW(std::logic_error, "The Conforming LGR backend has no refinement builder.");
+    }
+    // A parent LGR must exist, or come earlier in the requests, before its children.
+    std::vector<std::string> names, parents;
+    for (const auto& request : requests) {
+        names.push_back(request.name);
+        parents.push_back(request.parentGridName);
+    }
+    if (!Opm::areParentGridsAvailableBeforeTheirLgrs(getLgrNameToLevel(), names, parents)) {
+        for (std::size_t box = 0; box < requests.size(); ++box) {
+            const auto earlier = std::find(names.begin(), names.begin() + box, parents[box]);
+            if (!getLgrNameToLevel().count(parents[box]) && (earlier == names.begin() + box)) {
+                OPM_THROW(std::invalid_argument, "Refinement '" + names[box] + "' names parent grid '"
+                          + parents[box] + "', which has not been built yet. Parent LGRs must be "
+                          "ordered before their children.");
+            }
+        }
     }
     const int preBuildMaxLevel = maxLevel();
     refinement_builder_->build(*this, requests);

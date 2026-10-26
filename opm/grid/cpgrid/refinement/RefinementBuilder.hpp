@@ -34,13 +34,11 @@ namespace Opm
 namespace Refinement
 {
 
-/// Interface for static refinement backends ("the seam", docs/PLAN.md
-/// Track 1 milestone 2; design rationale in docs/lgr_review.md §6, §IV.2).
+/// Interface for static refinement backends
 ///
 /// CpGrid::addLgrsUpdateLeafView() validates the request and forwards it
 /// here. A backend is free to refine in place or to rebuild the grid's
-/// level hierarchy and leaf view from scratch (e.g. the planned
-/// preprocessor-level builder, review §8.2-S2). Contract:
+/// level hierarchy and leaf view from scratch. Contract:
 ///  - on success, grid.maxLevel() reflects the new refined level grids and
 ///    the leaf view is consistent (parent/child maps, ids, index sets);
 ///  - on failure, throw; the grid must be left unchanged;
@@ -54,7 +52,7 @@ public:
                        const std::vector<BlockRefinement>& requests) = 0;
 };
 
-/// Which algorithm refines a CpGrid: upstream's cell-by-cell trilinear
+/// Which algorithm refines a CpGrid: the existing cell-by-cell trilinear
 /// refinement (the default), or a conforming Builder.
 enum class Backend { Trilinear, Conforming };
 

@@ -22,6 +22,8 @@
 
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -127,7 +129,7 @@ blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
     const std::size_t numBoxes = startIJK.size();
     if (cellsPerDim.size() != numBoxes || endIJK.size() != numBoxes || names.size() != numBoxes
         || (!parentGridNames.empty() && parentGridNames.size() != numBoxes)) {
-        throw std::invalid_argument("Sizes of provided refinement vectors must match.");
+        OPM_THROW(std::invalid_argument, "Sizes of provided refinement vectors must match.");
     }
     std::vector<BlockRefinement> requests(numBoxes);
     for (std::size_t box = 0; box < numBoxes; ++box) {
@@ -149,39 +151,39 @@ void validateBlockRefinements(const std::vector<BlockRefinement>& requests)
         // (and the parentGridName convention for top-level boxes); a request
         // with that name would overwrite the level-zero map entry.
         if (req.name == "GLOBAL") {
-            throw std::invalid_argument("Refinement request name 'GLOBAL' is reserved "
-                                        "for the level-zero grid; choose another name.");
+            OPM_THROW(std::invalid_argument, "Refinement request name 'GLOBAL' is reserved "
+                                             "for the level-zero grid; choose another name.");
         }
         for (int c = 0; c < 3; ++c) {
             if (req.startIJK[c] < 0 || req.startIJK[c] >= req.endIJK[c]) {
-                throw std::invalid_argument("Invalid IJK box in refinement '" + req.name
-                                            + "': end I/J/K must be larger than start I/J/K (and start non-negative).");
+                OPM_THROW(std::invalid_argument, "Invalid IJK box in refinement '" + req.name
+                                                 + "': end I/J/K must be larger than start I/J/K (and start non-negative).");
             }
             if (req.subdivision[c].empty() && req.cellsPerDim[c] < 1) {
-                throw std::invalid_argument("Invalid subdivisions in refinement '" + req.name
-                                            + "': NX/NY/NZ must be positive.");
+                OPM_THROW(std::invalid_argument, "Invalid subdivisions in refinement '" + req.name
+                                                 + "': NX/NY/NZ must be positive.");
             }
             if (!req.subdivision[c].empty()
                 && (req.subdivision[c].fracLo.size() != req.subdivision[c].size()
                     || req.subdivision[c].fracHi.size() != req.subdivision[c].size()))
             {
-                throw std::invalid_argument("Refinement '" + req.name
-                                            + "' has a graded subdivision whose extent tables "
-                                              "do not match its column count.");
+                OPM_THROW(std::invalid_argument, "Refinement '" + req.name
+                                                 + "' has a graded subdivision whose extent tables "
+                                                   "do not match its column count.");
             }
         }
     }
     // Pairwise disjointness of boxes refining the same parent grid. Note:
-    // upstream never validated this and overlapping CARFIN boxes corrupt
-    // the result silently (review Part III.3) - here it is a hard error.
+    // trilinear backend never validated this and overlapping CARFIN boxes corrupt
+    // the result silently - here it is a hard error.
     for (std::size_t i = 0; i < requests.size(); ++i) {
         for (std::size_t j = i + 1; j < requests.size(); ++j) {
             if (requests[i].parentGridName != requests[j].parentGridName) {
                 continue;
             }
             if (boxesOverlap(requests[i], requests[j])) {
-                throw std::invalid_argument("Refinement boxes '" + requests[i].name + "' and '"
-                                            + requests[j].name + "' overlap. CARFIN boxes must be disjoint.");
+                OPM_THROW(std::invalid_argument, "Refinement boxes '" + requests[i].name + "' and '"
+                                                 + requests[j].name + "' overlap. CARFIN boxes must be disjoint.");
             }
         }
     }

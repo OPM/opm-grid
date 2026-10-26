@@ -24,10 +24,13 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
+
 #include <dune/common/parallel/mpihelper.hh>
 
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 struct MPIFixture
@@ -73,7 +76,7 @@ struct RecordingBuilder : Opm::Refinement::Builder
 
 } // anonymous namespace
 
-// Under the default backend the request form refines exactly as upstream's vector form.
+// Under the default backend the request form refines exactly as the vector form.
 BOOST_AUTO_TEST_CASE(trilinearRequestsMatchVectors)
 {
     Dune::CpGrid byVectors, byRequests;
@@ -90,6 +93,7 @@ BOOST_AUTO_TEST_CASE(trilinearRequestsMatchVectors)
     BOOST_CHECK_EQUAL(byRequests.size(1), byVectors.size(1));
     BOOST_CHECK_EQUAL(byRequests.size(3), byVectors.size(3));
     BOOST_CHECK(byRequests.getLgrNameToLevel() == byVectors.getLgrNameToLevel());
+    Opm::checkLeafGridGeometryEquality(byVectors, byRequests);
 }
 
 // What only the conforming builder can do is refused, naming the backend.
@@ -140,9 +144,34 @@ BOOST_AUTO_TEST_CASE(conformingForwardsToItsBuilder)
     BOOST_CHECK(builder->recorded[1].cellsPerDim == (std::array<int,3>{3, 3, 3}));
     BOOST_CHECK_EQUAL(builder->recorded[1].parentGridName, "GLOBAL");
 
+    // Overlapping boxes are refused by the validation, before the builder is called.
     builder->recorded.clear();
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
                           box("C", {0,0,0}, {2,2,2}), box("D", {1,1,1}, {3,3,3}) }),
                       std::invalid_argument);
     BOOST_CHECK(builder->recorded.empty());
+}
+
+// Under the Conforming backend too, a parent LGR must come before its children;
+// the grid refuses the order before the builder is called.
+BOOST_AUTO_TEST_CASE(conformingRefusesChildBeforeParent)
+{
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    auto builder = std::make_shared<RecordingBuilder>();
+    grid.setRefinementBuilder(builder);
+
+    auto child = box("NEST", {1,1,1}, {3,2,2});
+    child.parentGridName = "A";
+    const auto namesTheChild = [](const std::invalid_argument& e) {
+        return std::string(e.what()).find("'NEST' names parent grid 'A'") != std::string::npos;
+    };
+    BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
+                              child, box("A", {1,1,1}, {3,3,3}) }),
+                          std::invalid_argument, namesTheChild);
+    BOOST_CHECK(builder->recorded.empty());
+
+    grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ box("A", {1,1,1}, {3,3,3}), child });
+    BOOST_CHECK_EQUAL(builder->recorded.size(), 2u);
 }

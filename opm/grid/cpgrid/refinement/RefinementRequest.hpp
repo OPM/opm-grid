@@ -49,8 +49,9 @@ struct AxisSubdivision
 /// One block-shaped static refinement request (one CARFIN box).
 ///
 /// IJK indices refer to the logical Cartesian space of the parent grid
-/// ("GLOBAL" for level zero). The box is half-open in cell terms: the last
-/// refined cell column is endIJK - 1, matching CpGrid::addLgrsUpdateLeafView.
+/// ("GLOBAL" for level zero). The box is half-open in cell indices: it holds
+/// the parent cells with startIJK <= (i,j,k) < endIJK, so its last parent cell
+/// is endIJK - 1, matching CpGrid::addLgrsUpdateLeafView.
 struct BlockRefinement
 {
     std::string name;
@@ -66,8 +67,12 @@ struct BlockRefinement
     /// simulation grid and the LGR grids written to the EGRID agree on which
     /// refined cells exist.
     std::vector<int> minpvRemoved{};
-    /// Refined pillars from the box's own first layer (as the reference) rather
-    /// than the column's; boxes stacked on sheared pillars then do not conform.
+    /// Where a refined pillar's line comes from. False (the default): the
+    /// parent column's first non-collapsed layer, so boxes stacked in one column
+    /// share their refined pillars. True: the box's own first layer, as the
+    /// deck's LGRPILLR asks for; on sheared pillars, boxes stacked in one column
+    /// then do not share them. On vertical or parallel pillars both give the
+    /// same lines.
     bool pillarsFromBoxLayer{false};
 };
 
@@ -79,19 +84,27 @@ AxisSubdivision axisSubdivision(const BlockRefinement& request, int dim);
 /// request are box size times cellsPerDim.
 std::array<int,3> refinedDims(const BlockRefinement& request);
 
-/// Where each refined column sits inside its parent cell. subIndex and
-/// parentCount are indexed by refined column; firstColumn by parent cell.
+/// Where each refined column sits inside its parent cell, in one direction.
+/// For example, a box of two parent cells split into 2 and 3 columns:
+///
+///   refined column   0  1 | 2  3  4
+///   subIndex         0  1 | 0  1  2
+///   parentCount      2  2 | 3  3  3
+///   firstColumn      0      2          (one entry per parent cell)
 struct AxisPositions
 {
+    /// Per refined column: its position inside its parent cell, from 0.
     std::vector<int> subIndex{};
+    /// Per refined column: how many refined columns its parent cell is split into.
     std::vector<int> parentCount{};
+    /// Per parent cell of the box: its first refined column.
     std::vector<int> firstColumn{};
 };
 
 AxisPositions axisPositions(const AxisSubdivision& sub);
 
-/// Upstream's vector form of a refinement as block requests; parent names
-/// default to "GLOBAL". Throws std::invalid_argument when the sizes differ.
+/// The vector form of CpGrid::addLgrsUpdateLeafView as block requests; parent
+/// names default to "GLOBAL". Throws std::invalid_argument when the sizes differ.
 std::vector<BlockRefinement>
 blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
                  const std::vector<std::array<int,3>>& startIJK,
