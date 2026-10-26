@@ -43,10 +43,10 @@ struct RefinedBlockGrdecl
 /// Resample a block of a corner-point description onto refined sub-pillars.
 ///
 /// Semantics are corner-point-native (what deck LGRs mean):
-///  - A sub-pillar is the straight line through the bilinear interpolation of
-///    its parent column's corners on the top and the bottom of the column's
-///    first non-collapsed layer; refined pillars on parent pillar positions
-///    reproduce the parent pillars exactly.
+///  - A sub-pillar is, at every depth, the bilinear interpolation of its
+///    parent column's four pillar lines at that depth
+///    (Opm::PillarInterpolation::bilinear, shared with the LGR grids opm-common
+///    writes); refined pillars on parent pillar positions lie on the parent pillars.
 ///  - Refined zcorn values interpolate the parent cell's eight zcorn values
 ///    trilinearly in the lateral/vertical fractions.
 ///
@@ -55,21 +55,18 @@ struct RefinedBlockGrdecl
 /// the refined lattice; matching them into faces is the (later) processing
 /// stage's job. Note that on inclined pillars this differs slightly from
 /// refining each hexahedron by its trilinear map (the old CpGrid approach);
-/// on vertical pillars the two coincide exactly.
+/// on vertical or parallel pillars the two coincide exactly.
 ///
 /// @param parentDims  Cartesian dimensions of the parent description.
 /// @param coord       Parent COORD, 6*(nx+1)*(ny+1) doubles.
 /// @param zcorn       Parent ZCORN, 8*nx*ny*nz doubles.
 /// @param actnum      Parent ACTNUM (nx*ny*nz ints) or nullptr (all active).
 /// @param request     The block to refine (startIJK/endIJK within parentDims).
-/// @param pillarBox   The box whose sub-pillars the block must reproduce, when the
-///                    block is a larger grid around that box; nullptr for the request.
 RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
                                const double* coord,
                                const double* zcorn,
                                const int* actnum,
-                               const BlockRefinement& request,
-                               const BlockRefinement* pillarBox = nullptr);
+                               const BlockRefinement& request);
 
 } // namespace Refinement
 } // namespace Opm

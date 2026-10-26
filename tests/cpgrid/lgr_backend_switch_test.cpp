@@ -131,12 +131,10 @@ BOOST_AUTO_TEST_CASE(trilinearRefusesConformingOnlyRequests)
 {
     auto graded = box("LGR1", {1,1,1}, {2,2,2});
     graded.subdivision[0] = { {0, 0, 0}, {0.0, 0.2, 0.5}, {0.2, 0.5, 1.0} };
-    auto pillars = box("LGR1", {1,1,1}, {2,2,2});
-    pillars.pillarsFromBoxLayer = true;
     auto minpv = box("LGR1", {1,1,1}, {2,2,2});
     minpv.minpvRemoved.assign(8, 0);
 
-    for (const auto& request : { graded, pillars, minpv }) {
+    for (const auto& request : { graded, minpv }) {
         Dune::CpGrid grid;
         makeGrid(grid);
         BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),

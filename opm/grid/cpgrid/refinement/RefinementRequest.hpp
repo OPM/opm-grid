@@ -67,13 +67,6 @@ struct BlockRefinement
     /// simulation grid and the LGR grids written to the EGRID agree on which
     /// refined cells exist.
     std::vector<int> minpvRemoved{};
-    /// Where a refined pillar's line comes from. False (the default): the
-    /// parent column's first non-collapsed layer, so boxes stacked in one column
-    /// share their refined pillars. True: the box's own first layer, as the
-    /// deck's LGRPILLR asks for; on sheared pillars, boxes stacked in one column
-    /// then do not share them. On vertical or parallel pillars both give the
-    /// same lines.
-    bool pillarsFromBoxLayer{false};
 };
 
 /// The request's subdivision in one direction, uniform tables filled in when

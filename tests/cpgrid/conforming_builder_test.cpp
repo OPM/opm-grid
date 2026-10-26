@@ -1518,41 +1518,26 @@ BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareKFace)
     BOOST_CHECK_GT(minVertexPairDistance(grid), 1e-3);
 }
 
-// Boxes stacked in a column get bitwise the same refined pillars; with
-// pillarsFromBoxLayer only a box starting at the column top does, where the
-// layers' thickness changes with depth.
-BOOST_AUTO_TEST_CASE(skewPillarRefinedPillarsFromColumn)
+// Boxes stacked in a column get bitwise the same refined pillars, also where the
+// layers' thickness changes with depth: the pillars come from the parent pillar lines.
+BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareRefinedPillars)
 {
-    const auto parent = makeSkewPillarGrid({2, 2, 4}, tiltedDepth);
-    const auto coordOf = [&parent](int k0, int k1, bool fromBox) {
+    const auto coordOf = [](const auto& parent, int k0, int k1) {
         Opm::Refinement::BlockRefinement req;
         req.name = "B";
         req.cellsPerDim = {2, 2, 1};
         req.startIJK = {0, 0, k0};
         req.endIJK = {2, 2, k1};
-        req.pillarsFromBoxLayer = fromBox;
         return Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                            parent.zcorn.data(), parent.actnum.data(),
-                                            req).coord;
+                                            parent.zcorn.data(), nullptr, req).coord;
     };
-    BOOST_CHECK(coordOf(0, 2, false) == coordOf(2, 4, false));
-    BOOST_CHECK(coordOf(0, 2, true) == coordOf(0, 2, false));
+    const auto parent = makeSkewPillarGrid({2, 2, 4}, tiltedDepth);
+    BOOST_CHECK(coordOf(parent, 0, 2) == coordOf(parent, 2, 4));
 
-    // Layers that thicken with depth, more on some pillars: the box's own layer gives
-    // other lines than the column's top layer.
+    // Layers that thicken with depth, more on some pillars.
     const auto thickening = makeSkewPillarGrid({2, 2, 4}, [](int i_, int j_, int k_) {
         const int k = (k_ + 1)/2;
         return 2.0*k + 0.3*((i_ + 1)/2 + (j_ + 1)/2)*k*k;
     });
-    const auto thickCoordOf = [&thickening](bool fromBox) {
-        Opm::Refinement::BlockRefinement req;
-        req.name = "B";
-        req.cellsPerDim = {2, 2, 1};
-        req.startIJK = {0, 0, 2};
-        req.endIJK = {2, 2, 4};
-        req.pillarsFromBoxLayer = fromBox;
-        return Opm::Refinement::refineBlock(thickening.dims, thickening.coord.data(),
-                                            thickening.zcorn.data(), nullptr, req).coord;
-    };
-    BOOST_CHECK(thickCoordOf(true) != thickCoordOf(false));
+    BOOST_CHECK(coordOf(thickening, 0, 2) == coordOf(thickening, 2, 4));
 }

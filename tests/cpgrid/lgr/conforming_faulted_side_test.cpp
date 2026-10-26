@@ -199,8 +199,7 @@ Depth faulted(int faultI, double throwBy)
     };
 }
 
-// Layer boundaries that are not on one line per column: a line through the first layer
-// differs from one through the second when the pillars are not parallel.
+// Layer boundaries that are not on one line per column.
 Depth wedge(int faultI, double throwBy)
 {
     return [faultI, throwBy](int i_, int j_, int k_) {
@@ -254,21 +253,6 @@ BOOST_AUTO_TEST_CASE(lowSideUsesTheBoxPillars)
         return grid.size(3);
     };
     BOOST_CHECK_EQUAL(vertices(fanning), vertices(vertical));
-}
-
-// A box taking its pillars from its own layers keeps them on its faulted side.
-BOOST_AUTO_TEST_CASE(faultedSideKeepsPillarsFromBoxLayer)
-{
-    auto request = box("LGR1", {2,2,2}, {0,0,1}, {2,2,3});
-    const auto vertices = [&](bool fromBoxLayer) {
-        const auto g = makeGrid({4, 2, 3}, fanning, wedge(2, 0.6));
-        Dune::CpGrid grid;
-        grid.processEclipseFormat(g.raw(), false);
-        request.pillarsFromBoxLayer = fromBoxLayer;
-        refine(grid, g, {request});
-        return grid.size(3);
-    };
-    BOOST_CHECK_EQUAL(vertices(true), vertices(false));
 }
 
 // Corners made where the fault cuts the side have ids of their own.
@@ -387,4 +371,45 @@ BOOST_AUTO_TEST_CASE(unequalBoxesAcrossTheFault)
     BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
     BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
     BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+}
+
+// The same grid written twice: once as is, once with each pillar's end points moved along
+// its own line to depths that differ from pillar to pillar. Refined pillars depend on the
+// lines only, so a box and the helper grid of its faulted side, or two boxes across a
+// fault, compute the same sub-pillars bit for bit either way: the leaf is the same.
+BOOST_AUTO_TEST_CASE(faultedSideIndependentOfEndPointDepths)
+{
+    const auto movedEnds = [](int i, int j) {
+        const auto p = fanning(i, j);
+        const auto at = [&p](double z) {
+            const double t = (z - p[2]) / (p[5] - p[2]);
+            return std::array { p[0] + t*(p[3] - p[0]), p[1] + t*(p[4] - p[1]), z };
+        };
+        const auto top = at(-1.0 - i - 2.0*j);
+        const auto bottom = at(100.0 + 3.0*i + j);
+        return std::array { top[0], top[1], top[2], bottom[0], bottom[1], bottom[2] };
+    };
+    const std::vector<std::vector<Opm::Refinement::BlockRefinement>> layouts {
+        { box("LGR1", {2,2,2}, {2,0,0}, {4,2,3}) },
+        { box("LGR1", {2,2,2}, {0,0,0}, {2,2,3}) },
+        { box("LGR1", {2,2,2}, {0,0,0}, {2,2,3}), box("LGR2", {2,2,2}, {2,0,0}, {4,2,3}) },
+    };
+    for (const auto& requests : layouts) {
+        const auto leaf = [&requests](const Pillar& pillar) {
+            const auto g = makeGrid({4, 2, 3}, pillar, wedge(2, 0.6));
+            Dune::CpGrid grid;
+            grid.processEclipseFormat(g.raw(), false);
+            refine(grid, g, requests);
+            BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+            return std::array { double(grid.size(3)), double(grid.size(0)), totalVolume(grid),
+                                worstClosure(grid) };
+        };
+        const auto written = leaf(fanning);
+        const auto moved = leaf(movedEnds);
+        BOOST_CHECK_EQUAL(written[0], moved[0]);
+        BOOST_CHECK_EQUAL(written[1], moved[1]);
+        BOOST_CHECK_CLOSE(written[2], moved[2], 1e-10);
+        // Faces on fanning pillars are not planar: the cells close equally well, not exactly.
+        BOOST_CHECK_SMALL(written[3] - moved[3], 1e-10);
+    }
 }

@@ -63,11 +63,10 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
         for (const auto& request : requests) {
             const bool graded = std::any_of(request.subdivision.begin(), request.subdivision.end(),
                                             [](const auto& sub) { return !sub.empty(); });
-            if (graded || !request.minpvRemoved.empty() || request.pillarsFromBoxLayer) {
+            if (graded || !request.minpvRemoved.empty()) {
                 OPM_THROW(std::invalid_argument,
-                          "Refinement '" + request.name + "' is graded, removes cells by a block "
-                          "MINPV or takes its pillars from the box layer; only the Conforming LGR "
-                          "backend refines that.");
+                          "Refinement '" + request.name + "' is graded or removes cells by a block "
+                          "MINPV; only the Conforming LGR backend refines that.");
             }
             cellsPerDim.push_back(request.cellsPerDim);
             startIJK.push_back(request.startIJK);
