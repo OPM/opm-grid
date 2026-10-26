@@ -1389,7 +1389,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         // face_to_point row (pool indices)
         pointBuffer.clear();
         auto srcPoints = srcFaceToPoint[src.index];
-        for (int e = 0; e < srcPoints.size(); ++e) {
+        for (int e = 0; e < static_cast<int>(srcPoints.size()); ++e) {
             pointBuffer.push_back((src.grid == 0) ? srcPoints[e]
                                                   : boxes[src.grid - 1].cornerToLeaf[srcPoints[e]]);
         }
