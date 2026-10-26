@@ -389,8 +389,8 @@ BOOST_AUTO_TEST_CASE(slantedPillarRefinementConservesCenterOfMass)
     //     mass. The refined grid spans exactly the box, so its *total* centre of
     //     mass is the relevant quantity. A faithful pillar subdivision conserves
     //     it to ~1e-6 (relative) even on a strongly sheared grid; an index-space
-    //     subdivision of skewed cells drifts ~1e-4 (seen comparing the fork's
-    //     refinement against upstream master on the opm-tests corner-point
+    //     subdivision of skewed cells drifts ~1e-4 (seen comparing the two
+    //     refinements on corner-point
     //     decks), so this bound separates the two.
     const auto parentCoM = boxCenterOfMass(parentGrid, req.startIJK, req.endIJK);
     const auto refinedCoM = totalCenterOfMass(refinedGrid);
@@ -494,7 +494,7 @@ BOOST_AUTO_TEST_CASE(inactiveParentsProduceInactiveChildren)
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 3*2*1*8 - 8);
 }
 
-// N*FIN/H*FIN: how many refined columns each parent cell takes, and their
+// Graded boxes: how many refined columns each parent cell takes, and their
 // relative widths within it.
 BOOST_AUTO_TEST_CASE(gradedRefinementFollowsColumnTables)
 {

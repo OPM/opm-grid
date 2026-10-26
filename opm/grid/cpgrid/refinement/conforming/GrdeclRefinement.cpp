@@ -22,6 +22,8 @@
 
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -71,11 +73,11 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
     for (int c = 0; c < 3; ++c) {
         if (request.startIJK[c] < 0 || request.endIJK[c] > parentDims[c]
             || request.startIJK[c] >= request.endIJK[c]) {
-            throw std::invalid_argument("Refinement box '" + request.name
+            OPM_THROW(std::invalid_argument, "Refinement box '" + request.name
                                         + "' does not fit inside the parent dimensions.");
         }
         if (request.subdivision[c].empty() && request.cellsPerDim[c] < 1) {
-            throw std::invalid_argument("Refinement '" + request.name
+            OPM_THROW(std::invalid_argument, "Refinement '" + request.name
                                         + "' has non-positive subdivisions.");
         }
     }
@@ -91,7 +93,7 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
     // Inside a parent column the line passes through the bilinear interpolation of the
     // parent's corners on the top and bottom of the column's first non-collapsed layer, so
     // boxes stacked in a column share pillars (pillarsFromBoxLayer: the box's own first
-    // layer, as the reference). Parent pillars are copied; an all-collapsed column falls
+    // layer). Parent pillars are copied; an all-collapsed column falls
     // back to endpoint-wise interpolation of the four parent pillars.
     const auto parentPillar = [&](int i, int j) {
         return coord + 6*(static_cast<std::size_t>(j)*(nx + 1) + i);
@@ -105,8 +107,8 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
         return std::array<double,3>{ pil[0] + t*(pil[3] - pil[0]), pil[1] + t*(pil[4] - pil[1]), z };
     };
 
-    // A line on a parent boundary inside the block belongs to the lower column, as in the
-    // reference; across a fault the two columns' corners differ. The first line of the box
+    // A line on a parent boundary inside the block belongs to the lower column; across a
+    // fault the two columns' corners differ. The first line of the box
     // belongs to the box, also when the block reaches beyond it.
     const auto pillarPos = [&](int refinedIdx, int dim) {
         auto pos = lateralPos(refinedIdx, subs[dim], request.startIJK[dim]);
@@ -248,7 +250,7 @@ RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
     // ... and the block's own MINPV takes out what it takes out.
     if (! request.minpvRemoved.empty()) {
         if (request.minpvRemoved.size() != out.actnum.size()) {
-            throw std::invalid_argument("Refinement '" + request.name
+            OPM_THROW(std::invalid_argument, "Refinement '" + request.name
                                         + "' has a MINPV removal mask of the wrong size.");
         }
         for (std::size_t cell = 0; cell < out.actnum.size(); ++cell) {

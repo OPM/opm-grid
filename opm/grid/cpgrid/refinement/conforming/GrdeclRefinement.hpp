@@ -40,8 +40,7 @@ struct RefinedBlockGrdecl
     std::vector<int> actnum;
 };
 
-/// Stage 2+3 of the build pipeline (docs/DESIGN-builder.md D4): resample a
-/// block of a corner-point description onto refined sub-pillars.
+/// Resample a block of a corner-point description onto refined sub-pillars.
 ///
 /// Semantics are corner-point-native (what deck LGRs mean):
 ///  - A sub-pillar is the straight line through the bilinear interpolation of

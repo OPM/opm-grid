@@ -28,6 +28,8 @@
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <array>
 #include <set>
 #include <stdexcept>
@@ -199,7 +201,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
         if (parentIdx < 0) {
             // Children inherit ACTNUM, so an active child of an inactive
             // parent indicates an internal inconsistency.
-            throw std::logic_error("Refined cell in '" + request.name
+            OPM_THROW(std::logic_error, "Refined cell in '" + request.name
                                    + "' has no active parent cell.");
         }
         // Position within the parent, whose extent varies from parent to parent

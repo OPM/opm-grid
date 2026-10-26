@@ -41,7 +41,7 @@ namespace Opm
 namespace Refinement
 {
 
-/// Stage 4+6a of the build pipeline (docs/DESIGN-builder.md D4): turn one
+/// Turn one
 /// block request into a fully processed refined *level grid*.
 ///
 /// The block is resampled onto sub-pillars (refineBlock), run through the

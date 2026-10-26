@@ -39,14 +39,13 @@ namespace Opm
 namespace Refinement
 {
 
-/// Stages 5+6b of the build pipeline (docs/DESIGN-builder.md D4): merge
-/// level zero and the refined level grids into the leaf view.
+/// Merge level zero and the refined level grids into the leaf view.
 ///
 /// Leaf cells are the unrefined level-zero cells plus all refined cells
 /// (children replace their parent at its position in the cell ordering).
 /// Parent faces on block boundaries are replaced by the refined mosaic,
 /// pairing refined cells with their level-zero neighbors. Corners follow
-/// the shared-pool design (D1): the leaf corner vector starts with all
+/// one shared pool: the leaf corner vector starts with all
 /// level-zero corners (indices preserved), refined corners that coincide
 /// with parent-lattice corners are identified with the level-zero corner
 /// through the parent cells (so faults inside blocks identify per cell,

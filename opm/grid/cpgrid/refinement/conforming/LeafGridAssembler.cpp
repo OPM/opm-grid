@@ -201,7 +201,7 @@ int axisOf(face_tag tag)
     case J_FACE: return 1;
     case K_FACE: return 2;
     default:
-        throw std::logic_error("Unexpected face tag in refined level grid.");
+        OPM_THROW(std::logic_error, "Unexpected face tag in refined level grid.");
     }
 }
 
@@ -517,7 +517,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         }
     }
 
-    // ----- Corner pool (D1) ----------------------------------------------
+    // ----- Corner pool ---------------------------------------------------
     // Pool = all level-zero corners (indices preserved) + new refined corners.
     auto leaf = std::make_shared<CpGridData>(comm, storage);
     auto& leafGeometry = GridStateWriter::geometry(*leaf);
@@ -848,7 +848,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
 
     // Per box: refined (box-global) Cartesian index -> level cell index. Used by
     // the compatible sub-face mosaic below to find, for a finer box's boundary
-    // sub-face, the coarser box's child cell it abuts (LGR_GAPS A2).
+    // sub-face, the coarser box's child cell it abuts.
     std::vector<std::map<int,int>> refinedCartToCell(numBoxes);
     for (int b = 0; b < numBoxes; ++b) {
         for (int c = 0; c < boxes[b].level->size(0); ++c) {
@@ -1003,9 +1003,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             // The conformity rule below compares one subdivision
                             // factor per in-face direction; a graded box has a
                             // column-by-column subdivision instead.
-                            throw std::invalid_argument(
-                                "Refinement boxes touch and at least one is graded "
-                                "(N*FIN/H*FIN). Touching graded boxes are not supported.");
+                            OPM_THROW(std::invalid_argument,
+                                "Refinement boxes '" + requests[b].name + "' and '"
+                                + requests[nbBox].name + "' touch and at least one is "
+                                "graded. Touching graded boxes are not supported.");
                         }
                         const auto& facA = box.factors;
                         const auto& facB = boxes[nbBox].factors;
@@ -1034,7 +1035,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             // covering cell as the outside; the coarser side
                             // suppresses its interface faces, so its interface
                             // cells become >6-face hexes tiled by the finer
-                            // sub-faces (LGR_GAPS A2 sub-face mosaic).
+                            // sub-faces (a sub-face mosaic).
                             const bool thisFiner = (facA[u] >= facB[u] && facA[v] >= facB[v]);
                             if (!thisFiner) {
                                 continue;       // coarser side: the finer references us
@@ -1077,7 +1078,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         const int leafFace = entry.second;
         if (mosaicOutside[leafFace] < 0) {
             const int ownerBox = leafFaces[leafFace].grid - 1;
-            throw std::logic_error("Internal error: refined box '"
+            OPM_THROW(std::logic_error, "Internal error: refined box '"
                                    + requests[ownerBox].name
                                    + "' has an interface face toward a face-sharing "
                                      "refined box with no matching partner face. "
@@ -1088,14 +1089,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     const int numSourceFaces = static_cast<int>(leafFaces.size());
 
     // ----- Faulted box boundaries: synthetic split faces -------------------
-    // Phase 1 (docs/PLAN.md Track 1): for each faulted (box, axis, side), the
+    // For each faulted (box, axis, side), the
     // corner-point processor (faultedBoundaryConnections) gives the split
     // connections between the refined boundary cells and the neighbour(s). The
     // neighbour is a coarse cell, or -- when it is itself refined -- the
-    // neighbour box's child cell across the fault (box<->box faulted interface,
-    // LGR_GAPS A5). New split vertices join the leaf corner pool; each connection
-    // becomes a leaf face with real polygon geometry. (Reference-matching transmissibility
-    // geometry at these faces is a separate, later layer.)
+    // neighbour box's child cell across the fault (box<->box faulted interface).
+    // New split vertices join the leaf corner pool; each connection becomes a
+    // leaf face with real polygon geometry.
     struct SyntheticFace
     {
         int boxCell;
@@ -1183,7 +1183,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     neighborLeaf = leafIdxOfCell0[l0];
                     if (neighborLeaf < 0) {
                         // Neighbour is refined away: a box<->box faulted interface
-                        // (LGR_GAPS A5). Connect to the neighbour box's child cell
+                        // Connect to the neighbour box's child cell
                         // this sub-face abuts. Emit each interface face once: the
                         // FINER box owns it (equal in-face factors -> the lower box
                         // index), so the coarser side's faces are taken over by the
@@ -1203,10 +1203,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             // Pairing the two sides' sub-faces below compares one
                             // subdivision factor per in-face direction, which a
                             // graded box does not have.
-                            throw std::invalid_argument(
+                            OPM_THROW(std::invalid_argument,
                                 "Refinement '" + requests[b].name + "' meets '"
                                 + requests[nbBox].name + "' across a fault, and at least "
-                                "one of them is graded (N*FIN/H*FIN). Box-to-box "
+                                "one of them is graded. Box-to-box "
                                 "interfaces between graded boxes are not supported.");
                         }
                         const auto& facThis = boxes[b].factors;
@@ -1217,7 +1217,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             return fine[u] % coarse[u] == 0 && fine[v] % coarse[v] == 0;
                         };
                         if (!nests(facThis, facN) && !nests(facN, facThis)) {
-                            throw std::invalid_argument(
+                            OPM_THROW(std::invalid_argument,
                                 "Refinement '" + requests[b].name + "' meets '"
                                 + requests[nbBox].name + "' across a fault with in-face "
                                 "subdivisions that do not nest. Use equal subdivisions, or "

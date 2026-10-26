@@ -31,7 +31,7 @@ namespace Opm
 namespace Refinement
 {
 
-/// First refinement backend (docs/PLAN.md Track 1 milestone 3): conforming
+/// The Conforming refinement backend: conforming
 /// block refinement built through the preprocessor pipeline
 /// (refineBlock -> assembleBlockLevelGrid -> assembleLeafGrid).
 ///

@@ -142,7 +142,7 @@ void checkFacesWindAroundNormal(const Dune::CpGrid& grid)
     BOOST_CHECK_EQUAL(inverted, 0);
 }
 
-// Structural validity of a leaf with a faulted box boundary (phase 1): one
+// Structural validity of a leaf with a faulted box boundary: one
 // refined level, volume conserved, every cell closed (sum of area*outward-normal
 // is zero), and the box connected to coarse neighbours.
 void checkValidFaultedLeaf(const Dune::CpGrid& grid, double volumeBefore)
@@ -656,7 +656,7 @@ void checkEveryInteriorFaceTwoSided(const Dune::CpGrid& grid)
 }
 
 // ---------------------------------------------------------------------------
-// A2 compatible sub-face mosaic (LGR_GAPS A2): two boxes meeting on a shared
+// Compatible sub-face mosaic: two boxes meeting on a shared
 // face with DIFFERENT but compatible in-face subdivisions (one a multiple of the
 // other). The coarser side's interface cells become >6-face hexes tiled by the
 // finer side's sub-faces. Implemented in assembleLeafGrid; these lock it in.
@@ -752,12 +752,11 @@ BOOST_AUTO_TEST_CASE(sideBySideCompatibleInFaceMosaicBuilds)
 }
 
 // ---------------------------------------------------------------------------
-// A5 (LGR_GAPS A5): two refined boxes meeting side-by-side across a FAULT. The
+// Two refined boxes meeting side-by-side across a FAULT. The
 // shared vertical face coincides with the fault throw, so the two refined sides'
-// sub-faces are vertically staggered. The faulted-boundary machinery now maps a
-// "refined away" neighbour to the neighbour box's child cell (instead of skipping
-// it), assembling the staggered interface conformally. First cut: equal
-// subdivisions both sides.
+// sub-faces are vertically staggered. The faulted-boundary machinery maps a
+// "refined away" neighbour to the neighbour box's child cell, assembling the
+// staggered interface conformally. Equal subdivisions both sides.
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultEqualSubdiv)
 {
@@ -850,12 +849,9 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultCompatibleSubdiv)
     BOOST_CHECK_GT(abConnections, 0);
 }
 
-// Nested LGR (a box whose parent is another LGR). The level grids are built
-// over their parent (Phase A/B of docs/NESTED_LGR_PLAN.md), but the recursive
-// leaf stitching (Phase C) is not implemented yet, so the build is expected to
-// reach that boundary and throw a precise, staged message. Locks in: (a) parent
-// ordering is honoured, (b) the staged failure is the *leaf* one (i.e. the
-// nested level grids were successfully assembled first).
+// Nested LGR (a box whose parent is another LGR). A nested box must lie inside
+// its parent LGR without touching its boundary; one that touches it is refused
+// by the leaf assembly, after the nested level grids were built.
 BOOST_AUTO_TEST_CASE(nestedRefinementReachesLeafBoundary)
 {
     auto parent = makeVerticalPillarGrid({4, 2, 2}, [](int, int, int k_) {
@@ -919,12 +915,7 @@ BOOST_AUTO_TEST_CASE(nestedChildBeforeParentThrows)
 // interior to the parent LGR - it touches none of the parent's refined boundary
 // faces. This is the simplest nesting case: the child's leaf stitching is
 // entirely within the parent LGR's refined region, with no interaction with
-// GLOBAL. Until the leaf assembler handles nesting (docs/NESTED_LGR_PLAN.md
-// Phase C) the nested level grids are built (Phases A/B) and then a precise
-// "not implemented" is thrown.
-//
-// Phase-C acceptance: replace BOOST_CHECK_EXCEPTION below with the build call,
-// then assert (mirroring endToEndSingleBox):
+// GLOBAL. Checked (mirroring endToEndSingleBox):
 //   - grid.maxLevel() == 2 and getLgrNameToLevel() == {LGR1:1, NEST1:2};
 //   - total leaf volume == volume before refinement (conservation);
 //   - every NEST1 leaf cell's father is an LGR1 cell whose father is GLOBAL
@@ -1067,7 +1058,7 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryBuilds)
 {
     // Fault between i=1 and i=2 (throw 0.6); box boundary right on the fault
     // plane. The boundary parents each connect to two coarse cells, so the
-    // boundary is rebuilt as split faces. Phase 1: assert the leaf is a valid
+    // boundary is rebuilt as split faces. Assert the leaf is a valid
     // polyhedral grid (builds, volume conserved, every interior face two-sided,
     // refined boundary cells connected to the coarse neighbours).
     auto depth = [](int i_, int j_, int k_) {
@@ -1279,7 +1270,7 @@ BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
 {
     // Control: a fault exists (between i=0 and i=1) but the box (i=2..3) sits
     // entirely on the down-thrown side, so its boundary toward the coarse
-    // neighbour (i=1) is a full, matching face. This must build today and
+    // neighbour (i=1) is a full, matching face. This must build and
     // conserve volume — it isolates "fault on the boundary" from "fault merely
     // present in the grid".
     auto depth = [](int i_, int j_, int k_) {
@@ -1304,10 +1295,9 @@ BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
 
 BOOST_AUTO_TEST_CASE(processGrdeclSplitsFaultedCoarseFineColumnPair)
 {
-    // Kernel proof for faults-at-box-boundary (docs/PLAN.md Track 1): the planned
-    // fix builds the connecting faces at a faulted box boundary by running
-    // process_grdecl on a mini-grdecl (coarse neighbour + refined box boundary)
-    // and reading the split connections. This checks that mechanism in isolation.
+    // The faces at a faulted box boundary are built by running process_grdecl on
+    // a small grid (coarse neighbour + refined box boundary) and reading the
+    // split connections. This checks that mechanism in isolation.
     //
     // Column 0 (coarse): one cell z[0,4]; its second logical cell is pinched
     //   (z[4,4]) so process_grdecl removes it -> one coarse cell.
@@ -1354,7 +1344,7 @@ BOOST_AUTO_TEST_CASE(processGrdeclSplitsFaultedCoarseFineColumnPair)
 // ---------------------------------------------------------------------------
 // Skew-pillar variants of the face-sharing cases. The corner pool identifies
 // shared box-boundary corners by exact coordinate, relying on both boxes
-// resampling with bitwise-identical results (docs/CORNER-POOL-EXACTNESS.md).
+// resampling with bitwise-identical results.
 // Inclined pillars and binary-inexact depth increments make that a real test.
 // A merge miss leaves two vertices an ulp apart (caught by the pair-distance
 // check) and, for equal factors, seals the interface (caught by the connection
@@ -1529,7 +1519,8 @@ BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareKFace)
 }
 
 // Boxes stacked in a column get bitwise the same refined pillars; with
-// pillarsFromBoxLayer (the reference) only a box starting at the column top does.
+// pillarsFromBoxLayer only a box starting at the column top does, where the
+// layers' thickness changes with depth.
 BOOST_AUTO_TEST_CASE(skewPillarRefinedPillarsFromColumn)
 {
     const auto parent = makeSkewPillarGrid({2, 2, 4}, tiltedDepth);
@@ -1546,4 +1537,22 @@ BOOST_AUTO_TEST_CASE(skewPillarRefinedPillarsFromColumn)
     };
     BOOST_CHECK(coordOf(0, 2, false) == coordOf(2, 4, false));
     BOOST_CHECK(coordOf(0, 2, true) == coordOf(0, 2, false));
+
+    // Layers that thicken with depth, more on some pillars: the box's own layer gives
+    // other lines than the column's top layer.
+    const auto thickening = makeSkewPillarGrid({2, 2, 4}, [](int i_, int j_, int k_) {
+        const int k = (k_ + 1)/2;
+        return 2.0*k + 0.3*((i_ + 1)/2 + (j_ + 1)/2)*k*k;
+    });
+    const auto thickCoordOf = [&thickening](bool fromBox) {
+        Opm::Refinement::BlockRefinement req;
+        req.name = "B";
+        req.cellsPerDim = {2, 2, 1};
+        req.startIJK = {0, 0, 2};
+        req.endIJK = {2, 2, 4};
+        req.pillarsFromBoxLayer = fromBox;
+        return Opm::Refinement::refineBlock(thickening.dims, thickening.coord.data(),
+                                            thickening.zcorn.data(), nullptr, req).coord;
+    };
+    BOOST_CHECK(thickCoordOf(true) != thickCoordOf(false));
 }

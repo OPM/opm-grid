@@ -29,6 +29,8 @@
 #include <opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <dune/common/parallel/communication.hh>
 #include <dune/common/parallel/mpihelper.hh>
 
@@ -78,8 +80,7 @@ struct LevelGeom
     const int* actnum{nullptr};
 };
 
-// Per-box presence on this rank (distributed runs). The rank-interior model
-// (PLAN Track 1 step 6): a box is either fully owned here (all its cells
+// Per-box presence on this rank (distributed runs). The rank-interior model: a box is either fully owned here (all its cells
 // local and interior) or absent (no cell local, not even as overlap).
 // Anything in between means the box crosses a rank boundary / touches the
 // overlap, which is not supported.
@@ -121,7 +122,7 @@ BoxPresence classifyBox(const Dune::cpgrid::CpGridData& level0,
     if (interior > 0 && nonInterior == 0) {
         return BoxPresence::Owned;
     }
-    throw std::logic_error("Refinement box '" + req.name + "' is split across MPI ranks or "
+    OPM_THROW(std::logic_error, "Refinement box '" + req.name + "' is split across MPI ranks or "
                            "touches the overlap region. Only rank-interior LGRs are supported; "
                            "use CpGrid::setPartitionCellGroups to keep the box on one rank.");
 }
@@ -179,7 +180,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                                    const std::vector<BlockRefinement>& requests)
 {
     if (grid.maxLevel() != 0) {
-        throw std::logic_error("ConformingBlockBuilder requires an unrefined starting grid.");
+        OPM_THROW(std::logic_error, "ConformingBlockBuilder requires an unrefined starting grid.");
     }
     // Conformity check for touching boxes. With disjoint boxes, a pair
     // either is fully separated, shares an edge/corner, or shares a 2D
@@ -258,7 +259,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             if (anyIncompatible) {
                 const int na = a.cellsPerDim[incompatDir];
                 const int nb = b.cellsPerDim[incompatDir];
-                throw std::logic_error(
+                OPM_THROW(std::logic_error,
                     "Refinement boxes '" + a.name + "' and '" + b.name +
                     "' meet with incompatible subdivisions in direction " +
                     std::to_string(incompatDir) + " (" + std::to_string(na) + " vs " +
@@ -270,15 +271,15 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             // other). Supported only as a 2-D sub-face mosaic on a shared face
             // (overlapCount == 2) with one box uniformly the finer side
             // (cleanly nested): the coarser side's interface cells become
-            // >6-face hexes tiled by the finer side's sub-faces (LGR_GAPS A2,
-            // assembled in assembleLeafGrid). Edge/corner contact (a 1-D mosaic)
+            // >6-face hexes tiled by the finer side's sub-faces (assembled in
+            // assembleLeafGrid). Edge/corner contact (a 1-D mosaic)
             // and a mixed nesting (each box finer in a different direction) are
             // not implemented.
             const bool cleanlyNested = aFinerOrEqualAll || bFinerOrEqualAll;
             if (overlapCount == 2 && cleanlyNested) {
                 continue;                       // supported compatible face mosaic
             }
-            throw std::logic_error(
+            OPM_THROW(std::logic_error,
                 "Refinement boxes '" + a.name + "' and '" + b.name +
                 "' meet with different but compatible subdivisions, but in an unsupported "
                 "configuration (" + (overlapCount == 2
@@ -306,7 +307,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // still carries the world communicator on every rank.
     const auto worldComm = grid.comm();
     // Use a self-communicator for serial refinement (refine-before-redistribute
-    // and the self-comm output/reference grid) so no operation is collective
+    // and the self-communicator output grid) so no operation is collective
     // over the world communicator; the distributed simulation grid keeps the
     // world communicator.
     Dune::MPIHelper::MPICommunicator comm = Dune::MPIHelper::getLocalCommunicator();
@@ -346,7 +347,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             const auto& req = requests[b];
             const auto itParent = nameToLevel.find(req.parentGridName);
             if (itParent == nameToLevel.end()) {
-                throw std::logic_error("Refinement box '" + req.name + "' names parent grid '"
+                OPM_THROW(std::logic_error, "Refinement box '" + req.name + "' names parent grid '"
                     + req.parentGridName + "', which has not been built yet. Parent LGRs "
                     "must be ordered before their children.");
             }
@@ -419,11 +420,11 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
         }
         Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm);
         if (cc.max(localBuildError) != 0) {
-            throw std::runtime_error(localBuildError != 0
+            OPM_THROW(std::runtime_error, (localBuildError != 0
                 ? ("Parallel LGR build failed on rank " + std::to_string(cc.rank())
                    + ": " + localBuildMsg)
                 : ("Parallel LGR build aborted on rank " + std::to_string(cc.rank())
-                   + " because another rank failed (see that rank's message)."));
+                   + " because another rank failed (see that rank's message).")));
         }
     } else {
         buildLevelGrids();
