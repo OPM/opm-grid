@@ -60,9 +60,16 @@ namespace Refinement
 /// corner-point processor (split faces against the coarse neighbour(s)); the
 /// parent description is needed for that.
 ///
+/// A nested box (one refining another box's level grid) replaces the cells
+/// it refines by its own: its corners on its parents' corners are theirs, and
+/// its sides face the parent LGR's cells. It must lie inside its parent LGR,
+/// away from the parent's boundary, one level deep, with no fault or pinch-out
+/// on its sides.
+///
 /// @param storage   The hierarchy [level0, level1..levelB]; level grids as
 ///                  produced by assembleBlockLevelGrid for requests[b].
-/// @param requests  The block requests, one per level grid.
+/// @param requests  The block requests, one per level grid; a parent LGR comes
+///                  before the boxes nested in it.
 /// @param parentDims, coord, zcorn, actnum  The parent corner-point
 ///                  description (actnum may be null).
 /// @param comm      Communicator for the leaf grid object.
@@ -75,37 +82,6 @@ assembleLeafGrid(std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage
                  const double* zcorn,
                  const int* actnum,
                  Dune::MPIHelper::MPICommunicator comm);
-
-/// Resampled corner-point description of one grid level (index 0 = GLOBAL base,
-/// index b+1 = the level grid built for requests[b]). Produced by the builder
-/// while threading nested geometry; carried here so the nested leaf assembler
-/// can refine a child against its parent LGR's own (Cartesian) geometry.
-struct LevelGeom
-{
-    std::array<int,3> dims{};
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
-};
-
-/// Leaf assembly for nested LGRs (a CARFIN whose parent is another LGR).
-///
-/// Deliberately a SEPARATE entry point from assembleLeafGrid so the single-level
-/// (GLOBAL-parent) assembler stays byte-identical - GLOBAL decks never enter
-/// here. It handles a child box fully contained inside its parent LGR by
-/// reusing assembleLeafGrid: a parent LGR's level grid is itself Cartesian in
-/// its local space, and a contained child refines it exactly as a single-level
-/// box refines level zero.
-///
-/// @param storage    [level0, level1..levelB] as built by the block assembler.
-/// @param requests   the block requests (carry parentGridName for the tree).
-/// @param levelGeom  per-level resampled corner-point descriptions (size B+1).
-/// @param comm       communicator for the leaf grid object.
-std::shared_ptr<Dune::cpgrid::CpGridData>
-assembleNestedLeafGrid(std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage,
-                       const std::vector<BlockRefinement>& requests,
-                       const std::vector<LevelGeom>& levelGeom,
-                       Dune::MPIHelper::MPICommunicator comm);
 
 } // namespace Refinement
 } // namespace Opm

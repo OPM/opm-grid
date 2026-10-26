@@ -110,6 +110,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/autoRefine_test.cpp
   tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
   tests/cpgrid/lgr/conforming_faulted_side_test.cpp
+  tests/cpgrid/lgr/conforming_nested_test.cpp
   tests/cpgrid/lgr/consistent_vertex_order_in_face_test.cpp
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp

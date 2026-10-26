@@ -337,6 +337,19 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     const int numCells0 = level0.size(0);
     const int numCorners0 = level0.size(3);
 
+    // ----- Box tree ---------------------------------------------------------
+    // A nested box refines cells of another box's level grid (its parent LGR),
+    // which comes before it in the requests.
+    std::map<std::string,int> boxOfName;
+    std::vector<int> parentBoxOf(numBoxes, -1);
+    for (int b = 0; b < numBoxes; ++b) {
+        boxOfName[requests[b].name] = b;
+        if (requests[b].parentGridName != "GLOBAL") {
+            parentBoxOf[b] = boxOfName.at(requests[b].parentGridName);
+        }
+    }
+    const auto nested = [&parentBoxOf](int b) { return parentBoxOf[b] >= 0; };
+
     // ----- Basic level-zero lookups ------------------------------------
     std::vector<int> compressed0(static_cast<std::size_t>(dims0[0])*dims0[1]*dims0[2], -1);
     for (int c = 0; c < numCells0; ++c) {
@@ -344,6 +357,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     }
     const auto boxOfIJK = [&](int i, int j, int k) {
         for (int b = 0; b < numBoxes; ++b) {
+            if (nested(b)) {
+                continue;
+            }
             const auto& req = requests[b];
             if (i >= req.startIJK[0] && i < req.endIJK[0]
                 && j >= req.startIJK[1] && j < req.endIJK[1]
@@ -375,14 +391,15 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     struct BoxData
     {
         CpGridData* level;
+        int cornerMask{0};      // cornerSlotMask of the level grid
         std::array<int,3> factors;
         std::array<AxisSubdivision,3> subs;
         std::array<AxisPositions,3> pos;
         bool graded{false};
         std::array<int,3> refinedDims;
-        // children of each level-zero parent, ordered by idxInParent
+        // children of each parent cell, ordered by idxInParent
         std::map<int, std::vector<int>> childrenOfParent;
-        // level corner -> level-zero corner (or -1)
+        // level corner -> corner of the parent grid (or -1)
         std::vector<int> cornerEquiv;
         // level corner -> leaf pool index
         std::vector<int> cornerToLeaf;
@@ -419,7 +436,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
 
-        // Corner identification with level zero, through the parent cells
+        // Corner identification with the parent grid, through the parent cells
         // (per-cell identification stays consistent across faults inside
         // the block, where lattice positions are not unique).
         // A refined corner coincides with a parent corner when it sits on the
@@ -430,6 +447,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         auto& cellToPointL = GridStateWriter::cellToPoint(*box.level);
         const auto& rd = box.refinedDims;
         const int maskL = cornerSlotMask(*box.level);
+        box.cornerMask = maskL;
+        auto& cellToPointP = nested(b) ? GridStateWriter::cellToPoint(*boxes[parentBoxOf[b]].level)
+                                       : cellToPoint0;
+        const int maskP = nested(b) ? boxes[parentBoxOf[b]].cornerMask : mask0;
         for (int cell = 0; cell < box.level->size(0); ++cell) {
             const int parent = childToParent[cell][1];
             const int refinedCart = box.level->globalCell()[cell];
@@ -453,11 +474,45 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     }
                 }
                 if (onParentCorner) {
-                    const int parentCorner = cellToPoint0[parent][(parentCornerIJK[0]
+                    const int parentCorner = cellToPointP[parent][(parentCornerIJK[0]
                                                                   + 2*parentCornerIJK[1]
-                                                                  + 4*parentCornerIJK[2]) ^ mask0];
+                                                                  + 4*parentCornerIJK[2]) ^ maskP];
                     box.cornerEquiv[cellToPointL[cell][corner ^ maskL]] = parentCorner;
                 }
+            }
+        }
+    }
+
+    // A nested box lies inside its parent LGR, away from its boundary, one level deep.
+    for (int b = 0; b < numBoxes; ++b) {
+        if (!nested(b) || (boxes[b].level->size(0) == 0)) {
+            continue;
+        }
+        const auto& req = requests[b];
+        if (nested(parentBoxOf[b])) {
+            OPM_THROW(std::logic_error, "Nested refinement '" + req.name + "' refines '"
+                      + req.parentGridName + "', itself a nested refinement; only one level "
+                      "of nesting is supported.");
+        }
+        const auto& parentDimsL = boxes[parentBoxOf[b]].refinedDims;
+        for (int d = 0; d < 3; ++d) {
+            if ((req.startIJK[d] < 1) || (req.endIJK[d] > parentDimsL[d] - 1)) {
+                OPM_THROW(std::logic_error, "Nested refinement '" + req.name + "' touches the "
+                          "boundary of its parent LGR '" + req.parentGridName + "': it must "
+                          "satisfy 1 <= startIJK and endIJK <= the parent's refined cells - 1 "
+                          "in every direction.");
+            }
+        }
+    }
+    // nestedBoxOf[b][cell]: the nested box refining that cell of box b's level grid, or -1.
+    std::vector<std::vector<int>> nestedBoxOf(numBoxes);
+    for (int b = 0; b < numBoxes; ++b) {
+        nestedBoxOf[b].assign(boxes[b].level->size(0), -1);
+    }
+    for (int b = 0; b < numBoxes; ++b) {
+        if (nested(b)) {
+            for (const auto& [parent, kids] : boxes[b].childrenOfParent) {
+                nestedBoxOf[parentBoxOf[b]][parent] = b;
             }
         }
     }
@@ -498,8 +553,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         std::vector<std::array<int,2>> levelCornerHistory(box.level->size(3), {-1, -1});
         for (int corner = 0; corner < box.level->size(3); ++corner) {
             if (box.cornerEquiv[corner] >= 0) {
-                box.cornerToLeaf[corner] = box.cornerEquiv[corner];
-                levelCornerHistory[corner] = {0, box.cornerEquiv[corner]};
+                // Level-zero corners keep their index in the leaf; a nested box's
+                // parent corners are already in the pool.
+                const int leafCorner = nested(b)
+                    ? boxes[parentBoxOf[b]].cornerToLeaf[box.cornerEquiv[corner]]
+                    : box.cornerEquiv[corner];
+                box.cornerToLeaf[corner] = leafCorner;
+                levelCornerHistory[corner] = leafCornerHistory[leafCorner];
             }
             else {
                 const auto key = coordKey(cornersL[corner]);
@@ -546,13 +606,91 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 continue; // active parent without active children cannot happen; inactive handled by absence
             }
             for (const int child : childrenIt->second) {
-                leafIdxOfLevelCell[b][child] = static_cast<int>(leafCells.size());
-                leafCells.push_back({b + 1, child});
+                const int nb = nestedBoxOf[b][child];
+                if (nb < 0) {
+                    leafIdxOfLevelCell[b][child] = static_cast<int>(leafCells.size());
+                    leafCells.push_back({b + 1, child});
+                    continue;
+                }
+                // Refined again by a nested box: its children in its place.
+                for (const int grandchild : boxes[nb].childrenOfParent.at(child)) {
+                    leafIdxOfLevelCell[nb][grandchild] = static_cast<int>(leafCells.size());
+                    leafCells.push_back({nb + 1, grandchild});
+                }
             }
             parentToChildren[c] = std::make_tuple(b + 1, childrenIt->second);
         }
     }
     const int numLeafCells = static_cast<int>(leafCells.size());
+    // The parent LGRs of nested boxes learn about their children.
+    std::map<int, std::vector<std::tuple<int, std::vector<int>>>> nestedParentToChildren;
+    for (int nb = 0; nb < numBoxes; ++nb) {
+        if (!nested(nb)) {
+            continue;
+        }
+        const int pb = parentBoxOf[nb];
+        auto [it, fresh] = nestedParentToChildren.try_emplace(pb);
+        if (fresh) {
+            it->second.assign(boxes[pb].level->size(0), std::make_tuple(-1, std::vector<int>{}));
+        }
+        for (const auto& [parent, kids] : boxes[nb].childrenOfParent) {
+            it->second[parent] = std::make_tuple(nb + 1, kids);
+        }
+    }
+
+    // The grid a box refines is level zero, or for a nested box its parent LGR.
+    const auto boxOfParentCell = [&](int b, int cell) {
+        return nested(b) ? nestedBoxOf[parentBoxOf[b]][cell] : boxOfCell[cell];
+    };
+    const auto leafOfParentCell = [&](int b, int cell) {
+        return nested(b) ? leafIdxOfLevelCell[parentBoxOf[b]][cell] : leafIdxOfCell0[cell];
+    };
+    const auto parentIJK = [&](int b, int cell) {
+        const CpGridData& grid = nested(b) ? *boxes[parentBoxOf[b]].level : level0;
+        const auto& dims = nested(b) ? boxes[parentBoxOf[b]].refinedDims : dims0;
+        const int cart = grid.globalCell()[cell];
+        return std::array<int,3>{ cart % dims[0], (cart / dims[0]) % dims[1],
+                                  cart / (dims[0]*dims[1]) };
+    };
+    // The cell across a nested box's side: across its parent cell's face there, which must
+    // be the parent's whole face (a fault or pinch-out on it is not supported), or -1.
+    const auto nestedNeighborOf = [&](int b, int parent, int axis, int side) {
+        CpGridData& grid = *boxes[parentBoxOf[b]].level;
+        const auto row = GridStateWriter::cellToFace(grid)[EntityRep<0>(parent, true)];
+        Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
+        std::vector<int> faces;
+        for (int e = 0; e < row.size(); ++e) {
+            const int face = row[e].index();
+            if ((tags.get(face) != NNC_FACE) && (axisOf(tags.get(face)) == axis)
+                && (row[e].orientation() == (side > 0))) {
+                faces.push_back(face);
+            }
+        }
+        std::set<int> expected;
+        for (int corner = 0; corner < 8; ++corner) {
+            if ((((corner >> axis) & 1) == 1) == (side > 0)) {
+                expected.insert(GridStateWriter::cellToPoint(grid)[parent]
+                                [corner ^ boxes[parentBoxOf[b]].cornerMask]);
+            }
+        }
+        std::set<int> actual;
+        if (faces.size() == 1) {
+            const auto points = GridStateWriter::faceToPoint(grid)[faces[0]];
+            actual.insert(points.begin(), points.end());
+        }
+        if (actual != expected) {
+            OPM_THROW(std::logic_error, "Nested refinement '" + requests[b].name + "' has a "
+                      "side on a fault or pinch-out inside its parent LGR '"
+                      + requests[b].parentGridName + "'; that is not supported.");
+        }
+        const auto cells = GridStateWriter::faceToCell(grid)[EntityRep<1>(faces[0], true)];
+        for (int q = 0; q < cells.size(); ++q) {
+            if (cells[q].index() != parent) {
+                return cells[q].index();
+            }
+        }
+        return -1;
+    };
 
     // ----- Identify replaced level-zero faces and mosaic pairings ---------
     // A level-zero face is dropped if any adjacent cell is a refined parent.
@@ -806,6 +944,14 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         for (int face = 0; face < faceToCellL.size(); ++face) {
             const auto row = faceToCellL[EntityRep<1>(face, true)];
             int outside = -1;
+            // Toward a cell a nested box refines: that box's faces take over.
+            bool towardNested = false;
+            for (int e = 0; e < row.size(); ++e) {
+                towardNested = towardNested || (nestedBoxOf[b][row[e].index()] >= 0);
+            }
+            if (towardNested) {
+                continue;
+            }
             if (row.size() == 1) {
                 // Boundary face of the refined block: internal hole, domain
                 // boundary, block boundary toward a coarse neighbor, or
@@ -827,16 +973,17 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     }
                     // Block boundary: find the neighbor parent (or none).
                     const int parent = childToParent[cell][1];
-                    const int neighbor = outsideNeighborOf(b, parent, axis, side);
-                    if (neighbor >= 0 && boxOfCell[neighbor] < 0) {
+                    const int neighbor = nested(b) ? nestedNeighborOf(b, parent, axis, side)
+                                                   : outsideNeighborOf(b, parent, axis, side);
+                    if (neighbor >= 0 && boxOfParentCell(b, neighbor) < 0) {
                         // Toward a coarse (unrefined) neighbor: mosaic.
-                        outside = leafIdxOfCell0[neighbor];
+                        outside = leafOfParentCell(b, neighbor);
                     }
                     else if (neighbor >= 0) {
                         // Toward another refined box. The two boxes share this
                         // 2-D face; its in-face directions are the two axes
                         // other than `axis` (the perpendicular touch direction).
-                        const int nbBox = boxOfCell[neighbor];
+                        const int nbBox = boxOfParentCell(b, neighbor);
                         if (box.graded || boxes[nbBox].graded) {
                             // The conformity rule below compares one subdivision
                             // factor per in-face direction; a graded box has a
@@ -885,10 +1032,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                                 const int subA = lattice[c] % facA[c];
                                 subB[c] = subA * facB[c] / facA[c];
                             }
-                            const int ncart = level0.globalCell()[neighbor];
-                            const std::array<int,3> nijk = { ncart % dims0[0],
-                                                             (ncart / dims0[0]) % dims0[1],
-                                                             ncart / (dims0[0]*dims0[1]) };
+                            const std::array<int,3> nijk = parentIJK(b, neighbor);
                             const auto& startB = requests[nbBox].startIJK;
                             const auto& rdB = boxes[nbBox].refinedDims;
                             std::array<int,3> latB{};
@@ -1314,9 +1458,14 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             for (int corner = 0; corner < 8; ++corner) {
                 leafCellToPoint[cell][corner] = box.cornerToLeaf[srcPoints[corner]];
             }
+            const int b = src.grid - 1;
             const int parent = GridStateWriter::childToParent(*box.level)[src.index][1];
-            leafGlobalCell[cell] = level0.globalCell()[parent];
-            leafChildToParent[cell] = {0, parent};
+            // A nested child's level-zero host is its parent LGR cell's.
+            const int host = nested(b)
+                ? GridStateWriter::childToParent(*boxes[parentBoxOf[b]].level)[parent][1]
+                : parent;
+            leafGlobalCell[cell] = level0.globalCell()[host];
+            leafChildToParent[cell] = {nested(b) ? parentBoxOf[b] + 1 : 0, parent};
             leafIdxInParent[cell] = GridStateWriter::idxInParent(*box.level)[src.index];
             leafToLevel[cell] = {src.grid, src.index};
         }
@@ -1418,596 +1567,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         GridStateWriter::setRefinementMaxLevel(*boxes[b].level, numBoxes);
     }
 
-    // Level zero learns about its children.
+    // Level zero learns about its children, and each parent LGR about its nested ones.
     GridStateWriter::setParentToChildren(level0, std::move(parentToChildren));
-
-    return leaf;
-}
-
-std::shared_ptr<CpGridData>
-assembleNestedLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
-                       const std::vector<BlockRefinement>& requests,
-                       const std::vector<LevelGeom>& levelGeom,
-                       Dune::MPIHelper::MPICommunicator comm)
-{
-    const int numBoxes = static_cast<int>(requests.size());
-    CpGridData& level0 = *storage[0];
-    const auto& dims0 = level0.logicalCartesianSize();
-    const int numCells0 = level0.size(0);
-    const int numCorners0 = level0.size(3);
-
-    // ----- Box tree (parentGridName -> level index b+1) --------------------
-    std::map<std::string,int> nameToBox;
-    for (int b = 0; b < numBoxes; ++b) {
-        nameToBox[requests[b].name] = b;
-    }
-    std::vector<int> parentBoxOf(numBoxes, -1);   // -1 == parent is GLOBAL (level 0)
-    std::vector<int> parentLevelOf(numBoxes, 0);  // grid level of the parent (0 == level0)
-    for (int b = 0; b < numBoxes; ++b) {
-        if (requests[b].parentGridName != "GLOBAL") {
-            parentBoxOf[b] = nameToBox.at(requests[b].parentGridName);
-            parentLevelOf[b] = parentBoxOf[b] + 1;
-        }
-    }
-
-    // ----- Per-box data ----------------------------------------------------
-    struct BoxData
-    {
-        CpGridData* level;
-        std::array<int,3> factors;
-        std::array<AxisPositions,3> pos;
-        std::array<int,3> refinedDims;
-        std::map<int, std::vector<int>> childrenOfParent;  // parent cell (in parent grid) -> children
-        std::vector<int> cornerEquiv;                      // level corner -> parent leaf corner (or -1)
-        std::vector<int> cornerToLeaf;                     // level corner -> leaf pool index
-    };
-    std::vector<BoxData> boxes(numBoxes);
-    // childBoxOf[L][cell] = the box (index) refining that cell of grid level L, or -1.
-    std::vector<std::vector<int>> childBoxOf(numBoxes + 1);
-    childBoxOf[0].assign(numCells0, -1);
-    for (int b = 0; b < numBoxes; ++b) {
-        childBoxOf[b + 1].assign(storage[b + 1]->size(0), -1);
-    }
-    for (int b = 0; b < numBoxes; ++b) {
-        BoxData& box = boxes[b];
-        box.level = storage[b + 1].get();
-        box.factors = requests[b].cellsPerDim;
-        for (int d = 0; d < 3; ++d) {
-            box.pos[d] = axisPositions(axisSubdivision(requests[b], d));
-        }
-        box.refinedDims = box.level->logicalCartesianSize();
-        const auto& childToParent = GridStateWriter::childToParent(*box.level);
-        const auto& idxInParent = GridStateWriter::idxInParent(*box.level);
-        std::map<int, std::vector<std::pair<int,int>>> tmp;
-        for (int cell = 0; cell < box.level->size(0); ++cell) {
-            tmp[childToParent[cell][1]].emplace_back(idxInParent[cell], cell);
-        }
-        for (auto& [parent, kids] : tmp) {
-            std::sort(kids.begin(), kids.end());
-            auto& target = box.childrenOfParent[parent];
-            target.reserve(kids.size());
-            for (const auto& [pos, cell] : kids) {
-                target.push_back(cell);
-            }
-            childBoxOf[parentLevelOf[b]][parent] = b;   // parent cell (in its grid) is refined by b
-        }
-    }
-
-    // ----- Containment validation (fully-contained, one nesting level) -----
-    for (int b = 0; b < numBoxes; ++b) {
-        if (parentBoxOf[b] < 0) {
-            continue;
-        }
-        // Rank-interior ("refine-after") model: a box that is not present on this
-        // rank is an empty placeholder whose parent LGR level grid is also empty,
-        // so levelGeom carries no dims to validate against (validating here would
-        // throw spuriously on the ranks that do not own the box, deadlocking
-        // against the ranks that do). The box is validated on the rank that owns
-        // it. A contained child is always co-located with its parent, so the
-        // child's own emptiness is a sufficient test.
-        if (boxes[b].level->size(0) == 0) {
-            continue;
-        }
-        if (parentBoxOf[parentBoxOf[b]] >= 0) {
-            throw std::logic_error("Nested LGR deeper than one level is not implemented "
-                "yet (docs/NESTED_LGR_PLAN.md Phase C).");
-        }
-        const auto& req = requests[b];
-        const auto& pdims = levelGeom[parentLevelOf[b]].dims;
-        const auto ijkRange = [&]() {
-            std::string s;
-            for (int d = 0; d < 3; ++d) {
-                s += (d ? " x [" : "[") + std::to_string(req.startIJK[d]) + ","
-                   + std::to_string(req.endIJK[d]) + ")";
-            }
-            return s;
-        };
-        const std::string parentExtent = std::to_string(pdims[0]) + "x"
-            + std::to_string(pdims[1]) + "x" + std::to_string(pdims[2]);
-        for (int d = 0; d < 3; ++d) {
-            if (req.startIJK[d] < 0 || req.endIJK[d] > pdims[d]
-                || req.startIJK[d] >= req.endIJK[d]) {
-                throw std::logic_error(
-                    "Nested refinement box '" + req.name + "' extends outside its parent LGR '"
-                    + req.parentGridName + "' (parent has " + parentExtent + " refined cells): "
-                    "its parent-local IJK range " + ijkRange()
-                    + " must be non-empty and lie within the parent.");
-            }
-            if (req.startIJK[d] < 1 || req.endIJK[d] > pdims[d] - 1) {
-                throw std::logic_error(
-                    "Nested refinement box '" + req.name + "' touches the boundary of its "
-                    "parent LGR '" + req.parentGridName + "' (parent " + parentExtent
-                    + "; box parent-local IJK " + ijkRange() + "). Only a child fully "
-                    "contained in the interior of its parent LGR is supported yet "
-                    "(docs/NESTED_LGR_PLAN.md Phase C): every direction must satisfy "
-                    "1 <= startIJK and endIJK <= parentDim-1.");
-            }
-        }
-    }
-
-    // Parent grid of box b, and the leaf-pool index of one of its corners.
-    const auto parentGridOf = [&](int b) -> CpGridData& {
-        return parentLevelOf[b] == 0 ? level0 : *boxes[parentBoxOf[b]].level;
-    };
-    const auto parentCornerLeaf = [&](int b, int parentCornerIdx) -> int {
-        // level-0 corners occupy leaf-pool indices [0, numCorners0) unchanged.
-        return parentLevelOf[b] == 0 ? parentCornerIdx
-                                     : boxes[parentBoxOf[b]].cornerToLeaf[parentCornerIdx];
-    };
-
-    // ----- Corner pool (level0 corners + refined corners), parent-before-child
-    auto leaf = std::make_shared<CpGridData>(comm, storage);
-    auto& leafGeometry = GridStateWriter::geometry(*leaf);
-    Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& leafCorners =
-        leafGeometry.geomVector(std::integral_constant<int,3>());
-    const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& corners0 =
-        GridStateWriter::geometry(level0).geomVector(std::integral_constant<int,3>());
-    leafCorners.assign(corners0.begin(), corners0.end());
-    std::vector<std::array<int,2>> leafCornerHistory(numCorners0);
-    for (int corner = 0; corner < numCorners0; ++corner) {
-        leafCornerHistory[corner] = {0, corner};
-    }
-    std::map<std::array<double,3>, int> refinedCornerPool;
-    const auto coordKey = [](const Dune::cpgrid::Geometry<0,3>& corner) {
-        const auto& c = corner.center();
-        return std::array<double,3>{ c[0], c[1], c[2] };
-    };
-
-    for (int b = 0; b < numBoxes; ++b) {   // request order is parent-before-child
-        BoxData& box = boxes[b];
-        CpGridData& pgrid = parentGridOf(b);
-        auto& parentCellToPoint = GridStateWriter::cellToPoint(pgrid);
-        const auto& childToParent = GridStateWriter::childToParent(*box.level);
-        auto& cellToPointL = GridStateWriter::cellToPoint(*box.level);
-
-        // Per-cell corner identification against the PARENT grid (level0 or a
-        // box): a refined corner coincides with a parent corner when it sits on
-        // the parent's boundary in all three directions. Read from the cell's
-        // refined lattice position, whose relation to the parent holds whether
-        // or not the box is graded.
-        const auto& rdb = box.refinedDims;
-        const int maskP = cornerSlotMask(pgrid);
-        const int maskL = cornerSlotMask(*box.level);
-        box.cornerEquiv.assign(box.level->size(3), -1);
-        for (int cell = 0; cell < box.level->size(0); ++cell) {
-            const int parent = childToParent[cell][1];
-            const int refinedCart = box.level->globalCell()[cell];
-            const std::array<int,3> lattice = { refinedCart % rdb[0],
-                                                (refinedCart / rdb[0]) % rdb[1],
-                                                refinedCart / (rdb[0]*rdb[1]) };
-            for (int corner = 0; corner < 8; ++corner) {
-                const std::array<int,3> d = { corner & 1, (corner >> 1) & 1, (corner >> 2) & 1 };
-                std::array<int,3> parentCornerIJK{};
-                bool onParentCorner = true;
-                for (int c = 0; c < 3 && onParentCorner; ++c) {
-                    const int edge = box.pos[c].subIndex[lattice[c]] + d[c];
-                    if (edge == 0) {
-                        parentCornerIJK[c] = 0;
-                    }
-                    else if (edge == box.pos[c].parentCount[lattice[c]]) {
-                        parentCornerIJK[c] = 1;
-                    }
-                    else {
-                        onParentCorner = false;
-                    }
-                }
-                if (onParentCorner) {
-                    const int parentCorner = parentCellToPoint[parent][(parentCornerIJK[0]
-                                                                       + 2*parentCornerIJK[1]
-                                                                       + 4*parentCornerIJK[2]) ^ maskP];
-                    box.cornerEquiv[cellToPointL[cell][corner ^ maskL]] = parentCornerLeaf(b, parentCorner);
-                }
-            }
-        }
-
-        // Pool: equivalent corners reuse the parent leaf corner; the rest are
-        // appended (exact-coordinate dedup with already-appended refined corners).
-        const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& cornersL =
-            GridStateWriter::geometry(*box.level).geomVector(std::integral_constant<int,3>());
-        box.cornerToLeaf.assign(box.level->size(3), -1);
-        std::vector<std::array<int,2>> levelCornerHistory(box.level->size(3), {-1, -1});
-        for (int corner = 0; corner < box.level->size(3); ++corner) {
-            if (box.cornerEquiv[corner] >= 0) {
-                box.cornerToLeaf[corner] = box.cornerEquiv[corner];
-                levelCornerHistory[corner] = leafCornerHistory[box.cornerEquiv[corner]];
-            }
-            else {
-                const auto key = coordKey(cornersL[corner]);
-                const auto existing = refinedCornerPool.find(key);
-                if (existing != refinedCornerPool.end()) {
-                    box.cornerToLeaf[corner] = existing->second;
-                    levelCornerHistory[corner] = leafCornerHistory[existing->second];
-                }
-                else {
-                    const int leafCorner = static_cast<int>(leafCorners.size());
-                    box.cornerToLeaf[corner] = leafCorner;
-                    leafCorners.push_back(cornersL[corner]);
-                    leafCornerHistory.push_back({b + 1, corner});
-                    refinedCornerPool.emplace(key, leafCorner);
-                }
-            }
-        }
-        GridStateWriter::setCornerHistory(*box.level, std::move(levelCornerHistory));
-    }
-    const int numLeafCorners = static_cast<int>(leafCorners.size());
-
-    // ----- Leaf cells: tree walk, parents replaced by children -------------
-    std::vector<SourceRef> leafCells;
-    std::vector<std::vector<int>> leafIdxOf(numBoxes + 1);
-    leafIdxOf[0].assign(numCells0, -1);
-    for (int b = 0; b < numBoxes; ++b) {
-        leafIdxOf[b + 1].assign(boxes[b].level->size(0), -1);
-    }
-    std::vector<std::tuple<int, std::vector<int>>> parentToChildren0(numCells0,
-                                                                    std::make_tuple(-1, std::vector<int>{}));
-    std::function<void(int,int)> emitCell = [&](int level, int cell) {
-        const int b = childBoxOf[level][cell];
-        if (b < 0) {
-            leafIdxOf[level][cell] = static_cast<int>(leafCells.size());
-            leafCells.push_back({level, cell});
-            return;
-        }
-        const auto it = boxes[b].childrenOfParent.find(cell);
-        if (it == boxes[b].childrenOfParent.end()) {
-            return;  // active parent without active children cannot happen
-        }
-        if (level == 0) {
-            parentToChildren0[cell] = std::make_tuple(b + 1, it->second);
-        }
-        for (const int child : it->second) {
-            emitCell(b + 1, child);
-        }
-    };
-    for (int c = 0; c < numCells0; ++c) {
-        emitCell(0, c);
-    }
-    const int numLeafCells = static_cast<int>(leafCells.size());
-
-    // ----- Faces -----------------------------------------------------------
-    // A face of grid level L is dropped if a side cell is refined by a child
-    // box (the child's mosaic/interior faces take over). Applies to level0 and
-    // to any parent box level. Per-level dropped flags.
-    std::vector<std::vector<char>> faceDropped(numBoxes + 1);
-    {
-        auto& f2c0 = GridStateWriter::faceToCell(level0);
-        faceDropped[0].assign(f2c0.size(), 0);
-        for (int face = 0; face < f2c0.size(); ++face) {
-            const auto row = f2c0[EntityRep<1>(face, true)];
-            for (int e = 0; e < row.size(); ++e) {
-                const int cell = row[e].index();
-                if (cell != kRemoteCell && childBoxOf[0][cell] >= 0) {
-                    faceDropped[0][face] = 1; break;
-                }
-            }
-        }
-        for (int b = 0; b < numBoxes; ++b) {
-            auto& f2cL = GridStateWriter::faceToCell(*boxes[b].level);
-            faceDropped[b + 1].assign(f2cL.size(), 0);
-            for (int face = 0; face < f2cL.size(); ++face) {
-                const auto row = f2cL[EntityRep<1>(face, true)];
-                for (int e = 0; e < row.size(); ++e) {
-                    const int cell = row[e].index();
-                    if (cell != kRemoteCell && childBoxOf[b + 1][cell] >= 0) {
-                        faceDropped[b + 1][face] = 1; break;
-                    }
-                }
-            }
-        }
-    }
-
-    // Lattice neighbour in a Cartesian parent grid (contained case has no faults
-    // at the nested boundary, so the simple lattice neighbour is correct).
-    std::vector<std::vector<int>> cartToCell(numBoxes + 1);
-    {
-        cartToCell[0].assign(static_cast<std::size_t>(dims0[0])*dims0[1]*dims0[2], -1);
-        for (int c = 0; c < numCells0; ++c) cartToCell[0][level0.globalCell()[c]] = c;
-        for (int b = 0; b < numBoxes; ++b) {
-            const auto& rd = boxes[b].refinedDims;
-            cartToCell[b + 1].assign(static_cast<std::size_t>(rd[0])*rd[1]*rd[2], -1);
-            for (int c = 0; c < boxes[b].level->size(0); ++c)
-                cartToCell[b + 1][boxes[b].level->globalCell()[c]] = c;
-        }
-    }
-    const auto latticeNeighbour = [&](int gridLevel, int cell, int axis, int side) -> int {
-        const auto& dims = (gridLevel == 0) ? dims0 : boxes[gridLevel - 1].refinedDims;
-        CpGridData& g = (gridLevel == 0) ? level0 : *boxes[gridLevel - 1].level;
-        const int cart = g.globalCell()[cell];
-        std::array<int,3> ijk = { cart % dims[0], (cart / dims[0]) % dims[1],
-                                  cart / (dims[0]*dims[1]) };
-        ijk[axis] += side;
-        if (ijk[axis] < 0 || ijk[axis] >= dims[axis]) return -1;          // domain boundary
-        const int ncart = ijk[0] + dims[0]*(ijk[1] + dims[1]*ijk[2]);
-        return cartToCell[gridLevel][ncart];                              // -1 if inactive
-    };
-
-    // Leaf faces: level0 non-dropped, then each box's faces (interior + mosaic).
-    std::vector<SourceRef> leafFaces;
-    std::vector<int> mosaicOutside;                 // outside leaf cell for a box boundary face
-    {
-        auto& f2c0 = GridStateWriter::faceToCell(level0);
-        for (int face = 0; face < f2c0.size(); ++face) {
-            if (!faceDropped[0][face]) {
-                leafFaces.push_back({0, face});
-                mosaicOutside.push_back(-1);
-            }
-        }
-    }
-    for (int b = 0; b < numBoxes; ++b) {
-        BoxData& box = boxes[b];
-        auto& faceToCellL = GridStateWriter::faceToCell(*box.level);
-        Dune::cpgrid::EntityVariableBase<enum face_tag>& tagsL = GridStateWriter::faceTag(*box.level);
-        const auto& childToParent = GridStateWriter::childToParent(*box.level);
-        for (int face = 0; face < faceToCellL.size(); ++face) {
-            if (faceDropped[b + 1][face]) {
-                continue;                            // toward a deeper-refined cell
-            }
-            const auto row = faceToCellL[EntityRep<1>(face, true)];
-            int outside = -1;
-            if (row.size() == 1) {
-                const int cell = row[0].index();
-                const bool normalOut = row[0].orientation();
-                const int axis = axisOf(tagsL.get(face));
-                const int side = normalOut ? 1 : -1;
-                const int cart = box.level->globalCell()[cell];
-                std::array<int,3> lattice = { cart % box.refinedDims[0],
-                                              (cart / box.refinedDims[0]) % box.refinedDims[1],
-                                              cart / (box.refinedDims[0]*box.refinedDims[1]) };
-                lattice[axis] += side;
-                if (lattice[axis] < 0 || lattice[axis] >= box.refinedDims[axis]) {
-                    // Block boundary: stitch against the parent-grid neighbour.
-                    const int parent = childToParent[cell][1];
-                    const int neighbour = latticeNeighbour(parentLevelOf[b], parent, axis, side);
-                    if (neighbour >= 0 && childBoxOf[parentLevelOf[b]][neighbour] < 0) {
-                        outside = leafIdxOf[parentLevelOf[b]][neighbour];
-                    }
-                    // else: domain boundary / deeper-refined neighbour (cannot
-                    // happen for a contained child) -> stays a boundary face.
-                }
-                // else: internal hole boundary -> stays a boundary face.
-            }
-            leafFaces.push_back({b + 1, face});
-            mosaicOutside.push_back(outside);
-        }
-    }
-    const int numLeafFaces = static_cast<int>(leafFaces.size());
-
-    // ----- Leaf topology + geometry write-out ------------------------------
-    auto& leafFaceToCell = GridStateWriter::faceToCell(*leaf);
-    auto& leafFaceToPoint = GridStateWriter::faceToPoint(*leaf);
-    auto& leafCellToPoint = GridStateWriter::cellToPoint(*leaf);
-    auto& leafCellToFace = GridStateWriter::cellToFace(*leaf);
-    Dune::cpgrid::EntityVariableBase<enum face_tag>& leafTags = GridStateWriter::faceTag(*leaf);
-    Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& leafNormals = GridStateWriter::faceNormals(*leaf);
-    leafTags.resize(numLeafFaces);
-    leafNormals.resize(numLeafFaces);
-    Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>& leafFaceGeom =
-        leafGeometry.geomVector(std::integral_constant<int,1>());
-    leafFaceGeom.resize(numLeafFaces);
-
-    std::vector<EntityRep<0>> rowBuffer;
-    std::vector<int> pointBuffer;
-    for (int face = 0; face < numLeafFaces; ++face) {
-        const SourceRef src = leafFaces[face];
-        CpGridData& srcGrid = (src.grid == 0) ? level0 : *boxes[src.grid - 1].level;
-        auto& srcFaceToCell = GridStateWriter::faceToCell(srcGrid);
-        auto& srcFaceToPoint = GridStateWriter::faceToPoint(srcGrid);
-        const Dune::cpgrid::EntityVariableBase<enum face_tag>& srcTags = GridStateWriter::faceTag(srcGrid);
-        const Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& srcNormals = GridStateWriter::faceNormals(srcGrid);
-        const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>& srcFaceGeom =
-            GridStateWriter::geometry(srcGrid).geomVector(std::integral_constant<int,1>());
-
-        rowBuffer.clear();
-        const auto srcRow = srcFaceToCell[EntityRep<1>(src.index, true)];
-        for (int e = 0; e < srcRow.size(); ++e) {
-            const int srcCell = srcRow[e].index();
-            const int leafCell = (srcCell == kRemoteCell) ? kRemoteCell
-                                                          : leafIdxOf[src.grid][srcCell];
-            rowBuffer.push_back(EntityRep<0>(leafCell, srcRow[e].orientation()));
-        }
-        if (mosaicOutside[face] >= 0) {
-            const bool refinedNormalOut = srcRow[0].orientation();
-            const EntityRep<0> outsideEntry(mosaicOutside[face], !refinedNormalOut);
-            if (refinedNormalOut) rowBuffer.push_back(outsideEntry);
-            else rowBuffer.insert(rowBuffer.begin(), outsideEntry);
-        }
-        leafFaceToCell.appendRow(rowBuffer.begin(), rowBuffer.end());
-
-        pointBuffer.clear();
-        auto srcPoints = srcFaceToPoint[src.index];
-        for (int e = 0; e < srcPoints.size(); ++e) {
-            pointBuffer.push_back((src.grid == 0) ? srcPoints[e]
-                                                  : boxes[src.grid - 1].cornerToLeaf[srcPoints[e]]);
-        }
-        leafFaceToPoint.appendRow(pointBuffer.begin(), pointBuffer.end());
-        leafTags[face] = srcTags[src.index];
-        leafNormals[face] = srcNormals[src.index];
-        leafFaceGeom[face] = srcFaceGeom[src.index];
-    }
-
-    // cell_to_face_ = inverse of face_to_cell_.
-    {
-        std::vector<std::vector<EntityRep<1>>> cellFaces(numLeafCells);
-        for (int face = 0; face < numLeafFaces; ++face) {
-            const auto row = leafFaceToCell[EntityRep<1>(face, true)];
-            for (int e = 0; e < row.size(); ++e) {
-                const int cell = row[e].index();
-                if (cell == kRemoteCell) continue;
-                const EntityRep<1> faceEnt(face, true);
-                cellFaces[cell].push_back(row[e].orientation() ? faceEnt : faceEnt.opposite());
-            }
-        }
-        for (int cell = 0; cell < numLeafCells; ++cell) {
-            leafCellToFace.appendRow(cellFaces[cell].begin(), cellFaces[cell].end());
-        }
-    }
-
-    // ----- Leaf cell data (multi-level father chain) -----------------------
-    leafCellToPoint.resize(numLeafCells);
-    std::vector<int> leafGlobalCell(numLeafCells);
-    std::vector<std::array<int,2>> leafChildToParent(numLeafCells, std::array<int,2>{-1, -1});
-    std::vector<int> leafIdxInParent(numLeafCells, -1);
-    std::vector<std::array<int,2>> leafToLevel(numLeafCells);
-
-    // Cartesian index of a refined cell's GLOBAL (level-0) ancestor.
-    const auto globalAncestorCart = [&](int gridLevel, int cell) -> int {
-        int L = gridLevel, c = cell;
-        while (L > 0) {
-            c = GridStateWriter::childToParent(*boxes[L - 1].level)[c][1];
-            L = parentLevelOf[L - 1];
-        }
-        return level0.globalCell()[c];
-    };
-
-    for (int cell = 0; cell < numLeafCells; ++cell) {
-        const SourceRef src = leafCells[cell];
-        if (src.grid == 0) {
-            leafCellToPoint[cell] = GridStateWriter::cellToPoint(level0)[src.index];
-            leafGlobalCell[cell] = level0.globalCell()[src.index];
-            leafToLevel[cell] = {0, src.index};
-        }
-        else {
-            const BoxData& box = boxes[src.grid - 1];
-            const auto& srcPoints = GridStateWriter::cellToPoint(*box.level)[src.index];
-            for (int corner = 0; corner < 8; ++corner) {
-                leafCellToPoint[cell][corner] = box.cornerToLeaf[srcPoints[corner]];
-            }
-            leafChildToParent[cell] = { parentLevelOf[src.grid - 1],
-                                        GridStateWriter::childToParent(*box.level)[src.index][1] };
-            leafIdxInParent[cell] = GridStateWriter::idxInParent(*box.level)[src.index];
-            leafGlobalCell[cell] = globalAncestorCart(src.grid, src.index);
-            leafToLevel[cell] = {src.grid, src.index};
-        }
-    }
-
-    Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& leafCellGeom =
-        leafGeometry.geomVector(std::integral_constant<int,0>());
-    leafCellGeom.resize(numLeafCells);
-    auto leafCornersPtr = leafGeometry.pointGeometryPtr();
-    for (int cell = 0; cell < numLeafCells; ++cell) {
-        const SourceRef src = leafCells[cell];
-        CpGridData& srcGrid = (src.grid == 0) ? level0 : *boxes[src.grid - 1].level;
-        const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& srcCellGeom =
-            GridStateWriter::geometry(srcGrid).geomVector(std::integral_constant<int,0>());
-        const auto& geom = srcCellGeom[src.index];
-        leafCellGeom[cell] = Dune::cpgrid::Geometry<3,3>(geom.center(), geom.volume(),
-                                                         leafCornersPtr,
-                                                         leafCellToPoint[cell].data());
-    }
-
-    // Build the leaf's parallel cell index set, remote indices, partition types
-    // and communication interfaces in the rank-interior ("refine-after") model,
-    // so the distributed leaf view knows the cells it owns (coarse + all nested
-    // refined cells on this rank) and overlap cells take part in collective
-    // communication. This mirrors the single-level assembleLeafGrid branch:
-    // coarse leaf cells inherit their level-zero global index/attribute; every
-    // refined cell (any non-level-0 source, i.e. all nested levels) is rank-
-    // interior (owner only) and gets a fresh, globally unique index in a per-rank
-    // range above all coarse global ids, so remote-index matching never pairs it
-    // with a cell on another rank. In refine-before-redistribute the leaf is
-    // assembled with a self-communicator (cc.size() == 1), so this is skipped and
-    // the distribution happens later in scatterGrid.
-#if HAVE_MPI
-    Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm);
-    if (cc.size() > 1) {
-        using ParallelIndexSet = CpGridData::ParallelIndexSet;
-        using AttributeSet = CpGridData::AttributeSet;
-
-        std::vector<int> leafCellGlobalId(numLeafCells, -1);
-        std::vector<AttributeSet> leafCellAttr(numLeafCells, AttributeSet::owner);
-
-        int localMaxCoarseGlobal = 0;
-        for (const auto& entry : level0.cellIndexSet()) {
-            const int l0local = entry.local().local();
-            localMaxCoarseGlobal = std::max(localMaxCoarseGlobal, static_cast<int>(entry.global()));
-            const int leafC = leafIdxOf[0][l0local];   // -1 if refined away
-            if (leafC >= 0) {
-                leafCellGlobalId[leafC] = entry.global();
-                leafCellAttr[leafC] = entry.local().attribute();
-            }
-        }
-
-        int numRefinedLocal = 0;
-        for (int cell = 0; cell < numLeafCells; ++cell) {
-            if (leafCells[cell].grid != 0) ++numRefinedLocal;
-        }
-        const int globalMaxCoarse = cc.max(localMaxCoarseGlobal);
-        std::vector<int> refinedCounts(cc.size(), 0);
-        cc.allgather(&numRefinedLocal, 1, refinedCounts.data());
-        int refinedNext = globalMaxCoarse + 1;
-        for (int r = 0; r < cc.rank(); ++r) {
-            refinedNext += refinedCounts[r];
-        }
-        for (int cell = 0; cell < numLeafCells; ++cell) {
-            if (leafCells[cell].grid != 0) {
-                leafCellGlobalId[cell] = refinedNext++;
-                leafCellAttr[cell] = AttributeSet::owner;
-            }
-        }
-
-        auto& cis = leaf->cellIndexSet();
-        cis.beginResize();
-        for (int cell = 0; cell < numLeafCells; ++cell) {
-            cis.add(leafCellGlobalId[cell],
-                    ParallelIndexSet::LocalIndex(cell, leafCellAttr[cell], true));
-        }
-        cis.endResize();
-
-        leaf->cellRemoteIndices().template rebuild<false>();
-        leaf->computeCellPartitionType();
-        leaf->computePointPartitionType();
-        leaf->computeCommunicationInterfaces(numLeafCorners);
-        setDistributedLeafIds(*leaf, level0, leafCellGlobalId, leafFaces, numLeafFaces,
-                              numLeafCorners, cc);
-    }
-#endif
-
-    // ----- Leaf metadata ---------------------------------------------------
-    GridStateWriter::setLogicalCartesianSize(*leaf, dims0);
-    GridStateWriter::setGlobalCell(*leaf, std::move(leafGlobalCell));
-    GridStateWriter::setIndexSet(*leaf, numLeafCells, numLeafCorners);
-    GridStateWriter::setParentRelations(*leaf, std::move(leafChildToParent), std::move(leafIdxInParent));
-    GridStateWriter::setAquiferCells(*leaf, leafAquiferCells(level0, leafToLevel));
-    GridStateWriter::setLeafToLevel(*leaf, std::move(leafToLevel));
-    GridStateWriter::setCornerHistory(*leaf, std::move(leafCornerHistory));
-    GridStateWriter::setRefinementMaxLevel(*leaf, numBoxes);
-    for (int b = 0; b < numBoxes; ++b) {
-        GridStateWriter::setRefinementMaxLevel(*boxes[b].level, numBoxes);
-    }
-    // Each parent grid learns about its children (level0 -> top boxes;
-    // a parent box -> its nested children).
-    GridStateWriter::setParentToChildren(level0, std::move(parentToChildren0));
-    for (int b = 0; b < numBoxes; ++b) {
-        const int pl = parentLevelOf[b];
-        if (pl == 0) {
-            continue;  // already recorded on level0 above
-        }
-        CpGridData& pgrid = *boxes[parentBoxOf[b]].level;
-        std::vector<std::tuple<int,std::vector<int>>> p2c(pgrid.size(0),
-                                                          std::make_tuple(-1, std::vector<int>{}));
-        for (const auto& [parent, kids] : boxes[b].childrenOfParent) {
-            p2c[parent] = std::make_tuple(b + 1, kids);
-        }
-        GridStateWriter::setParentToChildren(pgrid, std::move(p2c));
+    for (auto& [pb, children] : nestedParentToChildren) {
+        GridStateWriter::setParentToChildren(*boxes[pb].level, std::move(children));
     }
 
     return leaf;

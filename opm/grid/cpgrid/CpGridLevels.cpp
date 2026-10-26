@@ -192,6 +192,12 @@ std::vector<std::int64_t> CpGridData::stableCellId() const
         assert(child >= 0 && child < (std::int64_t(1) << childBits));
         ids[c] = refinedTag | (std::int64_t(global_cell_[c]) << childBits) | child;
     }
+    // The key cannot tell apart cells under different parents in a nested LGR.
+    auto sorted = ids;
+    std::ranges::sort(sorted);
+    if (std::ranges::adjacent_find(sorted) != sorted.end()) {
+        throw std::logic_error("stableCellId() does not support nested LGRs.");
+    }
     return ids;
 }
 } // namespace cpgrid

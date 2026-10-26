@@ -60,6 +60,17 @@ ConformingBlockBuilder::ConformingBlockBuilder(const std::array<int,3>& parentDi
 namespace
 {
 
+// Corner-point description of one grid level (index 0 = level zero, index b+1 =
+// the level grid built for requests[b]): a nested box is refined from its parent
+// LGR's own description.
+struct LevelGeom
+{
+    std::array<int,3> dims{};
+    std::vector<double> coord;
+    std::vector<double> zcorn;
+    std::vector<int> actnum;
+};
+
 // Per-box presence on this rank (distributed runs). The rank-interior model
 // (PLAN Track 1 step 6): a box is either fully owned here (all its cells
 // local and interior) or absent (no cell local, not even as overlap).
@@ -301,24 +312,11 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // placeholders) and refine serially with the self-communicator above.
     const bool refineBefore = grid.comm().size() > 1 && !grid.isDistributed();
 
-    // Nested refinement (parent != GLOBAL): build the level grids over their
-    // parent LGR and stitch them with assembleNestedLeafGrid. A fully contained
-    // nested box rides on its parent rank in both parallel models (the rank-
-    // interior "refine-after" path and refine-before-redistribute), so detect
-    // nesting and route to the nested assembler; the containment constraints are
-    // enforced inside assembleNestedLeafGrid.
-    bool anyNested = false;
-    for (const auto& req : requests) {
-        if (req.parentGridName != "GLOBAL") {
-            anyNested = true;
-        }
-    }
-
     // Parent corner-point description per built level (index 0 = GLOBAL base,
     // index b+1 = the level grid of request b). A nested box is refined from
-    // its parent level's resampled geometry, not the global grid. LevelGeom is
-    // declared in LeafGridAssembler.hpp so the nested leaf assembler can reuse
-    // the per-level geometry.
+    // its parent level's resampled geometry, not the global grid; it rides on
+    // its parent's rank in both parallel models, and the leaf assembly enforces
+    // its containment.
     std::vector<LevelGeom> levelGeom(requests.size() + 1);
     levelGeom[0] = LevelGeom{ dims_, coord_, zcorn_, actnum_ };
     std::map<std::string,int> nameToLevel{ {"GLOBAL", 0} };
@@ -420,15 +418,11 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
         buildLevelGrids();
     }
 
-    // The nested hierarchy's level grids are built. Nested leaf stitching is
-    // isolated in assembleNestedLeafGrid so the single-level assembler below
-    // (and therefore every GLOBAL-parent deck) stays byte-identical.
-    std::shared_ptr<Dune::cpgrid::CpGridData> leaf = anyNested
-        ? assembleNestedLeafGrid(storage, requests, levelGeom, comm)
-        : assembleLeafGrid(storage, requests, dims_,
-                           coord_.data(), zcorn_.data(),
-                           actnum_.empty() ? nullptr : actnum_.data(),
-                           comm);
+    std::shared_ptr<Dune::cpgrid::CpGridData> leaf =
+        assembleLeafGrid(storage, requests, dims_,
+                         coord_.data(), zcorn_.data(),
+                         actnum_.empty() ? nullptr : actnum_.data(),
+                         comm);
     if (edgeConformal_) {
         edgeConformalizeLeaf(*leaf);
     }
