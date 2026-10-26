@@ -97,8 +97,10 @@ struct GridStateWriter
     static std::vector<std::array<int,8>>& cellToPoint(Data& grid);
     static Dune::cpgrid::OrientedEntityTable<0,1>& cellToFace(Data& grid);
     static Dune::cpgrid::OrientedEntityTable<1,0>& faceToCell(Data& grid);
+    static const Dune::cpgrid::OrientedEntityTable<1,0>& faceToCell(const Data& grid);
     static Opm::SparseTable<int>& faceToPoint(Data& grid);
     static Dune::cpgrid::EntityVariable<enum face_tag, 1>& faceTag(Data& grid);
+    static const Dune::cpgrid::EntityVariable<enum face_tag, 1>& faceTag(const Data& grid);
     static Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& faceNormals(Data& grid);
     static Dune::cpgrid::DefaultGeometryPolicy& geometry(Data& grid);
     static const std::vector<std::array<int,2>>& childToParent(const Data& grid);

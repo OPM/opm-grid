@@ -20,8 +20,10 @@
 #define OPM_GRID_REFINEMENT_CONFORMINGBLOCKBUILDER_HEADER_INCLUDED
 
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
+#include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
 
 #include <array>
+#include <memory>
 #include <vector>
 
 namespace Opm
@@ -33,8 +35,8 @@ namespace Refinement
 /// block refinement built through the preprocessor pipeline
 /// (refineBlock -> assembleBlockLevelGrid -> assembleLeafGrid).
 ///
-/// The builder owns a copy of the parent corner-point description, since
-/// the grid does not reliably retain COORD/ZCORN after construction.
+/// The builder holds the parent corner-point description, since the grid
+/// keeps COORD/ZCORN only until it is refined.
 ///
 /// Restrictions (throw): an unrefined starting grid; in parallel each box must be
 /// rank-interior; boxes that touch, in IJK or across a fault, need in-face
@@ -53,15 +55,14 @@ public:
                            std::vector<int> actnum,
                            bool edgeConformal = false);
 
+    /// Refine from the description a grid kept of its level zero, without a copy.
+    explicit ConformingBlockBuilder(std::shared_ptr<const RetainedCornerPointInput> input);
+
     void build(Dune::CpGrid& grid,
                const std::vector<BlockRefinement>& requests) override;
 
 private:
-    std::array<int,3> dims_;
-    std::vector<double> coord_;
-    std::vector<double> zcorn_;
-    std::vector<int> actnum_;
-    bool edgeConformal_;
+    std::shared_ptr<const RetainedCornerPointInput> input_;
 };
 
 } // namespace Refinement

@@ -49,11 +49,18 @@ ConformingBlockBuilder::ConformingBlockBuilder(const std::array<int,3>& parentDi
                                                std::vector<double> zcorn,
                                                std::vector<int> actnum,
                                                bool edgeConformal)
-    : dims_(parentDims)
-    , coord_(std::move(coord))
-    , zcorn_(std::move(zcorn))
-    , actnum_(std::move(actnum))
-    , edgeConformal_(edgeConformal)
+{
+    auto input = std::make_shared<RetainedCornerPointInput>();
+    input->dims = parentDims;
+    input->coord = std::move(coord);
+    input->zcorn = std::move(zcorn);
+    input->actnum = std::move(actnum);
+    input->edgeConformal = edgeConformal;
+    input_ = std::move(input);
+}
+
+ConformingBlockBuilder::ConformingBlockBuilder(std::shared_ptr<const RetainedCornerPointInput> input)
+    : input_(std::move(input))
 {
 }
 
@@ -62,13 +69,13 @@ namespace
 
 // Corner-point description of one grid level (index 0 = level zero, index b+1 =
 // the level grid built for requests[b]): a nested box is refined from its parent
-// LGR's own description.
+// LGR's own description. A view: the data stays where it is.
 struct LevelGeom
 {
     std::array<int,3> dims{};
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
+    const double* coord{nullptr};
+    const double* zcorn{nullptr};
+    const int* actnum{nullptr};
 };
 
 // Per-box presence on this rank (distributed runs). The rank-interior model
@@ -317,8 +324,12 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // its parent level's resampled geometry, not the global grid; it rides on
     // its parent's rank in both parallel models, and the leaf assembly enforces
     // its containment.
+    const auto& dims = input_->dims;
+    const int* actnum0 = input_->actnum.empty() ? nullptr : input_->actnum.data();
     std::vector<LevelGeom> levelGeom(requests.size() + 1);
-    levelGeom[0] = LevelGeom{ dims_, coord_, zcorn_, actnum_ };
+    levelGeom[0] = LevelGeom{ dims, input_->coord.data(), input_->zcorn.data(), actnum0 };
+    // Each refined level's own description, for the boxes nested in it.
+    std::vector<RefinedBlockGrdecl> refinedGeom(requests.size());
     std::map<std::string,int> nameToLevel{ {"GLOBAL", 0} };
     // Per-box presence (refine-before-redistribute), keyed by box name, so a
     // nested box can inherit its parent box's presence (see below).
@@ -362,10 +373,10 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 // on whichever rank owns its parent box, so inherit the parent's
                 // classification (parent processed before child).
                 presence = nested ? presenceOf.at(req.parentGridName)
-                                  : classifyBox(*storage[0], dims_, req);
+                                  : classifyBox(*storage[0], dims, req);
             } else if (refineBefore) {
                 presence = nested ? presenceOf.at(req.parentGridName)
-                                  : boxCellPresence(*storage[0], dims_, req);
+                                  : boxCellPresence(*storage[0], dims, req);
             }
             // A box with no host left (all inactive, or removed by MINPV) has
             // nothing to refine: it becomes an empty LGR, as on a rank that
@@ -376,19 +387,19 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 presence = BoxPresence::Absent;
             }
             presenceOf[req.name] = presence;
-            RefinedBlockGrdecl childRefined;
+            RefinedBlockGrdecl& childRefined = refinedGeom[b];
             auto level = (presence == BoxPresence::Owned)
                 ? assembleBlockLevelGrid(*storage[parentLevel], pg.dims,
-                                         pg.coord.data(), pg.zcorn.data(),
-                                         pg.actnum.empty() ? nullptr : pg.actnum.data(),
+                                         pg.coord, pg.zcorn, pg.actnum,
                                          req, static_cast<int>(b) + 1, parentLevel,
                                          storage, comm, &childRefined)
                 : assembleEmptyLevelGrid(req, static_cast<int>(b) + 1, storage, comm);
             storage.push_back(std::move(level));
             levelGeom[b + 1] = LevelGeom{ childRefined.dims,
-                                          std::move(childRefined.coord),
-                                          std::move(childRefined.zcorn),
-                                          std::move(childRefined.actnum) };
+                                          childRefined.coord.data(),
+                                          childRefined.zcorn.data(),
+                                          childRefined.actnum.empty() ? nullptr
+                                                                      : childRefined.actnum.data() };
             nameToLevel[req.name] = static_cast<int>(b) + 1;
         }
     };
@@ -419,11 +430,10 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     }
 
     std::shared_ptr<Dune::cpgrid::CpGridData> leaf =
-        assembleLeafGrid(storage, requests, dims_,
-                         coord_.data(), zcorn_.data(),
-                         actnum_.empty() ? nullptr : actnum_.data(),
+        assembleLeafGrid(storage, requests, dims,
+                         input_->coord.data(), input_->zcorn.data(), actnum0,
                          comm);
-    if (edgeConformal_) {
+    if (input_->edgeConformal) {
         edgeConformalizeLeaf(*leaf);
     }
     storage.push_back(std::move(leaf));

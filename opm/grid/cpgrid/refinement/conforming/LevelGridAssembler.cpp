@@ -50,9 +50,8 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
               const BlockRefinement& request,
               const std::array<int,3>& refinedDims)
 {
-    auto& parent = const_cast<Dune::cpgrid::CpGridData&>(parentGrid);
-    const auto& faceToCell = GridStateWriter::faceToCell(parent);
-    const auto& faceTag = GridStateWriter::faceTag(parent);
+    const auto& faceToCell = GridStateWriter::faceToCell(parentGrid);
+    const auto& faceTag = GridStateWriter::faceTag(parentGrid);
     const auto& globalCell = parentGrid.globalCell();
 
     const std::array<AxisSubdivision,3> subs = { axisSubdivision(request, 0),
