@@ -54,6 +54,15 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGrid.cpp
   opm/grid/cpgrid/CpGridLevels.cpp
   opm/grid/cpgrid/refinement/CpGridLgrBackend.cpp
+  opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.cpp
+  opm/grid/cpgrid/refinement/conforming/EdgeConformal.cpp
+  opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.cpp
+  opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.cpp
+  opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.cpp
+  opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.cpp
+  opm/grid/cpgrid/refinement/conforming/RefinedDistribution.cpp
+  opm/grid/cpgrid/refinement/conforming/RefinedIds.cpp
+  opm/grid/cpgrid/refinement/GridStateWriter.cpp
   opm/grid/cpgrid/refinement/RefinementRequest.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridRefinement.cpp
   opm/grid/cpgrid/refinement/trilinear/CpGridDataRefinement.cpp
@@ -82,7 +91,18 @@ list(APPEND MAIN_SOURCE_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/partition_of_unity_test.cpp
+  tests/cpgrid/lgr_backend_comparison_test.cpp
   tests/cpgrid/lgr_backend_switch_test.cpp
+  tests/cpgrid/grdecl_refinement_test.cpp
+  tests/cpgrid/level_grid_assembler_test.cpp
+  tests/cpgrid/conforming_builder_test.cpp
+  tests/cpgrid/faulted_boundary_test.cpp
+  tests/cpgrid/edge_conformal_refinement_test.cpp
+  tests/cpgrid/distributed_builder_test.cpp
+  tests/cpgrid/partition_cell_groups_test.cpp
+  tests/cpgrid/refined_structure_comparison_test.cpp
+  tests/cpgrid/refined_distribution_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -97,10 +117,14 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/aquifer_cells_and_conn_not_refined_test.cpp
   tests/cpgrid/lgr/autoRefine_test.cpp
   tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
+  tests/cpgrid/lgr/conforming_faulted_side_test.cpp
+  tests/cpgrid/lgr/conforming_leaf_test.cpp
+  tests/cpgrid/lgr/conforming_nested_test.cpp
   tests/cpgrid/lgr/consistent_vertex_order_in_face_test.cpp
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
   tests/cpgrid/lgr/getParentIntersectionFromLgrBoundaryFace_test.cpp
+  tests/cpgrid/lgr/global_refine_via_builder_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/grid_global_id_set_test.cpp
   tests/cpgrid/lgr/id_entity_entityrep_test.cpp
@@ -232,8 +256,18 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Iterators.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/cpgrid/LevelHierarchy.hpp
+  opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp
+  opm/grid/cpgrid/refinement/conforming/EdgeConformal.hpp
+  opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp
+  opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp
+  opm/grid/cpgrid/refinement/conforming/LeafGridAssembler.hpp
+  opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.hpp
+  opm/grid/cpgrid/refinement/conforming/RefinedDistribution.hpp
+  opm/grid/cpgrid/refinement/conforming/RefinedIds.hpp
+  opm/grid/cpgrid/refinement/GridStateWriter.hpp
   opm/grid/cpgrid/refinement/RefinementBuilder.hpp
   opm/grid/cpgrid/refinement/RefinementRequest.hpp
+  opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp
   opm/grid/cpgrid/LgrHelpers.hpp
   opm/grid/cpgrid/LgrOutputHelpers.hpp
   opm/grid/cpgrid/NestedRefinementUtilities.hpp

@@ -204,6 +204,12 @@ PartitionType getPartitionType(const PartitionTypeIndicator& p, int i,
     return p.getPartitionType(Entity<3>(grid, i, true));
 }
 
+// Row entries of Opm::SparseTable<int> are visited through this iterator type.
+int getIndex(std::vector<int>::const_iterator i)
+{
+    return *i;
+}
+
 int getIndex(const int* i)
 {
     return *i;
@@ -931,7 +937,8 @@ struct AttributeDataHandle
 
     bool fixedSize()
     {
-        return true;
+        // SparseTable rows have varying length (all points of a cell).
+        return false;
     }
     std::size_t size(std::size_t i)
     {
@@ -940,8 +947,7 @@ struct AttributeDataHandle
     template<class B>
     void gather(B& buffer, std::size_t i)
     {
-        typedef typename GetRowType<T>::type::const_iterator RowIter;
-        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
+        for(auto f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f)
         {
             char t=getPartitionType(indicator_, *f, grid_);
@@ -952,8 +958,7 @@ struct AttributeDataHandle
     template<class B>
     void scatter(B& buffer, std::size_t i, std::size_t s)
     {
-        typedef typename GetRowType<T>::type::const_iterator RowIter;
-        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
+        for(auto f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f, --s)
         {
             std::pair<int,char> rank_attr;
@@ -1551,6 +1556,27 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     DefaultContainerHandle<std::vector<int> > indexHandle(view_data.global_cell_, global_cell_);
     grid.scatterData(indexHandle);
 
+    // A distributed refined leaf is flat; idxInParent still tells refined siblings apart.
+    if (grid.lgrBackend() == Opm::Refinement::Backend::Conforming
+        && ccobj_.max(view_data.levels_.cell_to_idxInParentCell.empty() ? 0 : 1)) {
+        levels_.cell_to_idxInParentCell.assign(cell_indexset.size(), -1);
+        DefaultContainerHandle<std::vector<int>>
+            idxInParentHandle(view_data.levels_.cell_to_idxInParentCell, levels_.cell_to_idxInParentCell);
+        grid.scatterData(idxInParentHandle);
+
+        // Keep the serial leaf's cell ids, which do not depend on the partition.
+        std::vector<int> viewCellIds(view_data.size(0));
+        for (int c = 0; c < view_data.size(0); ++c) {
+            viewCellIds[c] = view_data.global_id_set_->id(Entity<0>(view_data, c, true));
+        }
+        std::vector<int> cellIds(cell_indexset.size());
+        DefaultContainerHandle<std::vector<int>> cellIdHandle(viewCellIds, cellIds);
+        grid.scatterData(cellIdHandle);
+        auto faceIds = global_id_set_->getMapping<1>();
+        auto pointIds = global_id_set_->getMapping<3>();
+        global_id_set_->swap(cellIds, faceIds, pointIds);
+    }
+
     // Scatter face tags, normals, and boundary ids.
     auto noBids = view_data.unique_boundary_ids_.size();
     bool hasBids = ccobj_.max(noBids);
@@ -1689,10 +1715,40 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
     face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
     */
+    // Build the point (codim 3) communication interface from ALL points of
+    // each cell -- every node of every face -- not only the eight canonical
+    // corners stored in cell_to_point_.  On corner-point grids with hanging
+    // nodes a face can reference nodes that are not canonical corners of the
+    // neighbouring cell; interfaces built from the canonical corners only
+    // miss those nodes, leaving them without communication (node ownership
+    // then fails to be a partition of unity).
+    // The gather/scatter of AttributeDataHandle pairs entries of the
+    // sender's and the receiver's row for the same cell BY POSITION, so the
+    // rows must list the points in an order that is identical on every rank
+    // sharing the cell.  Local point indices differ between ranks; the
+    // face/point traversal order is copied from the global grid during
+    // distribution and is rank-independent.  Deduplicate while preserving
+    // the first-occurrence traversal order -- do NOT sort by local index.
+    const std::size_t nc = cell_to_point_.size();
+    std::vector<int> points;
+    for (std::size_t cell = 0; cell < nc; ++cell) {
+        points.clear();
+        const auto& faces = cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
+        const int nf = faces.size();
+        for (int f = 0; f < nf; ++f) {
+            for (const auto& fv : face_to_point_[faces[f].index()]) {
+                if (std::find(points.begin(), points.end(), fv) == points.end()) {
+                    points.push_back(fv);
+                }
+            }
+        }
+        cell_to_allpoint_.appendRow(points.begin(), points.end());
+    }
+
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
-    AttributeDataHandle<std::vector<std::array<int,8> > >
+    AttributeDataHandle<Opm::SparseTable<int> >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
-                     point_attributes, cell_to_point_, *this);
+                     point_attributes, cell_to_allpoint_, *this);
     if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(cell_interfaces_))
         .interfaces().size() )
     {
