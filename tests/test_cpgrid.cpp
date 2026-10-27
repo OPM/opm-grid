@@ -152,8 +152,11 @@ int main(int argc, char** argv )
         "2*1 /\n"
         "DZ\n"
         "8*1 /\n"
+        "BOX\n"
+        "1 2 1 2 1 1 /\n"
         "TOPS\n"
-        "8*100.0 /\n";
+        "4*100.0 /\n"
+        "ENDBOX\n";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
