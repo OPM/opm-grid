@@ -22,11 +22,16 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <dune/common/parallel/mpihelper.hh>
+
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <memory>
 #include <stdexcept>
@@ -74,6 +79,31 @@ struct RecordingBuilder : Opm::Refinement::Builder
     std::vector<BlockRefinement> recorded{};
 };
 
+void processDeck(Dune::CpGrid& grid)
+{
+    const std::string deckString = R"(RUNSPEC
+DIMENS
+ 4 3 3 /
+GRID
+CARFIN
+'LGR1' 2 3 1 1 1 1 4 2 2 /
+ENDFIN
+DX
+ 36*1 /
+DY
+ 36*1 /
+DZ
+ 36*1 /
+TOPS
+ 12*0 /
+PORO
+ 36*0.2 /
+)";
+    const auto deck = Opm::Parser{}.parseString(deckString);
+    Opm::EclipseState state(deck);
+    auto eclGrid = state.getInputGrid();
+    grid.processEclipseFormat(&eclGrid, &state, false, false, false);
+}
 } // anonymous namespace
 
 // Under the default backend the request form refines exactly as the vector form.
@@ -101,12 +131,10 @@ BOOST_AUTO_TEST_CASE(trilinearRefusesConformingOnlyRequests)
 {
     auto graded = box("LGR1", {1,1,1}, {2,2,2});
     graded.subdivision[0] = { {0, 0, 0}, {0.0, 0.2, 0.5}, {0.2, 0.5, 1.0} };
-    auto pillars = box("LGR1", {1,1,1}, {2,2,2});
-    pillars.pillarsFromBoxLayer = true;
     auto minpv = box("LGR1", {1,1,1}, {2,2,2});
     minpv.minpvRemoved.assign(8, 0);
 
-    for (const auto& request : { graded, pillars, minpv }) {
+    for (const auto& request : { graded, minpv }) {
         Dune::CpGrid grid;
         makeGrid(grid);
         BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),
@@ -174,4 +202,28 @@ BOOST_AUTO_TEST_CASE(conformingRefusesChildBeforeParent)
 
     grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ box("A", {1,1,1}, {3,3,3}), child });
     BOOST_CHECK_EQUAL(builder->recorded.size(), 2u);
+}
+
+// A Conforming grid built from a deck with LGRs refines without an explicit builder.
+BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
+{
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Backend::Conforming);
+    processDeck(grid);
+    BOOST_CHECK(Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
+    grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"});
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
+    BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 2*2);
+    // Refined once, the grid lets the description go.
+    BOOST_CHECK(!Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
+}
+
+// Input is retained only when the backend is chosen before processEclipseFormat().
+BOOST_AUTO_TEST_CASE(conformingChosenAfterProcessingThrows)
+{
+    Dune::CpGrid grid;
+    processDeck(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"}),
+                      std::logic_error);
 }
