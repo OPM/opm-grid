@@ -43,12 +43,13 @@ struct RefinedBlockGrdecl
 /// Resample a block of a corner-point description onto refined sub-pillars.
 ///
 /// Semantics are corner-point-native (what deck LGRs mean):
-///  - A sub-pillar is, at every depth, the bilinear interpolation of its
-///    parent column's four pillar lines at that depth
-///    (Opm::PillarInterpolation::bilinear, shared with the LGR grids opm-common
-///    writes); refined pillars on parent pillar positions lie on the parent pillars.
+///  - COORD and ZCORN come from Opm::CornerPointRefinement, the functions the
+///    LGR grids opm-common builds use. A sub-pillar is, at every depth, the
+///    bilinear interpolation of its parent column's four pillar lines at that
+///    depth; refined pillars on parent pillar positions lie on the parent pillars.
 ///  - Refined zcorn values interpolate the parent cell's eight zcorn values
-///    trilinearly in the lateral/vertical fractions.
+///    trilinearly in the lateral/vertical fractions, and stay flat under a
+///    parent of zero thickness.
 ///
 /// Faults and pinch-outs *inside* the block survive by construction: zcorn
 /// jumps across columns and collapsed cells resample to jumps/collapses on
