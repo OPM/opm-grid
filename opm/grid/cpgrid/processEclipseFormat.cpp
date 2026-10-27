@@ -38,6 +38,7 @@
 #endif
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
 
 #include <opm/grid/common/GeometryHelpers.hpp>
 
@@ -206,7 +207,8 @@ namespace cpgrid
                 minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
                                           poreVolume, ecl_grid.getMinpvVector(), actnumData, mergeMinPVCells,
                                           zcornData.data(), nogap, pinchOptionALL,
-                                          permZ, multZ, tolerance_unique_points);
+                                          permZ, multZ, tolerance_unique_points,
+                                          /* thin_cells_as_minpv = */ edge_conformal);
                 if (!minpv_result.nnc.empty()) {
                     this->zcorn = zcornData;
                 }
@@ -353,6 +355,21 @@ namespace cpgrid
             // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
             ecl_state->setPinchNNC(std::move(pinchedNNCs));
             ecl_state->prune_global_for_schedule_run();
+        }
+
+        // Post-MINPV input, for the Conforming backend's refinement builder.
+        if (retain_cp_input_ && ecl_state && ecl_state->getLgrs().size() > 0) {
+            auto retained = std::make_shared<Opm::Refinement::RetainedCornerPointInput>();
+            retained->dims = { static_cast<int>(ecl_grid.getNX()),
+                               static_cast<int>(ecl_grid.getNY()),
+                               static_cast<int>(ecl_grid.getNZ()) };
+            retained->coord = coordData;
+            retained->zcorn = zcornData;
+            retained->actnum = actnumData;
+            retained->edgeConformal = edge_conformal;
+            retained->pinchNnc = nnc_cells[PinchNNC];
+            retained->pinchActive = pinchActive;
+            retained_cp_input_ = std::move(retained);
         }
 
         // this variable is only required because getCellZvals() needs
