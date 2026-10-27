@@ -1551,6 +1551,15 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     DefaultContainerHandle<std::vector<int> > indexHandle(view_data.global_cell_, global_cell_);
     grid.scatterData(indexHandle);
 
+    // A distributed refined leaf is flat; idxInParent still tells refined siblings apart.
+    if (grid.lgrBackend() == Opm::Refinement::Backend::Conforming
+        && ccobj_.max(view_data.levels_.cell_to_idxInParentCell.empty() ? 0 : 1)) {
+        levels_.cell_to_idxInParentCell.assign(cell_indexset.size(), -1);
+        DefaultContainerHandle<std::vector<int>>
+            idxInParentHandle(view_data.levels_.cell_to_idxInParentCell, levels_.cell_to_idxInParentCell);
+        grid.scatterData(idxInParentHandle);
+    }
+
     // Scatter face tags, normals, and boundary ids.
     auto noBids = view_data.unique_boundary_ids_.size();
     bool hasBids = ccobj_.max(noBids);
