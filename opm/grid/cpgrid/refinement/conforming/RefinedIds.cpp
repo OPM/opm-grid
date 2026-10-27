@@ -21,6 +21,8 @@
 
 #include <opm/grid/cpgrid/refinement/conforming/RefinedIds.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/Indexsets.hpp>
@@ -56,7 +58,7 @@ public:
             const auto start = next;
             next += n;
             if (next > std::numeric_limits<int>::max()) {
-                throw std::overflow_error("Refined global ids exceed the range of int.");
+                OPM_THROW(std::overflow_error, "Refined global ids exceed the range of int.");
             }
             return static_cast<int>(start);
         };
@@ -130,7 +132,7 @@ RefinedLeafIds assignRefinedIds(const std::vector<std::shared_ptr<CpGridData>>& 
     }
     for (const auto& key : splitKeys) {
         if (key[0] < 0 || key[0] >= numBoxes) {
-            throw std::logic_error("A split-face corner belongs to no refined box.");
+            OPM_THROW(std::logic_error, "A split-face corner belongs to no refined box.");
         }
         splitCounts[key[0]] = std::max(splitCounts[key[0]], key[1] + 1);
     }
