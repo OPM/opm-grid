@@ -25,13 +25,19 @@ namespace Dune
     typedef IdSet< Grid, This, IdType > Base;
 
     explicit PolyhedralGridIdSet (const Grid& grid)
-        : grid_( grid ),
-          globalCellPtr_( grid_.globalCellPtr() )
+        : grid_( grid )
     {
+      update();
+    }
+
+    //! Recompute the cached data, to be called when the grid view changes.
+    void update()
+    {
+      globalCellPtr_ = grid_.globalCellPtr();
       codimOffset_[ 0 ] = 0;
       for( int i=1; i<=dim; ++i )
       {
-        codimOffset_[ i ] = codimOffset_[ i-1 ] + grid.size( i-1 );
+        codimOffset_[ i ] = codimOffset_[ i-1 ] + grid_.size( i-1 );
       }
     }
 
