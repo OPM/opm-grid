@@ -42,7 +42,10 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/GridManager.hpp>
 #include <opm/grid/cornerpoint_grid.h>
+#include <map>
+#include <unordered_map>
 #include <opm/grid/MinpvProcessor.hpp>
+#include <opm/grid/common/UnstructuredGridConnections.hpp>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
@@ -917,14 +920,19 @@ namespace Dune
 
       // The keyword PINCH connects the cells across collapsed inactive cells, as it does for the CpGrid. The grid with edge
       // conformal cells has the cells merged.
-      bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
+      // The keyword PINCH connects the cells across collapsed inactive cells, as it does for the CpGrid. The grid with edge
+      // conformal cells has the cells merged.
+      const bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
+
+      // The cells that MINPV removed, and the cell above and below each of them if they are to be connected
+      std::map<int, int> pinchOuts;
 
       if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::Inactive))
       {
         Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
         const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
-        // The cells with a pore volume below MINPV are merged into the cell below, or collapsed. The cells above
-        // and below the collapsed cells are connected, which is what the CpGrid does by default.
+        // The cells with a pore volume below MINPV are merged into the cell below, or collapsed. The collapsed cells
+        // leave space between the cells above and below, which is connected as the CpGrid does it by default, see below.
         const bool merge = edge_conformal || mergeMinpvCells;
         const bool nogap = ! inputGrid.isPinchActive() || inputGrid.getPinchGapMode() == Opm::PinchMode::NOGAP;
         const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
@@ -932,14 +940,8 @@ namespace Dune
         for (size_t i = 0; i < cartGridSize; ++i) {
           thickness[i] = inputGrid.getCellThickness(i);
         }
-        const auto result = mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
-                                       minpvv, actnum, merge, zcorn.data(), nogap);
-        // The collapsed cells are connected across by the faces of the cells, as for the keyword PINCH, also if
-        // the deck has none.
-        if( ! merge && ! result.nnc.empty() )
-        {
-          pinchActive = true;
-        }
+        pinchOuts = mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
+                               minpvv, actnum, merge, zcorn.data(), nogap).nnc;
       }
 
       /*
@@ -958,6 +960,27 @@ namespace Dune
 
       if (cgrid == nullptr) {
         OPM_THROW(std::runtime_error, "Failed to construct grid.");
+      }
+
+      if( ! pinchOuts.empty() )
+      {
+        // As the CpGrid does it, the bottom face of the cell above the space is the face between the cells.
+        std::unordered_map< int, int > cellOfCartesianIndex;
+        for( int c = 0; c < cgrid->number_of_cells; ++c )
+        {
+          cellOfCartesianIndex.emplace( cgrid->global_cell[ c ], c );
+        }
+        std::vector< std::pair< int, int > > pairs;
+        for( const auto& [ above, below ] : pinchOuts )
+        {
+          const auto first = cellOfCartesianIndex.find( above );
+          const auto second = cellOfCartesianIndex.find( below );
+          if( first != cellOfCartesianIndex.end() && second != cellOfCartesianIndex.end() )
+          {
+            pairs.emplace_back( first->second, second->second );
+          }
+        }
+        Dune::unstructured::connectCellsAcrossGaps( *cgrid, pairs );
       }
 
       return cgrid;
