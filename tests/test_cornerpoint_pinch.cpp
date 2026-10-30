@@ -35,8 +35,8 @@ namespace
 using GridPtr = std::unique_ptr<UnstructuredGrid, void (*)(UnstructuredGrid*)>;
 
 // One column of three layers with unit area. The layers are 1 m thick, except for the middle one, which has the thickness given and
-// is inactive. The depth of the top of the first layer is zero.
-GridPtr column(const double middleThickness, const bool pinchActive)
+// is inactive. The depth of the top of the first layer is zero. Nodes that are closer than the tolerance are the same node.
+GridPtr column(const double middleThickness, const bool pinchActive, const double tolerance = 0.0)
 {
     std::vector<double> coord;
     for (int py = 0; py <= 1; ++py) {
@@ -59,7 +59,7 @@ GridPtr column(const double middleThickness, const bool pinchActive)
     g.coord = coord.data();
     g.zcorn = zcorn.data();
     g.actnum = actnum.data();
-    return GridPtr(create_grid_cornerpoint_pinch(&g, 0.0, 0, pinchActive ? 1 : 0), destroy_grid);
+    return GridPtr(create_grid_cornerpoint_pinch(&g, tolerance, 0, pinchActive ? 1 : 0), destroy_grid);
 }
 
 // The faces with a cell on both sides.
@@ -106,6 +106,31 @@ BOOST_AUTO_TEST_CASE(InactiveLayerWithThicknessIsNotAConnection)
 {
     for (const bool pinch : {false, true}) {
         const auto grid = column(0.5, pinch);
+        BOOST_REQUIRE(grid);
+        BOOST_CHECK_EQUAL(grid->number_of_cells, 2);
+        BOOST_CHECK_EQUAL(connections(*grid), 0);
+    }
+}
+
+// A layer that is thinner than the tolerance, but not collapsed, is collapsed by the tolerance, as with the threshold thickness of
+// PINCH. It is a connection with pinch, and a layer that is thicker than the tolerance is not.
+BOOST_AUTO_TEST_CASE(InactiveLayerThinnerThanTheToleranceIsAConnectionWithPinch)
+{
+    const double tolerance = 0.01;
+    {
+        const auto grid = column(0.5 * tolerance, true, tolerance);
+        BOOST_REQUIRE(grid);
+        BOOST_CHECK_EQUAL(grid->number_of_cells, 2);
+        BOOST_CHECK_EQUAL(connections(*grid), 1);
+    }
+    {
+        const auto grid = column(0.5 * tolerance, false, tolerance);
+        BOOST_REQUIRE(grid);
+        BOOST_CHECK_EQUAL(grid->number_of_cells, 2);
+        BOOST_CHECK_EQUAL(connections(*grid), 0);
+    }
+    for (const bool pinch : {false, true}) {
+        const auto grid = column(2.0 * tolerance, pinch, tolerance);
         BOOST_REQUIRE(grid);
         BOOST_CHECK_EQUAL(grid->number_of_cells, 2);
         BOOST_CHECK_EQUAL(connections(*grid), 0);
