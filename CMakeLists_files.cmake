@@ -42,6 +42,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cart_grid.c
   opm/grid/common/GridPartitioning.cpp
   opm/grid/common/MetisPartition.cpp
+  opm/grid/common/UnstructuredGridConnections.cpp
   opm/grid/common/WellConnections.cpp
   opm/grid/common/ZoltanGraphFunctions.cpp
   opm/grid/common/ZoltanPartition.cpp
@@ -150,6 +151,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_repairzcorn.cpp
   tests/test_subgridpart.cpp
   tests/test_ug.cpp
+  tests/test_unstructuredgridconnections.cpp
 )
 
 # originally generated with the command:
@@ -204,6 +206,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/common/LevelCartesianIndexMapper.hpp
   opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp
+  opm/grid/common/UnstructuredGridConnections.hpp
   opm/grid/common/Volumes.hpp
   opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp

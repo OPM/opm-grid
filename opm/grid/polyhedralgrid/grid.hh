@@ -42,7 +42,10 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/GridManager.hpp>
 #include <opm/grid/cornerpoint_grid.h>
+#include <map>
+#include <unordered_map>
 #include <opm/grid/MinpvProcessor.hpp>
+#include <opm/grid/common/UnstructuredGridConnections.hpp>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
@@ -917,14 +920,17 @@ namespace Dune
 
       // The keyword PINCH connects the cells across collapsed inactive cells, as it does for the CpGrid. The grid with edge
       // conformal cells has the cells merged.
-      bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
+      const bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
+
+      // The cells that MINPV removed, and the cell above and below each of them if they are to be connected
+      std::map<int, int> pinchOuts;
 
       if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::Inactive))
       {
         Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
         const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
-        // The cells with a pore volume below MINPV are merged into the cell below, or collapsed. The cells above
-        // and below the collapsed cells are connected, which is what the CpGrid does by default.
+        // The cells with a pore volume below MINPV are merged into the cell below, or collapsed. The collapsed cells
+        // leave space between the cells above and below, which is connected as the CpGrid does it by default, see below.
         const bool merge = edge_conformal || mergeMinpvCells;
         const bool nogap = ! inputGrid.isPinchActive() || inputGrid.getPinchGapMode() == Opm::PinchMode::NOGAP;
         const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
@@ -932,14 +938,8 @@ namespace Dune
         for (size_t i = 0; i < cartGridSize; ++i) {
           thickness[i] = inputGrid.getCellThickness(i);
         }
-        const auto result = mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
-                                       minpvv, actnum, merge, zcorn.data(), nogap);
-        // The collapsed cells are connected across by the faces of the cells, as for the keyword PINCH, also if
-        // the deck has none.
-        if( ! merge && ! result.nnc.empty() )
-        {
-          pinchActive = true;
-        }
+        pinchOuts = mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
+                               minpvv, actnum, merge, zcorn.data(), nogap).nnc;
       }
 
       /*
@@ -958,6 +958,27 @@ namespace Dune
 
       if (cgrid == nullptr) {
         OPM_THROW(std::runtime_error, "Failed to construct grid.");
+      }
+
+      if( ! pinchOuts.empty() )
+      {
+        // As the CpGrid does it, the bottom face of the cell above the space is the face between the cells.
+        std::unordered_map< int, int > cellOfCartesianIndex;
+        for( int c = 0; c < cgrid->number_of_cells; ++c )
+        {
+          cellOfCartesianIndex.emplace( cgrid->global_cell[ c ], c );
+        }
+        std::vector< std::pair< int, int > > pairs;
+        for( const auto& [ above, below ] : pinchOuts )
+        {
+          const auto first = cellOfCartesianIndex.find( above );
+          const auto second = cellOfCartesianIndex.find( below );
+          if( first != cellOfCartesianIndex.end() && second != cellOfCartesianIndex.end() )
+          {
+            pairs.emplace_back( first->second, second->second );
+          }
+        }
+        Dune::unstructured::connectCellsAcrossGaps( *cgrid, pairs );
       }
 
       return cgrid;
@@ -1435,6 +1456,31 @@ namespace Dune
     }
 
   protected:
+    // connectCellsAcrossGaps() gives a cell an extra face with the tag of the top: the bottom face of the cell above.
+    // This tells whether the face is that extra face, and not the top of the cell itself.
+    //
+    // The top of the cell has no cell on the other side. A face with the tag of the top that has a cell on both sides is
+    // therefore an extra face, if the cell also has a top face with no cell on the other side.
+    //
+    // The extra face must not be used to find the corners of the cell. It is recognised in the same way if there is space
+    // between the two cells or if they touch.
+    bool isFaceAcrossGap ( const int cell, const int face ) const
+    {
+      if( grid_.face_cells[ 2*face ] < 0 || grid_.face_cells[ 2*face + 1 ] < 0 )
+      {
+        return false;
+      }
+      for( unsigned hf = grid_.cell_facepos[ cell ]; hf < grid_.cell_facepos[ cell+1 ]; ++hf )
+      {
+        const int f = grid_.cell_faces[ hf ];
+        if( grid_.cell_facetag[ hf ] == 4 && ( grid_.face_cells[ 2*f ] < 0 || grid_.face_cells[ 2*f + 1 ] < 0 ) )
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
     void init ()
     {
       // copy Cartesian dimensions
@@ -1502,6 +1548,15 @@ namespace Dune
             {
               const int f = grid_.cell_faces[ hf ];
               const int faceTag = grid_.cell_facetag[ hf ];
+
+              // The face to the cell above the space that MINPV left is a face of that cell, and the cell has its own top
+              // face. It is not a face of the top of the cell, which the nodes tell: they are not on the sides of the cell.
+              // See connectCellsAcrossGaps().
+              if( faceTag == 4 && isFaceAcrossGap( c, f ) )
+              {
+                continue;
+              }
+
               const unsigned first = grid_.face_nodepos[f];
               const unsigned last = grid_.face_nodepos[f+1];
               for (unsigned nodepos = first; nodepos < last; ++nodepos )
