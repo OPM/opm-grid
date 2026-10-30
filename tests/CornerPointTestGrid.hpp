@@ -44,7 +44,7 @@ struct CornerPointGrid
         for (int py = 0; py <= ny; ++py) {
             for (int px = 0; px <= nx; ++px) {
                 for (const double z : {-10.0, 10.0}) {
-                    coord.insert(coord.end(), {double(px), double(py), z});
+                    coord.insert(coord.end(), {static_cast<double>(px), static_cast<double>(py), z});
                 }
             }
         }
@@ -63,7 +63,7 @@ struct CornerPointGrid
                                 const std::size_t index = ((2 * k + zs) * 2 * ny + 2 * j + jy) * 2 * nx + 2 * i + ix;
                                 zcorn[index] = z;
                                 const std::size_t cell = i + nx * (j + ny * k);
-                                expectedCorners[8 * cell + ix + 2 * jy + 4 * zs] = {double(i + ix), double(j + jy), z};
+                                expectedCorners[8 * cell + ix + 2 * jy + 4 * zs] = {static_cast<double>(i + ix), static_cast<double>(j + jy), z};
                             }
                         }
                     }
