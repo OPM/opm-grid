@@ -1458,6 +1458,42 @@ namespace Dune
     }
 
   protected:
+    // Whether a face of the cell with the tag of the top is the face of the cell above, with space between the cells that
+    // is not a cell (see connectCellsAcrossGaps()), and not the face of the top of the cell. The cell above is in the same
+    // column, and the nodes of the face are not all on the sides of the cell, as the nodes of the top of a cell are.
+    bool isFaceAcrossGap ( const int cell, const int face ) const
+    {
+      const int other = grid_.face_cells[ 2*face ] == cell ? grid_.face_cells[ 2*face + 1 ] : grid_.face_cells[ 2*face ];
+      if( other < 0 )
+      {
+        return false;
+      }
+      const long layerSize = static_cast< long >( grid_.cartdims[ 0 ] ) * grid_.cartdims[ 1 ];
+      const long difference = static_cast< long >( grid_.global_cell[ cell ] ) - grid_.global_cell[ other ];
+      if( difference <= layerSize || difference % layerSize != 0 )
+      {
+        return false;
+      }
+
+      std::set< int > nodesOfSides;
+      for( unsigned hf = grid_.cell_facepos[ cell ]; hf < grid_.cell_facepos[ cell+1 ]; ++hf )
+      {
+        if( grid_.cell_facetag[ hf ] < 4 )
+        {
+          const int f = grid_.cell_faces[ hf ];
+          nodesOfSides.insert( grid_.face_nodes + grid_.face_nodepos[ f ], grid_.face_nodes + grid_.face_nodepos[ f+1 ] );
+        }
+      }
+      for( unsigned q = grid_.face_nodepos[ face ]; q < grid_.face_nodepos[ face+1 ]; ++q )
+      {
+        if( nodesOfSides.count( grid_.face_nodes[ q ] ) == 0 )
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
     void init ()
     {
       // copy Cartesian dimensions
@@ -1525,6 +1561,15 @@ namespace Dune
             {
               const int f = grid_.cell_faces[ hf ];
               const int faceTag = grid_.cell_facetag[ hf ];
+
+              // The face to the cell above the space that MINPV left is a face of that cell, and the cell has its own top
+              // face. It is not a face of the top of the cell, which the nodes tell: they are not on the sides of the cell.
+              // See connectCellsAcrossGaps().
+              if( faceTag == 4 && isFaceAcrossGap( c, f ) )
+              {
+                continue;
+              }
+
               const unsigned first = grid_.face_nodepos[f];
               const unsigned last = grid_.face_nodepos[f+1];
               for (unsigned nodepos = first; nodepos < last; ++nodepos )

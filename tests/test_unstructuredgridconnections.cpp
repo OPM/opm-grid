@@ -25,7 +25,11 @@
 #include <opm/grid/common/UnstructuredGridConnections.hpp>
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/polyhedralgrid.hh>
 
+#include <dune/common/parallel/mpihelper.hh>
+
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
@@ -38,9 +42,14 @@ namespace
 
 using GridPtr = std::unique_ptr<UnstructuredGrid, void (*)(UnstructuredGrid*)>;
 
-// One column with unit area, with the layers given as the top and the bottom of each. A layer where the top and the bottom are
-// the same is collapsed and is not a cell.
-GridPtr column(const std::vector<std::array<double, 2>>& layers)
+// One column with unit area, with the layers given as the depths of the four top corners and of the four bottom corners of each. A layer
+// where the top and the bottom are the same is collapsed and is not a cell.
+std::array<double, 8> flat(const double top, const double bottom)
+{
+    return {top, top, top, top, bottom, bottom, bottom, bottom};
+}
+
+GridPtr column(const std::vector<std::array<double, 8>>& layers)
 {
     std::vector<double> coord;
     for (int py = 0; py <= 1; ++py) {
@@ -51,9 +60,7 @@ GridPtr column(const std::vector<std::array<double, 2>>& layers)
     }
     std::vector<double> zcorn;
     for (const auto& layer : layers) {
-        for (const double z : layer) {
-            zcorn.insert(zcorn.end(), 4, z);
-        }
+        zcorn.insert(zcorn.end(), layer.begin(), layer.end());
     }
     std::vector<int> actnum(layers.size(), 1);
     grdecl g{};
@@ -93,13 +100,24 @@ double normalSum(const UnstructuredGrid& g, const int cell)
     return std::abs(sum[2]);
 }
 
+struct MpiFixture
+{
+    MpiFixture()
+    {
+        auto& suite = boost::unit_test::framework::master_test_suite();
+        Dune::MPIHelper::instance(suite.argc, suite.argv);
+    }
+};
+
 } // anonymous namespace
+
+BOOST_GLOBAL_FIXTURE(MpiFixture);
 
 // The space between the cells has the top face of the first cell as a face of the cell, and the second cell has it as one more.
 BOOST_AUTO_TEST_CASE(CellsAcrossSpaceAreConnected)
 {
     // A (0, 10), a collapsed layer (10, 10), and C (15, 25): 5 m of space that is not a cell
-    const auto grid = column({{0.0, 10.0}, {10.0, 10.0}, {15.0, 25.0}});
+    const auto grid = column({flat(0.0, 10.0), flat(10.0, 10.0), flat(15.0, 25.0)});
     BOOST_REQUIRE(grid);
     BOOST_REQUIRE_EQUAL(grid->number_of_cells, 2);
     BOOST_CHECK_EQUAL(connections(*grid), 0);
@@ -134,7 +152,7 @@ BOOST_AUTO_TEST_CASE(CellsAcrossSpaceAreConnected)
 
 BOOST_AUTO_TEST_CASE(ConnectedCellsAndUnknownCellsAreLeftAlone)
 {
-    const auto grid = column({{0.0, 10.0}, {10.0, 10.0}, {15.0, 25.0}});
+    const auto grid = column({flat(0.0, 10.0), flat(10.0, 10.0), flat(15.0, 25.0)});
     BOOST_REQUIRE(grid);
     BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 1);
     // the first cell has no face at the boundary at the bottom any more
@@ -147,7 +165,7 @@ BOOST_AUTO_TEST_CASE(ConnectedCellsAndUnknownCellsAreLeftAlone)
 // Cells that are neighbors are connected already.
 BOOST_AUTO_TEST_CASE(NeighborsAreNotConnectedAgain)
 {
-    const auto grid = column({{0.0, 10.0}, {10.0, 20.0}});
+    const auto grid = column({flat(0.0, 10.0), flat(10.0, 20.0)});
     BOOST_REQUIRE(grid);
     BOOST_CHECK_EQUAL(connections(*grid), 1);
     BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 0);
@@ -159,4 +177,59 @@ BOOST_AUTO_TEST_CASE(InvalidGrid)
     UnstructuredGrid empty{};
     empty.dimensions = 2;
     BOOST_CHECK_THROW(Dune::unstructured::connectCellsAcrossGaps(empty, {}), std::invalid_argument);
+}
+
+// The face to the cell above is not a face of the top of the cell: the cell keeps its corners, with its top at its own depth.
+BOOST_AUTO_TEST_CASE(PolyhedralGridKeepsTheCornersOfTheCells)
+{
+    auto grid = column({flat(0.0, 10.0), flat(10.0, 10.0), flat(15.0, 25.0)});
+    BOOST_REQUIRE(grid);
+    BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 1);
+    Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(grid));
+
+    const std::array<std::array<double, 2>, 2> expected{{{0.0, 10.0}, {15.0, 25.0}}};
+    int numberOfCells = 0;
+    for (const auto& element : elements(polyhedralGrid.leafGridView())) {
+        const int cell = polyhedralGrid.leafIndexSet().index(element);
+        const auto& geometry = element.geometry();
+        BOOST_CHECK_EQUAL(geometry.corners(), 8);
+        double lowest = 1e300;
+        double highest = -1e300;
+        for (int i = 0; i < geometry.corners(); ++i) {
+            lowest = std::min(lowest, geometry.corner(i)[2]);
+            highest = std::max(highest, geometry.corner(i)[2]);
+        }
+        BOOST_CHECK_CLOSE(lowest + 100.0, expected[cell][0] + 100.0, 1e-10);
+        BOOST_CHECK_CLOSE(highest, expected[cell][1], 1e-10);
+        ++numberOfCells;
+    }
+    BOOST_CHECK_EQUAL(numberOfCells, 2);
+}
+
+// The top of the cell below is at the bottom of the cell above in part, so that the faces have nodes in common. The nodes of the face of the cell
+// above are not all on the sides of the cell below, and the cell keeps its corners.
+BOOST_AUTO_TEST_CASE(PolyhedralGridKeepsTheCornersWithNodesInCommon)
+{
+    // the top of C is at the bottom of A at three of the corners, and 5 m below it at the fourth
+    auto grid = column({flat(0.0, 10.0), flat(10.0, 10.0), {10.0, 10.0, 10.0, 15.0, 25.0, 25.0, 25.0, 25.0}});
+    BOOST_REQUIRE(grid);
+    BOOST_REQUIRE_EQUAL(grid->number_of_cells, 2);
+    BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 1);
+    Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(grid));
+    for (const auto& element : elements(polyhedralGrid.leafGridView())) {
+        const auto& geometry = element.geometry();
+        BOOST_CHECK_EQUAL(geometry.corners(), 8);
+        if (polyhedralGrid.leafIndexSet().index(element) == 1) {
+            // the corners of the top are those of the top of the cell
+            std::array<double, 4> top{};
+            for (int i = 0; i < 4; ++i) {
+                top[i] = geometry.corner(i)[2];
+            }
+            std::sort(top.begin(), top.end());
+            BOOST_CHECK_CLOSE(top[0], 10.0, 1e-10);
+            BOOST_CHECK_CLOSE(top[1], 10.0, 1e-10);
+            BOOST_CHECK_CLOSE(top[2], 10.0, 1e-10);
+            BOOST_CHECK_CLOSE(top[3], 15.0, 1e-10);
+        }
+    }
 }
