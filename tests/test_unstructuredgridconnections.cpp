@@ -185,7 +185,8 @@ BOOST_AUTO_TEST_CASE(PolyhedralGridKeepsTheCornersOfTheCells)
     auto grid = column({flat(0.0, 10.0), flat(10.0, 10.0), flat(15.0, 25.0)});
     BOOST_REQUIRE(grid);
     BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 1);
-    Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(grid));
+    Dune::PolyhedralGrid<3, 3>::UnstructuredGridPtr gridPtr(grid.release());
+    Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(gridPtr));
 
     const std::array<std::array<double, 2>, 2> expected{{{0.0, 10.0}, {15.0, 25.0}}};
     int numberOfCells = 0;
@@ -215,7 +216,8 @@ BOOST_AUTO_TEST_CASE(PolyhedralGridKeepsTheCornersWithNodesInCommon)
     BOOST_REQUIRE(grid);
     BOOST_REQUIRE_EQUAL(grid->number_of_cells, 2);
     BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 1);
-    Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(grid));
+    Dune::PolyhedralGrid<3, 3>::UnstructuredGridPtr gridPtr(grid.release());
+    Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(gridPtr));
     for (const auto& element : elements(polyhedralGrid.leafGridView())) {
         const auto& geometry = element.geometry();
         BOOST_CHECK_EQUAL(geometry.corners(), 8);
