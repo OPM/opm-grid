@@ -1463,6 +1463,11 @@ namespace Dune
     // column, and the nodes of the face are not all on the sides of the cell, as the nodes of the top of a cell are.
     bool isFaceAcrossGap ( const int cell, const int face ) const
     {
+      // A grid that is not made from an EclipseGrid has no global cell numbers, and no connections across gaps.
+      if( grid_.global_cell == nullptr )
+      {
+        return false;
+      }
       const int other = grid_.face_cells[ 2*face ] == cell ? grid_.face_cells[ 2*face + 1 ] : grid_.face_cells[ 2*face ];
       if( other < 0 )
       {
