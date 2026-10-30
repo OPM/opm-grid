@@ -60,10 +60,6 @@ int connectCellsAcrossGaps(UnstructuredGrid& grid, const std::vector<std::pair<i
     }
 
     // The faces of each cell are in cell_faces after each other, so the cells below get room for one more.
-    std::vector<int> extra(grid.number_of_cells, 0);
-    for (const auto& entry : added) {
-        ++extra[entry.first];
-    }
     const std::size_t oldSize = grid.cell_facepos[grid.number_of_cells];
     const std::size_t newSize = oldSize + added.size();
     auto* newPos = static_cast<grid_size_t*>(std::malloc((grid.number_of_cells + 1) * sizeof(grid_size_t)));
