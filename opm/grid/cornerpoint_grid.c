@@ -167,6 +167,15 @@ create_grid_cornerpoint(const struct grdecl *in,
                         double tol,
                         int edge_conformal)
 {
+    return create_grid_cornerpoint_pinch(in, tol, edge_conformal, /* pinch_active = */ 0);
+}
+
+struct UnstructuredGrid *
+create_grid_cornerpoint_pinch(const struct grdecl *in,
+                              double tol,
+                              int edge_conformal,
+                              int pinch_active)
+{
     struct UnstructuredGrid *g;
     int                      ok;
     struct processed_grid    pg = {0};
@@ -176,7 +185,7 @@ create_grid_cornerpoint(const struct grdecl *in,
         return NULL;
     }
 
-    ok = process_grdecl(/* pinchActive = */ 0, edge_conformal, tol,
+    ok = process_grdecl(pinch_active, edge_conformal, tol,
                         in, /* is_aquifer_cell = */ NULL, &pg);
 
     if (ok && edge_conformal) {

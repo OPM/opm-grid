@@ -42,6 +42,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cart_grid.c
   opm/grid/common/GridPartitioning.cpp
   opm/grid/common/MetisPartition.cpp
+  opm/grid/common/UnstructuredGridConnections.cpp
   opm/grid/common/WellConnections.cpp
   opm/grid/common/ZoltanGraphFunctions.cpp
   opm/grid/common/ZoltanPartition.cpp
@@ -132,6 +133,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_column_extract.cpp
   tests/test_communication_utils.cpp
   tests/test_compressed_cartesian_mapping.cpp
+  tests/test_cornerpoint_pinch.cpp
   tests/test_cpgrid.cpp
   tests/test_elementchunks.cpp
   tests/test_geom2d.cpp
@@ -141,12 +143,15 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_lookupdata_polyhedral.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
+  tests/test_polyhedralgrid_face_geometry.cpp
+  tests/test_polyhedralgrid_faults.cpp
   tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
   tests/test_regionmapping.cpp
   tests/test_repairzcorn.cpp
   tests/test_subgridpart.cpp
   tests/test_ug.cpp
+  tests/test_unstructuredgridconnections.cpp
 )
 
 # originally generated with the command:
@@ -201,6 +206,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/grid/common/LevelCartesianIndexMapper.hpp
   opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp
+  opm/grid/common/UnstructuredGridConnections.hpp
   opm/grid/common/Volumes.hpp
   opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
