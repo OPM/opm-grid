@@ -132,6 +132,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_column_extract.cpp
   tests/test_communication_utils.cpp
   tests/test_compressed_cartesian_mapping.cpp
+  tests/test_cornerpoint_pinch.cpp
   tests/test_cpgrid.cpp
   tests/test_elementchunks.cpp
   tests/test_geom2d.cpp
@@ -148,7 +149,6 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_regionmapping.cpp
   tests/test_repairzcorn.cpp
   tests/test_subgridpart.cpp
-  tests/test_cornerpoint_pinch.cpp
   tests/test_ug.cpp
 )
 

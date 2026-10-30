@@ -41,7 +41,8 @@ GridPtr column(const double middleThickness, const bool pinchActive, const doubl
     std::vector<double> coord;
     for (int py = 0; py <= 1; ++py) {
         for (int px = 0; px <= 1; ++px) {
-            coord.insert(coord.end(), {double(px), double(py), -10.0, double(px), double(py), 10.0});
+            coord.insert(coord.end(), {static_cast<double>(px), static_cast<double>(py), -10.0,
+                                       static_cast<double>(px), static_cast<double>(py), 10.0});
         }
     }
     const std::array<std::array<double, 2>, 3> layers{{{0.0, 1.0}, {1.0, 1.0 + middleThickness},
@@ -59,7 +60,7 @@ GridPtr column(const double middleThickness, const bool pinchActive, const doubl
     g.coord = coord.data();
     g.zcorn = zcorn.data();
     g.actnum = actnum.data();
-    return GridPtr(create_grid_cornerpoint_pinch(&g, tolerance, 0, pinchActive ? 1 : 0), destroy_grid);
+    return {create_grid_cornerpoint_pinch(&g, tolerance, 0, pinchActive ? 1 : 0), destroy_grid};
 }
 
 // The faces with a cell on both sides.
@@ -143,7 +144,8 @@ BOOST_AUTO_TEST_CASE(CreateWithoutPinchArgumentHasNoPinchConnections)
     std::vector<double> coord;
     for (int py = 0; py <= 1; ++py) {
         for (int px = 0; px <= 1; ++px) {
-            coord.insert(coord.end(), {double(px), double(py), -10.0, double(px), double(py), 10.0});
+            coord.insert(coord.end(), {static_cast<double>(px), static_cast<double>(py), -10.0,
+                                       static_cast<double>(px), static_cast<double>(py), 10.0});
         }
     }
     std::vector<double> zcorn;
