@@ -920,8 +920,6 @@ namespace Dune
 
       // The keyword PINCH connects the cells across collapsed inactive cells, as it does for the CpGrid. The grid with edge
       // conformal cells has the cells merged.
-      // The keyword PINCH connects the cells across collapsed inactive cells, as it does for the CpGrid. The grid with edge
-      // conformal cells has the cells merged.
       const bool pinchActive = inputGrid.isPinchActive() || edge_conformal;
 
       // The cells that MINPV removed, and the cell above and below each of them if they are to be connected
