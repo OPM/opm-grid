@@ -21,6 +21,7 @@
 
 #include <array>
 #include <cstddef>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -111,9 +112,12 @@ blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
 
 /// Validate a set of block requests: matching sizes are the caller's
 /// responsibility; this checks per-box consistency (start < end, positive
-/// subdivisions) and pairwise disjointness of boxes sharing a parent grid.
+/// subdivisions), pairwise disjointness of boxes sharing a parent grid, and
+/// that each box's parent grid exists already (a name in @p nameToLevel, the
+/// grid's CpGrid::getLgrNameToLevel()) or comes earlier in @p requests.
 /// Throws std::invalid_argument with a message naming the offending box(es).
-void validateBlockRefinements(const std::vector<BlockRefinement>& requests);
+void validateBlockRefinements(const std::vector<BlockRefinement>& requests,
+                              const std::map<std::string,int>& nameToLevel);
 
 } // namespace Refinement
 } // namespace Opm

@@ -280,6 +280,38 @@ BOOST_AUTO_TEST_CASE(nestedSideOnAFaultIsRefused)
                           std::logic_error, onTheFault);
 }
 
+// The nesting rules read only the requests, so they are checked before any level grid
+// is built: a nested box on its parent LGR's boundary, and a box nested in a nested box,
+// are refused with the grid left unrefined.
+BOOST_AUTO_TEST_CASE(nestingRulesCheckedBeforeTheBuild)
+{
+    const auto g = makeGrid({4, 3, 3}, flat);
+    // LGR1 refines cells i = 1..2, j = 1, k = 1 into 3x3x3: its refined index space is 6x3x3.
+    const auto lgr1 = box("LGR1", {3,3,3}, {1,1,1}, {3,2,2});
+    const auto onTheBoundary = [](const std::logic_error& e) {
+        return std::string(e.what()).find("touches the boundary") != std::string::npos;
+    };
+    const auto twoLevels = [](const std::logic_error& e) {
+        return std::string(e.what()).find("only one level of nesting") != std::string::npos;
+    };
+
+    // NEST starts at i = 0, on LGR1's boundary.
+    Dune::CpGrid onBoundary;
+    BOOST_CHECK_EXCEPTION(build(onBoundary, g, {lgr1,
+                                                box("NEST", {2,2,2}, {0,1,1}, {2,2,2}, "LGR1")}),
+                          std::logic_error, onTheBoundary);
+    BOOST_CHECK_EQUAL(onBoundary.maxLevel(), 0);
+
+    // NEST1 (refined index space 12x3x3) keeps one cell inside LGR1, and NEST2 one cell
+    // inside NEST1; NEST2 is refused for its depth alone.
+    Dune::CpGrid twoDeep;
+    BOOST_CHECK_EXCEPTION(build(twoDeep, g, {lgr1,
+                                             box("NEST1", {3,3,3}, {1,1,1}, {5,2,2}, "LGR1"),
+                                             box("NEST2", {2,2,2}, {1,1,1}, {2,2,2}, "NEST1")}),
+                          std::logic_error, twoLevels);
+    BOOST_CHECK_EQUAL(twoDeep.maxLevel(), 0);
+}
+
 // stableCellId() cannot tell nested cells apart, and says so.
 BOOST_AUTO_TEST_CASE(stableCellIdRefusesNestedGrids)
 {

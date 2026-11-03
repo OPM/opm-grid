@@ -277,8 +277,8 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // Parent corner-point description per built level (index 0 = GLOBAL base,
     // index b+1 = the level grid of request b). A nested box is refined from
     // its parent level's resampled geometry, not the global grid; it rides on
-    // its parent's rank in both parallel models, and the leaf assembly enforces
-    // its containment.
+    // its parent's rank in both parallel models, and CpGrid::addLgrsUpdateLeafView()
+    // checks its containment before the build.
     const auto& dims = input_->dims;
     const int* actnum0 = input_->actnum.empty() ? nullptr : input_->actnum.data();
     std::vector<LevelGeom> levelGeom(requests.size() + 1);

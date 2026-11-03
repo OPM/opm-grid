@@ -33,6 +33,7 @@
 #include <opm/common/ErrorMacros.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <functional>
 #include <map>
@@ -473,24 +474,15 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         }
     }
 
-    // A nested box lies inside its parent LGR, away from its boundary, one level deep.
+    // A nested box refines a top-level LGR and stays at least one cell inside it.
+    // CpGrid::addLgrsUpdateLeafView() refuses other requests before the level grids
+    // are built; the assembly below relies on it.
     for (int b = 0; b < numBoxes; ++b) {
-        if (!nested(b) || (boxes[b].level->size(0) == 0)) {
-            continue;
-        }
-        const auto& req = requests[b];
-        if (nested(parentBoxOf[b])) {
-            OPM_THROW(std::logic_error, "Nested refinement '" + req.name + "' refines '"
-                      + req.parentGridName + "', itself a nested refinement; only one level "
-                      "of nesting is supported.");
-        }
-        const auto& parentDimsL = boxes[parentBoxOf[b]].refinedDims;
-        for (int d = 0; d < 3; ++d) {
-            if ((req.startIJK[d] < 1) || (req.endIJK[d] > parentDimsL[d] - 1)) {
-                OPM_THROW(std::logic_error, "Nested refinement '" + req.name + "' touches the "
-                          "boundary of its parent LGR '" + req.parentGridName + "': it must "
-                          "satisfy 1 <= startIJK and endIJK <= the parent's refined cells - 1 "
-                          "in every direction.");
+        if (nested(b)) {
+            assert(!nested(parentBoxOf[b]));
+            for (int d = 0; d < 3; ++d) {
+                assert((requests[b].startIJK[d] >= 1)
+                       && (requests[b].endIJK[d] <= boxes[parentBoxOf[b]].refinedDims[d] - 1));
             }
         }
     }

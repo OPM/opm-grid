@@ -22,8 +22,12 @@
 
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 
+#include <opm/grid/cpgrid/NestedRefinementUtilities.hpp>
+
 #include <opm/common/ErrorMacros.hpp>
 
+#include <algorithm>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -154,7 +158,8 @@ blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
     return requests;
 }
 
-void validateBlockRefinements(const std::vector<BlockRefinement>& requests)
+void validateBlockRefinements(const std::vector<BlockRefinement>& requests,
+                              const std::map<std::string,int>& nameToLevel)
 {
     for (const auto& req : requests) {
         // "GLOBAL" is the reserved name of level zero in CpGrid::lgr_names_
@@ -194,6 +199,22 @@ void validateBlockRefinements(const std::vector<BlockRefinement>& requests)
             if (boxesOverlap(requests[i], requests[j])) {
                 OPM_THROW(std::invalid_argument, "Refinement boxes '" + requests[i].name + "' and '"
                                                  + requests[j].name + "' overlap. CARFIN boxes must be disjoint.");
+            }
+        }
+    }
+    // A parent LGR must exist, or come earlier in the requests, before its children.
+    std::vector<std::string> names, parents;
+    for (const auto& request : requests) {
+        names.push_back(request.name);
+        parents.push_back(request.parentGridName);
+    }
+    if (!Opm::areParentGridsAvailableBeforeTheirLgrs(nameToLevel, names, parents)) {
+        for (std::size_t box = 0; box < requests.size(); ++box) {
+            const auto earlier = std::find(names.begin(), names.begin() + box, parents[box]);
+            if (!nameToLevel.count(parents[box]) && (earlier == names.begin() + box)) {
+                OPM_THROW(std::invalid_argument, "Refinement '" + names[box] + "' names parent grid '"
+                          + parents[box] + "', which has not been built yet. Parent LGRs must be "
+                          "ordered before their children.");
             }
         }
     }

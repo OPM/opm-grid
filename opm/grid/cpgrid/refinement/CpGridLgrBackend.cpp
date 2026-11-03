@@ -21,7 +21,6 @@
 #endif
 
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/NestedRefinementUtilities.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
@@ -30,10 +29,45 @@
 
 #include <algorithm>
 #include <array>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace
+{
+
+// The conforming refinement nests one level deep: a nested box (a box whose parent
+// grid is an LGR) refines a top-level LGR, and stays at least one cell inside that
+// LGR's refined index space in every direction. The parent LGR is among the same
+// requests, since the conforming refinement starts from an unrefined grid.
+void checkConformingNesting(const std::vector<Opm::Refinement::BlockRefinement>& requests)
+{
+    std::map<std::string, const Opm::Refinement::BlockRefinement*> requestOfName;
+    for (const auto& request : requests) {
+        const auto parent = requestOfName.find(request.parentGridName);
+        if (parent != requestOfName.end()) {
+            if (parent->second->parentGridName != "GLOBAL") {
+                OPM_THROW(std::logic_error, "Nested refinement '" + request.name + "' refines '"
+                          + request.parentGridName + "', itself a nested refinement; only one level "
+                          "of nesting is supported.");
+            }
+            const auto parentDims = Opm::Refinement::refinedDims(*parent->second);
+            for (int d = 0; d < 3; ++d) {
+                if ((request.startIJK[d] < 1) || (request.endIJK[d] > parentDims[d] - 1)) {
+                    OPM_THROW(std::logic_error, "Nested refinement '" + request.name + "' touches the "
+                              "boundary of its parent LGR '" + request.parentGridName + "': it must "
+                              "satisfy 1 <= startIJK and endIJK <= the parent's refined cells - 1 "
+                              "in every direction.");
+                }
+            }
+        }
+        requestOfName[request.name] = &request;
+    }
+}
+
+} // anonymous namespace
 
 namespace Dune
 {
@@ -53,9 +87,9 @@ void CpGrid::setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> buil
     refinement_builder_ = std::move(builder);
 }
 
-void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement> requests)
+void CpGrid::addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefinement>& requests)
 {
-    Opm::Refinement::validateBlockRefinements(requests);
+    Opm::Refinement::validateBlockRefinements(requests, getLgrNameToLevel());
 
     if (lgr_backend_ == Opm::Refinement::Backend::Trilinear) {
         std::vector<std::array<int,3>> cellsPerDim, startIJK, endIJK;
@@ -88,22 +122,7 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
         OPM_THROW(std::logic_error, "The Conforming LGR backend has no refinement builder and no "
                   "retained corner-point input; select the backend before processEclipseFormat().");
     }
-    // A parent LGR must exist, or come earlier in the requests, before its children.
-    std::vector<std::string> names, parents;
-    for (const auto& request : requests) {
-        names.push_back(request.name);
-        parents.push_back(request.parentGridName);
-    }
-    if (!Opm::areParentGridsAvailableBeforeTheirLgrs(getLgrNameToLevel(), names, parents)) {
-        for (std::size_t box = 0; box < requests.size(); ++box) {
-            const auto earlier = std::find(names.begin(), names.begin() + box, parents[box]);
-            if (!getLgrNameToLevel().count(parents[box]) && (earlier == names.begin() + box)) {
-                OPM_THROW(std::invalid_argument, "Refinement '" + names[box] + "' names parent grid '"
-                          + parents[box] + "', which has not been built yet. Parent LGRs must be "
-                          "ordered before their children.");
-            }
-        }
-    }
+    checkConformingNesting(requests);
     const int preBuildMaxLevel = maxLevel();
     builder->build(*this, requests);
     // A grid is refined once: its level zero no longer needs the description.

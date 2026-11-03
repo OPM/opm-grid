@@ -143,6 +143,48 @@ BOOST_AUTO_TEST_CASE(trilinearRefusesConformingOnlyRequests)
     }
 }
 
+// Under the default backend too, a parent LGR must come before its children.
+BOOST_AUTO_TEST_CASE(trilinearRefusesChildBeforeParent)
+{
+    auto child = box("LGR2", {0,0,0}, {1,1,1});
+    child.parentGridName = "LGR1";
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
+                          child, box("LGR1", {1,1,1}, {2,2,2}) }),
+                      std::invalid_argument);
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 0);
+}
+
+// The conforming refinement's nesting rules do not apply to the default backend: a
+// nested LGR may touch its parent LGR's boundary, and nest more than one level deep.
+BOOST_AUTO_TEST_CASE(trilinearRefinesNestedLgrsOnTheParentBoundary)
+{
+    // LGR1 refines cell (1,1,1) into 2x2x2; LGR2 refines LGR1's cell (0,0,0), on
+    // LGR1's boundary, into 2x2x2; LGR3 does the same with LGR2's cell (0,0,0).
+    auto lgr2 = box("LGR2", {0,0,0}, {1,1,1});
+    lgr2.parentGridName = "LGR1";
+    auto lgr3 = box("LGR3", {0,0,0}, {1,1,1});
+    lgr3.parentGridName = "LGR2";
+
+    Dune::CpGrid byVectors, byRequests;
+    makeGrid(byVectors);
+    makeGrid(byRequests);
+    byVectors.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}, {2,2,2}},
+                                    {{1,1,1}, {0,0,0}, {0,0,0}},
+                                    {{2,2,2}, {1,1,1}, {1,1,1}},
+                                    {"LGR1", "LGR2", "LGR3"},
+                                    {"GLOBAL", "LGR1", "LGR2"});
+    byRequests.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
+        box("LGR1", {1,1,1}, {2,2,2}), lgr2, lgr3 });
+
+    BOOST_CHECK_EQUAL(byRequests.maxLevel(), 3);
+    // 36 cells, less each refined parent cell, plus its 8 children, three times.
+    BOOST_CHECK_EQUAL(byRequests.size(0), 36 + 3*(8 - 1));
+    BOOST_CHECK_EQUAL(byRequests.size(0), byVectors.size(0));
+    BOOST_CHECK(byRequests.getLgrNameToLevel() == byVectors.getLgrNameToLevel());
+}
+
 // The two backends never meet on one grid.
 BOOST_AUTO_TEST_CASE(backendFixedOnceRefined)
 {
