@@ -532,16 +532,50 @@ std::shared_ptr<CpGridData> LeafGridAssembler::build()
     assert(!built_);
     built_ = true;
 
-    collectBoxData();
-    buildCornerPool();
-    buildLeafCells();
-    refuseThrowsLeavingBoxes();
-    findDroppedFaces();
-    findFaultedSides();
-    buildLeafFaces();
-    buildSyntheticFaces();
-    buildLeafTopology();
-    computeCellData();
+    // The stages before buildParallelStructures do no collective operation, and they
+    // hold every refusal of the assembly.
+    const auto localStages = [this] {
+        collectBoxData();
+        buildCornerPool();
+        buildLeafCells();
+        refuseThrowsLeavingBoxes();
+        findDroppedFaces();
+        findFaultedSides();
+        buildLeafFaces();
+        buildSyntheticFaces();
+        buildLeafTopology();
+        computeCellData();
+    };
+    const Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm_);
+    if (cc.size() > 1) {
+        // In a distributed run a refusal fires only on the rank that holds the box. The
+        // other ranks would go on into the collective operations of
+        // buildParallelStructures and wait there forever. So an error on this rank is
+        // caught, one reduction tells every rank the lowest rank that failed, and then
+        // every rank throws. The lowest rank that failed throws with its own message and
+        // logs it; the other ranks throw without logging.
+        bool failed = false;
+        std::string message;
+        try {
+            localStages();
+        } catch (const std::exception& e) {
+            failed = true;
+            message = e.what();
+        }
+        // The lowest rank that failed, or the number of ranks if none did.
+        const int failedRank = cc.min(failed ? cc.rank() : cc.size());
+        if (failedRank < cc.size()) {
+            if (cc.rank() == failedRank) {
+                OPM_THROW(std::runtime_error, "Parallel LGR leaf assembly failed on rank "
+                          + std::to_string(cc.rank()) + ": " + message);
+            }
+            OPM_THROW_NOLOG(std::runtime_error, "Parallel LGR leaf assembly aborted on rank "
+                            + std::to_string(cc.rank()) + " because rank "
+                            + std::to_string(failedRank) + " failed (see that rank's message).");
+        }
+    } else {
+        localStages();
+    }
     buildParallelStructures();
     recordLeafMetadata();
 

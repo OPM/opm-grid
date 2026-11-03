@@ -36,6 +36,7 @@
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <array>
@@ -279,6 +280,55 @@ BOOST_AUTO_TEST_CASE(boxTouchingOverlapThrows)
     // Box i in [5,8) straddles the i=6 partition boundary -> must throw.
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{5,1,0}}, {{8,3,2}}, {"LGR1"}),
                       std::runtime_error);  // rethrown collectively on every rank
+}
+
+// A refusal of the leaf assembly fires only on the rank that holds the box. Every rank
+// throws, so that none waits in the collective operations after the refusal.
+BOOST_AUTO_TEST_CASE(leafAssemblyRefusalThrowsOnEveryRank)
+{
+    // Unit cells; the columns i >= 2 are 0.6 deeper, a fault between i = 1 and i = 2.
+    const std::array<int,3> dims = {{12, 3, 2}};
+    auto g = makeUnitGrid(dims);
+    for (std::size_t p = 0; p < g.coord.size(); p += 6) {
+        g.coord[p + 5] += 1.0;     // the pillars reach below the deepest corner
+    }
+    for (std::size_t z = 0; z < g.zcorn.size(); ++z) {
+        const int i = static_cast<int>((z / 2) % dims[0]);
+        g.zcorn[z] += (i >= 2) ? 0.6 : 0.0;
+    }
+
+    // Through an EclipseGrid, which rank 0 processes and the other ranks wait for.
+    const Opm::EclipseGrid eclGrid(dims, g.coord, g.zcorn);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclGrid, nullptr, false, false, false, false, false);
+    const int np = grid.comm().size();
+    if (np < 2) {
+        return;
+    }
+    // Rank 0 holds the columns i < 6, the box among them; the other ranks hold the rest.
+    std::vector<int> parts(static_cast<std::size_t>(dims[0])*dims[1]*dims[2]);
+    for (std::size_t c = 0; c < parts.size(); ++c) {
+        const int i = static_cast<int>(c % dims[0]);
+        parts[c] = (i < 6) ? 0 : 1 + (i - 6) % (np - 1);
+    }
+    grid.loadBalance(parts, false, true, 2);
+    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
+        g.dims, g.coord, g.zcorn, g.actnum));
+
+    // The box covers both columns of the fault in the first layer only: across the throw
+    // its cell (3,1,1) (I,J,K from 1) faces the cell (2,1,2), outside the box. The leaf
+    // assembly refuses that on rank 0. Each rank checks its own exception: a check that
+    // communicates would meet the collective operations a rank without the refusal is in.
+    const int rank = grid.comm().rank();
+    BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView({{3,1,3}}, {{1,0,0}}, {{3,3,1}}, {"LGR1"}),
+                          std::runtime_error,
+                          [rank](const std::runtime_error& e) {
+                              const std::string what = e.what();
+                              return (rank == 0)
+                                  ? ((what.find("failed on rank 0") != std::string::npos)
+                                     && (what.find("must cover every layer") != std::string::npos))
+                                  : (what.find("because rank 0 failed") != std::string::npos);
+                          });
 }
 #endif // HAVE_MPI
 
