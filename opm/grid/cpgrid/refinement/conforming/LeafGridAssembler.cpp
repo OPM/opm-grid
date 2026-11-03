@@ -654,6 +654,47 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         grid.getIJK(cell, ijk);
         return ijk;
     };
+    // A fault or a pinch-out inside a box can join a box cell to a cell outside the box
+    // through a face that is not on a box side, when the box does not cover every layer
+    // the throw joins. The box's level grid leaves its side of that face open, and the
+    // cell outside loses its face: not supported.
+    const auto text = [](const std::array<int,3>& c) {
+        return "(" + std::to_string(c[0] + 1) + "," + std::to_string(c[1] + 1) + ","
+            + std::to_string(c[2] + 1) + ")";
+    };
+    for (int b = 0; b < numBoxes; ++b) {
+        CpGridData& grid = nested(b) ? *boxes[parentBoxOf[b]].level : level0;
+        Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
+        for (int cell = 0; cell < grid.size(0); ++cell) {
+            if (boxOfParentCell(b, cell) != b) {
+                continue;
+            }
+            const auto ijk = parentIJK(b, cell);
+            const auto row = GridStateWriter::cellToFace(grid)[EntityRep<0>(cell, true)];
+            for (int e = 0; e < row.size(); ++e) {
+                const int face = row[e].index();
+                if (tags.get(face) == NNC_FACE) {
+                    continue;
+                }
+                const int axis = axisOf(tags.get(face));
+                const bool onSide = row[e].orientation() ? (ijk[axis] == requests[b].endIJK[axis] - 1)
+                                                         : (ijk[axis] == requests[b].startIJK[axis]);
+                const auto cells = GridStateWriter::faceToCell(grid)[EntityRep<1>(face, true)];
+                for (int q = 0; (q < cells.size()) && !onSide; ++q) {
+                    const int other = cells[q].index();
+                    if ((other == cell) || (other == kRemoteCell) || (boxOfParentCell(b, other) == b)) {
+                        continue;
+                    }
+                    const auto outside = parentIJK(b, other);
+                    OPM_THROW(std::invalid_argument, "Refinement box '" + requests[b].name + "' has a "
+                              "fault or a pinch-out inside it that joins its cell " + text(ijk)
+                              + " to the cell " + text(outside) + " outside the box (I,J,K from 1 in '"
+                              + requests[b].parentGridName + "'). This is not supported: the box "
+                              "must cover every layer the throw joins.");
+                }
+            }
+        }
+    }
     // The cell across a nested box's side: across its parent cell's face there, which must
     // be the parent's whole face (a fault or pinch-out on it is not supported), or -1.
     const auto nestedNeighborOf = [&](int b, int parent, int axis, int side) {
