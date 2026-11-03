@@ -412,6 +412,33 @@ BOOST_AUTO_TEST_CASE(nestedParentWithNoChildLeft)
     }
 }
 
+// The nested box's MINPV removes children on its sides, of an LGR1 cell that keeps others:
+// the LGR1 cells across keep a boundary face where each removed child would be. The two
+// children removed together share a corner no other cell has.
+BOOST_AUTO_TEST_CASE(nestedRemovedChildOnTheSide)
+{
+    const auto g = makeGrid({4, 3, 3}, flat);
+    const auto lgr1 = box("LGR1", {3,3,3}, {0,0,0}, {4,3,3});
+    // NEST's children 12x6x6: child (0,0,0) is on NEST's -I, -J and -K sides, (0,0,1) above it.
+    const auto child = [](int i, int j, int k) { return i + 12*(j + 6*k); };
+    for (const auto& removed : std::vector<std::vector<int>>{ {child(0,0,0)},
+                                                              {child(0,0,0), child(0,0,1)} }) {
+        auto nest = box("NEST", {2,2,2}, {3,3,3}, {9,6,6}, "LGR1");
+        nest.minpvRemoved.assign(12*6*6, 0);
+        for (const int c : removed) {
+            nest.minpvRemoved[c] = 1;
+        }
+        Dune::CpGrid grid;
+        build(grid, g, {lgr1, nest});
+
+        const auto count = static_cast<int>(removed.size());
+        BOOST_CHECK_EQUAL(grid.size(0), 4*3*3*27 - 6*3*3 + 12*6*6 - count);
+        BOOST_CHECK_CLOSE(totalVolume(grid), 72.0 - count*(2.0/27.0)/8.0, 1e-10);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(contacts(grid).mostPerPair, 1);
+    }
+}
+
 // stableCellId() cannot tell nested cells apart, and says so.
 BOOST_AUTO_TEST_CASE(stableCellIdRefusesNestedGrids)
 {

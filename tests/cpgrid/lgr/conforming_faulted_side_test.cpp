@@ -532,3 +532,47 @@ BOOST_AUTO_TEST_CASE(removedChildAcrossTheFault)
         BOOST_CHECK_CLOSE(totalVolume(grid), volume - 0.25*count, 1e-10);
     }
 }
+
+// A box on a fault whose MINPV removes a child on the faulted side: the cells across, coarse
+// or of a box across the fault, keep a boundary face where that child would be. Toward a
+// box, the box that removes the child makes the faces across the fault: it comes first, or
+// is the finer; it also removes every child of one host.
+BOOST_AUTO_TEST_CASE(removedChildOnTheFault)
+{
+    const auto g = makeGrid({4, 2, 2}, vertical, faulted(2, 0.6));
+    const auto mask = [](int size, const std::vector<int>& removed) {
+        std::vector<int> m(size, 0);
+        for (const int child : removed) {
+            m[child] = 1;
+        }
+        return m;
+    };
+    const auto check = [&g](std::vector<Opm::Refinement::BlockRefinement> requests, double removedVolume) {
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        const double volume = totalVolume(grid);
+        refine(grid, g, std::move(requests));
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+        BOOST_CHECK_CLOSE(totalVolume(grid), volume - removedVolume, 1e-10);
+    };
+    // A box on hosts i = 2..3 (children 4x4x4 of volume 0.25), its child (0,1,1) on the
+    // fault removed; coarse cells across.
+    auto alone = box("LGR1", {2,2,2}, {2,0,0}, {4,2,2});
+    alone.minpvRemoved = mask(64, {0 + 4*1 + 16*1});
+    check({alone}, 0.25);
+
+    // A on hosts i = 0..1 with its child (3,1,1) on the fault removed, B across.
+    const auto b = box("B", {2,2,2}, {2,0,0}, {4,2,2});
+    auto a = box("A", {2,2,2}, {0,0,0}, {2,2,2});
+    a.minpvRemoved = mask(64, {3 + 4*1 + 16*1});
+    check({a, b}, 0.25);
+    // A finer: children 8x8x8 of volume 1/32, its child (7,2,2) on the fault removed.
+    auto fine = box("A", {4,4,4}, {0,0,0}, {2,2,2});
+    fine.minpvRemoved = mask(512, {7 + 8*2 + 64*2});
+    check({fine, b}, 1.0/32.0);
+    // A with every child of its host (1,0,0) removed.
+    auto emptied = box("A", {2,2,2}, {0,0,0}, {2,2,2});
+    emptied.minpvRemoved = mask(64, {2, 3, 6, 7, 18, 19, 22, 23});
+    check({emptied, b}, 2.0);
+}
