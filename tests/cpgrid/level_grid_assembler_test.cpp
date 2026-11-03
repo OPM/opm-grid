@@ -25,14 +25,18 @@
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/LevelGridAssembler.hpp>
+#include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <functional>
 #include <map>
+#include <set>
+#include <utility>
 #include <vector>
 
 namespace
@@ -94,6 +98,27 @@ TestGrdecl makeVerticalPillarGrid(const std::array<int,3>& dims,
         }
     }
     return g;
+}
+
+// Number of K faces between each pair of cells (k of the cell above, k of the cell
+// below) in each column (i, j) of a grid, by the grid's own Cartesian indices.
+std::map<std::array<int,4>, int> verticalConnections(const Dune::cpgrid::CpGridData& grid)
+{
+    const auto& faceToCell = Opm::Refinement::GridStateWriter::faceToCell(grid);
+    const auto& faceTag = Opm::Refinement::GridStateWriter::faceTag(grid);
+    std::map<std::array<int,4>, int> connections;
+    for (int face = 0; face < faceToCell.size(); ++face) {
+        const auto row = faceToCell[Dune::cpgrid::EntityRep<1>(face, true)];
+        if ((row.size() != 2) || (faceTag.get(face) != K_FACE)) {
+            continue;
+        }
+        std::array<int,3> a, b;
+        grid.getIJK(row[0].index(), a);
+        grid.getIJK(row[1].index(), b);
+        BOOST_REQUIRE(a[0] == b[0] && a[1] == b[1]);
+        ++connections[{a[0], a[1], std::min(a[2], b[2]), std::max(a[2], b[2])}];
+    }
+    return connections;
 }
 
 } // anonymous namespace
@@ -229,5 +254,67 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockLevelGrid)
     for (const auto& [parentIdx, childVolume] : volumePerParent) {
         const Dune::cpgrid::Entity<0> parentCell(*storage[0], parentIdx, true);
         BOOST_CHECK_CLOSE(childVolume, parentCell.geometry().volume(), 1e-8);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(pinchConnectionCarriedToChildren)
+{
+    // 3x1x4 parent, unit columns; layers 2 thick, except layer k = 2, which is
+    // collapsed (zero thickness) at depth 4.
+    const std::array<double,5> nodeDepth = {0.0, 2.0, 4.0, 4.0, 6.0};
+    auto parent = makeVerticalPillarGrid({3, 1, 4}, [&nodeDepth](int, int, int k_) {
+        return nodeDepth[cellOf(k_) + sideOf(k_)];
+    });
+
+    // Processed with pinch-outs active, as for a deck with PINCH: the collapsed
+    // layer is removed, and layers k = 1 and k = 3 are joined by one face.
+    Dune::CpGrid parentGrid;
+    auto& storage = parentGrid.currentData();
+    std::array<std::set<std::pair<int,int>>, 2> parentNnc;
+    storage[0]->processEclipseFormat(parent.raw(), nullptr, parentNnc,
+                                     /* remove_ij_boundary = */ false,
+                                     /* turn_normals = */ false,
+                                     /* pinchActive = */ true,
+                                     /* tolerance_unique_points = */ 0.0,
+                                     /* edge_conformal = */ false);
+    BOOST_REQUIRE_EQUAL(storage[0]->size(0), 3*3);
+    const auto parentConnections = verticalConnections(*storage[0]);
+    for (int i = 0; i < 3; ++i) {
+        BOOST_REQUIRE_EQUAL(parentConnections.count({i, 0, 1, 3}), 1u);
+    }
+
+    // The box covers columns i = 0, 1 and every layer; each parent becomes 2x1x2
+    // children, so parent layer k holds refined layers 2k and 2k+1.
+    Opm::Refinement::BlockRefinement req;
+    req.name = "LGR1";
+    req.cellsPerDim = {2, 1, 2};
+    req.startIJK = {0, 0, 0};
+    req.endIJK = {2, 1, 4};
+    auto level = Opm::Refinement::assembleBlockLevelGrid(*storage[0], parent.dims,
+                                                         parent.coord.data(), parent.zcorn.data(),
+                                                         nullptr, req, /* levelIndex = */ 1,
+                                                         /* parentLevel = */ 0,
+                                                         storage);
+    storage.push_back(level);
+
+    // Refined layers 4 and 5 (children of the collapsed layer) are removed.
+    BOOST_REQUIRE_EQUAL(level->size(0), 4*1*6);
+    // In every refined column: ordinary neighbours in layers 0-3 and 6-7, and the
+    // carried pinch connection between layer 3, just above the collapsed layer,
+    // and layer 6, just below it. Each pair has one face, and cells one layer
+    // apart (such as layers 1 and 3) have none.
+    const std::map<std::array<int,2>, int> expectedPerColumn = {
+        {{0, 1}, 1}, {{1, 2}, 1}, {{2, 3}, 1}, {{3, 6}, 1}, {{6, 7}, 1}};
+    std::map<std::array<int,4>, int> expected;
+    for (int ir = 0; ir < 4; ++ir) {
+        for (const auto& [layers, count] : expectedPerColumn) {
+            expected[{ir, 0, layers[0], layers[1]}] = count;
+        }
+    }
+    const auto connections = verticalConnections(*level);
+    BOOST_CHECK(connections == expected);
+    for (int ir = 0; ir < 4; ++ir) {
+        BOOST_CHECK_EQUAL(connections.count({ir, 0, 3, 6}), 1u);
+        BOOST_CHECK_EQUAL(connections.count({ir, 0, 1, 3}), 0u);
     }
 }

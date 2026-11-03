@@ -48,7 +48,7 @@ namespace Refinement
 namespace {
 
 /// The parent's pinch connections inside the box, carried to the children: each
-/// joins the bottom children of the upper cell to the top children of the lower.
+/// joins the bottom children of the cell above to the top children of the cell below.
 std::set<std::pair<int,int>>
 boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
               const std::array<int,3>& parentDims,
@@ -62,6 +62,8 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
     const std::array<AxisSubdivision,3> subs = { axisSubdivision(request, 0),
                                                 axisSubdivision(request, 1),
                                                 axisSubdivision(request, 2) };
+    // The indices, along axis dim, of the refined columns whose parent column
+    // is offset, counted from the box's first parent cell.
     const auto refinedOf = [&subs](int dim, int offset) {
         std::vector<int> refined;
         for (std::size_t r = 0; r < subs[dim].size(); ++r) {
@@ -82,22 +84,27 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
             || (row[1].index() >= static_cast<int>(globalCell.size()))) {
             continue;
         }
-        auto upper = Opm::Lgr::getIJK(globalCell[row[0].index()], parentDims);
-        auto lower = Opm::Lgr::getIJK(globalCell[row[1].index()], parentDims);
-        if (upper[2] > lower[2]) {
-            std::swap(upper, lower);
+        // The cell above has the smaller k.
+        auto above = Opm::Lgr::getIJK(globalCell[row[0].index()], parentDims);
+        auto below = Opm::Lgr::getIJK(globalCell[row[1].index()], parentDims);
+        if (above[2] > below[2]) {
+            std::swap(above, below);
         }
-        if ((upper[0] != lower[0]) || (upper[1] != lower[1]) || (lower[2] - upper[2] < 2)
-            || !contains(request, upper) || !contains(request, lower)) {
+        // A k-gap of 1 is two ordinary vertical neighbours, which the refined
+        // level connects by itself. Only a gap of 2 or more is a pinch
+        // connection across collapsed layers, and only those are carried to
+        // the children.
+        if ((above[0] != below[0]) || (above[1] != below[1]) || (below[2] - above[2] < 2)
+            || !contains(request, above) || !contains(request, below)) {
             continue;
         }
-        const int kUpper = refinedOf(2, upper[2] - request.startIJK[2]).back();
-        const int kLower = refinedOf(2, lower[2] - request.startIJK[2]).front();
-        for (const int ir : refinedOf(0, upper[0] - request.startIJK[0])) {
-            for (const int jr : refinedOf(1, upper[1] - request.startIJK[1])) {
+        const int kAbove = refinedOf(2, above[2] - request.startIJK[2]).back();
+        const int kBelow = refinedOf(2, below[2] - request.startIJK[2]).front();
+        for (const int ir : refinedOf(0, above[0] - request.startIJK[0])) {
+            for (const int jr : refinedOf(1, above[1] - request.startIJK[1])) {
                 const int column = ir + refinedDims[0] * jr;
                 const int layer = refinedDims[0] * refinedDims[1];
-                pairs.emplace(column + layer * kUpper, column + layer * kLower);
+                pairs.emplace(column + layer * kAbove, column + layer * kBelow);
             }
         }
     }
