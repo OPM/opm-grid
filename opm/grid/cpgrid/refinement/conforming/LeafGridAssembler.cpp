@@ -489,15 +489,22 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
     }
-    // nestedBoxOf[b][cell]: the nested box refining that cell of box b's level grid, or -1.
+    // nestedBoxOf[b][cell]: the nested box refining that cell of box b's level grid, or -1;
+    // also a cell whose children the nested box's MINPV removes, which is refined into
+    // nothing.
     std::vector<std::vector<int>> nestedBoxOf(numBoxes);
     for (int b = 0; b < numBoxes; ++b) {
         nestedBoxOf[b].assign(boxes[b].level->size(0), -1);
     }
     for (int b = 0; b < numBoxes; ++b) {
         if (nested(b)) {
-            for (const auto& [parent, kids] : boxes[b].childrenOfParent) {
-                nestedBoxOf[parentBoxOf[b]][parent] = b;
+            const CpGridData& parentLgr = *boxes[parentBoxOf[b]].level;
+            for (int cell = 0; cell < parentLgr.size(0); ++cell) {
+                std::array<int,3> ijk;
+                parentLgr.getIJK(cell, ijk);
+                if (contains(requests[b], ijk)) {
+                    nestedBoxOf[parentBoxOf[b]][cell] = b;
+                }
             }
         }
     }
@@ -599,8 +606,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     leafCells.push_back({b + 1, child});
                     continue;
                 }
-                // Refined again by a nested box: its children in its place.
-                for (const int grandchild : boxes[nb].childrenOfParent.at(child)) {
+                // Refined again by a nested box: its children in its place, none if the
+                // nested box's MINPV removed them all.
+                const auto grandchildren = boxes[nb].childrenOfParent.find(child);
+                if (grandchildren == boxes[nb].childrenOfParent.end()) {
+                    continue;
+                }
+                for (const int grandchild : grandchildren->second) {
                     leafIdxOfLevelCell[nb][grandchild] = static_cast<int>(leafCells.size());
                     leafCells.push_back({nb + 1, grandchild});
                 }
@@ -620,8 +632,12 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         if (fresh) {
             it->second.assign(boxes[pb].level->size(0), std::make_tuple(-1, std::vector<int>{}));
         }
-        for (const auto& [parent, kids] : boxes[nb].childrenOfParent) {
-            it->second[parent] = std::make_tuple(nb + 1, kids);
+        for (int parent = 0; parent < boxes[pb].level->size(0); ++parent) {
+            if (nestedBoxOf[pb][parent] == nb) {
+                const auto kids = boxes[nb].childrenOfParent.find(parent);
+                it->second[parent] = std::make_tuple(nb + 1, (kids != boxes[nb].childrenOfParent.end())
+                                                                 ? kids->second : std::vector<int>{});
+            }
         }
     }
 
@@ -939,12 +955,26 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         for (int face = 0; face < faceToCellL.size(); ++face) {
             const auto row = faceToCellL[EntityRep<1>(face, true)];
             int outside = -1;
-            // Toward a cell a nested box refines: that box's faces take over.
+            // Toward a cell a nested box refines: that box's faces take over. A cell with
+            // no child left leaves the face to the cell on the other side, as its
+            // boundary face.
             bool towardNested = false;
+            bool towardEmpty = false;
+            bool towardUnrefined = false;
             for (int e = 0; e < row.size(); ++e) {
-                towardNested = towardNested || (nestedBoxOf[b][row[e].index()] >= 0);
+                const int cell = row[e].index();
+                const int nb = nestedBoxOf[b][cell];
+                if (nb < 0) {
+                    towardUnrefined = true;
+                }
+                else if (boxes[nb].childrenOfParent.count(cell) == 0) {
+                    towardEmpty = true;
+                }
+                else {
+                    towardNested = true;
+                }
             }
-            if (towardNested) {
+            if (towardNested || (towardEmpty && !towardUnrefined)) {
                 continue;
             }
             if (row.size() == 1) {
