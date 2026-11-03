@@ -312,6 +312,22 @@ BOOST_AUTO_TEST_CASE(nestingRulesCheckedBeforeTheBuild)
     BOOST_CHECK_EQUAL(twoDeep.maxLevel(), 0);
 }
 
+// The nested box's MINPV removes every child: the nested box is an empty LGR.
+BOOST_AUTO_TEST_CASE(nestedBoxWithNoChildLeft)
+{
+    const auto g = makeGrid({4, 3, 3}, flat);
+    // LGR1 refines every cell into 3x3x3 (12x9x9); NEST refines LGR1 cells 3..8, 3..5,
+    // 3..5 into 2x2x2 (12x6x6).
+    auto nest = box("NEST", {2,2,2}, {3,3,3}, {9,6,6}, "LGR1");
+    nest.minpvRemoved.assign(12*6*6, 1);
+    Dune::CpGrid grid;
+    build(grid, g, {box("LGR1", {3,3,3}, {0,0,0}, {4,3,3}), nest});
+
+    BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
+    BOOST_CHECK_EQUAL(grid.levelGridView(2).size(0), 0);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+}
+
 // stableCellId() cannot tell nested cells apart, and says so.
 BOOST_AUTO_TEST_CASE(stableCellIdRefusesNestedGrids)
 {

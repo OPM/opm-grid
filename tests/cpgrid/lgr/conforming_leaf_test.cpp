@@ -171,6 +171,26 @@ BOOST_AUTO_TEST_CASE(hostWithNoChildLeft)
     }
 }
 
+// The box's MINPV removes every child: the box is an empty LGR, its hosts are refined
+// into nothing, and their neighbours keep their faces toward them as boundary faces.
+BOOST_AUTO_TEST_CASE(boxWithNoChildLeft)
+{
+    const auto g = makeGrid({4, 3, 3}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
+    auto request = box({2,2,2}, {1,1,1}, {3,2,2});      // hosts (1,1,1) and (2,1,1)
+    request.minpvRemoved.assign(4*2*2, 1);
+    Dune::CpGrid grid;
+    refine(grid, g, request);
+
+    BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
+    BOOST_CHECK_EQUAL(grid.levelGridView(1).size(0), 0);
+    BOOST_CHECK_EQUAL(grid.size(0), 36 - 2);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    for (const auto& element : Dune::elements(grid.levelGridView(0))) {
+        const int cell = grid.currentData().front()->globalCell()[element.index()];
+        BOOST_CHECK_EQUAL(element.isLeaf(), (cell != 1 + 4*1 + 12*1) && (cell != 2 + 4*1 + 12*1));
+    }
+}
+
 // A box one parent wide in J on a left-handed grid has a level grid one cell thick in J;
 // its corners still take the level-zero corner order, so each leaf cell's corners
 // surround it.

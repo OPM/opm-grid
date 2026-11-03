@@ -120,20 +120,49 @@ BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
                            "use CpGrid::setPartitionCellGroups to keep the box on one rank.");
 }
 
-// Cells of the parent grid inside the box: the hosts left after processing
-// (inactive cells and cells MINPV removes are not in the grid).
-int presentHostCells(const Dune::cpgrid::CpGridData& parent,
-                     const Opm::Refinement::BlockRefinement& req)
+// Cells the box's level grid would hold: the children of the hosts left after
+// processing (inactive cells and cells MINPV removes are not in the grid) that
+// the box's own MINPV keeps.
+int childCellsLeft(const Dune::cpgrid::CpGridData& parent,
+                   const Opm::Refinement::BlockRefinement& req)
 {
-    int present = 0;
+    std::array<int,3> size{};
+    for (int d = 0; d < 3; ++d) {
+        size[d] = req.endIJK[d] - req.startIJK[d];
+    }
+    const auto hostIndex = [&size](int i, int j, int k) {
+        return i + static_cast<std::size_t>(size[0])*(j + static_cast<std::size_t>(size[1])*k);
+    };
+    std::vector<bool> present(static_cast<std::size_t>(size[0])*size[1]*size[2], false);
     for (int c = 0; c < parent.size(0); ++c) {
         std::array<int,3> ijk;
         parent.getIJK(c, ijk);
         if (contains(req, ijk)) {
-            ++present;
+            present[hostIndex(ijk[0] - req.startIJK[0], ijk[1] - req.startIJK[1],
+                              ijk[2] - req.startIJK[2])] = true;
         }
     }
-    return present;
+    const std::array<AxisSubdivision,3> subs = { axisSubdivision(req, 0),
+                                                axisSubdivision(req, 1),
+                                                axisSubdivision(req, 2) };
+    const auto dims = refinedDims(req);
+    // A mask of the wrong size is refused when the box is refined.
+    const bool masked = req.minpvRemoved.size()
+                     == static_cast<std::size_t>(dims[0])*dims[1]*dims[2];
+    int left = 0;
+    std::size_t child = 0;
+    for (int k = 0; k < dims[2]; ++k) {
+        for (int j = 0; j < dims[1]; ++j) {
+            for (int i = 0; i < dims[0]; ++i, ++child) {
+                const bool removed = masked && (req.minpvRemoved[child] != 0);
+                if (!removed && present[hostIndex(subs[0].parentOffset[i], subs[1].parentOffset[j],
+                                                  subs[2].parentOffset[k])]) {
+                    ++left;
+                }
+            }
+        }
+    }
+    return left;
 }
 
 // Conformity check for touching boxes. With disjoint boxes, a pair
@@ -334,12 +363,12 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                                   : ((grid.getLevelZeroComm().rank() == 0) ? BoxPresence::Owned
                                                                            : BoxPresence::Absent);
             }
-            // A box with no host left (all inactive, or removed by MINPV) has
-            // nothing to refine: it becomes an empty LGR, as on a rank that
-            // does not hold it. The corner-point processing below needs at
-            // least one cell.
+            // A box with no host left (all inactive, or removed by MINPV), or
+            // whose own MINPV removes every child, has nothing to refine: it
+            // becomes an empty LGR, as on a rank that does not hold it. The
+            // corner-point processing below needs at least one cell.
             if ((presence == BoxPresence::Owned)
-                && (presentHostCells(*storage[parentLevel], req) == 0)) {
+                && (childCellsLeft(*storage[parentLevel], req) == 0)) {
                 presence = BoxPresence::Absent;
             }
             presenceOf[req.name] = presence;
