@@ -312,6 +312,35 @@ BOOST_AUTO_TEST_CASE(nestingRulesCheckedBeforeTheBuild)
     BOOST_CHECK_EQUAL(twoDeep.maxLevel(), 0);
 }
 
+// A nested box over a fault inside its parent LGR that does not cover every LGR1 layer the
+// throw joins: across the throw its cells face LGR1 cells outside it, through faces inside
+// it. That is refused, naming the cells. A nested box on one side of the fault is built.
+BOOST_AUTO_TEST_CASE(nestedThrowJoiningCellsOutsideIsRefused)
+{
+    // Columns i >= 2 are 0.6 deeper; LGR1 refines every cell into 3x1x3 (12x3x6).
+    const auto g = makeGrid({4, 3, 2}, [](int i_, int, int k_) {
+        return 2.0*nodeOf(k_) + ((cellOf(i_) >= 2) ? 0.6 : 0.0);
+    });
+    const auto lgr1 = box("LGR1", {3,1,3}, {0,0,0}, {4,3,2});
+    // NEST covers LGR1 cells i = 4..7 across the fault (between i = 5 and 6), k = 1..4 of 0..5.
+    const auto outsideTheBox = [](const std::invalid_argument& e) {
+        const std::string what = e.what();
+        return (what.find("Refinement box 'NEST'") != std::string::npos)
+            && (what.find("outside the box (I,J,K from 1 in 'LGR1')") != std::string::npos)
+            && (what.find("must cover every layer") != std::string::npos);
+    };
+    Dune::CpGrid straddling;
+    BOOST_CHECK_EXCEPTION(build(straddling, g, {lgr1, box("NEST", {2,2,2}, {4,1,1}, {8,2,5}, "LGR1")}),
+                          std::invalid_argument, outsideTheBox);
+
+    // NEST covers LGR1 cells i = 3..4, one cell from the fault.
+    Dune::CpGrid oneSide;
+    build(oneSide, g, {lgr1, box("NEST", {2,2,2}, {3,1,1}, {5,2,5}, "LGR1")});
+    BOOST_CHECK_EQUAL(oneSide.maxLevel(), 2);
+    BOOST_CHECK_EQUAL(contacts(oneSide).mostPerPair, 1);
+    BOOST_CHECK_SMALL(worstClosure(oneSide), 1e-12);
+}
+
 // The nested box's MINPV removes every child: the nested box is an empty LGR.
 BOOST_AUTO_TEST_CASE(nestedBoxWithNoChildLeft)
 {
