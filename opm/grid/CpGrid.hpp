@@ -510,7 +510,7 @@ namespace Dune
 
         /// @brief The same refinement given as block requests. Under the Conforming backend the
         ///        requests may also be graded, carry a block MINPV, or take pillars from the box layer.
-        void addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement> requests);
+        void addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefinement>& requests);
 
         /// @brief Choose the refinement algorithm; only before the grid is refined.
         void setLgrBackend(Opm::Refinement::Backend backend);
