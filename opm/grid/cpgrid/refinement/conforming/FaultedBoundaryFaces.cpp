@@ -117,9 +117,9 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
                                       axisPositions(miniSub[1]),
                                       axisPositions(miniSub[2]) };
 
-    // The box's own sub-pillars, so the pieces' corners are the box's corners.
-    const RefinedBlockGrdecl refined = refineBlock(parentDims, coord, zcorn, actnum, req, &box);
-    const std::array<int,3> mdims = refined.dims;
+    // Sub-pillars depend on the parent pillar lines only: the pieces' corners are the box's.
+    const RefinedBlockGrdecl refined = refineBlock(parentDims, coord, zcorn, actnum, req);
+    const std::array<int,3> mdims = refined.intDims();
 
     grdecl raw;
     raw.dims[0] = mdims[0]; raw.dims[1] = mdims[1]; raw.dims[2] = mdims[2];
