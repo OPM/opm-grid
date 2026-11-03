@@ -31,31 +31,50 @@ namespace Opm
 namespace Refinement
 {
 
-/// The Conforming refinement backend: conforming
-/// block refinement built through the preprocessor pipeline
-/// (refineBlock -> assembleBlockLevelGrid -> assembleLeafGrid).
+/// The Conforming refinement backend. A box is a block of cells of its parent
+/// grid that one request refines. Each box is resampled from the parent grid's
+/// corner-point description (refineBlock), processed into the box's level grid
+/// (assembleBlockLevelGrid), and the level grids are joined with level zero into
+/// the leaf grid (assembleLeafGrid).
 ///
-/// The builder holds the parent corner-point description, since the grid
-/// keeps COORD/ZCORN only until it is refined.
+/// A builder made from a grid shares the corner-point description that the grid
+/// keeps of its level zero; it does not copy it. The grid drops its own pointer
+/// once it is refined, so the description is freed with the builder.
 ///
-/// Restrictions (throw): an unrefined starting grid; in parallel each box must be
-/// rank-interior; boxes that touch, in IJK or across a fault, need in-face
-/// subdivisions that nest; graded boxes may not touch another box.
+/// Restrictions, each refused with an exception:
+/// - The grid is not refined yet.
+/// - In a distributed grid, each box and the cells next to it are owned by one
+///   rank.
+/// - Boxes that meet need subdivisions that fit together. Boxes meet when their
+///   index ranges are adjacent, so that they share a face, an edge or a corner
+///   of the parent grid (boxes never share cells), or when their cells meet
+///   through a fault face although their index ranges are not adjacent. On a
+///   shared face, in each of the face's two directions, one box's number of
+///   children per parent cell is a whole multiple of the other's (equal, or 4
+///   and 2), and the same box is the finer one in both directions: the finer
+///   box's sub-faces then tile the coarser box's faces. Along a shared edge the
+///   numbers are equal.
+/// - A graded box, one that gives the extent of each child column instead of
+///   one number of children per parent cell, meets another box only at a corner.
 class ConformingBlockBuilder : public Builder
 {
 public:
-    /// @param edgeConformal When true, the refined leaf is made
-    ///        edge-conformal (an edge-conformalization post-pass that
-    ///        inserts the refinement's boundary nodes into the coarse faces
-    ///        sharing those edges). Default false keeps the current,
-    ///        face-conformal-only behaviour.
+    /// Refines the grid that @p parentDims, @p coord, @p zcorn and @p actnum
+    /// describe; the builder keeps the description.
+    ///
+    /// @param edgeConformal When true, the leaf is made edge-conformal: the
+    ///        points a box adds on the edges of its sides are inserted into the
+    ///        coarse faces that share those edges (edgeConformalizeLeaf). When
+    ///        false, the default, those faces keep their own corners only.
     ConformingBlockBuilder(const std::array<int,3>& parentDims,
                            std::vector<double> coord,
                            std::vector<double> zcorn,
                            std::vector<int> actnum,
                            bool edgeConformal = false);
 
-    /// Refine from the description a grid kept of its level zero, without a copy.
+    /// Shares @p input, the corner-point description that the grid keeps of its
+    /// level zero, which the grid drops once it is refined. The pointer is taken
+    /// by value: the caller's pointer stays set unless the caller moves it in.
     explicit ConformingBlockBuilder(std::shared_ptr<const RetainedCornerPointInput> input);
 
     void build(Dune::CpGrid& grid,

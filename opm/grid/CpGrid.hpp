@@ -508,8 +508,8 @@ namespace Dune
                                    const std::vector<std::string>& lgr_name_vec,
                                    const std::vector<std::string>& lgr_parent_grid_name_vec = std::vector<std::string>{});
 
-        /// @brief The same refinement given as block requests. Under the Conforming backend the
-        ///        requests may also be graded, carry a block MINPV, or take pillars from the box layer.
+        /// @brief The same refinement given as block requests. Under the Conforming backend a
+        ///        request may also be graded or carry a block MINPV.
         void addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefinement>& requests);
 
         /// @brief Choose the refinement algorithm; only before the grid is refined.

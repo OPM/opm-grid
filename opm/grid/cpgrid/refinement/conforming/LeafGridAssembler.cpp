@@ -59,8 +59,25 @@ using Dune::cpgrid::EntityRep;
 using Opm::Refinement::BlockRefinement;
 using Opm::Refinement::GridStateWriter;
 
-// Numerical aquifer cells are never refined (refused in a box): each is a
-// level-zero cell of the leaf.
+// Terms. A box is one refinement request: the cells of its parent grid with
+// startIJK <= (i,j,k) < endIJK. These are its host cells, or parents, and each is split
+// into child cells. The parent grid is level zero, or, for a nested box, the level grid
+// of another box, its parent LGR. The level grid of a box holds its children. The leaf
+// grid holds the cells of level zero that no box refines, and the children in place of
+// their hosts. A box side is the boundary of the box in one direction (axis) and sense
+// (side, -1 or +1). A fault offsets the cells on its two sides; the offset is the throw.
+// A pinch-out joins the cells above and below collapsed layers. A side is faulted where
+// the face of a host on it is not the host's whole face toward one cell: several faces,
+// or a face that covers part of the host's side only (a fault, or a pinch-out). The
+// corner-point processing of a faulted side cuts it into pieces, each between one box
+// cell and one cell across, or the domain. On a side that is not faulted, the cell
+// across a host gets the faces of the host's children on the side in place of its face
+// toward the host: a mosaic.
+
+// The leaf cells that are numerical aquifer cells. No box holds one, so each is a
+// level-zero cell of the leaf: opm-common's EclipseState refuses a numerical aquifer
+// cell inside a refinement box, and refuseDeckConnectionsInsideBoxes, which the
+// simulator calls before refining, refuses an aquifer connection onto a box cell.
 std::vector<int> leafAquiferCells(const CpGridData& level0,
                                   const std::vector<std::array<int,2>>& leafToLevel)
 {
@@ -95,6 +112,14 @@ int cornerSlotMask(CpGridData& grid)
     auto& f2p = GridStateWriter::faceToPoint(grid);
     Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
     int mask = 0;
+    // For I, then J: highFace is a cell's face toward +I (or +J), its I_FACE (or J_FACE)
+    // with orientation true. Its points are the cell's four corners on that side, the
+    // logical corners with that bit set. If they sit in the cell_to_point slots with the
+    // bit set, the cell agrees; if in the slots without it, the cell is flipped. The
+    // processing reverses the face nodes of the whole grid at once, so every whole face
+    // gives the same answer. The loop stops after 16 cells that decided: a sample size,
+    // not a limit; the majority guards against an odd face. A face split by a fault (more
+    // than one face toward +I or +J) and a face with other than 4 corners are skipped.
     for (int axis = 0; axis < 2; ++axis) {
         const int bit = 1 << axis;
         const enum face_tag tag = (axis == 0) ? I_FACE : J_FACE;
@@ -137,10 +162,14 @@ int cornerSlotMask(CpGridData& grid)
 }
 
 #if HAVE_MPI
-// On a distributed leaf, ids through the local id set follow local numbering
-// and differ between ranks. Coarse entities keep level zero's global ids (leaf
-// corners and level-zero faces keep their level-zero index); refined ones are
-// rank-interior and get per-rank ranges above every id in use.
+// Sets the global ids of a distributed leaf: @p cellIds for the cells, and ids for the
+// faces and points. The local id set numbers entities by their local index, which
+// differs between ranks. A face or point of level zero keeps its level-zero global id.
+// Every other face and point is new: each rank counts its new ones and gives them the
+// next block of ids above every id in use, after the blocks of the ranks below it. No
+// new entity gets two ids: a box and the cells next to it lie on one rank, since
+// classifyBoxPresence refuses a box that any rank holds as overlap, so every refined
+// face and point exists on exactly one rank.
 void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
                            std::vector<int> cellIds,
                            const std::vector<SourceRef>& leafFaces,
@@ -163,6 +192,10 @@ void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
     std::vector<int> faceIds(numLeafFaces, -1);
     std::vector<int> pointIds(numLeafCorners, -1);
     int numNew = 0;
+    // numLeafFaces counts the faces of leafFaces, taken from level zero and the level
+    // grids, and after them the faces the leaf assembly builds on box sides: the split
+    // faces where a fault crosses a side, and the faces where a box's MINPV removes a
+    // child on a side. These built faces are new and get new ids.
     for (int f = 0; f < numLeafFaces; ++f) {
         const bool coarse = f < static_cast<int>(leafFaces.size()) && leafFaces[f].grid == 0;
         if (coarse) {
@@ -171,6 +204,8 @@ void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
             ++numNew;
         }
     }
+    // The leaf stores level zero's corners first, at the same indices, so p < numCorners0
+    // is a level-zero corner.
     for (int p = 0; p < numLeafCorners; ++p) {
         if (p < numCorners0) {
             pointIds[p] = pointIds0[p];
@@ -224,7 +259,7 @@ constexpr int kRemoteCell = std::numeric_limits<int>::max();
 // from the corner-point processor instead of the simple mosaic.
 constexpr int kFaultedSide = -2;
 
-// Area-weighted normal (Newell), centroid and area of a planar-ish polygon.
+// Area-weighted normal (Newell), centroid and area of a polygon that is close to planar.
 struct PolyGeom { Dune::FieldVector<double,3> center; Dune::FieldVector<double,3> normal; double area; };
 PolyGeom polygonGeometry(const std::vector<Dune::FieldVector<double,3>>& pts)
 {
@@ -434,13 +469,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
 
-        // Corner identification with the parent grid, through the parent cells
-        // (per-cell identification stays consistent across faults inside
-        // the block, where lattice positions are not unique).
-        // A refined corner coincides with a parent corner when it sits on the
-        // parent's boundary in all three directions. Taken from the cell's
-        // refined lattice position rather than from idxInParent, whose strides
-        // are that parent's own counts once the box is graded.
+        // The corners of the level grid that are corners of the parent grid, found
+        // through each child's host: across a fault inside the box, one lattice
+        // position has several corners, so the position alone does not name one. A
+        // child's corner is a corner of its host when it lies on the host's boundary
+        // in all three directions. The child's place in its host comes from its
+        // lattice position, not from idxInParent, whose strides are the host's own
+        // numbers of children once the box is graded.
         box.cornerEquiv.assign(box.level->size(3), -1);
         const auto& cellToPointL = box.level->cellToPoint();
         const int maskL = cornerSlotMask(*box.level);
@@ -525,13 +560,14 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         leafCornerHistory[corner] = {0, corner};
     }
 
-    // Refined corners shared between touching boxes (edge/corner-sharing)
-    // coincide bitwise: both boxes resample the same parent description with
-    // equal subdivisions, so the arithmetic is identical. Exact-coordinate
-    // matching is therefore correct (not a fragile floating-point heuristic)
-    // and merges those corners into one pool entry. Disjoint boxes only
-    // coincide on shared boundaries, so a global map over refined corners is
-    // safe.
+    // The refined corners in the leaf, by their coordinates. A corner on the face or
+    // edge two touching boxes share has equal coordinates in both boxes: both refine the
+    // same parent description with uniform subdivisions, which put the corner at the
+    // same fraction of the parent cell (graded boxes that touch are refused). The map
+    // makes it one leaf corner. Boxes do not overlap, so refined corners of two boxes
+    // are equal only on what the boxes share. The key is a std::array<double,3>, not a
+    // Dune::FieldVector<double,3>: a std::map key needs operator<, which
+    // FieldVector<double,3> does not have.
     std::map<std::array<double,3>, int> refinedCornerPool;
     const auto coordKey = [](const Dune::cpgrid::Geometry<0,3>& corner) {
         const auto& c = corner.center();
@@ -558,8 +594,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 const auto key = coordKey(cornersL[corner]);
                 const auto existing = refinedCornerPool.find(key);
                 if (existing != refinedCornerPool.end()) {
-                    // Shared with an already-processed box: reuse, and keep
-                    // the corner's birth identity from that earlier box.
+                    // Shared with a box processed before: reuse the corner, with
+                    // its history (the level grid it comes from) from that box.
                     box.cornerToLeaf[corner] = existing->second;
                     levelCornerHistory[corner] = leafCornerHistory[existing->second];
                 }
@@ -608,7 +644,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     continue;
                 }
                 // Refined again by a nested box: its children in its place, none if the
-                // nested box's MINPV removed them all.
+                // nested box's MINPV removed them all. The conforming refinement supports
+                // one level of nesting, so these children are not refined again. With
+                // more levels, this loop needs to be generalised.
                 const auto grandchildren = boxes[nb].childrenOfParent.find(child);
                 if (grandchildren == boxes[nb].childrenOfParent.end()) {
                     continue;
@@ -698,6 +736,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     }
     // The cell across a nested box's side: across its parent cell's face there, which must
     // be the parent's whole face (a fault or pinch-out on it is not supported), or -1.
+    // The check reads the parent LGR's level grid, because level zero cannot decide it
+    // exactly: a throw that lines up with the parent's child layers gives whole faces in
+    // the parent's level grid, and such a side is built correctly.
     const auto nestedNeighborOf = [&](int b, int parent, int axis, int side) {
         CpGridData& grid = *boxes[parentBoxOf[b]].level;
         const auto row = GridStateWriter::cellToFace(grid)[EntityRep<0>(parent, true)];
@@ -765,11 +806,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         faceDropped[face] = refinedSide || (emptySide && !coarseSide);
     }
 
-    // Conformity bookkeeping: (parent, axis, side) -> verified once.
-    // The parent's boundary in that direction must consist of exactly one
-    // level-zero face that is the parent's *full* logical face (its four
-    // lattice corners); otherwise the block boundary is faulted/degenerate
-    // and the refined mosaic cannot replace it (unsupported, throw).
+    // outsideNeighborOf(b, parent, axis, side): the level-zero cell across a host cell's
+    // face on a box side, found once per (parent, axis, side). When the host has one face
+    // there with its four corners on that side, that is its whole face, and the cell
+    // across it is returned. Next to a pinch-out, the cell across the collapsed layers is
+    // returned. With no face there, or no cell across, -1 is returned. Otherwise the side
+    // is faulted: kFaultedSide is returned, and the faulted-side stage below rebuilds the
+    // side from the corner-point processing.
     Dune::cpgrid::EntityVariableBase<enum face_tag>& tags0 = faceTag0;
     std::map<std::tuple<int,int,int>, int> verifiedNeighbor;
     const auto outsideNeighborOf = [&](int b, int parent, int axis, int side) {
@@ -792,8 +835,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
 
-        // Below a pinch-out the parent keeps its own top face, now without a
-        // neighbour, and gains the face that connects it to the cell above.
+        // Next to a pinch-out the parent has two faces on this side: its own face, with
+        // no cell across, and the face that joins it to the cell across the collapsed
+        // layers.
         if ((axis == 2) && (directionFaces.size() == 2)) {
             int open = 0;
             int pinched = -1;
@@ -1075,17 +1119,18 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                                 mosaicOutside[it->second] = thisCellLeaf;
                                 continue;
                             }
-                            // Owner: emit now, partner patches its cell later.
+                            // Owner: emits the face; the partner adds its cell to it.
                             sharedBoundaryFaceLeaf.emplace(key, static_cast<int>(leafFaces.size()));
                         }
                         else {
-                            // Compatible different subdivisions (guard-enforced:
-                            // one box is uniformly finer). The finer side emits
-                            // every sub-face and references the coarser side's
-                            // covering cell as the outside; the coarser side
-                            // suppresses its interface faces, so its interface
-                            // cells become >6-face hexes tiled by the finer
-                            // sub-faces (a sub-face mosaic).
+                            // Different factors, one box finer in both in-face
+                            // directions (checkTouchingBoxes refuses other pairs).
+                            // The finer side emits every sub-face, with the
+                            // coarser box's child that covers it as the outside
+                            // cell. The coarser side emits no face there, so each
+                            // of its children on the face has the finer sub-faces
+                            // in place of its face: a mosaic, with more than six
+                            // faces per cell.
                             const bool thisFiner = (facA[u] >= facB[u] && facA[v] >= facB[v]);
                             if (!thisFiner) {
                                 continue;       // coarser side: the finer references us
@@ -1202,7 +1247,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     struct SyntheticFace
     {
         int boxCell;
-        int neighborCell;                        // coarse, or a refined child (A5)
+        int neighborCell;                        // coarse, or a child of another box
         std::vector<int> points;                 // leaf corner indices
         Dune::FieldVector<double,3> normal;      // unit, along +axis (CpGrid convention)
         Dune::FieldVector<double,3> center;
@@ -1212,8 +1257,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     };
     std::vector<SyntheticFace> syntheticFaces;
     if (!faultedSides.empty() || !removedChildSides.empty()) {
-        // coord -> leaf corner index, over the current pool (exact match: the
-        // box-boundary corners are produced by identical resampling arithmetic).
+        // The leaf corners by their coordinates. The processing of a side refines the
+        // box's host cells with refineBlock, as the box's level grid does, so a corner of
+        // a piece that is a corner of a box cell has that corner's coordinates.
         std::map<std::array<double,3>, int> cornerByCoord;
         for (int c = 0; c < static_cast<int>(leafCorners.size()); ++c) {
             cornerByCoord[coordKey(leafCorners[c])] = c;
@@ -1233,8 +1279,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             return idx;
         };
         // The pieces of a box cell's side toward one neighbour: a coarse cell, the
-        // child of another box, or none (the domain). The helper grid cuts the
-        // neighbour at its own sub-layers, so one cell pair can come in several
+        // child of another box, or none (the domain). The processing of the side cuts
+        // the cell across at its own sub-layers, so one cell pair can come in several
         // pieces; they are merged below, so a cell pair shares exactly one face.
         struct FaceGroup
         {
@@ -1306,8 +1352,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 if ((removedHost < 0) && (boxLeaf < 0)) {
                     continue;
                 }
-                // coarseNeighborCart == -1: this part of the box boundary faces
-                // the domain (the fault scarp) -> a boundary face (no outside).
+                // coarseNeighborCart == -1: this piece of the side faces the domain,
+                // where the throw leaves no cell across; it becomes a boundary face.
                 int neighborLeaf = -1;   // cell opposite the box across the fault
                 Dune::FieldVector<double,3> neighborCentre(0.0);
                 // A neighbour that is not in the grid (inactive or removed) leaves the
@@ -1321,17 +1367,16 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                         continue; // a host with no child left keeps its faces to coarse cells
                     }
                     if (neighborLeaf < 0) {
-                        // Neighbour is refined away: a box<->box faulted interface
-                        // Connect to the neighbour box's child cell
-                        // this sub-face abuts. Emit each interface face once: the
-                        // FINER box owns it (equal in-face factors -> the lower box
-                        // index), so the coarser side's faces are taken over by the
-                        // finer side's sub-faces (a >6-face hex, like the A2 mosaic)
-                        // -- now with the fault throw baked into the polygon. The
-                        // mini-grid in faultedBoundaryConnections refines the shell
-                        // to the emitting box's factors, so emitting from the finer
-                        // side makes the sub-faces match the finer resolution; each
-                        // maps to the coarser neighbour child that contains it.
+                        // The cell across is a host of another box: the piece joins
+                        // this box cell to the child of the other box that it touches,
+                        // across the fault. Each such face is emitted once, by the
+                        // finer box, or by the lower box index when the in-face
+                        // factors are equal. The coarser box's children on the side
+                        // then have the finer box's pieces in place of their faces: a
+                        // mosaic whose faces follow the throw. The processing of the
+                        // side refines the cells across with the emitting box's
+                        // factors, so each piece lies inside one face of a child of
+                        // the coarser box.
                         const int nbBox = boxOfCell[l0];
                         if (nbBox < 0) {
                             continue;
@@ -1350,8 +1395,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                         }
                         const auto& facThis = boxes[b].factors;
                         const auto& facN    = boxes[nbBox].factors;
-                        // Boxes that meet only through the throw miss the builder's
-                        // IJK-contact guard; without nesting both sides would skip.
+                        // checkTouchingBoxes compares boxes by index and does not see
+                        // boxes that meet only across the fault. With factors that do
+                        // not nest, both sides would skip the face below.
                         const auto nests = [u, v](const auto& fine, const auto& coarse) {
                             return fine[u] % coarse[u] == 0 && fine[v] % coarse[v] == 0;
                         };
@@ -1605,8 +1651,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
             cells.emplace_back(sf.boxCell, false);
         }
-        // A missing neighbour means the box boundary faces the domain (fault
-        // scarp) -> boundary face.
+        // With no neighbour, the piece faces the domain: a boundary face.
         leafFaceToCell.appendRow(cells.begin(), cells.end());
         leafFaceToPoint.appendRow(sf.points.begin(), sf.points.end());
         leafTags[face] = sf.tag;

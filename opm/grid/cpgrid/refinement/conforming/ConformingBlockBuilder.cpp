@@ -66,9 +66,16 @@ ConformingBlockBuilder::ConformingBlockBuilder(std::shared_ptr<const RetainedCor
 namespace
 {
 
-// Corner-point description of one grid level (index 0 = level zero, index b+1 =
-// the level grid built for requests[b]): a nested box is refined from its parent
-// LGR's own description. A view: the data stays where it is.
+// Terms. A box is one request: the cells of its parent grid with
+// startIJK <= (i,j,k) < endIJK. Those cells are its host cells, and each host cell
+// is split into child cells. The parent grid is level zero, or, for a nested box,
+// the level grid of another box, its parent LGR. In a distributed grid a rank holds
+// interior cells, which it owns, and overlap cells: copies of the cells next to its
+// interior cells that other ranks own.
+
+// The corner-point description of one level: index 0 is level zero, index b+1 the
+// level grid of requests[b]. A nested box is refined from its parent LGR's
+// description. The pointers refer to data held elsewhere.
 struct LevelGeom
 {
     std::array<int,3> dims{};
@@ -77,12 +84,14 @@ struct LevelGeom
     const int* actnum{nullptr};
 };
 
-// Per-box presence on this rank (distributed runs). The rank-interior model: a box is either fully owned here (all its cells
-// local and interior) or absent (no cell local, not even as overlap).
-// Anything in between means the box crosses a rank boundary / touches the
-// overlap, which is not supported.
+// Whether this rank refines a box (Owned), or holds none of its cells and builds an
+// empty level grid for it (Absent), so that every rank has the same levels.
 enum class BoxPresence { Owned, Absent };
 
+// The presence of a top-level box on this rank of a distributed grid. Owned: the
+// rank holds cells of the box, all of them interior. Absent: the rank holds no cell
+// of the box. Otherwise the rank holds a cell of the box as an overlap cell, so the
+// box and the cells next to it are not all owned by one rank: this throws.
 BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
                                 const Opm::Refinement::BlockRefinement& req)
 {
@@ -100,13 +109,10 @@ BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
             }
         }
     }
-    // Presence is judged by what this rank holds, not by counting the box: a
-    // rank that owns every box cell it can see, and sees no box cell it does not
-    // own, holds the whole box -- a split box puts the far side in this rank's
-    // overlap, which is exactly the non-interior case. Counting instead needs a
-    // total that is right for the distributed grid, and the two candidates are
-    // both wrong: the Cartesian extent ignores inactive cells, and the retained
-    // ACTNUM predates MINPV. On Norne those two errors are 623 and 97 cells.
+    // Presence is decided by the partition type of the box cells this rank holds. It
+    // is not decided by comparing their number with the number of cells of the box:
+    // that number is not known here. The box's Cartesian size counts inactive cells,
+    // and the retained ACTNUM does not mark the cells MINPV removes.
     if (interior == 0 && nonInterior == 0) {
         return BoxPresence::Absent;
     }
@@ -118,9 +124,10 @@ BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
                            "use CpGrid::setPartitionCellGroups to keep the box on one rank.");
 }
 
-// Cells the box's level grid would hold: the children of the hosts left after
-// processing (inactive cells and cells MINPV removes are not in the grid) that
-// the box's own MINPV keeps.
+// Number of cells of the box's level grid: the children of the active cells of the
+// parent grid that are inside the refinement box, less the children that the box's
+// own MINPV removes. Inactive cells, and cells the parent grid's MINPV removes, are
+// not in the parent grid.
 int childCellsLeft(const Dune::cpgrid::CpGridData& parent,
                    const Opm::Refinement::BlockRefinement& req)
 {
@@ -163,31 +170,32 @@ int childCellsLeft(const Dune::cpgrid::CpGridData& parent,
     return left;
 }
 
-// Conformity check for touching boxes. With disjoint boxes, a pair
-// either is fully separated, shares an edge/corner, or shares a 2D
-// face. The shared refined entities (corners along a shared edge,
-// corners+faces on a shared face) coincide bitwise only if the
-// subdivision factors match in the *shared* directions: the overlap
-// dimension(s). The touch dimension(s) are parent-cell boundaries where
-// corners are identified with level zero regardless. Subdivisions in a
-// dimension where the boxes neither touch nor overlap are unconstrained
-// (e.g. the out-of-face direction of two face-sharing boxes).
+// Refuses two boxes of one parent grid whose subdivisions do not fit where the boxes
+// touch. In each direction, the index ranges of two boxes either have a gap between
+// them, overlap, or abut. Boxes with a gap in some direction share nothing. Otherwise
+// they share a face, an edge or a corner of the parent grid, and the factors (the
+// numbers of children per host cell) must fit in the directions where the ranges
+// overlap:
+// - on a shared face, the face's two directions: in each, one box's factor is a
+//   multiple of the other's, and the same box has the larger factor, or an equal
+//   one, in both;
+// - along a shared edge, its direction: the factors are equal;
+// - a shared corner is a corner of the parent grid, with no rule.
+// The factors in a direction where the boxes abut do not matter: the boxes meet there
+// on a boundary between host cells. A graded box may share only a corner.
 void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& requests)
 {
     for (std::size_t i = 0; i < requests.size(); ++i) {
         for (std::size_t j = i + 1; j < requests.size(); ++j) {
             const auto& a = requests[i];
             const auto& b = requests[j];
-            // Only boxes refining the same parent grid live in a common
-            // Cartesian index space; their IJK extents are comparable. Boxes
-            // with different parents (e.g. a nested box vs a top-level box)
-            // are indexed in different spaces and cannot touch by construction.
+            // Boxes of different parent grids have their (i,j,k) in different index
+            // spaces. They do not touch: a nested box stays at least one cell inside its
+            // parent LGR.
             if (a.parentGridName != b.parentGridName) {
                 continue;
             }
-            // The boxes share an entity (corner/edge/face) only if they
-            // touch-or-overlap in every dimension; a gap in any dimension
-            // means they are fully separated and impose no constraint.
+            // A gap in some direction: the boxes share nothing.
             bool interacts = true;
             for (int c = 0; c < 3; ++c) {
                 const bool gap = (a.endIJK[c] < b.startIJK[c]) || (b.endIJK[c] < a.startIJK[c]);
@@ -196,13 +204,11 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
             if (!interacts) {
                 continue;
             }
-            // Classify how the two boxes meet. They interact (no gap in any
-            // direction), so each direction is either an *overlap* (their
-            // projections overlap) or a *touch* (they abut). A pair that
-            // overlaps in two directions and touches in the third shares a 2-D
-            // face; the two overlap directions are the *in-face* directions and
-            // the touch direction is perpendicular. Conformity constrains only
-            // the in-face directions.
+            // The number of directions in which the index ranges overlap; in the others
+            // the boxes abut. It is at most 2: boxes whose ranges overlap in all three
+            // directions share cells, and validateBlockRefinements() refuses those before
+            // this. Two overlaps: the boxes share a face. One overlap: an edge. None: a
+            // corner.
             int overlapCount = 0;
             for (int c = 0; c < 3; ++c) {
                 const bool overlap = (a.startIJK[c] < b.endIJK[c]) && (b.startIJK[c] < a.endIJK[c]);
@@ -210,10 +216,10 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                     ++overlapCount;
                 }
             }
-            // A graded box has a subdivision column by column, not one factor per
-            // direction, and the two boxes do not compute the corners on a shared face
-            // or edge alike: it would crack or have hanging nodes. A shared corner is a
-            // corner of level zero.
+            // A graded box is subdivided column by column, not by one factor per
+            // direction, so on a face or an edge it shares, the two boxes need not have
+            // the same points: the leaf would have a gap there, or points on one side
+            // only. A shared corner is a corner of the parent grid.
             const auto graded = [](const Opm::Refinement::BlockRefinement& request) {
                 return std::any_of(request.subdivision.begin(), request.subdivision.end(),
                                    [](const auto& sub) { return !sub.empty(); });
@@ -225,13 +231,12 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                     "apart from other boxes (meeting at a corner is fine), or refine both "
                     "uniformly.");
             }
-            // Scan the overlap directions where the subdivisions differ.
+            // Compare the factors in the directions where the ranges overlap.
             bool anyDiffer = false;
             bool anyIncompatible = false;
             int incompatDir = -1;
-            // Cleanly nested: the *same* box is finer-or-equal in every differing
-            // overlap direction (so one box is uniformly the finer side and the
-            // mosaic has a well-defined coarse side).
+            // Whether a, or b, has a factor at least as large as the other's in every
+            // such direction: that box is then the finer side of a shared face.
             bool aFinerOrEqualAll = true;
             bool bFinerOrEqualAll = true;
             for (int c = 0; c < 3; ++c) {
@@ -244,8 +249,7 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                 const int nb = b.cellsPerDim[c];
                 const int hi = (na > nb) ? na : nb;
                 const int lo = (na > nb) ? nb : na;
-                // Graded pairs are refused above: both factors are uniform ones, which
-                // validateBlockRefinements() requires to be at least 1.
+                // Graded boxes that touch are refused above, and uniform factors are at least 1.
                 assert(lo > 0);
                 if (hi % lo != 0) {
                     anyIncompatible = true;
@@ -255,7 +259,7 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                 if (nb < na) { bFinerOrEqualAll = false; }
             }
             if (!anyDiffer) {
-                continue;                       // equal in every shared direction
+                continue;                       // equal in every overlap direction
             }
             if (anyIncompatible) {
                 const int na = a.cellsPerDim[incompatDir];
@@ -268,17 +272,16 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                     "interface cannot be made conformal. Use equal subdivisions in the shared "
                     "direction(s).");
             }
-            // Compatible (every differing overlap factor is a multiple of the
-            // other). Supported only as a 2-D sub-face mosaic on a shared face
-            // (overlapCount == 2) with one box uniformly the finer side
-            // (cleanly nested): the coarser side's interface cells become
-            // >6-face hexes tiled by the finer side's sub-faces (assembled in
-            // assembleLeafGrid). Edge/corner contact (a 1-D mosaic)
-            // and a mixed nesting (each box finer in a different direction) are
-            // not implemented.
+            // The factors differ, and in each direction one is a multiple of the other.
+            // This is supported on a shared face where one box is the finer side in both
+            // directions: a cell of the coarser box on that face gets, in place of its
+            // face there, the sub-faces of the finer box that cover it, so it has more
+            // than six faces (assembleLeafGrid builds them). Different factors along a
+            // shared edge, and a face where each box is finer in a different direction,
+            // are not supported.
             const bool cleanlyNested = aFinerOrEqualAll || bFinerOrEqualAll;
             if (overlapCount == 2 && cleanlyNested) {
-                continue;                       // supported compatible face mosaic
+                continue;                       // a shared face, one box finer in both
             }
             OPM_THROW(std::logic_error,
                 "Refinement boxes '" + a.name + "' and '" + b.name +
@@ -305,25 +308,17 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     checkTouchingBoxes(requests);
 
     auto& storage = grid.currentData();
-    // The refinement is "distributed" (rank-interior: only the owning rank
-    // refines each box) only once the grid has actually been scattered. Before
-    // load balancing - the refine-before-redistribute path - the grid is still
-    // the replicated global grid; refine it serially on every rank instead, so
-    // the builder refines every cell (no rank-interior classifyBoxPresence) and the
-    // leaf assembly does no collectives, producing the full refined grid a
-    // serial run yields, ready to be distributed afterwards.
+    // Distributed: loadBalance() has scattered the grid over the ranks, and each box
+    // is refined by the one rank that holds it.
     const bool distributed = grid.comm().size() > 1 && grid.isDistributed();
-    // refine-before-redistribute: comm().size() > 1 but the grid is not yet
-    // scattered. The global grid is on rank 0 and empty on the others, so
-    // rank 0 refines every box, the rest get empty placeholders, and the leaf
-    // is assembled with a self-communicator (see below).
+    // Before load balancing, on more than one rank: the whole grid is on rank 0 and
+    // the other ranks hold no cells. Rank 0 refines every box, the other ranks build
+    // empty level grids, and the leaf is assembled with the self-communicator. The
+    // refined grid is distributed afterwards.
     const bool refineBefore = grid.comm().size() > 1 && !grid.isDistributed();
 
-    // Parent corner-point description per built level (index 0 = GLOBAL base,
-    // index b+1 = the level grid of request b). A nested box is refined from
-    // its parent level's resampled geometry, not the global grid; it rides on
-    // its parent's rank in both parallel models, and CpGrid::addLgrsUpdateLeafView()
-    // checks its containment before the build.
+    // The corner-point description of each level, filled in as the level grids are
+    // built.
     const auto& dims = input_->dims;
     const int* actnum0 = input_->actnum.empty() ? nullptr : input_->actnum.data();
     std::vector<LevelGeom> levelGeom(requests.size() + 1);
@@ -331,16 +326,14 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // Each refined level's own description, for the boxes nested in it.
     std::vector<RefinedBlockGrdecl> refinedGeom(requests.size());
     std::map<std::string,int> nameToLevel{ {"GLOBAL", 0} };
-    // Per-box presence (refine-before-redistribute), keyed by box name, so a
-    // nested box can inherit its parent box's presence (see below).
+    // The presence of each box on this rank, by name: a nested box takes its parent
+    // LGR's.
     std::map<std::string,BoxPresence> presenceOf;
 
-    // Per-rank construction of the level grids. In a distributed run this can
-    // throw on one rank (e.g. classifyBoxPresence rejecting a box that ends up touching
-    // the overlap region) while other ranks succeed and march on into the leaf
-    // assembly's collectives (cc.max / cc.allgather). Those would then block
-    // forever waiting for the rank that already threw -- the classic asymmetric
-    // exception deadlock. Run the loop under a collective-safe guard below.
+    // Builds the level grids on this rank. In a distributed run this can throw on
+    // some ranks only, for example where classifyBoxPresence refuses a box. The other
+    // ranks would go on into the collective operations of the leaf assembly and wait
+    // there forever, so the call below is guarded.
     const auto buildLevelGrids = [&]() {
         for (std::size_t b = 0; b < requests.size(); ++b) {
             const auto& req = requests[b];
@@ -353,25 +346,14 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             const int parentLevel = itParent->second;
             const LevelGeom& pg = levelGeom[parentLevel];
 
-            // In a distributed run, only the rank that owns the (rank-interior)
-            // box refines it; other ranks carry an empty placeholder level grid.
-            // Nested boxes in a distributed run are still serial-only (guarded
-            // above), so a distributed run is always top-level here and classifies
-            // against level zero. The refine-before-redistribute path puts the full
-            // global grid on rank 0, which refines every top-level box; the other
-            // ranks hold no cells. A NESTED box addresses cells in its parent LGR's
-            // own (local) Cartesian space, so it cannot be classified against the
-            // global grid; instead it inherits its parent box's presence - a child
-            // fully contained in its parent lives on whatever rank refines the
-            // parent (and the parent-before-child ordering guarantees the parent's
-            // presence is already known). Plain serial stays Owned.
+            // Whether this rank refines the box. Serial: always. Distributed: the rank
+            // that holds the box. Before load balancing: rank 0. A nested box's (i,j,k)
+            // are in its parent LGR's index space, not level zero's. It lies inside its
+            // parent LGR, so it takes the parent's presence, which is known: a parent
+            // LGR comes before the boxes nested in it.
             const bool nested = (req.parentGridName != "GLOBAL");
             BoxPresence presence = BoxPresence::Owned;
             if (distributed) {
-                // Rank-interior model: a nested box's I/J/K are parent-LGR-local, so
-                // it cannot be classified against level zero. A contained child lives
-                // on whichever rank owns its parent box, so inherit the parent's
-                // classification (parent processed before child).
                 presence = nested ? presenceOf.at(req.parentGridName)
                                   : classifyBoxPresence(*storage[0], req);
             } else if (refineBefore) {
@@ -379,7 +361,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                                   : ((grid.getLevelZeroComm().rank() == 0) ? BoxPresence::Owned
                                                                            : BoxPresence::Absent);
             }
-            // A box with no host left (all inactive, or removed by MINPV), or
+            // A box with no host cell left (all inactive, or removed by MINPV), or
             // whose own MINPV removes every child, has nothing to refine: it
             // becomes an empty LGR, as on a rank that does not hold it. The
             // corner-point processing below needs at least one cell.
@@ -406,11 +388,11 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     };
 
     if (distributed) {
-        // Collective-safe: catch a per-rank failure, agree across ranks with a
-        // single reduction, and throw on every rank so the run fails cleanly
-        // instead of deadlocking in the leaf assembly's collectives below. The
-        // lowest rank that failed logs its own message; the others throw
-        // without logging.
+        // An error on this rank is caught. One reduction tells every rank the lowest
+        // rank that failed, and then every rank throws, so no rank waits in the
+        // collective operations of the leaf assembly. The lowest rank that failed
+        // throws with its own message and logs it; the other ranks throw without
+        // logging.
         // TODO: an error thrown inside this phase is still logged on every rank
         // that hits it. Per-rank logging, as with opm-simulators' DeferredLogger,
         // would collect those messages.
@@ -453,12 +435,9 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     storage.push_back(std::move(leaf));
 
     if (refineBefore) {
-        // The new level grids (indices 1..N) and the leaf (back) were assembled
-        // with a self-communicator so the serial refinement does no collectives.
-        // Give them level zero's communicator: CpGrid::comm() reads the leaf,
-        // so without this the refined grid would report a size-1 communicator
-        // and the subsequent load balancing would treat it as a serial grid and
-        // skip distributing the refined leaf.
+        // The new level grids and the leaf have the self-communicator. They get level
+        // zero's, so that the refined grid, which is load balanced next, reports every
+        // rank: CpGrid::comm() returns the leaf's communicator.
         for (std::size_t i = 1; i < storage.size(); ++i) {
             GridStateWriter::setCommunicator(*storage[i], grid.getLevelZeroComm());
         }
