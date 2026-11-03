@@ -74,11 +74,9 @@ void edgeConformalizeLeaf(Dune::cpgrid::CpGridData& leaf)
         }
         numUsed += used[i];
     }
-    double diag = 0.0;
-    for (int c = 0; c < 3; ++c) {
-        diag += (hi[c] - lo[c]) * (hi[c] - lo[c]);
-    }
-    diag = std::sqrt(diag);
+    Coord extent = hi;
+    extent -= lo;
+    const double diag = extent.two_norm();
     if ((diag <= 0.0) || (numUsed == 0)) {
         return;
     }

@@ -24,6 +24,7 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
@@ -47,7 +48,7 @@ namespace Refinement
 namespace {
 
 /// The parent's pinch connections inside the box, carried to the children: each
-/// joins the bottom children of the upper cell to the top children of the lower.
+/// joins the bottom children of the cell above to the top children of the cell below.
 std::set<std::pair<int,int>>
 boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
               const std::array<int,3>& parentDims,
@@ -61,6 +62,8 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
     const std::array<AxisSubdivision,3> subs = { axisSubdivision(request, 0),
                                                 axisSubdivision(request, 1),
                                                 axisSubdivision(request, 2) };
+    // The indices, along axis dim, of the refined columns whose parent column
+    // is offset, counted from the box's first parent cell.
     const auto refinedOf = [&subs](int dim, int offset) {
         std::vector<int> refined;
         for (std::size_t r = 0; r < subs[dim].size(); ++r) {
@@ -69,19 +72,6 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
             }
         }
         return refined;
-    };
-    const auto ijkOf = [&parentDims](int cart) {
-        return std::array<int,3>{ cart % parentDims[0],
-                                  (cart / parentDims[0]) % parentDims[1],
-                                  cart / (parentDims[0] * parentDims[1]) };
-    };
-    const auto inBox = [&request](const std::array<int,3>& ijk) {
-        for (int d = 0; d < 3; ++d) {
-            if (ijk[d] < request.startIJK[d] || ijk[d] >= request.endIJK[d]) {
-                return false;
-            }
-        }
-        return true;
     };
 
     std::set<std::pair<int,int>> pairs;
@@ -94,22 +84,27 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
             || (row[1].index() >= static_cast<int>(globalCell.size()))) {
             continue;
         }
-        auto upper = ijkOf(globalCell[row[0].index()]);
-        auto lower = ijkOf(globalCell[row[1].index()]);
-        if (upper[2] > lower[2]) {
-            std::swap(upper, lower);
+        // The cell above has the smaller k.
+        auto above = Opm::Lgr::getIJK(globalCell[row[0].index()], parentDims);
+        auto below = Opm::Lgr::getIJK(globalCell[row[1].index()], parentDims);
+        if (above[2] > below[2]) {
+            std::swap(above, below);
         }
-        if ((upper[0] != lower[0]) || (upper[1] != lower[1]) || (lower[2] - upper[2] < 2)
-            || !inBox(upper) || !inBox(lower)) {
+        // A k-gap of 1 is two ordinary vertical neighbours, which the refined
+        // level connects by itself. Only a gap of 2 or more is a pinch
+        // connection across collapsed layers, and only those are carried to
+        // the children.
+        if ((above[0] != below[0]) || (above[1] != below[1]) || (below[2] - above[2] < 2)
+            || !contains(request, above) || !contains(request, below)) {
             continue;
         }
-        const int kUpper = refinedOf(2, upper[2] - request.startIJK[2]).back();
-        const int kLower = refinedOf(2, lower[2] - request.startIJK[2]).front();
-        for (const int ir : refinedOf(0, upper[0] - request.startIJK[0])) {
-            for (const int jr : refinedOf(1, upper[1] - request.startIJK[1])) {
+        const int kAbove = refinedOf(2, above[2] - request.startIJK[2]).back();
+        const int kBelow = refinedOf(2, below[2] - request.startIJK[2]).front();
+        for (const int ir : refinedOf(0, above[0] - request.startIJK[0])) {
+            for (const int jr : refinedOf(1, above[1] - request.startIJK[1])) {
                 const int column = ir + refinedDims[0] * jr;
                 const int layer = refinedDims[0] * refinedDims[1];
-                pairs.emplace(column + layer * kUpper, column + layer * kLower);
+                pairs.emplace(column + layer * kAbove, column + layer * kBelow);
             }
         }
     }
@@ -127,13 +122,13 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                        const BlockRefinement& request,
                        int levelIndex,
                        int parentLevel,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
+                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
                        RefinedBlockGrdecl* outRefined)
 {
-    // Stages 2+3: resample the block geometry onto sub-pillars.
+    // Resample the block geometry onto sub-pillars.
     const RefinedBlockGrdecl refined = refineBlock(parentDims, coord, zcorn, actnum, request);
 
-    // Stage 4: process the refined description with the corner-point
+    // Process the refined description with the corner-point
     // preprocessor. Faults/pinch-outs inside the block are matched here.
     // Refined level grids are rank-local (rank-interior LGR model): use a
     // self-communicator so none of their operations are collective over the
@@ -161,7 +156,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                                 /* tolerance_unique_points = */ 0.0,
                                 /* edge_conformal = */ false);
 
-    // Stage 6a: parent relations. The processed grid's global_cell_ holds
+    // Parent relations. The processed grid's global_cell_ holds
     // the refined-local Cartesian index (the CARFIN convention for level
     // grids), which encodes the parent and the position inside it.
     const std::array<AxisSubdivision,3> subs = { axisSubdivision(request, 0),
@@ -187,11 +182,13 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
     std::vector<std::array<int,2>> childToParent(numRefinedCells);
     std::vector<int> idxInParent(numRefinedCells);
 
+    // The level index first: getIJK() reads the grid's own Cartesian size only
+    // on a level above zero.
+    GridStateWriter::setLevel(*level, levelIndex);
     for (int cell = 0; cell < numRefinedCells; ++cell) {
-        const int refinedCart = level->globalCell()[cell];
-        const int ir = refinedCart % refined.dims[0];
-        const int jr = (refinedCart / refined.dims[0]) % refined.dims[1];
-        const int kr = refinedCart / (refined.dims[0]*refined.dims[1]);
+        std::array<int,3> refinedIJK;
+        level->getIJK(cell, refinedIJK);
+        const auto& [ir, jr, kr] = refinedIJK;
 
         const int ci = request.startIJK[0] + subs[0].parentOffset[ir];
         const int cj = request.startIJK[1] + subs[1].parentOffset[jr];
@@ -201,7 +198,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
         if (parentIdx < 0) {
             // Children inherit ACTNUM, so an active child of an inactive
             // parent indicates an internal inconsistency.
-            throw std::logic_error("Refined cell in '" + request.name
+            OPM_THROW(std::logic_error, "Refined cell in '" + request.name
                                    + "' has no active parent cell.");
         }
         // Position within the parent, whose extent varies from parent to parent
@@ -214,7 +211,6 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                           + pos[2].subIndex[kr]*cx*cy;
     }
 
-    GridStateWriter::setLevel(*level, levelIndex);
     GridStateWriter::setCellsPerDim(*level, request.cellsPerDim);
     // Only a graded box stores its tables; a uniform level keeps to
     // cells_per_dim, which everything reading it already understands.
@@ -235,7 +231,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 std::shared_ptr<Dune::cpgrid::CpGridData>
 assembleEmptyLevelGrid(const BlockRefinement& request,
                        int levelIndex,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage)
+                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage)
 {
     auto level = std::make_shared<Dune::cpgrid::CpGridData>(
         Dune::MPIHelper::getLocalCommunicator(), levelStorage);

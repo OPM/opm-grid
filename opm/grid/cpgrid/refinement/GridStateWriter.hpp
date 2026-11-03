@@ -38,8 +38,7 @@ namespace Refinement
 /// The single access point for multilevel/refinement state inside
 /// CpGridData. Befriended by CpGridData so the refinement builder can stay
 /// outside the grid classes without widening the friend surface: the
-/// builder is the only writer of this state (docs/DESIGN-builder.md §5),
-/// and every read/mutation of otherwise-private members goes through these
+/// builder is the only writer of this state, and every read/mutation of otherwise-private members goes through these
 /// named operations.
 struct GridStateWriter
 {

@@ -75,28 +75,21 @@ struct LevelGeom
     const int* actnum{nullptr};
 };
 
-// Per-box presence on this rank (distributed runs). The rank-interior model
-// (PLAN Track 1 step 6): a box is either fully owned here (all its cells
+// Per-box presence on this rank (distributed runs). The rank-interior model: a box is either fully owned here (all its cells
 // local and interior) or absent (no cell local, not even as overlap).
 // Anything in between means the box crosses a rank boundary / touches the
 // overlap, which is not supported.
 enum class BoxPresence { Owned, Absent };
 
 BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
-                                const std::array<int,3>& dims,
                                 const Opm::Refinement::BlockRefinement& req)
 {
     int interior = 0;
     int nonInterior = 0;
-    const auto& globalCell = level0.globalCell();
     for (int c = 0; c < level0.size(0); ++c) {
-        const int cart = globalCell[c];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
-        if (i >= req.startIJK[0] && i < req.endIJK[0]
-            && j >= req.startIJK[1] && j < req.endIJK[1]
-            && k >= req.startIJK[2] && k < req.endIJK[2]) {
+        std::array<int,3> ijk;
+        level0.getIJK(c, ijk);
+        if (contains(req, ijk)) {
             const Dune::cpgrid::Entity<0> e(level0, c, true);
             if (e.partitionType() == Dune::InteriorEntity) {
                 ++interior;
@@ -118,7 +111,7 @@ BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
     if (interior > 0 && nonInterior == 0) {
         return BoxPresence::Owned;
     }
-    throw std::logic_error("Refinement box '" + req.name + "' is split across MPI ranks or "
+    OPM_THROW(std::logic_error, "Refinement box '" + req.name + "' is split across MPI ranks or "
                            "touches the overlap region. Only rank-interior LGRs are supported; "
                            "use CpGrid::setPartitionCellGroups to keep the box on one rank.");
 }
@@ -126,42 +119,30 @@ BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
 // Cells of the parent grid inside the box: the hosts left after processing
 // (inactive cells and cells MINPV removes are not in the grid).
 int presentHostCells(const Dune::cpgrid::CpGridData& parent,
-                     const std::array<int,3>& dims,
                      const Opm::Refinement::BlockRefinement& req)
 {
     int present = 0;
-    const auto& globalCell = parent.globalCell();
     for (int c = 0; c < parent.size(0); ++c) {
-        const int cart = globalCell[c];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
-        if (i >= req.startIJK[0] && i < req.endIJK[0]
-            && j >= req.startIJK[1] && j < req.endIJK[1]
-            && k >= req.startIJK[2] && k < req.endIJK[2]) {
+        std::array<int,3> ijk;
+        parent.getIJK(c, ijk);
+        if (contains(req, ijk)) {
             ++present;
         }
     }
     return present;
 }
 
-} // anonymous namespace
-
-void ConformingBlockBuilder::build(Dune::CpGrid& grid,
-                                   const std::vector<BlockRefinement>& requests)
+// Conformity check for touching boxes. With disjoint boxes, a pair
+// either is fully separated, shares an edge/corner, or shares a 2D
+// face. The shared refined entities (corners along a shared edge,
+// corners+faces on a shared face) coincide bitwise only if the
+// subdivision factors match in the *shared* directions: the overlap
+// dimension(s). The touch dimension(s) are parent-cell boundaries where
+// corners are identified with level zero regardless. Subdivisions in a
+// dimension where the boxes neither touch nor overlap are unconstrained
+// (e.g. the out-of-face direction of two face-sharing boxes).
+void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& requests)
 {
-    if (grid.maxLevel() != 0) {
-        throw std::logic_error("ConformingBlockBuilder requires an unrefined starting grid.");
-    }
-    // Conformity check for touching boxes. With disjoint boxes, a pair
-    // either is fully separated, shares an edge/corner, or shares a 2D
-    // face. The shared refined entities (corners along a shared edge,
-    // corners+faces on a shared face) coincide bitwise only if the
-    // subdivision factors match in the *shared* directions: the overlap
-    // dimension(s). The touch dimension(s) are parent-cell boundaries where
-    // corners are identified with level zero regardless. Subdivisions in a
-    // dimension where the boxes neither touch nor overlap are unconstrained
-    // (e.g. the out-of-face direction of two face-sharing boxes).
     for (std::size_t i = 0; i < requests.size(); ++i) {
         for (std::size_t j = i + 1; j < requests.size(); ++j) {
             const auto& a = requests[i];
@@ -230,7 +211,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             if (anyIncompatible) {
                 const int na = a.cellsPerDim[incompatDir];
                 const int nb = b.cellsPerDim[incompatDir];
-                throw std::logic_error(
+                OPM_THROW(std::logic_error,
                     "Refinement boxes '" + a.name + "' and '" + b.name +
                     "' meet with incompatible subdivisions in direction " +
                     std::to_string(incompatDir) + " (" + std::to_string(na) + " vs " +
@@ -242,15 +223,15 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             // other). Supported only as a 2-D sub-face mosaic on a shared face
             // (overlapCount == 2) with one box uniformly the finer side
             // (cleanly nested): the coarser side's interface cells become
-            // >6-face hexes tiled by the finer side's sub-faces (LGR_GAPS A2,
-            // assembled in assembleLeafGrid). Edge/corner contact (a 1-D mosaic)
+            // >6-face hexes tiled by the finer side's sub-faces (assembled in
+            // assembleLeafGrid). Edge/corner contact (a 1-D mosaic)
             // and a mixed nesting (each box finer in a different direction) are
             // not implemented.
             const bool cleanlyNested = aFinerOrEqualAll || bFinerOrEqualAll;
             if (overlapCount == 2 && cleanlyNested) {
                 continue;                       // supported compatible face mosaic
             }
-            throw std::logic_error(
+            OPM_THROW(std::logic_error,
                 "Refinement boxes '" + a.name + "' and '" + b.name +
                 "' meet with different but compatible subdivisions, but in an unsupported "
                 "configuration (" + (overlapCount == 2
@@ -262,6 +243,17 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 "direction(s).");
         }
     }
+}
+
+} // anonymous namespace
+
+void ConformingBlockBuilder::build(Dune::CpGrid& grid,
+                                   const std::vector<BlockRefinement>& requests)
+{
+    if (grid.maxLevel() != 0) {
+        OPM_THROW(std::logic_error, "ConformingBlockBuilder requires an unrefined starting grid.");
+    }
+    checkTouchingBoxes(requests);
 
     auto& storage = grid.currentData();
     // The refinement is "distributed" (rank-interior: only the owning rank
@@ -305,7 +297,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             const auto& req = requests[b];
             const auto itParent = nameToLevel.find(req.parentGridName);
             if (itParent == nameToLevel.end()) {
-                throw std::logic_error("Refinement box '" + req.name + "' names parent grid '"
+                OPM_THROW(std::logic_error, "Refinement box '" + req.name + "' names parent grid '"
                     + req.parentGridName + "', which has not been built yet. Parent LGRs "
                     "must be ordered before their children.");
             }
@@ -332,7 +324,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 // on whichever rank owns its parent box, so inherit the parent's
                 // classification (parent processed before child).
                 presence = nested ? presenceOf.at(req.parentGridName)
-                                  : classifyBoxPresence(*storage[0], dims, req);
+                                  : classifyBoxPresence(*storage[0], req);
             } else if (refineBefore) {
                 presence = nested ? presenceOf.at(req.parentGridName)
                                   : ((grid.getLevelZeroComm().rank() == 0) ? BoxPresence::Owned
@@ -343,7 +335,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             // does not hold it. The corner-point processing below needs at
             // least one cell.
             if ((presence == BoxPresence::Owned)
-                && (presentHostCells(*storage[parentLevel], pg.dims, req) == 0)) {
+                && (presentHostCells(*storage[parentLevel], req) == 0)) {
                 presence = BoxPresence::Absent;
             }
             presenceOf[req.name] = presence;

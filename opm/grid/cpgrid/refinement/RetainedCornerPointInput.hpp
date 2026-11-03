@@ -30,8 +30,7 @@ namespace Refinement
 {
 
 /// The corner-point description a grid was built from, retained only when
-/// the deck requests LGRs (docs/DESIGN-builder.md D4 input note): the
-/// refinement builder needs the post-MINPV COORD/ZCORN that level zero was
+/// the deck requests LGRs: the refinement builder needs the post-MINPV COORD/ZCORN that level zero was
 /// actually constructed from, and the grid does not otherwise keep them.
 struct RetainedCornerPointInput
 {

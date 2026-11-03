@@ -152,13 +152,11 @@ double boxVolume(const Dune::CpGrid& grid,
                  const std::array<int,3>& startIJK,
                  const std::array<int,3>& endIJK)
 {
-    const auto& dims = grid.logicalCartesianSize();
     double vol = 0.0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        const int cart = grid.globalCell()[element.index()];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
+        std::array<int,3> ijk;
+        grid.getIJK(element.index(), ijk);
+        const auto& [i, j, k] = ijk;
         if (i >= startIJK[0] && i < endIJK[0] && j >= startIJK[1] && j < endIJK[1]
             && k >= startIJK[2] && k < endIJK[2]) {
             vol += element.geometry().volume();
@@ -189,14 +187,12 @@ std::array<double,3> boxCenterOfMass(const Dune::CpGrid& grid,
                                      const std::array<int,3>& startIJK,
                                      const std::array<int,3>& endIJK)
 {
-    const auto& dims = grid.logicalCartesianSize();
     std::array<double,3> m = {0.0, 0.0, 0.0};
     double vol = 0.0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        const int cart = grid.globalCell()[element.index()];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
+        std::array<int,3> ijk;
+        grid.getIJK(element.index(), ijk);
+        const auto& [i, j, k] = ijk;
         if (i >= startIJK[0] && i < endIJK[0] && j >= startIJK[1] && j < endIJK[1]
             && k >= startIJK[2] && k < endIJK[2]) {
             const auto geo = element.geometry();
@@ -389,8 +385,8 @@ BOOST_AUTO_TEST_CASE(slantedPillarRefinementConservesCenterOfMass)
     //     mass. The refined grid spans exactly the box, so its *total* centre of
     //     mass is the relevant quantity. A faithful pillar subdivision conserves
     //     it to ~1e-6 (relative) even on a strongly sheared grid; an index-space
-    //     subdivision of skewed cells drifts ~1e-4 (seen comparing the fork's
-    //     refinement against upstream master on the opm-tests corner-point
+    //     subdivision of skewed cells drifts ~1e-4 (seen comparing the two
+    //     refinements on corner-point
     //     decks), so this bound separates the two.
     const auto parentCoM = boxCenterOfMass(parentGrid, req.startIJK, req.endIJK);
     const auto refinedCoM = totalCenterOfMass(refinedGrid);
@@ -494,7 +490,7 @@ BOOST_AUTO_TEST_CASE(inactiveParentsProduceInactiveChildren)
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 3*2*1*8 - 8);
 }
 
-// N*FIN/H*FIN: how many refined columns each parent cell takes, and their
+// Graded boxes: how many refined columns each parent cell takes, and their
 // relative widths within it.
 BOOST_AUTO_TEST_CASE(gradedRefinementFollowsColumnTables)
 {

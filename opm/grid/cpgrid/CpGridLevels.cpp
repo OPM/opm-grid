@@ -41,6 +41,9 @@
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
 
+#include <dune/common/dotproduct.hh>
+#include <dune/common/fmatrixev.hh>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -145,9 +148,7 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
                             const auto b = corners[Dune::cpgrid::EntityRep<3>(points[(i + 1) % n], true)].center();
                             const auto edge = b - a;
                             const auto toCentre = leafCentre - a;
-                            const double turn = normal[0]*(edge[1]*toCentre[2] - edge[2]*toCentre[1])
-                                              + normal[1]*(edge[2]*toCentre[0] - edge[0]*toCentre[2])
-                                              + normal[2]*(edge[0]*toCentre[1] - edge[1]*toCentre[0]);
+                            const double turn = Dune::dot(normal, Dune::FMatrixHelp::Impl::crossProduct(edge, toCentre));
                             const double scale = 1e-12 * edge.two_norm() * toCentre.two_norm();
                             positive += (turn > scale);
                             negative += (turn < -scale);

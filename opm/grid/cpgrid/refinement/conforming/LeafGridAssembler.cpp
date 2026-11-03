@@ -26,10 +26,14 @@
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 
 #include <opm/common/ErrorMacros.hpp>
+
+#include <dune/common/dotproduct.hh>
+#include <dune/common/fmatrixev.hh>
 
 #include <algorithm>
 #include <cstdlib>
@@ -84,7 +88,7 @@ struct SourceRef
 // faces toward +I and +J, so a grid one cell thick in a direction is read as well.
 int cornerSlotMask(CpGridData& grid)
 {
-    const auto& c2p = GridStateWriter::cellToPoint(grid);
+    const auto& c2p = grid.cellToPoint();
     auto& c2f = GridStateWriter::cellToFace(grid);
     auto& f2p = GridStateWriter::faceToPoint(grid);
     Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
@@ -146,12 +150,11 @@ void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
     const auto& pointIds0 = ids0.template getMapping<3>();
     const int numCorners0 = level0.size(3);
 
-    int maxUsed = 0;
-    for (const std::vector<int>* ids : {&ids0.template getMapping<0>(), &faceIds0, &pointIds0,
-                                        static_cast<const std::vector<int>*>(&cellIds)}) {
-        for (const int id : *ids) {
-            maxUsed = std::max(maxUsed, id);
-        }
+    // The largest id in use: level zero's (over cells and points; every face id lies
+    // below every point id), and the leaf's cell ids.
+    int maxUsed = static_cast<int>(ids0.getMaxGlobalId());
+    if (!cellIds.empty()) {
+        maxUsed = std::max(maxUsed, std::ranges::max(cellIds));
     }
     maxUsed = cc.max(maxUsed);
 
@@ -201,7 +204,7 @@ int axisOf(face_tag tag)
     case J_FACE: return 1;
     case K_FACE: return 2;
     default:
-        throw std::logic_error("Unexpected face tag in refined level grid.");
+        OPM_THROW(std::logic_error, "Unexpected face tag in refined level grid.");
     }
 }
 
@@ -246,10 +249,7 @@ PolyGeom polygonGeometry(const std::vector<Dune::FieldVector<double,3>>& pts)
         const auto& b = pts[(i + 1) % n];
         const auto e1 = a - mean;
         const auto e2 = b - mean;
-        const Dune::FieldVector<double,3> cross{ e1[1]*e2[2] - e1[2]*e2[1],
-                                                 e1[2]*e2[0] - e1[0]*e2[2],
-                                                 e1[0]*e2[1] - e1[1]*e2[0] };
-        const double w = 0.5 * (cross * g.normal);
+        const double w = 0.5 * Dune::dot(Dune::FMatrixHelp::Impl::crossProduct(e1, e2), g.normal);
         auto centre = mean;
         centre += a;
         centre += b;
@@ -276,6 +276,10 @@ std::optional<std::vector<int>> mergedOutline(const std::vector<std::vector<int>
         for (int i = 0; i < n; ++i) {
             const int a = polygon[i];
             const int b = polygon[(i + 1) % n];
+            // Two consecutive corners of a piece can be the same leaf corner: where two
+            // lines of the faulted side cross very close to a pillar, the computed crossing
+            // point can round onto that pillar's corner. Such an edge has zero length and
+            // is not part of the outline.
             if (a == b) {
                 continue;
             }
@@ -355,15 +359,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     for (int c = 0; c < numCells0; ++c) {
         compressed0[level0.globalCell()[c]] = c;
     }
-    const auto boxOfIJK = [&](int i, int j, int k) {
+    const auto boxOfIJK = [&](const std::array<int,3>& ijk) {
         for (int b = 0; b < numBoxes; ++b) {
-            if (nested(b)) {
-                continue;
-            }
-            const auto& req = requests[b];
-            if (i >= req.startIJK[0] && i < req.endIJK[0]
-                && j >= req.startIJK[1] && j < req.endIJK[1]
-                && k >= req.startIJK[2] && k < req.endIJK[2]) {
+            if (!nested(b) && contains(requests[b], ijk)) {
                 return b;
             }
         }
@@ -372,14 +370,12 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     // Box membership of each level-zero cell (-1 if unrefined).
     std::vector<int> boxOfCell(numCells0, -1);
     for (int c = 0; c < numCells0; ++c) {
-        const int cart = level0.globalCell()[c];
-        const int i = cart % dims0[0];
-        const int j = (cart / dims0[0]) % dims0[1];
-        const int k = cart / (dims0[0]*dims0[1]);
-        boxOfCell[c] = boxOfIJK(i, j, k);
+        std::array<int,3> ijk;
+        level0.getIJK(c, ijk);
+        boxOfCell[c] = boxOfIJK(ijk);
     }
 
-    auto& cellToPoint0 = GridStateWriter::cellToPoint(level0);
+    const auto& cellToPoint0 = level0.cellToPoint();
     auto& cellToFace0 = GridStateWriter::cellToFace(level0);
     auto& faceToCell0 = GridStateWriter::faceToCell(level0);
     auto& faceToPoint0 = GridStateWriter::faceToPoint(level0);
@@ -444,19 +440,16 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         // refined lattice position rather than from idxInParent, whose strides
         // are that parent's own counts once the box is graded.
         box.cornerEquiv.assign(box.level->size(3), -1);
-        auto& cellToPointL = GridStateWriter::cellToPoint(*box.level);
-        const auto& rd = box.refinedDims;
+        const auto& cellToPointL = box.level->cellToPoint();
         const int maskL = cornerSlotMask(*box.level);
         box.cornerMask = maskL;
-        auto& cellToPointP = nested(b) ? GridStateWriter::cellToPoint(*boxes[parentBoxOf[b]].level)
-                                       : cellToPoint0;
+        const auto& cellToPointP = nested(b) ? boxes[parentBoxOf[b]].level->cellToPoint()
+                                             : cellToPoint0;
         const int maskP = nested(b) ? boxes[parentBoxOf[b]].cornerMask : mask0;
         for (int cell = 0; cell < box.level->size(0); ++cell) {
             const int parent = childToParent[cell][1];
-            const int refinedCart = box.level->globalCell()[cell];
-            const std::array<int,3> lattice = { refinedCart % rd[0],
-                                                (refinedCart / rd[0]) % rd[1],
-                                                refinedCart / (rd[0]*rd[1]) };
+            std::array<int,3> lattice;
+            box.level->getIJK(cell, lattice);
             for (int corner = 0; corner < 8; ++corner) {
                 const std::array<int,3> d = { corner & 1, (corner >> 1) & 1, (corner >> 2) & 1 };
                 std::array<int,3> parentCornerIJK{};
@@ -517,7 +510,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         }
     }
 
-    // ----- Corner pool (D1) ----------------------------------------------
+    // ----- Corner pool ---------------------------------------------------
     // Pool = all level-zero corners (indices preserved) + new refined corners.
     auto leaf = std::make_shared<CpGridData>(comm, storage);
     auto& leafGeometry = GridStateWriter::geometry(*leaf);
@@ -649,10 +642,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     };
     const auto parentIJK = [&](int b, int cell) {
         const CpGridData& grid = nested(b) ? *boxes[parentBoxOf[b]].level : level0;
-        const auto& dims = nested(b) ? boxes[parentBoxOf[b]].refinedDims : dims0;
-        const int cart = grid.globalCell()[cell];
-        return std::array<int,3>{ cart % dims[0], (cart / dims[0]) % dims[1],
-                                  cart / (dims[0]*dims[1]) };
+        std::array<int,3> ijk;
+        grid.getIJK(cell, ijk);
+        return ijk;
     };
     // The cell across a nested box's side: across its parent cell's face there, which must
     // be the parent's whole face (a fault or pinch-out on it is not supported), or -1.
@@ -671,8 +663,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         std::set<int> expected;
         for (int corner = 0; corner < 8; ++corner) {
             if ((((corner >> axis) & 1) == 1) == (side > 0)) {
-                expected.insert(GridStateWriter::cellToPoint(grid)[parent]
-                                [corner ^ boxes[parentBoxOf[b]].cornerMask]);
+                expected.insert(grid.cellToPoint(parent)[corner ^ boxes[parentBoxOf[b]].cornerMask]);
             }
         }
         std::set<int> actual;
@@ -756,11 +747,12 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         if ((axis == 2) && (directionFaces.size() == 2)) {
             int open = 0;
             int pinched = -1;
-            const auto ijk = [&dims0](int cart) {
-                return std::array<int,3>{ cart % dims0[0], (cart / dims0[0]) % dims0[1],
-                                          cart / (dims0[0] * dims0[1]) };
+            const auto ijk = [&level0](int cell) {
+                std::array<int,3> result;
+                level0.getIJK(cell, result);
+                return result;
             };
-            const auto p = ijk(level0.globalCell()[parent]);
+            const auto p = ijk(parent);
             for (const int face : directionFaces) {
                 const auto cells = faceToCell0[EntityRep<1>(face, true)];
                 if (cells.size() == 1) {
@@ -772,7 +764,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     if ((cell == parent) || (cell == kRemoteCell)) {
                         continue;
                     }
-                    const auto c = ijk(level0.globalCell()[cell]);
+                    const auto c = ijk(cell);
                     if ((c[0] == p[0]) && (c[1] == p[1]) && (std::abs(c[2] - p[2]) > 1)) {
                         pinched = cell;
                     }
@@ -848,7 +840,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
 
     // Per box: refined (box-global) Cartesian index -> level cell index. Used by
     // the compatible sub-face mosaic below to find, for a finer box's boundary
-    // sub-face, the coarser box's child cell it abuts (LGR_GAPS A2).
+    // sub-face, the coarser box's child cell it abuts.
     std::vector<std::map<int,int>> refinedCartToCell(numBoxes);
     for (int b = 0; b < numBoxes; ++b) {
         for (int c = 0; c < boxes[b].level->size(0); ++c) {
@@ -882,10 +874,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 if (cell == parent || cell == kRemoteCell) {
                     continue;
                 }
-                const int cart = level0.globalCell()[cell];
-                const std::array<int,3> nijk = { cart % dims0[0],
-                                                 (cart / dims0[0]) % dims0[1],
-                                                 cart / (dims0[0]*dims0[1]) };
+                std::array<int,3> nijk;
+                level0.getIJK(cell, nijk);
                 const auto key = std::make_tuple(b, axis, side);
                 if ((boxOfCell[cell] >= 0) && (boxOfCell[cell] != b)) {
                     boxesAcross[key].insert(boxOfCell[cell]);
@@ -903,10 +893,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         if (b < 0) {
             continue;
         }
-        const int cart = level0.globalCell()[c];
-        const std::array<int,3> ijk = { cart % dims0[0],
-                                        (cart / dims0[0]) % dims0[1],
-                                        cart / (dims0[0]*dims0[1]) };
+        std::array<int,3> ijk;
+        level0.getIJK(c, ijk);
         for (int axis = 0; axis < 3; ++axis) {
             for (int side = -1; side <= 1; side += 2) {
                 const bool onBoundary = (side < 0)
@@ -975,10 +963,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 const bool normalOut = row[0].orientation();
                 const int axis = axisOf(tagsL.get(face));
                 const int side = normalOut ? 1 : -1;
-                const int cart = box.level->globalCell()[cell];
-                std::array<int,3> lattice = { cart % box.refinedDims[0],
-                                              (cart / box.refinedDims[0]) % box.refinedDims[1],
-                                              cart / (box.refinedDims[0]*box.refinedDims[1]) };
+                std::array<int,3> lattice;
+                box.level->getIJK(cell, lattice);
                 lattice[axis] += side;
                 if (lattice[axis] < 0 || lattice[axis] >= box.refinedDims[axis]) {
                     // Faulted side: suppress this box face; the whole side is
@@ -1003,9 +989,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             // The conformity rule below compares one subdivision
                             // factor per in-face direction; a graded box has a
                             // column-by-column subdivision instead.
-                            throw std::invalid_argument(
-                                "Refinement boxes touch and at least one is graded "
-                                "(N*FIN/H*FIN). Touching graded boxes are not supported.");
+                            OPM_THROW(std::invalid_argument,
+                                "Refinement boxes '" + requests[b].name + "' and '"
+                                + requests[nbBox].name + "' touch and at least one is "
+                                "graded. Touching graded boxes are not supported.");
                         }
                         const auto& facA = box.factors;
                         const auto& facB = boxes[nbBox].factors;
@@ -1034,7 +1021,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             // covering cell as the outside; the coarser side
                             // suppresses its interface faces, so its interface
                             // cells become >6-face hexes tiled by the finer
-                            // sub-faces (LGR_GAPS A2 sub-face mosaic).
+                            // sub-faces (a sub-face mosaic).
                             const bool thisFiner = (facA[u] >= facB[u] && facA[v] >= facB[v]);
                             if (!thisFiner) {
                                 continue;       // coarser side: the finer references us
@@ -1077,7 +1064,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         const int leafFace = entry.second;
         if (mosaicOutside[leafFace] < 0) {
             const int ownerBox = leafFaces[leafFace].grid - 1;
-            throw std::logic_error("Internal error: refined box '"
+            OPM_THROW(std::logic_error, "Internal error: refined box '"
                                    + requests[ownerBox].name
                                    + "' has an interface face toward a face-sharing "
                                      "refined box with no matching partner face. "
@@ -1088,14 +1075,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     const int numSourceFaces = static_cast<int>(leafFaces.size());
 
     // ----- Faulted box boundaries: synthetic split faces -------------------
-    // Phase 1 (docs/PLAN.md Track 1): for each faulted (box, axis, side), the
+    // For each faulted (box, axis, side), the
     // corner-point processor (faultedBoundaryConnections) gives the split
     // connections between the refined boundary cells and the neighbour(s). The
     // neighbour is a coarse cell, or -- when it is itself refined -- the
-    // neighbour box's child cell across the fault (box<->box faulted interface,
-    // LGR_GAPS A5). New split vertices join the leaf corner pool; each connection
-    // becomes a leaf face with real polygon geometry. (Reference-matching transmissibility
-    // geometry at these faces is a separate, later layer.)
+    // neighbour box's child cell across the fault (box<->box faulted interface).
+    // New split vertices join the leaf corner pool; each connection becomes a
+    // leaf face with real polygon geometry.
     struct SyntheticFace
     {
         int boxCell;
@@ -1183,7 +1169,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     neighborLeaf = leafIdxOfCell0[l0];
                     if (neighborLeaf < 0) {
                         // Neighbour is refined away: a box<->box faulted interface
-                        // (LGR_GAPS A5). Connect to the neighbour box's child cell
+                        // Connect to the neighbour box's child cell
                         // this sub-face abuts. Emit each interface face once: the
                         // FINER box owns it (equal in-face factors -> the lower box
                         // index), so the coarser side's faces are taken over by the
@@ -1203,10 +1189,10 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             // Pairing the two sides' sub-faces below compares one
                             // subdivision factor per in-face direction, which a
                             // graded box does not have.
-                            throw std::invalid_argument(
+                            OPM_THROW(std::invalid_argument,
                                 "Refinement '" + requests[b].name + "' meets '"
                                 + requests[nbBox].name + "' across a fault, and at least "
-                                "one of them is graded (N*FIN/H*FIN). Box-to-box "
+                                "one of them is graded. Box-to-box "
                                 "interfaces between graded boxes are not supported.");
                         }
                         const auto& facThis = boxes[b].factors;
@@ -1217,7 +1203,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             return fine[u] % coarse[u] == 0 && fine[v] % coarse[v] == 0;
                         };
                         if (!nests(facThis, facN) && !nests(facN, facThis)) {
-                            throw std::invalid_argument(
+                            OPM_THROW(std::invalid_argument,
                                 "Refinement '" + requests[b].name + "' meets '"
                                 + requests[nbBox].name + "' across a fault with in-face "
                                 "subdivisions that do not nest. Use equal subdivisions, or "
@@ -1233,10 +1219,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                         }
                         // (Nesting is checked above, so facThis is a multiple of facN
                         // in the in-face directions.)
-                        const std::array<int,3> pijk = {
-                            conn.coarseNeighborCart % dims0[0],
-                            (conn.coarseNeighborCart / dims0[0]) % dims0[1],
-                            conn.coarseNeighborCart / (dims0[0]*dims0[1]) };
+                        const std::array<int,3> pijk =
+                            Opm::Lgr::getIJK(conn.coarseNeighborCart, dims0);
                         const auto& startN = requests[nbBox].startIJK;
                         const auto& rdN    = boxes[nbBox].refinedDims;
                         // Neighbour child sub-position in the NEIGHBOUR's frame: the
@@ -1389,7 +1373,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         // face_to_point row (pool indices)
         pointBuffer.clear();
         auto srcPoints = srcFaceToPoint[src.index];
-        for (int e = 0; e < srcPoints.size(); ++e) {
+        for (int e = 0; e < static_cast<int>(srcPoints.size()); ++e) {
             pointBuffer.push_back((src.grid == 0) ? srcPoints[e]
                                                   : boxes[src.grid - 1].cornerToLeaf[srcPoints[e]]);
         }
@@ -1472,7 +1456,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         }
         else {
             const BoxData& box = boxes[src.grid - 1];
-            const auto& srcPoints = GridStateWriter::cellToPoint(*box.level)[src.index];
+            const auto& srcPoints = box.level->cellToPoint(src.index);
             for (int corner = 0; corner < 8; ++corner) {
                 leafCellToPoint[cell][corner] = box.cornerToLeaf[srcPoints[corner]];
             }
