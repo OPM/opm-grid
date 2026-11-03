@@ -115,13 +115,13 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                        const BlockRefinement& request,
                        int levelIndex,
                        int parentLevel,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
+                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
                        RefinedBlockGrdecl* outRefined)
 {
-    // Stages 2+3: resample the block geometry onto sub-pillars.
+    // Resample the block geometry onto sub-pillars.
     const RefinedBlockGrdecl refined = refineBlock(parentDims, coord, zcorn, actnum, request);
 
-    // Stage 4: process the refined description with the corner-point
+    // Process the refined description with the corner-point
     // preprocessor. Faults/pinch-outs inside the block are matched here.
     // Refined level grids are rank-local (rank-interior LGR model): use a
     // self-communicator so none of their operations are collective over the
@@ -149,7 +149,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                                 /* tolerance_unique_points = */ 0.0,
                                 /* edge_conformal = */ false);
 
-    // Stage 6a: parent relations. The processed grid's global_cell_ holds
+    // Parent relations. The processed grid's global_cell_ holds
     // the refined-local Cartesian index (the CARFIN convention for level
     // grids), which encodes the parent and the position inside it.
     const std::array<AxisSubdivision,3> subs = { axisSubdivision(request, 0),
@@ -224,7 +224,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 std::shared_ptr<Dune::cpgrid::CpGridData>
 assembleEmptyLevelGrid(const BlockRefinement& request,
                        int levelIndex,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage)
+                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage)
 {
     auto level = std::make_shared<Dune::cpgrid::CpGridData>(
         Dune::MPIHelper::getLocalCommunicator(), levelStorage);

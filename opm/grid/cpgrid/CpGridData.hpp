@@ -158,12 +158,12 @@ public:
     /// \param comm The MPI communicator
     /// \param data Pointer to existing data to use
     /// Default constructor.
-    explicit CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
+    explicit CpGridData(MPIHelper::MPICommunicator comm,  const std::vector<std::shared_ptr<CpGridData>>& data);
 
 
 
     /// Constructor
-    explicit CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);
+    explicit CpGridData(const std::vector<std::shared_ptr<CpGridData>>& data);
     /// Destructor
     ~CpGridData();
 

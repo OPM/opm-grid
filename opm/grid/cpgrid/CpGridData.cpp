@@ -45,7 +45,7 @@ CpGridData::CpGridData(const CpGridData& g)
 #endif
 }
 
-CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
+CpGridData::CpGridData(const std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
@@ -59,7 +59,7 @@ CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
     levels_.level_data_ptr = &data;
 }
 
-CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data)
+CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  const std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)

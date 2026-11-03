@@ -48,10 +48,11 @@ namespace Refinement
 /// with the parent relations the rest of CpGrid reads (father(),
 /// geometryInFather(), CARFIN-local Cartesian indices).
 ///
-/// The returned grid has level_ = levelIndex and its level_data_ptr_ bound
-/// to levelStorage; the caller is responsible for placing it at position
-/// levelIndex in that vector (and level zero at position 0). Its communicator
-/// is the self-communicator, as for assembleEmptyLevelGrid.
+/// The caller must put the returned grid at index @p levelIndex of
+/// @p levelStorage, with level zero at index 0; this function does not add it.
+/// The grid keeps a pointer to @p levelStorage and finds every level grid there
+/// by its level index, its own included. Its communicator is the
+/// self-communicator, as for assembleEmptyLevelGrid.
 ///
 /// @param parentGrid   The grid the parents live in (level zero for a
 ///                     top-level box, or an LGR level grid for a nested box).
@@ -76,7 +77,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                        const BlockRefinement& request,
                        int levelIndex,
                        int parentLevel,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
+                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
                        RefinedBlockGrdecl* outRefined = nullptr);
 
 /// An empty (zero-cell) refined level grid for a box that has no cells on
@@ -87,7 +88,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 std::shared_ptr<Dune::cpgrid::CpGridData>
 assembleEmptyLevelGrid(const BlockRefinement& request,
                        int levelIndex,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage);
+                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage);
 
 } // namespace Refinement
 } // namespace Opm

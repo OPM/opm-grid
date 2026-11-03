@@ -64,7 +64,7 @@ struct LevelHierarchy
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */
     int level{0};
     /** Copy of (CpGrid object).data_ associated with the CpGridData object. */
-    std::vector<std::shared_ptr<CpGridData>>* level_data_ptr{};
+    const std::vector<std::shared_ptr<CpGridData>>* level_data_ptr{};
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
     /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. -1 when the cell vanished.*/
     std::vector<int> level_to_leaf_cells;  // In entry 'level cell index', we store 'leafview cell index'
