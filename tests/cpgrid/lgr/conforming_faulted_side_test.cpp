@@ -33,6 +33,7 @@
 #include <array>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <set>
@@ -90,6 +91,12 @@ std::array<double,6> vertical(int i, int j)
 std::array<double,6> fanning(int i, int j)
 {
     return { double(i), double(j), 0.0, i + 0.5*j, 1.3*j, 100.0 };
+}
+
+// All pillars parallel and slanted: faces stay planar.
+std::array<double,6> sheared(int i, int j)
+{
+    return { double(i), double(j), 0.0, i + 30.0, j + 20.0, 100.0 };
 }
 
 // J runs toward -y: a left-handed grid.
@@ -443,5 +450,58 @@ BOOST_AUTO_TEST_CASE(faultedSideIndependentOfEndPointDepths)
         BOOST_CHECK_CLOSE(written[2], moved[2], 1e-10);
         // Faces on fanning pillars are not planar: the cells close equally well, not exactly.
         BOOST_CHECK_SMALL(written[3] - moved[3], 1e-10);
+    }
+}
+
+// A 2x1x1 grid whose cell I = 1 is shifted up by a fraction of its height, with a box on
+// each side of that fault: unequal factors in both orders, and equal ones. Where the
+// sub-layers of the two boxes line up across the throw, the two sides compute the same
+// depth differently; the leaf still joins only cells whose faces overlap, with faces
+// that tile the overlap of the two cells' faces.
+BOOST_AUTO_TEST_CASE(boxesAcrossAThrowThatLinesUpSubLayers)
+{
+    using Factors = std::array<int,3>;
+    const std::vector<std::pair<Factors, Factors>> pairs { {{1,2,3}, {5,4,6}},
+                                                           {{5,4,6}, {1,2,3}},
+                                                           {{1,2,3}, {1,2,3}} };
+    const auto text = [](const Factors& f) {
+        return std::to_string(f[0]) + "x" + std::to_string(f[1]) + "x" + std::to_string(f[2]);
+    };
+    // Area of the fault plane per unit depth: the pillars run along (0, 0, 1) or
+    // (0.3, 0.2, 1), the face is one unit wide along y.
+    for (const auto& [pillar, areaPerDepth] : std::vector<std::pair<Pillar, double>>{
+             {vertical, 1.0}, {sheared, std::sqrt(1.09)}}) {
+        for (const double shift : {0.25, 0.5, 1.0, 1.5, 2.0, 2.5}) {
+            // Cell (0,0,0) at depth [10, 13], cell (1,0,0) `shift` higher: their faces on
+            // the fault overlap over z in [10, 13 - shift].
+            const auto g = makeGrid({2, 1, 1}, pillar, [shift](int i_, int, int k_) {
+                return 10.0 + 3.0*nodeOf(k_) - ((cellOf(i_) >= 1) ? shift : 0.0);
+            });
+            for (const auto& [left, right] : pairs) {
+                const std::string label = "shift " + std::to_string(shift) + ", "
+                    + text(left) + " | " + text(right);
+                Dune::CpGrid grid;
+                grid.processEclipseFormat(g.raw(), false);
+                refine(grid, g, {box("LGR1", left, {0,0,0}, {1,1,1}),
+                                 box("LGR2", right, {1,0,0}, {2,1,1})});
+
+                double across = 0.0;
+                double smallest = std::numeric_limits<double>::max();
+                for (const auto& element : Dune::elements(grid.leafGridView())) {
+                    for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+                        smallest = std::min(smallest, is.geometry().volume());
+                        if (is.neighbor() && (element.level() == 1) && (is.outside().level() == 2)) {
+                            across += is.geometry().volume();
+                        }
+                    }
+                }
+                BOOST_CHECK_MESSAGE(worstClosure(grid) < 1e-12, label << ": a cell is not closed");
+                BOOST_CHECK_MESSAGE(std::abs(across - areaPerDepth*(3.0 - shift)) < 1e-10,
+                                    label << ": faces across the fault cover " << across
+                                          << " instead of " << areaPerDepth*(3.0 - shift));
+                BOOST_CHECK_MESSAGE(smallest > 1e-10, label << ": a face of area " << smallest);
+                BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+            }
+        }
     }
 }

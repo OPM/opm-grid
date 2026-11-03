@@ -1139,7 +1139,28 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 axis, side, /*edgeConformal=*/true,
                 (rangeIt != acrossRange.end()) ? &rangeIt->second : nullptr);
             const auto& rd = boxes[b].refinedDims;
+            // Where the sub-layers of the two sides line up across the throw, the same
+            // depth comes out of two computations that can differ in the last bit, and
+            // the processing cuts a piece of no area between them, which would join
+            // cells that meet only along an edge. A piece below 1e-8 of its box cell's
+            // side, which the cell's pieces tile, is dropped: such pieces have an area
+            // of 1e-16 of the side or less, and the face geometry itself rounds at
+            // about 1e-9 at field coordinates.
+            const auto pieceArea = [](const BoundaryConnection& conn) {
+                std::vector<Dune::FieldVector<double,3>> xs;
+                for (const auto& nd : conn.faceNodes) {
+                    xs.push_back({ nd[0], nd[1], nd[2] });
+                }
+                return polygonGeometry(xs).area;
+            };
+            std::map<std::array<int,3>, double> sideArea;
             for (const auto& conn : conns) {
+                sideArea[conn.boxCell] += pieceArea(conn);
+            }
+            for (const auto& conn : conns) {
+                if (pieceArea(conn) <= 1e-8 * sideArea[conn.boxCell]) {
+                    continue;
+                }
                 const int refinedCart = conn.boxCell[0]
                                       + rd[0]*conn.boxCell[1]
                                       + rd[0]*rd[1]*conn.boxCell[2];
