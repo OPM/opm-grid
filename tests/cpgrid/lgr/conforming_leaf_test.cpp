@@ -191,25 +191,35 @@ BOOST_AUTO_TEST_CASE(boxWithNoChildLeft)
     }
 }
 
-// A box one parent wide in J on a left-handed grid has a level grid one cell thick in J;
-// its corners still take the level-zero corner order, so each leaf cell's corners
-// surround it.
-BOOST_AUTO_TEST_CASE(thinBoxOnLeftHandedGrid)
+// A box one parent wide in J has a level grid one cell thick in J. Its
+// corners must still match its parents' corners for both J directions and both
+// ZCORN directions, including when the two winding reversals cancel.
+BOOST_AUTO_TEST_CASE(thinBoxCornerOrder)
 {
-    const auto g = makeGrid({3, 2, 2}, leftHanded, [](int, int, int k_) { return 2.0*nodeOf(k_); });
-    Dune::CpGrid grid;
-    refine(grid, g, box({2,1,2}, {1,0,0}, {2,1,2}));
+    for (const bool reverseJ : {false, true}) {
+        for (const bool upwardZcorn : {false, true}) {
+            BOOST_TEST_CONTEXT("reverseJ=" << reverseJ << ", upwardZcorn=" << upwardZcorn) {
+                const auto g = makeGrid({3, 2, 2}, reverseJ ? leftHanded : vertical,
+                    [upwardZcorn](int, int, int k_) {
+                        const double depth = 2.0*nodeOf(k_);
+                        return upwardZcorn ? 4.0 - depth : depth;
+                    });
+                Dune::CpGrid grid;
+                refine(grid, g, box({2,1,2}, {1,0,0}, {2,1,2}));
 
-    for (const auto& element : Dune::elements(grid.leafGridView())) {
-        const auto& geometry = element.geometry();
-        Dune::FieldVector<double,3> mean(0.0);
-        for (int corner = 0; corner < 8; ++corner) {
-            mean += geometry.corner(corner);
+                for (const auto& element : Dune::elements(grid.leafGridView())) {
+                    const auto& geometry = element.geometry();
+                    Dune::FieldVector<double,3> mean(0.0);
+                    for (int corner = 0; corner < 8; ++corner) {
+                        mean += geometry.corner(corner);
+                    }
+                    mean /= 8.0;
+                    BOOST_CHECK_SMALL((mean - geometry.center()).two_norm(), 1e-12);
+                }
+                BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+            }
         }
-        mean /= 8.0;
-        BOOST_CHECK_SMALL((mean - geometry.center()).two_norm(), 1e-12);
     }
-    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
 }
 
 // Each LGR boundary face comes from the level-zero face between the two cells' origins

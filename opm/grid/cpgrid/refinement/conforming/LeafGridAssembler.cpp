@@ -97,44 +97,60 @@ std::vector<int> leafAquiferCells(const CpGridData& level0,
 
 using SourceRef = Opm::Refinement::LeafGridAssembler::SourceRef;
 
-// processEclipseFormat reverses face nodes for left-handed or upward-ZCORN input, which
-// swaps the halves of cell_to_point along J. Returns the XOR mask from logical corner
-// (bit0 = I, bit1 = J, bit2 = K) to cell_to_point slot, detected from the cells' whole
-// faces toward +I and +J, so a grid one cell thick in a direction is read as well.
-int cornerSlotMask(CpGridData& grid)
+// A grid that *either* is left-handed *or* has its K axis reversed
+// (ZCORN decreasing with K) will have a different ordering of its corners
+// than a right-handed grid with a standard K axis. We will call such a grid
+// "flipped". (If both, then it cancels out and the ordering is the normal one.)
+// For normal right-handed grids with a standard K axis, the corner ordering is
+// the lexicographic order of the I, J, and K indices, I running fastest.
+// For a flipped grid, the corner ordering can be found by XORing the number of
+// the regular corner ordering with a fixed mask that flips the J axis bit.
+//
+// Note that this function does not look at geometry, yet handedness or K axis reversal
+// comes from the embedding of the grid in R^3, not from the topology by itself. This is
+// possible because the processing of the cornerpoint data into a (level) grid takes this
+// into account in order to make the corners appear in the correct order (to e.g. ensure
+// positive volumes from straight-forward volume calculations) and to make face-vertices
+// ordered so that a right-hand rule is satisfied for the face normals.
+//
+// The mask produced by this function will be used as follows:
+//     base_corneridx = I + 2*J + 4 * K;
+//     possibly_corrected_corneridx = base_corneridx ^ mask;
+// The mask is 0 for an unflipped grid and 2 for a flipped grid. All three axes
+// are checked: I and K must retain their logical order, and J must have the same
+// ordering throughout the grid.
+int cornerSlotMask(const CpGridData& grid)
 {
     const auto& c2p = grid.cellToPoint();
-    auto& c2f = GridStateWriter::cellToFace(grid);
-    auto& f2p = GridStateWriter::faceToPoint(grid);
-    Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
     int mask = 0;
-    // For I, then J: highFace is a cell's face toward +I (or +J), its I_FACE (or J_FACE)
-    // with orientation true. Its points are the cell's four corners on that side, the
-    // logical corners with that bit set. If they sit in the cell_to_point slots with the
-    // bit set, the cell agrees; if in the slots without it, the cell is flipped. The
-    // processing reverses the face nodes of the whole grid at once, so every whole face
-    // gives the same answer. The loop stops after 16 cells that decided: a sample size,
-    // not a limit; the majority guards against an odd face. A face split by a fault (more
-    // than one face toward +I or +J) and a face with other than 4 corners are skipped.
-    for (int axis = 0; axis < 2; ++axis) {
+    // An empty grid has no corners to translate (e.g. on an empty MPI rank).
+    if (c2p.empty()) {
+        return mask;
+    }
+    // The positive-side face is identified by its axis tag and positive cell incidence,
+    // independently of corner slots. Its four corners must occupy slots whose
+    // axis bit is either all set (logical order) or all clear (flipped order).
+    // One usable cell determines the bit: preprocessing applies one permutation
+    // to the whole grid. Check all other usable cells for contradictions.
+    constexpr std::array<face_tag,3> axisTags = {I_FACE, J_FACE, K_FACE};
+    for (int axis = 0; axis < 3; ++axis) {
         const int bit = 1 << axis;
-        const enum face_tag tag = (axis == 0) ? I_FACE : J_FACE;
-        int agree = 0;
-        int flipped = 0;
-        for (int cell = 0; (cell < static_cast<int>(c2p.size())) && (agree + flipped < 16); ++cell) {
-            const auto row = c2f[EntityRep<0>(cell, true)];
+        const enum face_tag tag = axisTags[axis];
+        std::optional<bool> axisFlipped;
+        for (int cell = 0; cell < static_cast<int>(c2p.size()); ++cell) {
+            const auto row = grid.cellToFace(cell);
             int highFace = -1;
             int highFaces = 0;
             for (int e = 0; e < row.size(); ++e) {
-                if ((tags.get(row[e].index()) == tag) && row[e].orientation()) {
+                if ((grid.faceTag(row[e].index()) == tag) && row[e].orientation()) {
                     highFace = row[e].index();
                     ++highFaces;
                 }
             }
             if (highFaces != 1) {
-                continue;   // split by a fault: not the cell's whole face
+                continue;   // A split face cannot establish the corner permutation.
             }
-            const auto points = f2p[highFace];
+            const auto points = grid.faceToPoint(highFace);
             if (points.size() != 4) {
                 continue;
             }
@@ -145,12 +161,33 @@ int cornerSlotMask(CpGridData& grid)
                 if (slot == c2p[cell].end()) {
                     break;
                 }
+                // The distance is this point's slot number (0..7). Test its
+                // I, J, or K bit and count whether that bit is set or clear.
+                // On a positive-side face, four set bits mean logical order;
+                // four clear bits mean the slot order is flipped on this axis.
                 ((std::distance(c2p[cell].begin(), slot) & bit) != 0) ? ++withBit : ++withoutBit;
             }
-            agree += (withBit == 4);
-            flipped += (withoutBit == 4);
+            // Partial or degenerate faces need not contain the four logical
+            // side corners, so they cannot establish the permutation either.
+            if ((withBit != 4) && (withoutBit != 4)) {
+                continue;
+            }
+            const bool flipped = (withoutBit == 4);
+            if (axisFlipped.has_value() && (*axisFlipped != flipped)) {
+                OPM_THROW(std::logic_error, "Inconsistent cell corner ordering along axis "
+                          + std::to_string(axis) + " at cell " + std::to_string(cell) + ".");
+            }
+            axisFlipped = flipped;
         }
-        if (flipped > agree) {
+        if (!axisFlipped.has_value()) {
+            OPM_THROW(std::logic_error, "Cannot determine cell corner ordering along axis "
+                      + std::to_string(axis) + ": no usable whole face.");
+        }
+        if (*axisFlipped) {
+            if (axis != 1) {
+                OPM_THROW(std::logic_error, "Unexpected cell corner flip along axis "
+                          + std::to_string(axis) + ": only the J axis may be flipped.");
+            }
             mask |= bit;
         }
     }
