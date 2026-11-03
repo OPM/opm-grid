@@ -1249,13 +1249,14 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             latN[d] = (pijk[d] - startN[d]) * facN[d] + sN[d];
                         }
                         const int cartN = latN[0] + rdN[0]*latN[1] + rdN[0]*rdN[1]*latN[2];
+                        // A child across that is not in the grid (its box's MINPV
+                        // removed it) leaves the piece facing the domain.
                         const auto nit = refinedCartToCell[nbBox].find(cartN);
-                        if (nit == refinedCartToCell[nbBox].end()) {
-                            continue; // neighbour child inactive
-                        }
-                        neighborLeaf = leafIdxOfLevelCell[nbBox][nit->second];
-                        if (neighborLeaf < 0) {
-                            continue;
+                        if (nit != refinedCartToCell[nbBox].end()) {
+                            neighborLeaf = leafIdxOfLevelCell[nbBox][nit->second];
+                            if (neighborLeaf < 0) {
+                                continue;
+                            }
                         }
                     }
                 }
