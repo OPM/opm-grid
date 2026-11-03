@@ -22,6 +22,7 @@
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 
 #include <array>
+#include <cstddef>
 #include <vector>
 
 namespace Opm
@@ -34,10 +35,13 @@ namespace Refinement
 /// and zcorn follow the usual corner-point layouts for those dimensions.
 struct RefinedBlockGrdecl
 {
-    std::array<int,3> dims{};
+    std::array<std::size_t,3> dims{};
     std::vector<double> coord;
     std::vector<double> zcorn;
     std::vector<int> actnum;
+
+    /// dims as int, the type of the dimensions of a grdecl and of a grid.
+    std::array<int,3> intDims() const;
 };
 
 /// Resample a block of a corner-point description onto refined sub-pillars.

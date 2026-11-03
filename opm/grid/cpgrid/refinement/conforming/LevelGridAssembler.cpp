@@ -146,7 +146,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 
     // Index 0 holds pinch connections, as for level zero.
     std::array<std::set<std::pair<int,int>>, 2> nnc;
-    nnc[0] = boxPinchPairs(parentGrid, parentDims, request, refined.dims);
+    nnc[0] = boxPinchPairs(parentGrid, parentDims, request, refined.intDims());
     level->processEclipseFormat(raw,
                                 nullptr,
                                 nnc,

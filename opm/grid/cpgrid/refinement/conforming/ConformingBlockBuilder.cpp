@@ -351,7 +351,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                                          storage, &childRefined)
                 : assembleEmptyLevelGrid(req, static_cast<int>(b) + 1, storage);
             storage.push_back(std::move(level));
-            levelGeom[b + 1] = LevelGeom{ childRefined.dims,
+            levelGeom[b + 1] = LevelGeom{ childRefined.intDims(),
                                           childRefined.coord.data(),
                                           childRefined.zcorn.data(),
                                           childRefined.actnum.empty() ? nullptr

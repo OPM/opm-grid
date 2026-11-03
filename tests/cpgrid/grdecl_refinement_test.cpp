@@ -64,6 +64,14 @@ struct TestGrdecl
     }
 };
 
+// The corner-point processor's input for a refined block.
+grdecl rawOf(const Opm::Refinement::RefinedBlockGrdecl& refined)
+{
+    const auto dims = refined.intDims();
+    return grdecl{ {dims[0], dims[1], dims[2]},
+                   refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+}
+
 // Build a corner-point description with straight pillars from (x,y,ztop) to
 // (x,y,zbot) (vertical) and per-corner depths given by a callback
 // z(i_, j_, k_) on the doubled lattice.
@@ -226,13 +234,13 @@ BOOST_AUTO_TEST_CASE(uniformGridRefinesToUniformLattice)
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
                                                       parent.zcorn.data(), nullptr, req);
 
-    BOOST_CHECK(refined.dims == (std::array<int,3>{4, 3, 4}));
+    BOOST_CHECK(refined.dims == (std::array<std::size_t,3>{4, 3, 4}));
 
     // Sub-pillars form the expected uniform lattice: pillar (ir, jr) at
     // x = 1 + ir/2, y = 1 + jr/3.
-    for (int jr = 0; jr <= refined.dims[1]; ++jr) {
-        for (int ir = 0; ir <= refined.dims[0]; ++ir) {
-            const double* p = &refined.coord[6*(static_cast<std::size_t>(jr)*(refined.dims[0] + 1) + ir)];
+    for (std::size_t jr = 0; jr <= refined.dims[1]; ++jr) {
+        for (std::size_t ir = 0; ir <= refined.dims[0]; ++ir) {
+            const double* p = &refined.coord[6*(jr*(refined.dims[0] + 1) + ir)];
             BOOST_CHECK_CLOSE(p[0], 1.0 + ir/2.0, 1e-11);
             BOOST_CHECK_CLOSE(p[1], 1.0 + jr/3.0, 1e-11);
         }
@@ -248,8 +256,7 @@ BOOST_AUTO_TEST_CASE(uniformGridRefinesToUniformLattice)
     // Process the refined description and verify cell count and volume:
     // box is 2x1x2 unit cells -> volume 4, refined into 4x3x4 = 48 cells.
     Dune::CpGrid refinedGrid;
-    const auto raw = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                             refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto raw = rawOf(refined);
     refinedGrid.processEclipseFormat(raw, false);
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 48);
     BOOST_CHECK_CLOSE(totalVolume(refinedGrid), 4.0, 1e-9);
@@ -280,8 +287,7 @@ BOOST_AUTO_TEST_CASE(distortedVerticalPillarGridConservesVolume)
                                                       parent.zcorn.data(), nullptr, req);
 
     Dune::CpGrid refinedGrid;
-    const auto rawRefined = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto rawRefined = rawOf(refined);
     refinedGrid.processEclipseFormat(rawRefined, false);
 
     // On vertical pillars the resampled sub-cells partition the parent
@@ -334,8 +340,7 @@ BOOST_AUTO_TEST_CASE(collapsedParentGivesCollapsedChildren)
     }
 
     Dune::CpGrid refinedGrid;
-    const auto rawRefined = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto rawRefined = rawOf(refined);
     BOOST_CHECK_NO_THROW(refinedGrid.processEclipseFormat(rawRefined, false));
 }
 
@@ -370,8 +375,7 @@ BOOST_AUTO_TEST_CASE(slantedPillarRefinementConservesCenterOfMass)
                                                       parent.zcorn.data(), nullptr, req);
 
     Dune::CpGrid refinedGrid;
-    const auto rawRefined = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto rawRefined = rawOf(refined);
     refinedGrid.processEclipseFormat(rawRefined, false);
 
     // (1) Volume of the refined block equals the parent box volume. The small
@@ -426,8 +430,7 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockIsPreserved)
                                                       parent.zcorn.data(), nullptr, req);
 
     Dune::CpGrid refinedGrid;
-    const auto rawRefined = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto rawRefined = rawOf(refined);
     refinedGrid.processEclipseFormat(rawRefined, false);
 
     // Volume is conserved across the faulted block (vertical pillars).
@@ -449,9 +452,7 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockIsPreserved)
                                                              parentNoFault.zcorn.data(),
                                                              nullptr, req);
     Dune::CpGrid refinedGridNoFault;
-    const auto rawNoFault = grdecl{ {refinedNoFault.dims[0], refinedNoFault.dims[1], refinedNoFault.dims[2]},
-                                    refinedNoFault.coord.data(), refinedNoFault.zcorn.data(),
-                                    refinedNoFault.actnum.data() };
+    const auto rawNoFault = rawOf(refinedNoFault);
     refinedGridNoFault.processEclipseFormat(rawNoFault, false);
 
     BOOST_CHECK_EQUAL(refinedGrid.size(0), refinedGridNoFault.size(0));
@@ -484,8 +485,7 @@ BOOST_AUTO_TEST_CASE(inactiveParentsProduceInactiveChildren)
     BOOST_CHECK_EQUAL(inactive, 8);
 
     Dune::CpGrid refinedGrid;
-    const auto rawRefined = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto rawRefined = rawOf(refined);
     refinedGrid.processEclipseFormat(rawRefined, false);
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 3*2*1*8 - 8);
 }
@@ -514,20 +514,19 @@ BOOST_AUTO_TEST_CASE(gradedRefinementFollowsColumnTables)
                                                       parent.zcorn.data(), nullptr, req);
 
     // The refined count comes from the tables, not from a factor.
-    BOOST_CHECK(refined.dims == (std::array<int,3>{4, 1, 2}));
+    BOOST_CHECK(refined.dims == (std::array<std::size_t,3>{4, 1, 2}));
 
     const std::array<double,5> expectedX = {1.0, 2.0, 2.25, 2.75, 3.0};
-    for (int jr = 0; jr <= refined.dims[1]; ++jr) {
-        for (int ir = 0; ir <= refined.dims[0]; ++ir) {
-            const double* p = &refined.coord[6*(static_cast<std::size_t>(jr)*(refined.dims[0] + 1) + ir)];
+    for (std::size_t jr = 0; jr <= refined.dims[1]; ++jr) {
+        for (std::size_t ir = 0; ir <= refined.dims[0]; ++ir) {
+            const double* p = &refined.coord[6*(jr*(refined.dims[0] + 1) + ir)];
             BOOST_CHECK_CLOSE(p[0], expectedX[ir], 1e-11);
         }
     }
 
     // Volume is conserved whatever the columns do: the box is 2x1x2 unit cells.
     Dune::CpGrid refinedGrid;
-    const auto raw = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                             refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto raw = rawOf(refined);
     refinedGrid.processEclipseFormat(raw, false);
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 8);
     BOOST_CHECK_CLOSE(totalVolume(refinedGrid), 4.0, 1e-9);
@@ -609,8 +608,7 @@ BOOST_AUTO_TEST_CASE(refinedPillarStaysBetweenParentPillars)
     parentGrid.processEclipseFormat(rawParent, false);
 
     Dune::CpGrid refinedGrid;
-    const auto rawRefined = grdecl{ {refined.dims[0], refined.dims[1], refined.dims[2]},
-                                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
+    const auto rawRefined = rawOf(refined);
     refinedGrid.processEclipseFormat(rawRefined, false);
     for (const auto& element : Dune::elements(refinedGrid.leafGridView())) {
         BOOST_CHECK_GT(element.geometry().volume(), 0.0);

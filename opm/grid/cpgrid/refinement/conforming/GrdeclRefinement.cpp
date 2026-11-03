@@ -37,58 +37,62 @@ namespace Opm
 namespace Refinement
 {
 
+std::array<int,3> RefinedBlockGrdecl::intDims() const
+{
+    return { static_cast<int>(dims[0]), static_cast<int>(dims[1]), static_cast<int>(dims[2]) };
+}
+
 RefinedBlockGrdecl refineBlock(const std::array<int,3>& parentDims,
                                const double* coord,
                                const double* zcorn,
                                const int* actnum,
                                const BlockRefinement& request)
 {
-    const auto& [nx, ny, nz] = parentDims;
-    for (int c = 0; c < 3; ++c) {
-        if (request.startIJK[c] < 0 || request.endIJK[c] > parentDims[c]
-            || request.startIJK[c] >= request.endIJK[c]) {
+    for (int dim = 0; dim < 3; ++dim) {
+        if (request.startIJK[dim] < 0 || request.endIJK[dim] > parentDims[dim]
+            || request.startIJK[dim] >= request.endIJK[dim]) {
             OPM_THROW(std::invalid_argument, "Refinement box '" + request.name
                                         + "' does not fit inside the parent dimensions.");
         }
-        if (request.subdivision[c].empty() && request.cellsPerDim[c] < 1) {
+        if (request.subdivision[dim].empty() && request.cellsPerDim[dim] < 1) {
             OPM_THROW(std::invalid_argument, "Refinement '" + request.name
                                         + "' has non-positive subdivisions.");
         }
     }
+    // The parent dimensions as sizes, for the array lengths and indices below.
+    const std::size_t nx = parentDims[0];
+    const std::size_t ny = parentDims[1];
+    const std::size_t nz = parentDims[2];
 
     const std::array<Opm::Refinement::AxisSubdivision,3> subs = { axisSubdivision(request, 0),
                                                 axisSubdivision(request, 1),
                                                 axisSubdivision(request, 2) };
 
+    // The number of refined cells in each direction is the number of refined columns.
     RefinedBlockGrdecl out;
-    out.dims = refinedDims(request);
+    out.dims = { subs[0].size(), subs[1].size(), subs[2].size() };
 
     // --- COORD and ZCORN: by the functions the LGR grids opm-common builds use,
     // so every block that shares a pillar or a face computes it alike.
     Opm::CornerPointRefinement::Box box { parentDims, request.startIJK, {} };
-    for (int c = 0; c < 3; ++c) {
-        box.axes[c] = { subs[c].parentOffset, subs[c].fracLo, subs[c].fracHi };
+    for (int dim = 0; dim < 3; ++dim) {
+        box.axes[dim] = { subs[dim].parentOffset, subs[dim].fracLo, subs[dim].fracHi };
     }
-    out.coord = Opm::CornerPointRefinement::refinedCoord(
-        box, { coord, 6 * static_cast<std::size_t>(nx + 1) * (ny + 1) });
-    out.zcorn = Opm::CornerPointRefinement::refinedZcorn(
-        box, { zcorn, 8 * static_cast<std::size_t>(nx) * ny * nz });
+    out.coord = Opm::CornerPointRefinement::refinedCoord(box, { coord, 6 * (nx + 1) * (ny + 1) });
+    out.zcorn = Opm::CornerPointRefinement::refinedZcorn(box, { zcorn, 8 * nx * ny * nz });
 
     // --- ACTNUM: children inherit the parent flag -------------------------
-    out.actnum.assign(static_cast<std::size_t>(out.dims[0]) * out.dims[1] * out.dims[2], 1);
+    // Child (refined) cell (ci, cj, ck) lies in parent cell (pi, pj, pk).
+    out.actnum.assign(out.dims[0] * out.dims[1] * out.dims[2], 1);
     if (actnum) {
-        for (int kr = 0; kr < out.dims[2]; ++kr) {
-            const int ck = request.startIJK[2] + subs[2].parentOffset[kr];
-            for (int jr = 0; jr < out.dims[1]; ++jr) {
-                const int cj = request.startIJK[1] + subs[1].parentOffset[jr];
-                for (int ir = 0; ir < out.dims[0]; ++ir) {
-                    const int ci = request.startIJK[0] + subs[0].parentOffset[ir];
-                    const std::size_t parentIdx = static_cast<std::size_t>(ci)
-                        + static_cast<std::size_t>(nx)*cj
-                        + static_cast<std::size_t>(nx)*ny*ck;
-                    const std::size_t childIdx = static_cast<std::size_t>(ir)
-                        + static_cast<std::size_t>(out.dims[0])*jr
-                        + static_cast<std::size_t>(out.dims[0])*out.dims[1]*kr;
+        for (std::size_t ck = 0; ck < out.dims[2]; ++ck) {
+            const std::size_t pk = request.startIJK[2] + subs[2].parentOffset[ck];
+            for (std::size_t cj = 0; cj < out.dims[1]; ++cj) {
+                const std::size_t pj = request.startIJK[1] + subs[1].parentOffset[cj];
+                for (std::size_t ci = 0; ci < out.dims[0]; ++ci) {
+                    const std::size_t pi = request.startIJK[0] + subs[0].parentOffset[ci];
+                    const std::size_t parentIdx = pi + nx*pj + nx*ny*pk;
+                    const std::size_t childIdx = ci + out.dims[0]*cj + out.dims[0]*out.dims[1]*ck;
                     out.actnum[childIdx] = actnum[parentIdx];
                 }
             }
