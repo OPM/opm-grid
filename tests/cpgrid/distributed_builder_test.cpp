@@ -76,6 +76,14 @@ struct TestGrdecl
     }
 };
 
+} // anonymous namespace
+
+BOOST_GLOBAL_FIXTURE(MPIFixture);
+
+#if HAVE_MPI
+namespace
+{
+
 TestGrdecl makeUnitGrid(const std::array<int,3>& dims)
 {
     TestGrdecl g;
@@ -107,9 +115,6 @@ void useConformingBuilder(Dune::CpGrid& grid, std::unique_ptr<Opm::Refinement::B
 
 } // anonymous namespace
 
-BOOST_GLOBAL_FIXTURE(MPIFixture);
-
-#if HAVE_MPI
 // Distributed refinement of a rank-interior box. The builder infrastructure
 // (rank-interior classification, empty placeholder level grids on non-owning
 // ranks, self-communicator level grids so only the owning rank refines
