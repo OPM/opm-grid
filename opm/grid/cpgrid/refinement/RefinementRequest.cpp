@@ -47,6 +47,31 @@ bool boxesOverlap(const Opm::Refinement::BlockRefinement& a,
     return true;
 }
 
+// Whether the columns of a graded subdivision take the box's parent cells one after the
+// other, each from 0 to 1: a column starts exactly where the one before it in the same
+// parent cell ends, and has a positive extent. Tables built as cumulative shares over
+// their sum, as opm-common builds them, pass exactly.
+bool coversEachParentCell(const Opm::Refinement::AxisSubdivision& sub, int parentCells)
+{
+    for (std::size_t c = 0; c < sub.size(); ++c) {
+        const bool first = (c == 0) || (sub.parentOffset[c] != sub.parentOffset[c - 1]);
+        const bool last = (c + 1 == sub.size()) || (sub.parentOffset[c + 1] != sub.parentOffset[c]);
+        if (first) {
+            const int next = (c == 0) ? 0 : sub.parentOffset[c - 1] + 1;
+            if ((sub.parentOffset[c] != next) || (sub.fracLo[c] != 0.0)) {
+                return false;
+            }
+        }
+        else if (sub.fracLo[c] != sub.fracHi[c - 1]) {
+            return false;
+        }
+        if ((last && (sub.fracHi[c] != 1.0)) || !(sub.fracLo[c] < sub.fracHi[c])) {
+            return false;
+        }
+    }
+    return sub.parentOffset.back() == parentCells - 1;
+}
+
 } // anonymous namespace
 
 namespace Opm
@@ -185,6 +210,15 @@ void validateBlockRefinements(const std::vector<BlockRefinement>& requests,
                 OPM_THROW(std::invalid_argument, "Refinement '" + req.name
                                                  + "' has a graded subdivision whose extent tables "
                                                    "do not match its column count.");
+            }
+            if (!req.subdivision[c].empty()
+                && !coversEachParentCell(req.subdivision[c], req.endIJK[c] - req.startIJK[c]))
+            {
+                OPM_THROW(std::invalid_argument, "Refinement '" + req.name + "' has a graded "
+                          "subdivision in direction " + std::string(1, "IJK"[c]) + " whose "
+                          "columns do not cover each parent cell of the box from 0 to 1 in "
+                          "order. Give the parent cells their columns one after the other, "
+                          "each starting where the one before it ends.");
             }
         }
     }

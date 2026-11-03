@@ -29,6 +29,7 @@
 
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -234,6 +235,59 @@ BOOST_AUTO_TEST_CASE(conformingRefusesChildBeforeParent)
 
     grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ box("A", {1,1,1}, {3,3,3}), child });
     BOOST_CHECK_EQUAL(builder->recorded.size(), 2u);
+}
+
+// A graded table gives the box's parent cells their columns one after the other, each
+// from 0 to 1, every column starting where the one before it ends; the grid refuses
+// another table before the builder is called. Tables as opm-common builds them pass.
+BOOST_AUTO_TEST_CASE(conformingRefusesBrokenColumnTables)
+{
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    auto builder = std::make_shared<RecordingBuilder>();
+    grid.setRefinementBuilder(builder);
+
+    // The box has two parent cells in I.
+    const auto graded = [](Opm::Refinement::AxisSubdivision columns) {
+        auto request = box("A", {1,1,1}, {3,2,2});
+        request.subdivision[0] = std::move(columns);
+        return request;
+    };
+    const auto inOrder = [](const std::invalid_argument& e) {
+        return std::string(e.what()).find("do not cover each parent cell") != std::string::npos;
+    };
+    const double third = 1.0/3.0;
+    for (const auto& request : {
+             graded({ {0, 0, 1}, {0.0, 0.34, 0.0}, {third, 1.0, 1.0} }),        // a gap
+             graded({ {0, 0, 1}, {0.0, third, 0.0},
+                      {std::nextafter(third, 1.0), 1.0, 1.0} }),               // one bit over
+             graded({ {0, 1}, {0.1, 0.0}, {1.0, 1.0} }),                        // starts after 0
+             graded({ {0, 1}, {0.0, 0.0}, {0.9, 1.0} }),                        // ends before 1
+             graded({ {0, 0}, {0.0, 0.5}, {0.5, 1.0} }),                        // one parent cell
+             graded({ {1, 0}, {0.0, 0.0}, {1.0, 1.0} }),                        // out of order
+             graded({ {0, 0, 0, 1}, {0.0, 0.5, 0.5, 0.0}, {0.5, 0.5, 1.0, 1.0} }) }) { // empty column
+        BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),
+                              std::invalid_argument, inOrder);
+    }
+    BOOST_CHECK(builder->recorded.empty());
+
+    // Cumulative widths over their sum in each parent cell, the last column closed at 1:
+    // 0.3 + 0.3 + 0.3 in one cell, 0.2 + 0.3 + 0.5 in the other.
+    const std::vector<double> widths{ 0.3, 0.3, 0.3, 0.2, 0.3, 0.5 };
+    Opm::Refinement::AxisSubdivision columns;
+    for (int parent = 0; parent < 2; ++parent) {
+        const double total = widths[3*parent] + widths[3*parent + 1] + widths[3*parent + 2];
+        double cumulative = 0.0;
+        for (int c = 0; c < 3; ++c) {
+            columns.parentOffset.push_back(parent);
+            columns.fracLo.push_back(cumulative / total);
+            cumulative += widths[3*parent + c];
+            columns.fracHi.push_back((c == 2) ? 1.0 : cumulative / total);
+        }
+    }
+    grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ graded(columns) });
+    BOOST_CHECK_EQUAL(builder->recorded.size(), 1u);
 }
 
 // A Conforming grid built from a deck with LGRs refines without an explicit builder.
