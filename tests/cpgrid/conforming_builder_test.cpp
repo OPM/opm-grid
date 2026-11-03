@@ -115,6 +115,14 @@ double totalVolume(const Dune::CpGrid& grid)
     return vol;
 }
 
+// Cartesian index triplet of a leaf cell; a refined cell has its level-zero parent's.
+std::array<int,3> ijkOf(const Dune::CpGrid& grid, int cell)
+{
+    std::array<int,3> ijk;
+    grid.getIJK(cell, ijk);
+    return ijk;
+}
+
 // Every leaf face's corners wind counter-clockwise around its stored normal: the
 // polygon's area vector (sum of corner cross products) points along it.
 void checkFacesWindAroundNormal(const Dune::CpGrid& grid)
@@ -242,15 +250,11 @@ BOOST_AUTO_TEST_CASE(endToEndSingleBox)
 
     // The coarse i-neighbor of the box (cell (0,1,1)) sees the refined
     // mosaic: 5 unrefined faces + 4 refined ones.
-    const auto& dims = grid.logicalCartesianSize();
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         if (element.hasFather()) {
             continue;
         }
-        const int cart = grid.globalCell()[element.index()];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
+        const auto [i, j, k] = ijkOf(grid, element.index());
         if (i == 0 && j == 1 && k == 1) {
             int intersections = 0;
             int refinedNeighbors = 0;
@@ -555,7 +559,6 @@ BOOST_AUTO_TEST_CASE(faceSharingBoxes)
     // connected (interior faces pairing an A-child with a B-child exist).
     std::map<std::pair<int,int>, int> pairCount;
     int abConnections = 0;
-    const auto& dims = grid.logicalCartesianSize();
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         for (const auto& intersection : Dune::intersections(grid.leafGridView(), element)) {
             if (!intersection.neighbor()) {
@@ -565,8 +568,8 @@ BOOST_AUTO_TEST_CASE(faceSharingBoxes)
             const int out = intersection.outside().index();
             pairCount[{std::min(in, out), std::max(in, out)}] += 1;
             if (intersection.inside().hasFather() && intersection.outside().hasFather()) {
-                const int ci = grid.globalCell()[in] % dims[0];
-                const int co = grid.globalCell()[out] % dims[0];
+                const int ci = ijkOf(grid, in)[0];
+                const int co = ijkOf(grid, out)[0];
                 // One side in box A's i-range [0,2), the other in B's [2,4).
                 if ((ci < 2) != (co < 2)) {
                     ++abConnections;
@@ -694,14 +697,13 @@ BOOST_AUTO_TEST_CASE(stackedCompatibleInFaceMosaicBuilds)
     // bottom cell on the HI side is met by 2x2 = 4 finer faces. Count
     // finer->coarser connections across the k=0/k=1 parent boundary.
     int crossConnections = 0;
-    const auto& dims = grid.logicalCartesianSize();
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
             if (!is.neighbor() || !is.inside().hasFather() || !is.outside().hasFather()) {
                 continue;
             }
-            const int kin  = grid.globalCell()[is.inside().index()]  / (dims[0]*dims[1]);
-            const int kout = grid.globalCell()[is.outside().index()] / (dims[0]*dims[1]);
+            const int kin  = ijkOf(grid, is.inside().index())[2];
+            const int kout = ijkOf(grid, is.outside().index())[2];
             if (kin != kout) {
                 ++crossConnections;
             }
@@ -786,14 +788,13 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultEqualSubdiv)
     // The two boxes are actually connected across the fault: there exist interior
     // faces pairing an A-child (i<2) with a B-child (i>=2).
     int abConnections = 0;
-    const auto& dims = grid.logicalCartesianSize();
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
             if (!is.neighbor() || !is.inside().hasFather() || !is.outside().hasFather()) {
                 continue;
             }
-            const int ii = grid.globalCell()[is.inside().index()]  % dims[0];
-            const int oi = grid.globalCell()[is.outside().index()] % dims[0];
+            const int ii = ijkOf(grid, is.inside().index())[0];
+            const int oi = ijkOf(grid, is.outside().index())[0];
             if ((ii < 2) != (oi < 2)) {
                 ++abConnections;
             }
@@ -833,14 +834,13 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultCompatibleSubdiv)
     checkEveryInteriorFaceTwoSided(grid);               // no hanging faces
 
     int abConnections = 0;
-    const auto& dims = grid.logicalCartesianSize();
     for (const auto& element : Dune::elements(grid.leafGridView())) {
         for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
             if (!is.neighbor() || !is.inside().hasFather() || !is.outside().hasFather()) {
                 continue;
             }
-            const int ii = grid.globalCell()[is.inside().index()]  % dims[0];
-            const int oi = grid.globalCell()[is.outside().index()] % dims[0];
+            const int ii = ijkOf(grid, is.inside().index())[0];
+            const int oi = ijkOf(grid, is.outside().index())[0];
             if ((ii < 2) != (oi < 2)) {
                 ++abConnections;
             }
@@ -1193,19 +1193,14 @@ namespace
 // whose parent is at i = iOut: the connection across a fault at an i-face.
 double areaAcrossIFace(const Dune::CpGrid& grid, int iIn, int iOut, int k0, int k1)
 {
-    const auto& dims = grid.logicalCartesianSize();
-    const auto ijk = [&dims](int cart) {
-        return std::array<int,3>{ cart % dims[0], (cart / dims[0]) % dims[1],
-                                  cart / (dims[0]*dims[1]) };
-    };
     double area = 0.0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        const auto in = ijk(grid.globalCell()[element.index()]);
+        const auto in = ijkOf(grid, element.index());
         if (in[0] != iIn || in[2] < k0 || in[2] >= k1) {
             continue;
         }
         for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
-            if (is.neighbor() && ijk(grid.globalCell()[is.outside().index()])[0] == iOut) {
+            if (is.neighbor() && ijkOf(grid, is.outside().index())[0] == iOut) {
                 area += is.geometry().volume();
             }
         }
@@ -1403,13 +1398,8 @@ double minVertexPairDistance(const Dune::CpGrid& grid)
 // splitAt along axis (i.e. across the box-box interface), counted twice.
 int crossBoxConnections(const Dune::CpGrid& grid, int axis, int splitAt)
 {
-    const auto& dims = grid.logicalCartesianSize();
     const auto parentAlong = [&](int leafCell) {
-        const int cart = grid.globalCell()[leafCell];
-        const std::array<int,3> ijk = { cart % dims[0],
-                                        (cart / dims[0]) % dims[1],
-                                        cart / (dims[0]*dims[1]) };
-        return ijk[axis];
+        return ijkOf(grid, leafCell)[axis];
     };
     int count = 0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {

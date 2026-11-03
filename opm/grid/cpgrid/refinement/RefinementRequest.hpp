@@ -77,6 +77,10 @@ AxisSubdivision axisSubdivision(const BlockRefinement& request, int dim);
 /// request are box size times cellsPerDim.
 std::array<int,3> refinedDims(const BlockRefinement& request);
 
+/// Whether the parent cell with Cartesian index triplet @p ijk lies in the box:
+/// startIJK <= ijk < endIJK in every direction.
+bool contains(const BlockRefinement& request, const std::array<int,3>& ijk);
+
 /// Where each refined column sits inside its parent cell, in one direction.
 /// For example, a box of two parent cells split into 2 and 3 columns:
 ///

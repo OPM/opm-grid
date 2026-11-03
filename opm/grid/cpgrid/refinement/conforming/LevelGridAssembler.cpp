@@ -24,6 +24,7 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
@@ -70,19 +71,6 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
         }
         return refined;
     };
-    const auto ijkOf = [&parentDims](int cart) {
-        return std::array<int,3>{ cart % parentDims[0],
-                                  (cart / parentDims[0]) % parentDims[1],
-                                  cart / (parentDims[0] * parentDims[1]) };
-    };
-    const auto inBox = [&request](const std::array<int,3>& ijk) {
-        for (int d = 0; d < 3; ++d) {
-            if (ijk[d] < request.startIJK[d] || ijk[d] >= request.endIJK[d]) {
-                return false;
-            }
-        }
-        return true;
-    };
 
     std::set<std::pair<int,int>> pairs;
     const int numFaces = faceToCell.size();
@@ -94,13 +82,13 @@ boxPinchPairs(const Dune::cpgrid::CpGridData& parentGrid,
             || (row[1].index() >= static_cast<int>(globalCell.size()))) {
             continue;
         }
-        auto upper = ijkOf(globalCell[row[0].index()]);
-        auto lower = ijkOf(globalCell[row[1].index()]);
+        auto upper = Opm::Lgr::getIJK(globalCell[row[0].index()], parentDims);
+        auto lower = Opm::Lgr::getIJK(globalCell[row[1].index()], parentDims);
         if (upper[2] > lower[2]) {
             std::swap(upper, lower);
         }
         if ((upper[0] != lower[0]) || (upper[1] != lower[1]) || (lower[2] - upper[2] < 2)
-            || !inBox(upper) || !inBox(lower)) {
+            || !contains(request, upper) || !contains(request, lower)) {
             continue;
         }
         const int kUpper = refinedOf(2, upper[2] - request.startIJK[2]).back();
@@ -187,11 +175,13 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
     std::vector<std::array<int,2>> childToParent(numRefinedCells);
     std::vector<int> idxInParent(numRefinedCells);
 
+    // The level index first: getIJK() reads the grid's own Cartesian size only
+    // on a level above zero.
+    GridStateWriter::setLevel(*level, levelIndex);
     for (int cell = 0; cell < numRefinedCells; ++cell) {
-        const int refinedCart = level->globalCell()[cell];
-        const int ir = refinedCart % refined.dims[0];
-        const int jr = (refinedCart / refined.dims[0]) % refined.dims[1];
-        const int kr = refinedCart / (refined.dims[0]*refined.dims[1]);
+        std::array<int,3> refinedIJK;
+        level->getIJK(cell, refinedIJK);
+        const auto& [ir, jr, kr] = refinedIJK;
 
         const int ci = request.startIJK[0] + subs[0].parentOffset[ir];
         const int cj = request.startIJK[1] + subs[1].parentOffset[jr];
@@ -214,7 +204,6 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                           + pos[2].subIndex[kr]*cx*cy;
     }
 
-    GridStateWriter::setLevel(*level, levelIndex);
     GridStateWriter::setCellsPerDim(*level, request.cellsPerDim);
     // Only a graded box stores its tables; a uniform level keeps to
     // cells_per_dim, which everything reading it already understands.

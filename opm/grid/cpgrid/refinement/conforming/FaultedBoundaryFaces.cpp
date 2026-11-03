@@ -22,6 +22,7 @@
 
 #include <opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp>
 
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
@@ -149,19 +150,12 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
 
     const auto latticeOf = [&](int activeCell) {
         const int g = out.local_cell_index[activeCell];   // active -> logical (mini) index
-        return std::array<int,3>{ g % mdims[0],
-                                  (g / mdims[0]) % mdims[1],
-                                  g / (mdims[0] * mdims[1]) };
+        return Opm::Lgr::getIJK(g, mdims);
     };
     const auto parentOfMini = [&](const std::array<int,3>& L) {
         return std::array<int,3>{ miniStart[0] + miniSub[0].parentOffset[L[0]],
                                   miniStart[1] + miniSub[1].parentOffset[L[1]],
                                   miniStart[2] + miniSub[2].parentOffset[L[2]] };
-    };
-    const auto inBox = [&](const std::array<int,3>& p) {
-        return p[0] >= boxStartIJK[0] && p[0] < boxEndIJK[0]
-            && p[1] >= boxStartIJK[1] && p[1] < boxEndIJK[1]
-            && p[2] >= boxStartIJK[2] && p[2] < boxEndIJK[2];
     };
 
     for (unsigned face = 0; face < out.number_of_faces; ++face) {
@@ -195,7 +189,7 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
         if (otherSlot >= 0) {
             const std::array<int,3> oL = latticeOf(otherSlot);
             const std::array<int,3> op = parentOfMini(oL);
-            if (inBox(op)) {
+            if (contains(box, op)) {
                 continue; // an internal box face, not a boundary face
             }
             coarseCart = op[0] + parentDims[0]*op[1] + parentDims[0]*parentDims[1]*op[2];

@@ -152,13 +152,11 @@ double boxVolume(const Dune::CpGrid& grid,
                  const std::array<int,3>& startIJK,
                  const std::array<int,3>& endIJK)
 {
-    const auto& dims = grid.logicalCartesianSize();
     double vol = 0.0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        const int cart = grid.globalCell()[element.index()];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
+        std::array<int,3> ijk;
+        grid.getIJK(element.index(), ijk);
+        const auto& [i, j, k] = ijk;
         if (i >= startIJK[0] && i < endIJK[0] && j >= startIJK[1] && j < endIJK[1]
             && k >= startIJK[2] && k < endIJK[2]) {
             vol += element.geometry().volume();
@@ -189,14 +187,12 @@ std::array<double,3> boxCenterOfMass(const Dune::CpGrid& grid,
                                      const std::array<int,3>& startIJK,
                                      const std::array<int,3>& endIJK)
 {
-    const auto& dims = grid.logicalCartesianSize();
     std::array<double,3> m = {0.0, 0.0, 0.0};
     double vol = 0.0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        const int cart = grid.globalCell()[element.index()];
-        const int i = cart % dims[0];
-        const int j = (cart / dims[0]) % dims[1];
-        const int k = cart / (dims[0]*dims[1]);
+        std::array<int,3> ijk;
+        grid.getIJK(element.index(), ijk);
+        const auto& [i, j, k] = ijk;
         if (i >= startIJK[0] && i < endIJK[0] && j >= startIJK[1] && j < endIJK[1]
             && k >= startIJK[2] && k < endIJK[2]) {
             const auto geo = element.geometry();

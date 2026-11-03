@@ -119,6 +119,16 @@ std::array<int,3> refinedDims(const BlockRefinement& request)
     return dims;
 }
 
+bool contains(const BlockRefinement& request, const std::array<int,3>& ijk)
+{
+    for (int d = 0; d < 3; ++d) {
+        if ((ijk[d] < request.startIJK[d]) || (ijk[d] >= request.endIJK[d])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::vector<BlockRefinement>
 blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
                  const std::vector<std::array<int,3>>& startIJK,

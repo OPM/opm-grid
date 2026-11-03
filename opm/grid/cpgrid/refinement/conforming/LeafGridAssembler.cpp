@@ -26,6 +26,7 @@
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 
@@ -355,15 +356,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     for (int c = 0; c < numCells0; ++c) {
         compressed0[level0.globalCell()[c]] = c;
     }
-    const auto boxOfIJK = [&](int i, int j, int k) {
+    const auto boxOfIJK = [&](const std::array<int,3>& ijk) {
         for (int b = 0; b < numBoxes; ++b) {
-            if (nested(b)) {
-                continue;
-            }
-            const auto& req = requests[b];
-            if (i >= req.startIJK[0] && i < req.endIJK[0]
-                && j >= req.startIJK[1] && j < req.endIJK[1]
-                && k >= req.startIJK[2] && k < req.endIJK[2]) {
+            if (!nested(b) && contains(requests[b], ijk)) {
                 return b;
             }
         }
@@ -372,11 +367,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     // Box membership of each level-zero cell (-1 if unrefined).
     std::vector<int> boxOfCell(numCells0, -1);
     for (int c = 0; c < numCells0; ++c) {
-        const int cart = level0.globalCell()[c];
-        const int i = cart % dims0[0];
-        const int j = (cart / dims0[0]) % dims0[1];
-        const int k = cart / (dims0[0]*dims0[1]);
-        boxOfCell[c] = boxOfIJK(i, j, k);
+        std::array<int,3> ijk;
+        level0.getIJK(c, ijk);
+        boxOfCell[c] = boxOfIJK(ijk);
     }
 
     auto& cellToPoint0 = GridStateWriter::cellToPoint(level0);
@@ -445,7 +438,6 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         // are that parent's own counts once the box is graded.
         box.cornerEquiv.assign(box.level->size(3), -1);
         auto& cellToPointL = GridStateWriter::cellToPoint(*box.level);
-        const auto& rd = box.refinedDims;
         const int maskL = cornerSlotMask(*box.level);
         box.cornerMask = maskL;
         auto& cellToPointP = nested(b) ? GridStateWriter::cellToPoint(*boxes[parentBoxOf[b]].level)
@@ -453,10 +445,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         const int maskP = nested(b) ? boxes[parentBoxOf[b]].cornerMask : mask0;
         for (int cell = 0; cell < box.level->size(0); ++cell) {
             const int parent = childToParent[cell][1];
-            const int refinedCart = box.level->globalCell()[cell];
-            const std::array<int,3> lattice = { refinedCart % rd[0],
-                                                (refinedCart / rd[0]) % rd[1],
-                                                refinedCart / (rd[0]*rd[1]) };
+            std::array<int,3> lattice;
+            box.level->getIJK(cell, lattice);
             for (int corner = 0; corner < 8; ++corner) {
                 const std::array<int,3> d = { corner & 1, (corner >> 1) & 1, (corner >> 2) & 1 };
                 std::array<int,3> parentCornerIJK{};
@@ -649,10 +639,9 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     };
     const auto parentIJK = [&](int b, int cell) {
         const CpGridData& grid = nested(b) ? *boxes[parentBoxOf[b]].level : level0;
-        const auto& dims = nested(b) ? boxes[parentBoxOf[b]].refinedDims : dims0;
-        const int cart = grid.globalCell()[cell];
-        return std::array<int,3>{ cart % dims[0], (cart / dims[0]) % dims[1],
-                                  cart / (dims[0]*dims[1]) };
+        std::array<int,3> ijk;
+        grid.getIJK(cell, ijk);
+        return ijk;
     };
     // The cell across a nested box's side: across its parent cell's face there, which must
     // be the parent's whole face (a fault or pinch-out on it is not supported), or -1.
@@ -756,11 +745,12 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         if ((axis == 2) && (directionFaces.size() == 2)) {
             int open = 0;
             int pinched = -1;
-            const auto ijk = [&dims0](int cart) {
-                return std::array<int,3>{ cart % dims0[0], (cart / dims0[0]) % dims0[1],
-                                          cart / (dims0[0] * dims0[1]) };
+            const auto ijk = [&level0](int cell) {
+                std::array<int,3> result;
+                level0.getIJK(cell, result);
+                return result;
             };
-            const auto p = ijk(level0.globalCell()[parent]);
+            const auto p = ijk(parent);
             for (const int face : directionFaces) {
                 const auto cells = faceToCell0[EntityRep<1>(face, true)];
                 if (cells.size() == 1) {
@@ -772,7 +762,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     if ((cell == parent) || (cell == kRemoteCell)) {
                         continue;
                     }
-                    const auto c = ijk(level0.globalCell()[cell]);
+                    const auto c = ijk(cell);
                     if ((c[0] == p[0]) && (c[1] == p[1]) && (std::abs(c[2] - p[2]) > 1)) {
                         pinched = cell;
                     }
@@ -882,10 +872,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 if (cell == parent || cell == kRemoteCell) {
                     continue;
                 }
-                const int cart = level0.globalCell()[cell];
-                const std::array<int,3> nijk = { cart % dims0[0],
-                                                 (cart / dims0[0]) % dims0[1],
-                                                 cart / (dims0[0]*dims0[1]) };
+                std::array<int,3> nijk;
+                level0.getIJK(cell, nijk);
                 const auto key = std::make_tuple(b, axis, side);
                 if ((boxOfCell[cell] >= 0) && (boxOfCell[cell] != b)) {
                     boxesAcross[key].insert(boxOfCell[cell]);
@@ -903,10 +891,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         if (b < 0) {
             continue;
         }
-        const int cart = level0.globalCell()[c];
-        const std::array<int,3> ijk = { cart % dims0[0],
-                                        (cart / dims0[0]) % dims0[1],
-                                        cart / (dims0[0]*dims0[1]) };
+        std::array<int,3> ijk;
+        level0.getIJK(c, ijk);
         for (int axis = 0; axis < 3; ++axis) {
             for (int side = -1; side <= 1; side += 2) {
                 const bool onBoundary = (side < 0)
@@ -975,10 +961,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                 const bool normalOut = row[0].orientation();
                 const int axis = axisOf(tagsL.get(face));
                 const int side = normalOut ? 1 : -1;
-                const int cart = box.level->globalCell()[cell];
-                std::array<int,3> lattice = { cart % box.refinedDims[0],
-                                              (cart / box.refinedDims[0]) % box.refinedDims[1],
-                                              cart / (box.refinedDims[0]*box.refinedDims[1]) };
+                std::array<int,3> lattice;
+                box.level->getIJK(cell, lattice);
                 lattice[axis] += side;
                 if (lattice[axis] < 0 || lattice[axis] >= box.refinedDims[axis]) {
                     // Faulted side: suppress this box face; the whole side is
@@ -1233,10 +1217,8 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                         }
                         // (Nesting is checked above, so facThis is a multiple of facN
                         // in the in-face directions.)
-                        const std::array<int,3> pijk = {
-                            conn.coarseNeighborCart % dims0[0],
-                            (conn.coarseNeighborCart / dims0[0]) % dims0[1],
-                            conn.coarseNeighborCart / (dims0[0]*dims0[1]) };
+                        const std::array<int,3> pijk =
+                            Opm::Lgr::getIJK(conn.coarseNeighborCart, dims0);
                         const auto& startN = requests[nbBox].startIJK;
                         const auto& rdN    = boxes[nbBox].refinedDims;
                         // Neighbour child sub-position in the NEIGHBOUR's frame: the
