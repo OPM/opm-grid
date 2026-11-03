@@ -362,9 +362,13 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
 
     if (distributed) {
         // Collective-safe: catch a per-rank failure, agree across ranks with a
-        // single reduction, and throw symmetrically (with the offending rank's
-        // message) so the run fails cleanly instead of deadlocking in the leaf
-        // assembly's collectives below.
+        // single reduction, and throw on every rank so the run fails cleanly
+        // instead of deadlocking in the leaf assembly's collectives below. The
+        // lowest rank that failed logs its own message; the others throw
+        // without logging.
+        // TODO: an error thrown inside this phase is still logged on every rank
+        // that hits it. Per-rank logging, as with opm-simulators' DeferredLogger,
+        // would collect those messages.
         int localBuildError = 0;
         std::string localBuildMsg;
         try {
@@ -374,12 +378,16 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             localBuildMsg = e.what();
         }
         const auto& cc = grid.getLevelZeroComm();
-        if (cc.max(localBuildError) != 0) {
-            OPM_THROW(std::runtime_error, (localBuildError != 0
-                ? ("Parallel LGR build failed on rank " + std::to_string(cc.rank())
-                   + ": " + localBuildMsg)
-                : ("Parallel LGR build aborted on rank " + std::to_string(cc.rank())
-                   + " because another rank failed (see that rank's message).")));
+        // The lowest rank that failed, or the number of ranks if none did.
+        const int failedRank = cc.min(localBuildError != 0 ? cc.rank() : cc.size());
+        if (failedRank < cc.size()) {
+            if (cc.rank() == failedRank) {
+                OPM_THROW(std::runtime_error, "Parallel LGR build failed on rank "
+                          + std::to_string(cc.rank()) + ": " + localBuildMsg);
+            }
+            OPM_THROW_NOLOG(std::runtime_error, "Parallel LGR build aborted on rank "
+                            + std::to_string(cc.rank()) + " because rank "
+                            + std::to_string(failedRank) + " failed (see that rank's message).");
         }
     } else {
         buildLevelGrids();
