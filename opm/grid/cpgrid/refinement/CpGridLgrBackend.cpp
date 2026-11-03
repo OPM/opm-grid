@@ -81,9 +81,8 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
 
     auto builder = refinement_builder_;
     if (!builder) {
-        if (const auto input = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*current_data_->front())) {
-            builder = std::make_shared<Opm::Refinement::ConformingBlockBuilder>(
-                input->dims, input->coord, input->zcorn, input->actnum, input->edgeConformal);
+        if (auto input = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*current_data_->front())) {
+            builder = std::make_shared<Opm::Refinement::ConformingBlockBuilder>(std::move(input));
         }
     }
     if (!builder) {
@@ -108,6 +107,8 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
     }
     const int preBuildMaxLevel = maxLevel();
     builder->build(*this, requests);
+    // A grid is refined once: its level zero no longer needs the description.
+    Opm::Refinement::GridStateWriter::setRetainedCornerPointInput(*current_data_->front(), nullptr);
 
     for (std::size_t box = 0; box < requests.size(); ++box) {
         lgr_names_[requests[box].name] = preBuildMaxLevel + static_cast<int>(box) + 1;

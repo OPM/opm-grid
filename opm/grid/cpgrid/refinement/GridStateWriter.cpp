@@ -126,12 +126,22 @@ Dune::cpgrid::OrientedEntityTable<1,0>& GridStateWriter::faceToCell(Data& grid)
     return grid.face_to_cell_;
 }
 
+const Dune::cpgrid::OrientedEntityTable<1,0>& GridStateWriter::faceToCell(const Data& grid)
+{
+    return grid.face_to_cell_;
+}
+
 Opm::SparseTable<int>& GridStateWriter::faceToPoint(Data& grid)
 {
     return grid.face_to_point_;
 }
 
 Dune::cpgrid::EntityVariable<enum face_tag, 1>& GridStateWriter::faceTag(Data& grid)
+{
+    return grid.face_tag_;
+}
+
+const Dune::cpgrid::EntityVariable<enum face_tag, 1>& GridStateWriter::faceTag(const Data& grid)
 {
     return grid.face_tag_;
 }

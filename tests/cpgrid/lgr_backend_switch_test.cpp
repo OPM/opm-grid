@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
@@ -211,9 +212,12 @@ BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
     Dune::CpGrid grid;
     grid.setLgrBackend(Backend::Conforming);
     processDeck(grid);
+    BOOST_CHECK(Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
     grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"});
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 2*2);
+    // Refined once, the grid lets the description go.
+    BOOST_CHECK(!Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
 }
 
 // Input is retained only when the backend is chosen before processEclipseFormat().
