@@ -33,7 +33,9 @@
 
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <algorithm>
 #include <array>
+#include <cassert>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -212,6 +214,21 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                     ++overlapCount;
                 }
             }
+            // A graded box has a subdivision column by column, not one factor per
+            // direction, and the two boxes do not compute the corners on a shared face
+            // or edge alike: it would crack or have hanging nodes. A shared corner is a
+            // corner of level zero.
+            const auto graded = [](const Opm::Refinement::BlockRefinement& request) {
+                return std::any_of(request.subdivision.begin(), request.subdivision.end(),
+                                   [](const auto& sub) { return !sub.empty(); });
+            };
+            if ((overlapCount > 0) && (graded(a) || graded(b))) {
+                OPM_THROW(std::invalid_argument,
+                    "Refinement boxes '" + a.name + "' and '" + b.name + "' touch and at least "
+                    "one is graded. Touching graded boxes are not supported; keep a graded box "
+                    "apart from other boxes (meeting at a corner is fine), or refine both "
+                    "uniformly.");
+            }
             // Scan the overlap directions where the subdivisions differ.
             bool anyDiffer = false;
             bool anyIncompatible = false;
@@ -231,7 +248,10 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
                 const int nb = b.cellsPerDim[c];
                 const int hi = (na > nb) ? na : nb;
                 const int lo = (na > nb) ? nb : na;
-                if (lo <= 0 || hi % lo != 0) {
+                // Graded pairs are refused above: both factors are uniform ones, which
+                // validateBlockRefinements() requires to be at least 1.
+                assert(lo > 0);
+                if (hi % lo != 0) {
                     anyIncompatible = true;
                     incompatDir = c;
                 }

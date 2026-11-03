@@ -37,6 +37,8 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace
@@ -656,6 +658,136 @@ void checkEveryInteriorFaceTwoSided(const Dune::CpGrid& grid)
         BOOST_CHECK_EQUAL(count, 2);
     }
     checkFacesWindAroundNormal(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Graded boxes next to other boxes. A 2x2x2 grid of unit columns, layers 2 thick.
+// ---------------------------------------------------------------------------
+namespace
+{
+
+Opm::Refinement::BlockRefinement gradedTestBox(const std::string& name, std::array<int,3> cellsPerDim,
+                                               std::array<int,3> start, std::array<int,3> end)
+{
+    Opm::Refinement::BlockRefinement request;
+    request.name = name;
+    request.cellsPerDim = cellsPerDim;
+    request.startIJK = start;
+    request.endIJK = end;
+    return request;
+}
+
+// Two parent cells, each split 0.3 / 0.7.
+Opm::Refinement::AxisSubdivision twoParentsSplit03()
+{
+    return { {0, 0, 1, 1}, {0.0, 0.3, 0.0, 0.3}, {0.3, 1.0, 0.3, 1.0} };
+}
+
+// Columns as opm-common builds them from N*FIN counts and H*FIN widths: cumulative
+// shares over their sum within each parent cell.
+Opm::Refinement::AxisSubdivision columnsFromWidths(const std::vector<int>& counts,
+                                                   const std::vector<double>& widths)
+{
+    Opm::Refinement::AxisSubdivision sub;
+    std::size_t column = 0;
+    for (std::size_t parent = 0; parent < counts.size(); ++parent) {
+        double total = 0.0;
+        for (int c = 0; c < counts[parent]; ++c) {
+            total += widths[column + c];
+        }
+        double cumulative = 0.0;
+        for (int c = 0; c < counts[parent]; ++c, ++column) {
+            sub.parentOffset.push_back(static_cast<int>(parent));
+            sub.fracLo.push_back(cumulative / total);
+            cumulative += widths[column];
+            sub.fracHi.push_back((c + 1 == counts[parent]) ? 1.0 : cumulative / total);
+        }
+    }
+    return sub;
+}
+
+// Refines a fresh 2x2x2 grid; returns it for the checks.
+std::unique_ptr<Dune::CpGrid> refineGradedPair(const std::vector<Opm::Refinement::BlockRefinement>& requests,
+                                               double* volumeBefore = nullptr)
+{
+    auto parent = makeVerticalPillarGrid({2, 2, 2}, [](int, int, int k_) {
+        return 2.0*(cellOf(k_) + sideOf(k_));
+    });
+    auto grid = std::make_unique<Dune::CpGrid>();
+    auto rawParent = parent.raw();
+    grid->processEclipseFormat(rawParent, false);
+    if (volumeBefore) {
+        *volumeBefore = totalVolume(*grid);
+    }
+    useConformingBuilder(*grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
+        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    try {
+        grid->addLgrsUpdateLeafView(requests);
+    }
+    catch (const std::invalid_argument& e) {
+        BOOST_CHECK_MESSAGE(std::string(e.what()).find("Touching graded boxes are not supported")
+                            != std::string::npos, "unexpected refusal: " << e.what());
+        BOOST_CHECK_EQUAL(grid->maxLevel(), 0);     // refused before any level grid
+        return nullptr;
+    }
+    return grid;
+}
+
+} // anonymous namespace
+
+// A graded box sharing a face with another box is refused before any level grid is
+// built, also when the graded direction's cellsPerDim is 0 or differs from the
+// other box's.
+BOOST_AUTO_TEST_CASE(gradedBoxSharingAFaceIsRefused)
+{
+    // A is the column I = 0, B the column I = 1: they share the face x = 1.
+    auto a = gradedTestBox("A", {2,2,2}, {0,0,0}, {1,2,2});
+    a.subdivision[1] = twoParentsSplit03();
+    const auto b = gradedTestBox("B", {2,2,2}, {1,0,0}, {2,2,2});
+    BOOST_CHECK(!refineGradedPair({a, b}));
+
+    auto unset = a;
+    unset.cellsPerDim = {2,0,2};
+    BOOST_CHECK(!refineGradedPair({unset, b}));
+
+    // Two and three columns in the two J parents: 5 columns, 5/2 = 2 per parent.
+    auto mixed = a;
+    mixed.subdivision[1] = { {0, 0, 1, 1, 1}, {0.0, 0.3, 0.0, 0.2, 0.5}, {0.3, 1.0, 0.2, 0.5, 1.0} };
+    BOOST_CHECK(!refineGradedPair({mixed, gradedTestBox("B", {2,3,2}, {1,0,0}, {2,2,2})}));
+}
+
+// A graded box sharing only an edge with another box is refused: the shared points
+// would not merge (columns of 0.3 + 0.3 + 0.3 are not exactly thirds) or would not
+// match (0.3 / 0.7 against halves).
+BOOST_AUTO_TEST_CASE(gradedBoxSharingAnEdgeIsRefused)
+{
+    // A is the column (0,0), B the column (1,1): they share the vertical edge on the
+    // pillar (1,1).
+    auto thirds = gradedTestBox("A", {2,2,3}, {0,0,0}, {1,1,2});
+    thirds.subdivision[2] = columnsFromWidths({3, 3}, {0.3, 0.3, 0.3, 0.3, 0.3, 0.3});
+    BOOST_CHECK(!refineGradedPair({thirds, gradedTestBox("B", {2,2,3}, {1,1,0}, {2,2,2})}));
+
+    auto split = gradedTestBox("A", {2,2,2}, {0,0,0}, {1,1,2});
+    split.subdivision[2] = twoParentsSplit03();
+    BOOST_CHECK(!refineGradedPair({split, gradedTestBox("B", {2,2,2}, {1,1,0}, {2,2,2})}));
+}
+
+// A graded box meeting another box at a corner only is built: the corner is a corner
+// of level zero.
+BOOST_AUTO_TEST_CASE(gradedBoxMeetingAtACornerBuilds)
+{
+    auto a = gradedTestBox("A", {2,2,2}, {0,0,0}, {1,1,1});
+    for (int d = 0; d < 3; ++d) {
+        a.subdivision[d] = { {0, 0}, {0.0, 0.3}, {0.3, 1.0} };
+    }
+    double volumeBefore = 0.0;
+    const auto grid = refineGradedPair({a, gradedTestBox("B", {2,2,2}, {1,1,1}, {2,2,2})},
+                                       &volumeBefore);
+    BOOST_REQUIRE(grid);
+    BOOST_CHECK_EQUAL(grid->maxLevel(), 2);
+    BOOST_CHECK_EQUAL(grid->size(0), 8 - 2 + 2*8);
+    BOOST_CHECK_CLOSE(totalVolume(*grid), volumeBefore, 1e-10);
+    BOOST_CHECK_SMALL(maxClosure(*grid), 1e-12);
 }
 
 // ---------------------------------------------------------------------------
