@@ -312,6 +312,104 @@ BOOST_AUTO_TEST_CASE(nestingRulesCheckedBeforeTheBuild)
     BOOST_CHECK_EQUAL(twoDeep.maxLevel(), 0);
 }
 
+// The nested box's MINPV removes every child: the nested box is an empty LGR.
+BOOST_AUTO_TEST_CASE(nestedBoxWithNoChildLeft)
+{
+    const auto g = makeGrid({4, 3, 3}, flat);
+    // LGR1 refines every cell into 3x3x3 (12x9x9); NEST refines LGR1 cells 3..8, 3..5,
+    // 3..5 into 2x2x2 (12x6x6).
+    auto nest = box("NEST", {2,2,2}, {3,3,3}, {9,6,6}, "LGR1");
+    nest.minpvRemoved.assign(12*6*6, 1);
+    Dune::CpGrid grid;
+    build(grid, g, {box("LGR1", {3,3,3}, {0,0,0}, {4,3,3}), nest});
+
+    BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
+    BOOST_CHECK_EQUAL(grid.levelGridView(2).size(0), 0);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    // The 6x3x3 LGR1 cells NEST refines are refined into nothing.
+    BOOST_CHECK_EQUAL(grid.size(0), 4*3*3*27 - 6*3*3);
+}
+
+// The nested box's MINPV removes every child of one LGR1 cell, inside the nested box or on
+// its side: that cell is refined into nothing, and the cells next to it keep their faces
+// toward it as boundary faces. With one child inside NEST removed, or none, every LGR1
+// cell stays.
+BOOST_AUTO_TEST_CASE(nestedParentWithNoChildLeft)
+{
+    const auto g = makeGrid({4, 3, 3}, flat);
+    const auto lgr1 = box("LGR1", {3,3,3}, {0,0,0}, {4,3,3});
+    // NEST refines LGR1 cells 3..8, 3..5, 3..5 into 2x2x2: 12x6x6 children of volume
+    // (2/27)/8, the children of NEST's parent (pi,pj,pk) at 2*pi.., 2*pj.., 2*pk...
+    const auto child = [](int i, int j, int k) { return i + 12*(j + 6*k); };
+    const auto removeParent = [&child](std::vector<int>& mask, int pi, int pj, int pk) {
+        for (int k = 0; k < 2; ++k) {
+            for (int j = 0; j < 2; ++j) {
+                for (int i = 0; i < 2; ++i) {
+                    mask[child(2*pi + i, 2*pj + j, 2*pk + k)] = 1;
+                }
+            }
+        }
+    };
+    const std::vector<int> none(12*6*6, 0);
+    auto interior = none;
+    removeParent(interior, 2, 1, 1);          // LGR1 cell (5,4,4)
+    auto onTheSide = none;
+    removeParent(onTheSide, 0, 0, 0);         // LGR1 cell (3,3,3), on NEST's corner
+    auto oneChild = none;
+    oneChild[child(4, 2, 2)] = 1;             // inside LGR1 cell (5,4,4)
+
+    for (const auto& [mask, emptied] : std::vector<std::pair<std::vector<int>, std::array<int,3>>>{
+             {none, {-1,-1,-1}}, {oneChild, {-1,-1,-1}}, {interior, {5,4,4}}, {onTheSide, {3,3,3}}}) {
+        auto nest = box("NEST", {2,2,2}, {3,3,3}, {9,6,6}, "LGR1");
+        nest.minpvRemoved = mask;
+        Dune::CpGrid grid;
+        build(grid, g, {lgr1, nest});
+
+        const auto removed = std::count(mask.begin(), mask.end(), 1);
+        BOOST_CHECK_EQUAL(grid.size(0), 4*3*3*27 - 6*3*3 + 12*6*6 - removed);
+        BOOST_CHECK_CLOSE(totalVolume(grid), 72.0 - removed*(2.0/27.0)/8.0, 1e-10);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        // An LGR1 cell is a leaf unless NEST refines it, into children or into nothing.
+        int lgr1Leaves = 0;
+        for (const auto& element : Dune::elements(grid.levelGridView(1))) {
+            std::array<int,3> ijk;
+            grid.currentData()[1]->getIJK(element.index(), ijk);
+            lgr1Leaves += element.isLeaf() ? 1 : 0;
+            if (ijk == emptied) {
+                BOOST_CHECK(!element.isLeaf());
+            }
+        }
+        BOOST_CHECK_EQUAL(lgr1Leaves, 4*3*3*27 - 6*3*3);
+    }
+}
+
+// The nested box's MINPV removes children on its sides, of an LGR1 cell that keeps others:
+// the LGR1 cells across keep a boundary face where each removed child would be. The two
+// children removed together share a corner no other cell has.
+BOOST_AUTO_TEST_CASE(nestedRemovedChildOnTheSide)
+{
+    const auto g = makeGrid({4, 3, 3}, flat);
+    const auto lgr1 = box("LGR1", {3,3,3}, {0,0,0}, {4,3,3});
+    // NEST's children 12x6x6: child (0,0,0) is on NEST's -I, -J and -K sides, (0,0,1) above it.
+    const auto child = [](int i, int j, int k) { return i + 12*(j + 6*k); };
+    for (const auto& removed : std::vector<std::vector<int>>{ {child(0,0,0)},
+                                                              {child(0,0,0), child(0,0,1)} }) {
+        auto nest = box("NEST", {2,2,2}, {3,3,3}, {9,6,6}, "LGR1");
+        nest.minpvRemoved.assign(12*6*6, 0);
+        for (const int c : removed) {
+            nest.minpvRemoved[c] = 1;
+        }
+        Dune::CpGrid grid;
+        build(grid, g, {lgr1, nest});
+
+        const auto count = static_cast<int>(removed.size());
+        BOOST_CHECK_EQUAL(grid.size(0), 4*3*3*27 - 6*3*3 + 12*6*6 - count);
+        BOOST_CHECK_CLOSE(totalVolume(grid), 72.0 - count*(2.0/27.0)/8.0, 1e-10);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(contacts(grid).mostPerPair, 1);
+    }
+}
+
 // stableCellId() cannot tell nested cells apart, and says so.
 BOOST_AUTO_TEST_CASE(stableCellIdRefusesNestedGrids)
 {

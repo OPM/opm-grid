@@ -171,6 +171,26 @@ BOOST_AUTO_TEST_CASE(hostWithNoChildLeft)
     }
 }
 
+// The box's MINPV removes every child: the box is an empty LGR, its hosts are refined
+// into nothing, and their neighbours keep their faces toward them as boundary faces.
+BOOST_AUTO_TEST_CASE(boxWithNoChildLeft)
+{
+    const auto g = makeGrid({4, 3, 3}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
+    auto request = box({2,2,2}, {1,1,1}, {3,2,2});      // hosts (1,1,1) and (2,1,1)
+    request.minpvRemoved.assign(4*2*2, 1);
+    Dune::CpGrid grid;
+    refine(grid, g, request);
+
+    BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
+    BOOST_CHECK_EQUAL(grid.levelGridView(1).size(0), 0);
+    BOOST_CHECK_EQUAL(grid.size(0), 36 - 2);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    for (const auto& element : Dune::elements(grid.levelGridView(0))) {
+        const int cell = grid.currentData().front()->globalCell()[element.index()];
+        BOOST_CHECK_EQUAL(element.isLeaf(), (cell != 1 + 4*1 + 12*1) && (cell != 2 + 4*1 + 12*1));
+    }
+}
+
 // A box one parent wide in J on a left-handed grid has a level grid one cell thick in J;
 // its corners still take the level-zero corner order, so each leaf cell's corners
 // surround it.
@@ -219,4 +239,32 @@ BOOST_AUTO_TEST_CASE(parentFaceHoldsTheLgrBoundaryFace)
         }
     }
     BOOST_CHECK_GT(checked, 0);
+}
+
+// The box's MINPV removes children on the box's sides, of a host that keeps others: the
+// coarse cells across keep a boundary face where each removed child would be. The two
+// children removed together share a corner no other cell has.
+BOOST_AUTO_TEST_CASE(removedChildOnTheBoxSide)
+{
+    const auto g = makeGrid({4, 3, 3}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
+    // Hosts (1,1,1) and (2,1,1) into 4x2x2 children of volume 0.25. Child 0 is the
+    // corner child on the -I, -J and -K sides; child 8 is above it.
+    for (const auto& removed : std::vector<std::vector<int>>{ {0}, {0, 8} }) {
+        auto request = box({2,2,2}, {1,1,1}, {3,2,2});
+        request.minpvRemoved.assign(16, 0);
+        for (const int child : removed) {
+            request.minpvRemoved[child] = 1;
+        }
+        Dune::CpGrid grid;
+        refine(grid, g, request);
+
+        const int count = static_cast<int>(removed.size());
+        BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 16 - count);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        double volume = 0.0;
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            volume += element.geometry().volume();
+        }
+        BOOST_CHECK_CLOSE(volume, 72.0 - 0.25*count, 1e-10);
+    }
 }

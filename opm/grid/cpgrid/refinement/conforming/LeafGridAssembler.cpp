@@ -28,6 +28,7 @@
 #include <opm/grid/cpgrid/Geometry.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp>
+#include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 
 #include <opm/common/ErrorMacros.hpp>
@@ -489,15 +490,22 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             }
         }
     }
-    // nestedBoxOf[b][cell]: the nested box refining that cell of box b's level grid, or -1.
+    // nestedBoxOf[b][cell]: the nested box refining that cell of box b's level grid, or -1;
+    // also a cell whose children the nested box's MINPV removes, which is refined into
+    // nothing.
     std::vector<std::vector<int>> nestedBoxOf(numBoxes);
     for (int b = 0; b < numBoxes; ++b) {
         nestedBoxOf[b].assign(boxes[b].level->size(0), -1);
     }
     for (int b = 0; b < numBoxes; ++b) {
         if (nested(b)) {
-            for (const auto& [parent, kids] : boxes[b].childrenOfParent) {
-                nestedBoxOf[parentBoxOf[b]][parent] = b;
+            const CpGridData& parentLgr = *boxes[parentBoxOf[b]].level;
+            for (int cell = 0; cell < parentLgr.size(0); ++cell) {
+                std::array<int,3> ijk;
+                parentLgr.getIJK(cell, ijk);
+                if (contains(requests[b], ijk)) {
+                    nestedBoxOf[parentBoxOf[b]][cell] = b;
+                }
             }
         }
     }
@@ -599,8 +607,13 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                     leafCells.push_back({b + 1, child});
                     continue;
                 }
-                // Refined again by a nested box: its children in its place.
-                for (const int grandchild : boxes[nb].childrenOfParent.at(child)) {
+                // Refined again by a nested box: its children in its place, none if the
+                // nested box's MINPV removed them all.
+                const auto grandchildren = boxes[nb].childrenOfParent.find(child);
+                if (grandchildren == boxes[nb].childrenOfParent.end()) {
+                    continue;
+                }
+                for (const int grandchild : grandchildren->second) {
                     leafIdxOfLevelCell[nb][grandchild] = static_cast<int>(leafCells.size());
                     leafCells.push_back({nb + 1, grandchild});
                 }
@@ -620,8 +633,12 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         if (fresh) {
             it->second.assign(boxes[pb].level->size(0), std::make_tuple(-1, std::vector<int>{}));
         }
-        for (const auto& [parent, kids] : boxes[nb].childrenOfParent) {
-            it->second[parent] = std::make_tuple(nb + 1, kids);
+        for (int parent = 0; parent < boxes[pb].level->size(0); ++parent) {
+            if (nestedBoxOf[pb][parent] == nb) {
+                const auto kids = boxes[nb].childrenOfParent.find(parent);
+                it->second[parent] = std::make_tuple(nb + 1, (kids != boxes[nb].childrenOfParent.end())
+                                                                 ? kids->second : std::vector<int>{});
+            }
         }
     }
 
@@ -939,12 +956,26 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         for (int face = 0; face < faceToCellL.size(); ++face) {
             const auto row = faceToCellL[EntityRep<1>(face, true)];
             int outside = -1;
-            // Toward a cell a nested box refines: that box's faces take over.
+            // Toward a cell a nested box refines: that box's faces take over. A cell with
+            // no child left leaves the face to the cell on the other side, as its
+            // boundary face.
             bool towardNested = false;
+            bool towardEmpty = false;
+            bool towardUnrefined = false;
             for (int e = 0; e < row.size(); ++e) {
-                towardNested = towardNested || (nestedBoxOf[b][row[e].index()] >= 0);
+                const int cell = row[e].index();
+                const int nb = nestedBoxOf[b][cell];
+                if (nb < 0) {
+                    towardUnrefined = true;
+                }
+                else if (boxes[nb].childrenOfParent.count(cell) == 0) {
+                    towardEmpty = true;
+                }
+                else {
+                    towardNested = true;
+                }
             }
-            if (towardNested) {
+            if (towardNested || (towardEmpty && !towardUnrefined)) {
                 continue;
             }
             if (row.size() == 1) {
@@ -1066,6 +1097,59 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
     }
     const int numSourceFaces = static_cast<int>(leafFaces.size());
 
+    // The cell at a Cartesian index of the grid box b refines, or -1 if that grid does not
+    // have it.
+    const auto parentCellOfCart = [&](int b, int cart) {
+        if (!nested(b)) {
+            return compressed0[cart];
+        }
+        const auto& cells = refinedCartToCell[parentBoxOf[b]];
+        const auto it = cells.find(cart);
+        return (it != cells.end()) ? it->second : -1;
+    };
+    const auto parentGridOf = [&](int b) -> CpGridData& {
+        return nested(b) ? *boxes[parentBoxOf[b]].level : level0;
+    };
+    // The host of the child at a lattice position of box b when the box's MINPV removed
+    // that child and the host is in the grid, else -1.
+    const auto hostOfRemovedChild = [&](int b, const std::array<int,3>& lattice) {
+        const auto& removed = requests[b].minpvRemoved;
+        const auto& rd = boxes[b].refinedDims;
+        const std::size_t child = lattice[0]
+            + static_cast<std::size_t>(rd[0])*(lattice[1] + static_cast<std::size_t>(rd[1])*lattice[2]);
+        if ((removed.size() != static_cast<std::size_t>(rd[0])*rd[1]*rd[2]) || (removed[child] == 0)) {
+            return -1;
+        }
+        const auto& dims = nested(b) ? boxes[parentBoxOf[b]].refinedDims : dims0;
+        int cart = 0;
+        for (int d = 2; d >= 0; --d) {
+            cart = cart*dims[d] + requests[b].startIJK[d] + boxes[b].subs[d].parentOffset[lattice[d]];
+        }
+        return parentCellOfCart(b, cart);
+    };
+    // Box sides the fault does not cross with a child the box's MINPV removed, of a host
+    // that keeps other children: the cell across has lost its face toward the host, and
+    // keeps a boundary face where the child would be.
+    std::set<std::tuple<int,int,int>> removedChildSides;
+    for (int b = 0; b < numBoxes; ++b) {
+        const auto& rd = boxes[b].refinedDims;
+        for (std::size_t child = 0; child < requests[b].minpvRemoved.size(); ++child) {
+            const std::array<int,3> lattice = Opm::Lgr::getIJK(static_cast<int>(child), rd);
+            const int host = hostOfRemovedChild(b, lattice);
+            if ((host < 0) || (boxes[b].childrenOfParent.count(host) == 0)) {
+                continue;
+            }
+            for (int axis = 0; axis < 3; ++axis) {
+                for (const int side : {-1, 1}) {
+                    const bool onSide = (lattice[axis] == ((side < 0) ? 0 : rd[axis] - 1));
+                    if (onSide && !faultedSides.count(std::make_tuple(b, axis, side))) {
+                        removedChildSides.emplace(b, axis, side);
+                    }
+                }
+            }
+        }
+    }
+
     // ----- Faulted box boundaries: synthetic split faces -------------------
     // For each faulted (box, axis, side), the
     // corner-point processor (faultedBoundaryConnections) gives the split
@@ -1086,7 +1170,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         int side;                                // box boundary side: -1 low, +1 high
     };
     std::vector<SyntheticFace> syntheticFaces;
-    if (!faultedSides.empty()) {
+    if (!faultedSides.empty() || !removedChildSides.empty()) {
         // coord -> leaf corner index, over the current pool (exact match: the
         // box-boundary corners are produced by identical resampling arithmetic).
         std::map<std::array<double,3>, int> cornerByCoord;
@@ -1114,16 +1198,16 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         struct FaceGroup
         {
             int box;
-            int boxCellLevel;
+            Dune::FieldVector<double,3> cellCentre;  // of the cell the pieces are a side of
             std::vector<std::vector<int>> pieces;   // leaf corner indices
         };
         std::map<std::tuple<int,int,int,int>, FaceGroup> faceGroups; // box leaf, neighbour leaf, axis, side
-        const auto addPiece = [&](int b, int boxCellLevel, int boxLeaf, int neighborLeaf,
-                                  int axis, int side,
+        const auto addPiece = [&](int b, const Dune::FieldVector<double,3>& cellCentre,
+                                  int boxLeaf, int neighborLeaf, int axis, int side,
                                   const std::vector<std::array<double,3>>& nodes) {
             auto& group = faceGroups[std::make_tuple(boxLeaf, neighborLeaf, axis, side)];
             group.box = b;
-            group.boxCellLevel = boxCellLevel;
+            group.cellCentre = cellCentre;
             std::vector<int> pts;
             pts.reserve(nodes.size());
             for (const auto& nd : nodes) {
@@ -1132,6 +1216,11 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
             group.pieces.push_back(std::move(pts));
         };
 
+        const auto centreOf = [](CpGridData& grid, int cell) {
+            const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& cells =
+                GridStateWriter::geometry(grid).geomVector(std::integral_constant<int,0>());
+            return cells[cell].center();
+        };
         for (const auto& [b, axis, side] : faultedSides) {
             const auto rangeIt = acrossRange.find(std::make_tuple(b, axis, side));
             const auto conns = faultedBoundaryConnections(
@@ -1165,21 +1254,31 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                                       + rd[0]*conn.boxCell[1]
                                       + rd[0]*rd[1]*conn.boxCell[2];
                 auto cit = refinedCartToCell[b].find(refinedCart);
-                if (cit == refinedCartToCell[b].end()) {
+                // A child the box's MINPV removed leaves its piece to the cell across, as
+                // a boundary face of that cell, where its face toward the host is gone.
+                const int removedHost = (cit == refinedCartToCell[b].end())
+                    ? hostOfRemovedChild(b, conn.boxCell) : -1;
+                if ((cit == refinedCartToCell[b].end()) && (removedHost < 0)) {
                     continue; // refined boundary cell inactive
                 }
-                const int boxLeaf = leafIdxOfLevelCell[b][cit->second];
-                if (boxLeaf < 0) {
+                const int boxLeaf = (removedHost < 0) ? leafIdxOfLevelCell[b][cit->second] : -1;
+                if ((removedHost < 0) && (boxLeaf < 0)) {
                     continue;
                 }
                 // coarseNeighborCart == -1: this part of the box boundary faces
                 // the domain (the fault scarp) -> a boundary face (no outside).
                 int neighborLeaf = -1;   // cell opposite the box across the fault
+                Dune::FieldVector<double,3> neighborCentre(0.0);
                 // A neighbour that is not in the grid (inactive or removed) leaves the
                 // piece facing the domain.
                 const int l0 = (conn.coarseNeighborCart >= 0) ? compressed0[conn.coarseNeighborCart] : -1;
                 if (l0 >= 0) {
                     neighborLeaf = leafIdxOfCell0[l0];
+                    neighborCentre = centreOf(level0, l0);
+                    if ((neighborLeaf >= 0) && (removedHost >= 0)
+                        && (boxes[b].childrenOfParent.count(removedHost) == 0)) {
+                        continue; // a host with no child left keeps its faces to coarse cells
+                    }
                     if (neighborLeaf < 0) {
                         // Neighbour is refined away: a box<->box faulted interface
                         // Connect to the neighbour box's child cell
@@ -1249,18 +1348,65 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
                             latN[d] = (pijk[d] - startN[d]) * facN[d] + sN[d];
                         }
                         const int cartN = latN[0] + rdN[0]*latN[1] + rdN[0]*rdN[1]*latN[2];
+                        // A child across that is not in the grid (its box's MINPV
+                        // removed it) leaves the piece facing the domain.
                         const auto nit = refinedCartToCell[nbBox].find(cartN);
-                        if (nit == refinedCartToCell[nbBox].end()) {
-                            continue; // neighbour child inactive
-                        }
-                        neighborLeaf = leafIdxOfLevelCell[nbBox][nit->second];
-                        if (neighborLeaf < 0) {
-                            continue;
+                        if (nit != refinedCartToCell[nbBox].end()) {
+                            neighborLeaf = leafIdxOfLevelCell[nbBox][nit->second];
+                            neighborCentre = centreOf(*boxes[nbBox].level, nit->second);
+                            if (neighborLeaf < 0) {
+                                continue;
+                            }
                         }
                     }
                 }
 
-                addPiece(b, cit->second, boxLeaf, neighborLeaf, axis, side, conn.faceNodes);
+                if (removedHost >= 0) {
+                    if (neighborLeaf >= 0) {
+                        addPiece(b, neighborCentre, neighborLeaf, -1, axis, -side, conn.faceNodes);
+                    }
+                    continue;
+                }
+                addPiece(b, centreOf(*boxes[b].level, cit->second), boxLeaf, neighborLeaf,
+                         axis, side, conn.faceNodes);
+            }
+        }
+
+        // A side the fault does not cross, with a child the box's MINPV removed: the
+        // processing of the side, which keeps the child, gives the child's face toward the
+        // cell across, which becomes that cell's boundary face. A nested box's side is
+        // processed in its parent LGR's description, as its level grid was refined.
+        std::map<int, RefinedBlockGrdecl> parentLgrGeometry;
+        for (const auto& [b, axis, side] : removedChildSides) {
+            if (nested(b) && !parentLgrGeometry.count(parentBoxOf[b])) {
+                parentLgrGeometry[parentBoxOf[b]] = refineBlock(parentDims, coord, zcorn, actnum,
+                                                                requests[parentBoxOf[b]]);
+            }
+            const auto conns = nested(b)
+                ? faultedBoundaryConnections(parentLgrGeometry[parentBoxOf[b]].intDims(),
+                                             parentLgrGeometry[parentBoxOf[b]].coord.data(),
+                                             parentLgrGeometry[parentBoxOf[b]].zcorn.data(),
+                                             parentLgrGeometry[parentBoxOf[b]].actnum.data(),
+                                             requests[b], axis, side, /*edgeConformal=*/true)
+                : faultedBoundaryConnections(parentDims, coord, zcorn, actnum, requests[b],
+                                             axis, side, /*edgeConformal=*/true);
+            const auto& rd = boxes[b].refinedDims;
+            for (const auto& conn : conns) {
+                const int refinedCart = conn.boxCell[0] + rd[0]*(conn.boxCell[1] + rd[1]*conn.boxCell[2]);
+                if (refinedCartToCell[b].count(refinedCart) || (conn.coarseNeighborCart < 0)) {
+                    continue;   // a child in the grid has its own face; none across
+                }
+                const int host = hostOfRemovedChild(b, conn.boxCell);
+                if ((host < 0) || (boxes[b].childrenOfParent.count(host) == 0)) {
+                    continue;
+                }
+                // Across: a cell of the grid the box refines that no box refines.
+                const int across = parentCellOfCart(b, conn.coarseNeighborCart);
+                if ((across < 0) || (boxOfParentCell(b, across) >= 0)) {
+                    continue;
+                }
+                addPiece(b, centreOf(parentGridOf(b), across), leafOfParentCell(b, across), -1,
+                         axis, -side, conn.faceNodes);
             }
         }
 
@@ -1281,9 +1427,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         };
         for (auto& [key, group] : faceGroups) {
             const auto& [boxLeaf, neighborLeaf, axis, side] = key;
-            const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& boxCells =
-                GridStateWriter::geometry(*boxes[group.box].level).geomVector(std::integral_constant<int,0>());
-            const auto boxCellCentre = boxCells[group.boxCellLevel].center();
+            const auto& boxCellCentre = group.cellCentre;
             for (auto& piece : group.pieces) {
                 const PolyGeom pg = polygonGeometry(coordinates(piece));
                 auto outward = pg.center;
