@@ -109,6 +109,12 @@ namespace Refinement
 /// buildCornerPool fills the leaf; and recordLeafMetadata moves the relations it
 /// records out of their members. outsideNeighborOf() caches its answers.
 ///
+/// Stages 1 to 10 do no collective operation, and they hold every refusal of the
+/// assembly. In a distributed run a refusal fires only on the rank that holds the
+/// box, so build() runs these stages in a guard: one reduction tells every rank
+/// whether a rank failed, and then every rank throws, before the collective
+/// operations of stage 11.
+///
 /// The members of one assembly are filled once: build() runs once (asserted).
 class LeafGridAssembler
 {
@@ -141,6 +147,8 @@ public:
 
     /// Runs the stages; call once.
     /// @return the assembled leaf; the caller appends it to storage.
+    /// @throw std::runtime_error on every rank of a distributed run in which a
+    ///        stage refuses the input on one rank.
     std::shared_ptr<Dune::cpgrid::CpGridData> build();
 
 private:
