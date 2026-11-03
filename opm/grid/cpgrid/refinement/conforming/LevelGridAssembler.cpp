@@ -30,6 +30,8 @@
 
 #include <opm/common/ErrorMacros.hpp>
 
+#include <dune/common/parallel/mpihelper.hh>
+
 #include <array>
 #include <set>
 #include <stdexcept>
@@ -126,7 +128,6 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                        int levelIndex,
                        int parentLevel,
                        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
-                       Dune::MPIHelper::MPICommunicator comm,
                        RefinedBlockGrdecl* outRefined)
 {
     // Stages 2+3: resample the block geometry onto sub-pillars.
@@ -138,7 +139,6 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
     // self-communicator so none of their operations are collective over the
     // distributed communicator (avoids deadlock when only the owning rank
     // refines). The distributed leaf keeps the real communicator.
-    (void)comm;
     auto level = std::make_shared<Dune::cpgrid::CpGridData>(
         Dune::MPIHelper::getLocalCommunicator(), levelStorage);
     grdecl raw;
@@ -235,10 +235,8 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 std::shared_ptr<Dune::cpgrid::CpGridData>
 assembleEmptyLevelGrid(const BlockRefinement& request,
                        int levelIndex,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
-                       Dune::MPIHelper::MPICommunicator comm)
+                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage)
 {
-    (void)comm;
     auto level = std::make_shared<Dune::cpgrid::CpGridData>(
         Dune::MPIHelper::getLocalCommunicator(), levelStorage);
     GridStateWriter::setLevel(*level, levelIndex);

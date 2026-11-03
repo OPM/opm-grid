@@ -109,6 +109,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/aquifer_cells_and_conn_not_refined_test.cpp
   tests/cpgrid/lgr/autoRefine_test.cpp
   tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
+  tests/cpgrid/lgr/conforming_before_load_balancing_test.cpp
   tests/cpgrid/lgr/conforming_faulted_side_test.cpp
   tests/cpgrid/lgr/conforming_leaf_test.cpp
   tests/cpgrid/lgr/conforming_nested_test.cpp

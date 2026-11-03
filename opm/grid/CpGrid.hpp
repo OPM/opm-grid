@@ -1160,6 +1160,13 @@ namespace Dune
 
         /// \brief Get the collective communication object.
         const typename CpGridTraits::Communication& comm () const;
+
+        /// \brief Get the collective communication object of level zero.
+        ///
+        /// comm() returns the one of the last grid in currentData(), which is the
+        /// leaf grid once the grid is refined, and the newest level grid while
+        /// a refinement adds them. Level zero's does not change.
+        const typename CpGridTraits::Communication& getLevelZeroComm() const;
         //@}
 
         // ------------ End of Dune interface, start of simplified interface --------------

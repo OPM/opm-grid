@@ -31,7 +31,6 @@
 
 #include <opm/common/ErrorMacros.hpp>
 
-#include <dune/common/parallel/communication.hh>
 #include <dune/common/parallel/mpihelper.hh>
 
 #include <array>
@@ -86,9 +85,9 @@ struct LevelGeom
 // overlap, which is not supported.
 enum class BoxPresence { Owned, Absent };
 
-BoxPresence classifyBox(const Dune::cpgrid::CpGridData& level0,
-                        const std::array<int,3>& dims,
-                        const Opm::Refinement::BlockRefinement& req)
+BoxPresence classifyBoxPresence(const Dune::cpgrid::CpGridData& level0,
+                                const std::array<int,3>& dims,
+                                const Opm::Refinement::BlockRefinement& req)
 {
     int interior = 0;
     int nonInterior = 0;
@@ -147,31 +146,6 @@ int presentHostCells(const Dune::cpgrid::CpGridData& parent,
         }
     }
     return present;
-}
-
-// refine-before-redistribute classification: before load balancing the global
-// grid lives on rank 0 (all cells) and is empty on the other ranks. Classify a
-// box purely by cell *presence* (ignoring partition type, which is not yet set):
-// the rank that holds all of the box's cells refines it; ranks with none carry
-// an empty placeholder level grid. A partial presence (some but not all cells)
-// is not expected here and is rejected.
-BoxPresence boxCellPresence(const Dune::cpgrid::CpGridData& level0,
-                            const std::array<int,3>& dims,
-                            const Opm::Refinement::BlockRefinement& req)
-{
-    const int boxCells = (req.endIJK[0] - req.startIJK[0])
-                       * (req.endIJK[1] - req.startIJK[1])
-                       * (req.endIJK[2] - req.startIJK[2]);
-    const int present = presentHostCells(level0, dims, req);
-    if (present == 0) {
-        return BoxPresence::Absent;
-    }
-    if (present == boxCells) {
-        return BoxPresence::Owned;
-    }
-    throw std::logic_error("Refinement box '" + req.name + "' is only partially present on "
-                           "this rank before load balancing; refine-before-redistribute "
-                           "expects the full global grid on a single rank.");
 }
 
 } // anonymous namespace
@@ -297,27 +271,14 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // refines each box) only once the grid has actually been scattered. Before
     // load balancing - the refine-before-redistribute path - the grid is still
     // the replicated global grid; refine it serially on every rank instead, so
-    // the builder refines every cell (no rank-interior classifyBox) and the
+    // the builder refines every cell (no rank-interior classifyBoxPresence) and the
     // leaf assembly does no collectives, producing the full refined grid a
     // serial run yields, ready to be distributed afterwards.
     const bool distributed = grid.comm().size() > 1 && grid.isDistributed();
-    // Capture the grid's actual (world) communicator before any new level or
-    // leaf grid is pushed - CpGrid::comm() reads the back() entry of the
-    // storage, which is the coarse level-zero grid at this point and therefore
-    // still carries the world communicator on every rank.
-    const auto worldComm = grid.comm();
-    // Use a self-communicator for serial refinement (refine-before-redistribute
-    // and the self-communicator output grid) so no operation is collective
-    // over the world communicator; the distributed simulation grid keeps the
-    // world communicator.
-    Dune::MPIHelper::MPICommunicator comm = Dune::MPIHelper::getLocalCommunicator();
-    if (distributed) {
-        comm = grid.comm();
-    }
     // refine-before-redistribute: comm().size() > 1 but the grid is not yet
-    // scattered. The global grid is on rank 0 and empty on the others, so we
-    // classify boxes by cell presence (rank 0 refines, the rest get empty
-    // placeholders) and refine serially with the self-communicator above.
+    // scattered. The global grid is on rank 0 and empty on the others, so
+    // rank 0 refines every box, the rest get empty placeholders, and the leaf
+    // is assembled with a self-communicator (see below).
     const bool refineBefore = grid.comm().size() > 1 && !grid.isDistributed();
 
     // Parent corner-point description per built level (index 0 = GLOBAL base,
@@ -337,7 +298,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     std::map<std::string,BoxPresence> presenceOf;
 
     // Per-rank construction of the level grids. In a distributed run this can
-    // throw on one rank (e.g. classifyBox rejecting a box that ends up touching
+    // throw on one rank (e.g. classifyBoxPresence rejecting a box that ends up touching
     // the overlap region) while other ranks succeed and march on into the leaf
     // assembly's collectives (cc.max / cc.allgather). Those would then block
     // forever waiting for the rank that already threw -- the classic asymmetric
@@ -359,8 +320,8 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             // Nested boxes in a distributed run are still serial-only (guarded
             // above), so a distributed run is always top-level here and classifies
             // against level zero. The refine-before-redistribute path puts the full
-            // global grid on a single rank and classifies a top-level box by its
-            // cell presence there. A NESTED box addresses cells in its parent LGR's
+            // global grid on rank 0, which refines every top-level box; the other
+            // ranks hold no cells. A NESTED box addresses cells in its parent LGR's
             // own (local) Cartesian space, so it cannot be classified against the
             // global grid; instead it inherits its parent box's presence - a child
             // fully contained in its parent lives on whatever rank refines the
@@ -374,10 +335,11 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 // on whichever rank owns its parent box, so inherit the parent's
                 // classification (parent processed before child).
                 presence = nested ? presenceOf.at(req.parentGridName)
-                                  : classifyBox(*storage[0], dims, req);
+                                  : classifyBoxPresence(*storage[0], dims, req);
             } else if (refineBefore) {
                 presence = nested ? presenceOf.at(req.parentGridName)
-                                  : boxCellPresence(*storage[0], dims, req);
+                                  : ((grid.getLevelZeroComm().rank() == 0) ? BoxPresence::Owned
+                                                                           : BoxPresence::Absent);
             }
             // A box with no host left (all inactive, or removed by MINPV) has
             // nothing to refine: it becomes an empty LGR, as on a rank that
@@ -393,8 +355,8 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 ? assembleBlockLevelGrid(*storage[parentLevel], pg.dims,
                                          pg.coord, pg.zcorn, pg.actnum,
                                          req, static_cast<int>(b) + 1, parentLevel,
-                                         storage, comm, &childRefined)
-                : assembleEmptyLevelGrid(req, static_cast<int>(b) + 1, storage, comm);
+                                         storage, &childRefined)
+                : assembleEmptyLevelGrid(req, static_cast<int>(b) + 1, storage);
             storage.push_back(std::move(level));
             levelGeom[b + 1] = LevelGeom{ childRefined.dims,
                                           childRefined.coord.data(),
@@ -418,7 +380,7 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
             localBuildError = 1;
             localBuildMsg = e.what();
         }
-        Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm);
+        const auto& cc = grid.getLevelZeroComm();
         if (cc.max(localBuildError) != 0) {
             OPM_THROW(std::runtime_error, (localBuildError != 0
                 ? ("Parallel LGR build failed on rank " + std::to_string(cc.rank())
@@ -430,10 +392,15 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
         buildLevelGrids();
     }
 
+    // A distributed refinement assembles its leaf with level zero's
+    // communicator. A serial one, also the one before load balancing, uses a
+    // self-communicator, so the assembly does no collective operations.
     std::shared_ptr<Dune::cpgrid::CpGridData> leaf =
         assembleLeafGrid(storage, requests, dims,
                          input_->coord.data(), input_->zcorn.data(), actnum0,
-                         comm);
+                         distributed
+                             ? static_cast<Dune::MPIHelper::MPICommunicator>(grid.getLevelZeroComm())
+                             : Dune::MPIHelper::getLocalCommunicator());
     if (input_->edgeConformal) {
         edgeConformalizeLeaf(*leaf);
     }
@@ -442,13 +409,12 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     if (refineBefore) {
         // The new level grids (indices 1..N) and the leaf (back) were assembled
         // with a self-communicator so the serial refinement does no collectives.
-        // Restore the world communicator on them: CpGrid::comm() reads the leaf,
+        // Give them level zero's communicator: CpGrid::comm() reads the leaf,
         // so without this the refined grid would report a size-1 communicator
         // and the subsequent load balancing would treat it as a serial grid and
-        // skip distributing the refined leaf. Level zero (index 0) is the
-        // pre-existing coarse grid and already carries the world communicator.
+        // skip distributing the refined leaf.
         for (std::size_t i = 1; i < storage.size(); ++i) {
-            GridStateWriter::setCommunicator(*storage[i], worldComm);
+            GridStateWriter::setCommunicator(*storage[i], grid.getLevelZeroComm());
         }
     }
 }

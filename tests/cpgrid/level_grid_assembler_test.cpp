@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(levelGridWithParentRelations)
                                                          parent.coord.data(), parent.zcorn.data(),
                                                          nullptr, req, /* levelIndex = */ 1,
                                                          /* parentLevel = */ 0,
-                                                         storage, Dune::MPIHelper::getCommunicator());
+                                                         storage);
     storage.push_back(level);
 
     const int childrenPerParent = 2*3*2;
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(inactiveParentsHaveNoChildren)
                                                          parent.coord.data(), parent.zcorn.data(),
                                                          parent.actnum.data(), req, 1,
                                                          /* parentLevel = */ 0,
-                                                         storage, Dune::MPIHelper::getCommunicator());
+                                                         storage);
     storage.push_back(level);
 
     BOOST_CHECK_EQUAL(level->size(0), (3*2*1 - 1)*8);
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockLevelGrid)
                                                          parent.coord.data(), parent.zcorn.data(),
                                                          nullptr, req, 1,
                                                          /* parentLevel = */ 0,
-                                                         storage, Dune::MPIHelper::getCommunicator());
+                                                         storage);
     storage.push_back(level);
 
     BOOST_REQUIRE_EQUAL(level->size(0), 2*2*2*8);
