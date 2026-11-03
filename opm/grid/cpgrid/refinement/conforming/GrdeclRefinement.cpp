@@ -22,6 +22,8 @@
 
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cmath>

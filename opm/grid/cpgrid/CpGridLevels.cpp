@@ -223,7 +223,7 @@ std::vector<std::int64_t> CpGridData::stableCellId() const
     auto sorted = ids;
     std::ranges::sort(sorted);
     if (std::ranges::adjacent_find(sorted) != sorted.end()) {
-        throw std::logic_error("stableCellId() does not support nested LGRs.");
+        OPM_THROW(std::logic_error, "stableCellId() does not support nested LGRs.");
     }
     return ids;
 }

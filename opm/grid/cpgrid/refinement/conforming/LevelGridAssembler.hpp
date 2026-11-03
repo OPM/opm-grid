@@ -22,8 +22,6 @@
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 
-#include <dune/common/parallel/mpihelper.hh>
-
 #include <array>
 #include <memory>
 #include <vector>
@@ -52,7 +50,8 @@ namespace Refinement
 ///
 /// The returned grid has level_ = levelIndex and its level_data_ptr_ bound
 /// to levelStorage; the caller is responsible for placing it at position
-/// levelIndex in that vector (and level zero at position 0).
+/// levelIndex in that vector (and level zero at position 0). Its communicator
+/// is the self-communicator, as for assembleEmptyLevelGrid.
 ///
 /// @param parentGrid   The grid the parents live in (level zero for a
 ///                     top-level box, or an LGR level grid for a nested box).
@@ -65,7 +64,6 @@ namespace Refinement
 ///                     the child->parent relation so nested grids point at the
 ///                     LGR level they refine rather than always level zero.
 /// @param levelStorage The hierarchy vector the grid will live in.
-/// @param comm         Communicator for the new grid object.
 /// @param outRefined   If non-null, receives the resampled refined corner-point
 ///                     description of this level (its own children, if any, are
 ///                     refined from it).
@@ -79,7 +77,6 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
                        int levelIndex,
                        int parentLevel,
                        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
-                       Dune::MPIHelper::MPICommunicator comm,
                        RefinedBlockGrdecl* outRefined = nullptr);
 
 /// An empty (zero-cell) refined level grid for a box that has no cells on
@@ -90,8 +87,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 std::shared_ptr<Dune::cpgrid::CpGridData>
 assembleEmptyLevelGrid(const BlockRefinement& request,
                        int levelIndex,
-                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage,
-                       Dune::MPIHelper::MPICommunicator comm);
+                       std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelStorage);
 
 } // namespace Refinement
 } // namespace Opm

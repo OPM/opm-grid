@@ -79,6 +79,7 @@ macro(opm-grid_tests_hook)
       addLgrsOnDistributedGrid_test
       autoRefine_test
       communicate_distributed_grid_with_lgrs_test
+      conforming_before_load_balancing_test
       distribute_level_zero_from_grid_with_lgrs_and_wells_test
       distribute_level_zero_from_grid_with_lgrs_test
       distribution_test
