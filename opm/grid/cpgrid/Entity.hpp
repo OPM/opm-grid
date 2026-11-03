@@ -572,7 +572,10 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
 
     auto idx_in_parent_cell = pgrid_ -> levels_.cell_to_idxInParentCell[this->index()];
     if (idx_in_parent_cell !=-1) {
-        const auto& levels = (*(pgrid_ -> levels_.level_data_ptr))[this->level()] -> levels_;
+        // The subdivision (cells_per_dim, and the tables of a graded box) is stored in the
+        // level grid the entity comes from, levelData()[level()]: a leaf entity's own grid
+        // has none.
+        const auto& levels = (pgrid_ -> levelData())[this->level()] -> levels_;
         if (!levels.subdivision[0].empty()) {
             // A graded father's columns differ in size; cells_per_dim cannot place the child.
             OPM_THROW(std::logic_error, "geometryInFather() is not implemented for a graded refinement level.");

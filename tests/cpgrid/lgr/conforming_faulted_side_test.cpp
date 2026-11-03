@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <functional>
 #include <map>
 #include <memory>
@@ -355,6 +356,37 @@ BOOST_AUTO_TEST_CASE(leftHandedFaultedSide)
         }
     }
     BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+}
+
+// A fault whose throw is one bit at one end of the side and a whole unit of depth at the
+// other: the cells' top lines (and bottom lines) cross a few bits from the first pillar,
+// and with coordinates near 1000 the computed crossing point rounds onto that pillar's
+// corner. A piece of the rebuilt side then has two consecutive corners at the same point;
+// the pieces of one cell pair still merge into one face.
+BOOST_AUTO_TEST_CASE(faultCrossingOnAPillarCorner)
+{
+    // Columns i = 0, 1 at y in [1000, 1001]. Column 1 is one bit deeper than column 0 at
+    // y = 1000, and 1 shallower at y = 1001.
+    const auto pillar = [](int i, int j) {
+        return std::array<double,6>{ double(i), 1000.0 + j, 0.0, double(i), 1000.0 + j, 100.0 };
+    };
+    const auto depth = [](int i_, int j_, int k_) {
+        const double base = 10.0 + 3.0*nodeOf(k_);
+        if (cellOf(i_) == 0) {
+            return base;
+        }
+        return (sideOf(j_) == 0) ? std::nextafter(base, 100.0) : base - 1.0;
+    };
+    const auto g = makeGrid({2, 1, 1}, pillar, depth);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    const double volume = totalVolume(grid);
+    refine(grid, g, {box("LGR1", {2,2,2}, {0,0,0}, {1,1,1})});
+
+    BOOST_CHECK_EQUAL(grid.size(0), 8 + 1);
+    BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
 }
 
 // Across a fault, a box twice as fine as its neighbour box: each pair of children shares

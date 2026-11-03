@@ -32,6 +32,9 @@
 
 #include <opm/common/ErrorMacros.hpp>
 
+#include <dune/common/dotproduct.hh>
+#include <dune/common/fmatrixev.hh>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -86,7 +89,7 @@ struct SourceRef
 // faces toward +I and +J, so a grid one cell thick in a direction is read as well.
 int cornerSlotMask(CpGridData& grid)
 {
-    const auto& c2p = GridStateWriter::cellToPoint(grid);
+    const auto& c2p = grid.cellToPoint();
     auto& c2f = GridStateWriter::cellToFace(grid);
     auto& f2p = GridStateWriter::faceToPoint(grid);
     Dune::cpgrid::EntityVariableBase<enum face_tag>& tags = GridStateWriter::faceTag(grid);
@@ -148,12 +151,11 @@ void setDistributedLeafIds(CpGridData& leaf, const CpGridData& level0,
     const auto& pointIds0 = ids0.template getMapping<3>();
     const int numCorners0 = level0.size(3);
 
-    int maxUsed = 0;
-    for (const std::vector<int>* ids : {&ids0.template getMapping<0>(), &faceIds0, &pointIds0,
-                                        static_cast<const std::vector<int>*>(&cellIds)}) {
-        for (const int id : *ids) {
-            maxUsed = std::max(maxUsed, id);
-        }
+    // The largest id in use: level zero's (over cells and points; every face id lies
+    // below every point id), and the leaf's cell ids.
+    int maxUsed = static_cast<int>(ids0.getMaxGlobalId());
+    if (!cellIds.empty()) {
+        maxUsed = std::max(maxUsed, std::ranges::max(cellIds));
     }
     maxUsed = cc.max(maxUsed);
 
@@ -248,10 +250,7 @@ PolyGeom polygonGeometry(const std::vector<Dune::FieldVector<double,3>>& pts)
         const auto& b = pts[(i + 1) % n];
         const auto e1 = a - mean;
         const auto e2 = b - mean;
-        const Dune::FieldVector<double,3> cross{ e1[1]*e2[2] - e1[2]*e2[1],
-                                                 e1[2]*e2[0] - e1[0]*e2[2],
-                                                 e1[0]*e2[1] - e1[1]*e2[0] };
-        const double w = 0.5 * (cross * g.normal);
+        const double w = 0.5 * Dune::dot(Dune::FMatrixHelp::Impl::crossProduct(e1, e2), g.normal);
         auto centre = mean;
         centre += a;
         centre += b;
@@ -278,6 +277,10 @@ std::optional<std::vector<int>> mergedOutline(const std::vector<std::vector<int>
         for (int i = 0; i < n; ++i) {
             const int a = polygon[i];
             const int b = polygon[(i + 1) % n];
+            // Two consecutive corners of a piece can be the same leaf corner: where two
+            // lines of the faulted side cross very close to a pillar, the computed crossing
+            // point can round onto that pillar's corner. Such an edge has zero length and
+            // is not part of the outline.
             if (a == b) {
                 continue;
             }
@@ -373,7 +376,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         boxOfCell[c] = boxOfIJK(ijk);
     }
 
-    auto& cellToPoint0 = GridStateWriter::cellToPoint(level0);
+    const auto& cellToPoint0 = level0.cellToPoint();
     auto& cellToFace0 = GridStateWriter::cellToFace(level0);
     auto& faceToCell0 = GridStateWriter::faceToCell(level0);
     auto& faceToPoint0 = GridStateWriter::faceToPoint(level0);
@@ -438,11 +441,11 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         // refined lattice position rather than from idxInParent, whose strides
         // are that parent's own counts once the box is graded.
         box.cornerEquiv.assign(box.level->size(3), -1);
-        auto& cellToPointL = GridStateWriter::cellToPoint(*box.level);
+        const auto& cellToPointL = box.level->cellToPoint();
         const int maskL = cornerSlotMask(*box.level);
         box.cornerMask = maskL;
-        auto& cellToPointP = nested(b) ? GridStateWriter::cellToPoint(*boxes[parentBoxOf[b]].level)
-                                       : cellToPoint0;
+        const auto& cellToPointP = nested(b) ? boxes[parentBoxOf[b]].level->cellToPoint()
+                                             : cellToPoint0;
         const int maskP = nested(b) ? boxes[parentBoxOf[b]].cornerMask : mask0;
         for (int cell = 0; cell < box.level->size(0); ++cell) {
             const int parent = childToParent[cell][1];
@@ -652,8 +655,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         std::set<int> expected;
         for (int corner = 0; corner < 8; ++corner) {
             if ((((corner >> axis) & 1) == 1) == (side > 0)) {
-                expected.insert(GridStateWriter::cellToPoint(grid)[parent]
-                                [corner ^ boxes[parentBoxOf[b]].cornerMask]);
+                expected.insert(grid.cellToPoint(parent)[corner ^ boxes[parentBoxOf[b]].cornerMask]);
             }
         }
         std::set<int> actual;
@@ -1446,7 +1448,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
         }
         else {
             const BoxData& box = boxes[src.grid - 1];
-            const auto& srcPoints = GridStateWriter::cellToPoint(*box.level)[src.index];
+            const auto& srcPoints = box.level->cellToPoint(src.index);
             for (int corner = 0; corner < 8; ++corner) {
                 leafCellToPoint[cell][corner] = box.cornerToLeaf[srcPoints[corner]];
             }

@@ -29,10 +29,6 @@
 
 #include <dune/common/parallel/mpihelper.hh>
 
-#include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/input/eclipse/Parser/Parser.hpp>
-
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -79,9 +75,8 @@ struct RecordingBuilder : Opm::Refinement::Builder
     std::vector<BlockRefinement> recorded{};
 };
 
-void processDeck(Dune::CpGrid& grid)
-{
-    const std::string deckString = R"(RUNSPEC
+// A 4x3x3 grid with one CARFIN box.
+const std::string deckWithCarfin = R"(RUNSPEC
 DIMENS
  4 3 3 /
 GRID
@@ -99,11 +94,6 @@ TOPS
 PORO
  36*0.2 /
 )";
-    const auto deck = Opm::Parser{}.parseString(deckString);
-    Opm::EclipseState state(deck);
-    auto eclGrid = state.getInputGrid();
-    grid.processEclipseFormat(&eclGrid, &state, false, false, false);
-}
 } // anonymous namespace
 
 // Under the default backend the request form refines exactly as the vector form.
@@ -251,7 +241,7 @@ BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
 {
     Dune::CpGrid grid;
     grid.setLgrBackend(Backend::Conforming);
-    processDeck(grid);
+    Opm::createGridFromDeckString(grid, deckWithCarfin);
     BOOST_CHECK(Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
     grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"});
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
@@ -264,7 +254,7 @@ BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
 BOOST_AUTO_TEST_CASE(conformingChosenAfterProcessingThrows)
 {
     Dune::CpGrid grid;
-    processDeck(grid);
+    Opm::createGridFromDeckString(grid, deckWithCarfin);
     grid.setLgrBackend(Backend::Conforming);
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"}),
                       std::logic_error);
