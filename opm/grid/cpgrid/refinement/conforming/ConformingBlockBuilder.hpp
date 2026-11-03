@@ -35,7 +35,7 @@ namespace Refinement
 /// grid that one request refines. Each box is resampled from the parent grid's
 /// corner-point description (refineBlock), processed into the box's level grid
 /// (assembleBlockLevelGrid), and the level grids are joined with level zero into
-/// the leaf grid (assembleLeafGrid).
+/// the leaf grid (LeafGridAssembler).
 ///
 /// A builder made from a grid shares the corner-point description that the grid
 /// keeps of its level zero; it does not copy it. The grid drops its own pointer

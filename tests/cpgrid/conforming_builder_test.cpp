@@ -794,7 +794,7 @@ BOOST_AUTO_TEST_CASE(gradedBoxMeetingAtACornerBuilds)
 // Compatible sub-face mosaic: two boxes meeting on a shared
 // face with DIFFERENT but compatible in-face subdivisions (one a multiple of the
 // other). The coarser side's interface cells become >6-face hexes tiled by the
-// finer side's sub-faces. Implemented in assembleLeafGrid; these lock it in.
+// finer side's sub-faces. Implemented in LeafGridAssembler; these lock it in.
 // ---------------------------------------------------------------------------
 
 // STACKED pair (shared horizontal face): in-face directions I,J. Box LO is x4 in

@@ -276,7 +276,7 @@ void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& req
             // This is supported on a shared face where one box is the finer side in both
             // directions: a cell of the coarser box on that face gets, in place of its
             // face there, the sub-faces of the finer box that cover it, so it has more
-            // than six faces (assembleLeafGrid builds them). Different factors along a
+            // than six faces (LeafGridAssembler builds them). Different factors along a
             // shared edge, and a face where each box is finer in a different direction,
             // are not supported.
             const bool cleanlyNested = aFinerOrEqualAll || bFinerOrEqualAll;
@@ -424,11 +424,11 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     // communicator. A serial one, also the one before load balancing, uses a
     // self-communicator, so the assembly does no collective operations.
     std::shared_ptr<Dune::cpgrid::CpGridData> leaf =
-        assembleLeafGrid(storage, requests, dims,
-                         input_->coord.data(), input_->zcorn.data(), actnum0,
-                         distributed
-                             ? static_cast<Dune::MPIHelper::MPICommunicator>(grid.getLevelZeroComm())
-                             : Dune::MPIHelper::getLocalCommunicator());
+        LeafGridAssembler(storage, requests, dims,
+                          input_->coord.data(), input_->zcorn.data(), actnum0,
+                          distributed
+                              ? static_cast<Dune::MPIHelper::MPICommunicator>(grid.getLevelZeroComm())
+                              : Dune::MPIHelper::getLocalCommunicator()).build();
     if (input_->edgeConformal) {
         edgeConformalizeLeaf(*leaf);
     }
