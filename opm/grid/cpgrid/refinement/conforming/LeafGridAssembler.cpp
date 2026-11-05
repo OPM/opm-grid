@@ -1058,16 +1058,19 @@ void LeafGridAssembler::findFaultedSides()
         }
     }
     // Both sides of a box-to-box interface take the same path, so its faces are
-    // emitted once, by the side that owns them.
-    for (bool grown = true; grown; ) {
-        grown = false;
-        for (const auto& [b, axis, side] : std::set<std::tuple<int,int,int>>(faultedSides_)) {
-            const auto across = boxesAcross.find(std::make_tuple(b, axis, side));
-            if (across == boxesAcross.end()) {
-                continue;
-            }
-            for (const int nb : across->second) {
-                grown = faultedSides_.emplace(nb, axis, -side).second || grown;
+    // emitted once, by the side that owns them. Process each marked side once;
+    // newly marked sides are appended to the queue to propagate the marking.
+    std::vector<std::tuple<int,int,int>> pending(faultedSides_.begin(), faultedSides_.end());
+    for (std::size_t i = 0; i < pending.size(); ++i) {
+        // Copy the entry: appending to pending can invalidate its references.
+        const auto [b, axis, side] = pending[i];
+        const auto across = boxesAcross.find(std::make_tuple(b, axis, side));
+        if (across == boxesAcross.end()) {
+            continue;
+        }
+        for (const int nb : across->second) {
+            if (faultedSides_.emplace(nb, axis, -side).second) {
+                pending.emplace_back(nb, axis, -side);
             }
         }
     }
