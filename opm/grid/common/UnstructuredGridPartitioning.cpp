@@ -298,15 +298,19 @@ LocalGrid extractLocalGrid(const UnstructuredGrid& grid,
 namespace
 {
 
-constexpr int packHeaderSize = 11;
+constexpr int packHeaderSize = 14;
 // header: dimensions, number of cells, faces, nodes, face nodes and cell faces,
-// whether there are face tags, the Cartesian dimensions, whether there is global_cell
+// whether there are face tags, the Cartesian dimensions, whether there is global_cell,
+// the number of cells, faces and nodes of the global grid
 
 } // anonymous namespace
 
 PackedGrid packGrid(const UnstructuredGrid& grid,
                     const std::vector<char>& isOwner,
-                    const std::vector<int>& globalCells)
+                    const std::vector<int>& globalCells,
+                    const std::vector<int>& globalFaces,
+                    const std::vector<int>& globalNodes,
+                    const std::array<int, 3>& globalSizes)
 {
     const int dim = grid.dimensions;
     const int nC = grid.number_of_cells;
@@ -319,13 +323,17 @@ PackedGrid packGrid(const UnstructuredGrid& grid,
     if (static_cast<int>(isOwner.size()) != nC || static_cast<int>(globalCells.size()) != nC) {
         OPM_THROW(std::invalid_argument, "packGrid(): one ownership flag and global index per cell is required.");
     }
+    if (static_cast<int>(globalFaces.size()) != nF || static_cast<int>(globalNodes.size()) != nN) {
+        OPM_THROW(std::invalid_argument, "packGrid(): one global index per face and per node is required.");
+    }
 
     PackedGrid packed;
     auto& ints = packed.ints;
-    ints.reserve(packHeaderSize + nFN + nF + 1 + 2 * nF + nCF + nC + 1 + (hasTags ? nCF : 0) + 3 * nC);
+    ints.reserve(packHeaderSize + nFN + nF + 1 + 2 * nF + nCF + nC + 1 + (hasTags ? nCF : 0) + 3 * nC + nF + nN);
     ints.insert(ints.end(), {dim, nC, nF, nN, nFN, nCF, hasTags ? 1 : 0,
                              grid.cartdims[0], grid.cartdims[1], grid.cartdims[2],
-                             grid.global_cell ? 1 : 0});
+                             grid.global_cell ? 1 : 0,
+                             globalSizes[0], globalSizes[1], globalSizes[2]});
     ints.insert(ints.end(), grid.face_nodes, grid.face_nodes + nFN);
     ints.insert(ints.end(), grid.face_nodepos, grid.face_nodepos + nF + 1);
     ints.insert(ints.end(), grid.face_cells, grid.face_cells + 2 * nF);
@@ -339,6 +347,8 @@ PackedGrid packGrid(const UnstructuredGrid& grid,
     }
     ints.insert(ints.end(), isOwner.begin(), isOwner.end());
     ints.insert(ints.end(), globalCells.begin(), globalCells.end());
+    ints.insert(ints.end(), globalFaces.begin(), globalFaces.end());
+    ints.insert(ints.end(), globalNodes.begin(), globalNodes.end());
 
     auto& doubles = packed.doubles;
     doubles.reserve(dim * (nN + 2 * nF + nC) + nF + nC);
@@ -366,7 +376,7 @@ OwnedGrid unpackGrid(const std::vector<int>& ints, const std::vector<double>& do
     const bool hasGlobalCell = ints[10] != 0;
 
     const std::size_t expectedInts = packHeaderSize + nFN + (nF + 1) + 2 * nF + nCF + (nC + 1)
-        + (hasTags ? nCF : 0) + (hasGlobalCell ? nC : 0) + 2 * nC;
+        + (hasTags ? nCF : 0) + (hasGlobalCell ? nC : 0) + 2 * nC + nF + nN;
     const std::size_t expectedDoubles = dim * (nN + 2 * nF + nC) + nF + nC;
     if (ints.size() != expectedInts || doubles.size() != expectedDoubles) {
         OPM_THROW(std::invalid_argument, "unpackGrid(): inconsistent data sizes.");
@@ -379,6 +389,7 @@ OwnedGrid unpackGrid(const std::vector<int>& ints, const std::vector<double>& do
     }
     UnstructuredGrid& g = *result.grid;
     std::copy_n(ints.begin() + 7, 3, g.cartdims);
+    std::copy_n(ints.begin() + 11, 3, result.globalSizes.begin());
 
     auto in = ints.begin() + packHeaderSize;
     std::copy_n(in, nFN, g.face_nodes);          in += nFN;
@@ -401,7 +412,9 @@ OwnedGrid unpackGrid(const std::vector<int>& ints, const std::vector<double>& do
         std::copy_n(in, nC, g.global_cell);      in += nC;
     }
     result.isOwner.assign(in, in + nC);                in += nC;
-    result.globalCells.assign(in, in + nC);
+    result.globalCells.assign(in, in + nC);                in += nC;
+    result.globalFaces.assign(in, in + nF);                in += nF;
+    result.globalNodes.assign(in, in + nN);
 
     auto d = doubles.begin();
     std::copy_n(d, dim * nN, g.node_coordinates); d += dim * nN;
@@ -457,7 +470,9 @@ OwnedGrid distributeGrid(const UnstructuredGrid* grid,
             for (std::size_t i = 0; i < cells.size(); ++i) {
                 isOwner[i] = (cellPart[cells[i]] == rank);
             }
-            packed[rank] = packGrid(*extractLocalGrid(*grid, cells).grid, isOwner, cells);
+            const auto local = extractLocalGrid(*grid, cells);
+            packed[rank] = packGrid(*local.grid, isOwner, cells, local.globalFace, local.globalNode,
+                                    {grid->number_of_cells, grid->number_of_faces, grid->number_of_nodes});
             cellsOfRank[rank] = std::move(cells);
         }
     }

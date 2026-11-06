@@ -960,6 +960,9 @@ namespace Dune
       setDistributedView( UnstructuredGridPtr( distributed.grid.release() ),
                           std::move( distributed.isOwner ), overlapLayers );
       distributedView_.globalCellIndex = std::move( distributed.globalCells );
+      distributedView_.globalFaceIndex = std::move( distributed.globalFaces );
+      distributedView_.globalNodeIndex = std::move( distributed.globalNodes );
+      distributedView_.globalSizes = distributed.globalSizes;
       rankCells_ = std::move( distributed.cellsOfRank );
       dataMovementAvailable_ = true;
       switchToDistributedView();
@@ -1107,6 +1110,36 @@ namespace Dune
     const int* globalCellPtr() const
     {
       return grid_->global_cell;
+    }
+
+    /// \brief Global index of each face of the active view, or null if its faces are numbered as in the global grid.
+    const int* globalFacePtr() const
+    {
+      return globalFaceIndex_.empty() ? nullptr : globalFaceIndex_.data();
+    }
+
+    /// \brief Global index of each node of the active view, or null if its nodes are numbered as in the global grid.
+    const int* globalNodePtr() const
+    {
+      return globalNodeIndex_.empty() ? nullptr : globalNodeIndex_.data();
+    }
+
+    /// \brief Sizes of the ranges of the ids of the cells, faces and nodes.
+    ///
+    /// The ranges are the same in all views of the grid and on all processes, so
+    /// that the id of an entity is unique and does not depend on the view. A view
+    /// that was not made by loadBalance() does not know the global grid, and uses
+    /// its own sizes.
+    std::array< std::size_t, 3 > idRanges() const
+    {
+      const auto known = [ this ]( int i, int local ) { return static_cast< std::size_t >( globalSizes_[ i ] > 0 ? globalSizes_[ i ] : local ); };
+      const std::size_t cells = known( 0, grid_->number_of_cells );
+      // global_cell holds Cartesian indices, which can be larger than the number of cells.
+      const std::size_t cartesian = static_cast< std::size_t >( std::max( grid_->cartdims[ 0 ], 1 ) )
+                                  * static_cast< std::size_t >( std::max( grid_->cartdims[ 1 ], 1 ) )
+                                  * static_cast< std::size_t >( std::max( grid_->cartdims[ 2 ], 1 ) );
+      return { grid_->global_cell ? std::max( cells, cartesian ) : cells,
+               known( 1, grid_->number_of_faces ), known( 2, grid_->number_of_nodes ) };
     }
 
     void getIJK(const int c, std::array<int,3>& ijk) const
@@ -2389,6 +2422,9 @@ namespace Dune
       std::vector< char > isOwner;
       int overlapLayers = 0;
       std::vector< int > globalCellIndex;
+      std::vector< int > globalFaceIndex;
+      std::vector< int > globalNodeIndex;
+      std::array< int, 3 > globalSizes {};
 #if HAVE_MPI
       std::unique_ptr< CellCommunicationType > cellComm;
       std::vector< Dune::Interface > cellInterfaces;
@@ -2408,6 +2444,9 @@ namespace Dune
       std::swap( isOwner_, other.isOwner );
       std::swap( overlapLayers_, other.overlapLayers );
       std::swap( globalCellIndex_, other.globalCellIndex );
+      std::swap( globalFaceIndex_, other.globalFaceIndex );
+      std::swap( globalNodeIndex_, other.globalNodeIndex );
+      std::swap( globalSizes_, other.globalSizes );
 #if HAVE_MPI
       std::swap( cellComm_, other.cellComm );
       std::swap( cellInterfaces_, other.cellInterfaces );
@@ -2426,6 +2465,13 @@ namespace Dune
     std::vector< std::vector< int > > cellVertices_;
 
     std::vector< GlobalCoordinate > unitOuterNormals_;
+
+    // Declared before the id sets, which read them when they are constructed.
+    // For each face and node of the distributed view its index in the global view. Empty in the global view.
+    std::vector< int > globalFaceIndex_;
+    std::vector< int > globalNodeIndex_;
+    // Number of cells, faces and nodes of the global grid in the distributed view, zero if not known.
+    std::array< int, 3 > globalSizes_ {};
 
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;

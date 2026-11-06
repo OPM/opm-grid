@@ -24,6 +24,7 @@
 #include <dune/common/parallel/communication.hh>
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -106,9 +107,15 @@ struct PackedGrid
 /// \param isOwner     For each cell whether the process owns it (1) or whether
 ///                    it is an overlap cell (0).
 /// \param globalCells For each cell its index in the global grid.
+/// \param globalFaces For each face its index in the global grid.
+/// \param globalNodes For each node its index in the global grid.
+/// \param globalSizes Number of cells, faces and nodes of the global grid.
 PackedGrid packGrid(const UnstructuredGrid& grid,
                     const std::vector<char>& isOwner,
-                    const std::vector<int>& globalCells);
+                    const std::vector<int>& globalCells,
+                    const std::vector<int>& globalFaces,
+                    const std::vector<int>& globalNodes,
+                    const std::array<int, 3>& globalSizes);
 
 /// A grid together with the ownership of its cells.
 struct OwnedGrid
@@ -118,6 +125,12 @@ struct OwnedGrid
     std::vector<char> isOwner;
     /// For each cell its index in the global grid.
     std::vector<int> globalCells;
+    /// For each face its index in the global grid.
+    std::vector<int> globalFaces;
+    /// For each node its index in the global grid.
+    std::vector<int> globalNodes;
+    /// Number of cells, faces and nodes of the global grid.
+    std::array<int, 3> globalSizes{};
     /// Only on rank 0 after distributeGrid(): for each rank the global index
     /// of each of its cells, in the order of the cells of that rank.
     std::vector<std::vector<int>> cellsOfRank;

@@ -29,6 +29,9 @@
 #include <dune/grid/common/datahandleif.hh>
 
 #include <algorithm>
+#include <array>
+#include <map>
+#include <set>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -217,6 +220,56 @@ BOOST_AUTO_TEST_CASE(SwitchViewsAfterDistribution)
     BOOST_CHECK(!grid.loadBalance(makePartition(grid)));
     grid.switchToDistributedView();
     BOOST_CHECK_EQUAL(grid.size(0), localCells);
+}
+
+// The id of an entity is the same in the global and the distributed view, and no two entities have the same id.
+BOOST_AUTO_TEST_CASE(IdsDoNotDependOnTheView)
+{
+    Grid grid = makeGrid();
+    if (grid.comm().size() == 1) {
+        return;
+    }
+
+    // Cells, faces and nodes of the active view with their ids, found by their position.
+    using Key = std::array<double, 4>;
+    const auto collectIds = [](const Grid& g) {
+        std::map<Key, std::size_t> ids;
+        const auto& idSet = g.globalIdSet();
+        const auto addEntity = [&](const int codim, const auto& geometry, const std::size_t id) {
+            const auto c = geometry.center();
+            const auto inserted = ids.emplace(Key{double(codim), c[0], c[1], c[2]}, id);
+            BOOST_CHECK_EQUAL(inserted.first->second, id);
+        };
+        for (const auto& cell : elements(g.leafGridView())) {
+            addEntity(0, cell.geometry(), idSet.id(cell));
+            for (int i = 0; i < cell.subEntities(1); ++i) {
+                const auto face = cell.template subEntity<1>(i);
+                addEntity(1, face.geometry(), idSet.id(face));
+            }
+            for (int i = 0; i < cell.subEntities(3); ++i) {
+                const auto node = cell.template subEntity<3>(i);
+                addEntity(3, node.geometry(), idSet.id(node));
+            }
+        }
+        return ids;
+    };
+    const auto globalIds = collectIds(grid);
+    std::set<std::size_t> distinct;
+    for (const auto& entry : globalIds) {
+        distinct.insert(entry.second);
+    }
+    BOOST_CHECK_EQUAL(distinct.size(), globalIds.size());
+
+    BOOST_REQUIRE(grid.loadBalance(makePartition(grid)));
+    const auto localIds = collectIds(grid);
+    distinct.clear();
+    for (const auto& entry : localIds) {
+        const auto global = globalIds.find(entry.first);
+        BOOST_REQUIRE(global != globalIds.end());
+        BOOST_CHECK_EQUAL(entry.second, global->second);
+        distinct.insert(entry.second);
+    }
+    BOOST_CHECK_EQUAL(distinct.size(), localIds.size());
 }
 
 BOOST_AUTO_TEST_CASE(InvalidPartitionThrowsOnAllRanks)
