@@ -42,6 +42,8 @@
 #ifndef OPM_LEVELHIERARCHY_HEADER
 #define OPM_LEVELHIERARCHY_HEADER
 
+#include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
+
 #include <array>
 #include <memory>
 #include <tuple>
@@ -62,7 +64,7 @@ struct LevelHierarchy
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */
     int level{0};
     /** Copy of (CpGrid object).data_ associated with the CpGridData object. */
-    std::vector<std::shared_ptr<CpGridData>>* level_data_ptr{};
+    const std::vector<std::shared_ptr<CpGridData>>* level_data_ptr{};
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
     /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. -1 when the cell vanished.*/
     std::vector<int> level_to_leaf_cells;  // In entry 'level cell index', we store 'leafview cell index'
@@ -83,6 +85,8 @@ struct LevelHierarchy
     std::vector<int> cell_to_idxInParentCell;
     /** To keep track of refinement processes */
     int refinement_max_level{0};
+    /** Graded subdivision of a refined level; empty for a uniform one. */
+    std::array<Opm::Refinement::AxisSubdivision,3> subdivision{};
 };
 
 } // namespace cpgrid

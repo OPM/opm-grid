@@ -1,5 +1,5 @@
 /*
-  Copyright 2026 SINTEF Digital.
+  Copyright 2026 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -22,8 +22,12 @@
 
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 
+#include <opm/grid/cpgrid/NestedRefinementUtilities.hpp>
+
 #include <opm/common/ErrorMacros.hpp>
 
+#include <algorithm>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -41,6 +45,31 @@ bool boxesOverlap(const Opm::Refinement::BlockRefinement& a,
         }
     }
     return true;
+}
+
+// Whether the columns of a graded subdivision take the box's parent cells one after the
+// other, each from 0 to 1: a column starts exactly where the one before it in the same
+// parent cell ends, and has a positive extent. Tables built as cumulative shares over
+// their sum, as opm-common builds them, pass exactly.
+bool coversEachParentCell(const Opm::Refinement::AxisSubdivision& sub, int parentCells)
+{
+    for (std::size_t c = 0; c < sub.size(); ++c) {
+        const bool first = (c == 0) || (sub.parentOffset[c] != sub.parentOffset[c - 1]);
+        const bool last = (c + 1 == sub.size()) || (sub.parentOffset[c + 1] != sub.parentOffset[c]);
+        if (first) {
+            const int next = (c == 0) ? 0 : sub.parentOffset[c - 1] + 1;
+            if ((sub.parentOffset[c] != next) || (sub.fracLo[c] != 0.0)) {
+                return false;
+            }
+        }
+        else if (sub.fracLo[c] != sub.fracHi[c - 1]) {
+            return false;
+        }
+        if ((last && (sub.fracHi[c] != 1.0)) || !(sub.fracLo[c] < sub.fracHi[c])) {
+            return false;
+        }
+    }
+    return sub.parentOffset.back() == parentCells - 1;
 }
 
 } // anonymous namespace
@@ -119,6 +148,16 @@ std::array<int,3> refinedDims(const BlockRefinement& request)
     return dims;
 }
 
+bool contains(const BlockRefinement& request, const std::array<int,3>& ijk)
+{
+    for (int d = 0; d < 3; ++d) {
+        if ((ijk[d] < request.startIJK[d]) || (ijk[d] >= request.endIJK[d])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::vector<BlockRefinement>
 blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
                  const std::vector<std::array<int,3>>& startIJK,
@@ -144,7 +183,8 @@ blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
     return requests;
 }
 
-void validateBlockRefinements(const std::vector<BlockRefinement>& requests)
+void validateBlockRefinements(const std::vector<BlockRefinement>& requests,
+                              const std::map<std::string,int>& nameToLevel)
 {
     for (const auto& req : requests) {
         // "GLOBAL" is the reserved name of level zero in CpGrid::lgr_names_
@@ -171,6 +211,15 @@ void validateBlockRefinements(const std::vector<BlockRefinement>& requests)
                                                  + "' has a graded subdivision whose extent tables "
                                                    "do not match its column count.");
             }
+            if (!req.subdivision[c].empty()
+                && !coversEachParentCell(req.subdivision[c], req.endIJK[c] - req.startIJK[c]))
+            {
+                OPM_THROW(std::invalid_argument, "Refinement '" + req.name + "' has a graded "
+                          "subdivision in direction " + std::string(1, "IJK"[c]) + " whose "
+                          "columns do not cover each parent cell of the box from 0 to 1 in "
+                          "order. Give the parent cells their columns one after the other, "
+                          "each starting where the one before it ends.");
+            }
         }
     }
     // Pairwise disjointness of boxes refining the same parent grid. Note:
@@ -184,6 +233,22 @@ void validateBlockRefinements(const std::vector<BlockRefinement>& requests)
             if (boxesOverlap(requests[i], requests[j])) {
                 OPM_THROW(std::invalid_argument, "Refinement boxes '" + requests[i].name + "' and '"
                                                  + requests[j].name + "' overlap. CARFIN boxes must be disjoint.");
+            }
+        }
+    }
+    // A parent LGR must exist, or come earlier in the requests, before its children.
+    std::vector<std::string> names, parents;
+    for (const auto& request : requests) {
+        names.push_back(request.name);
+        parents.push_back(request.parentGridName);
+    }
+    if (!Opm::areParentGridsAvailableBeforeTheirLgrs(nameToLevel, names, parents)) {
+        for (std::size_t box = 0; box < requests.size(); ++box) {
+            const auto earlier = std::find(names.begin(), names.begin() + box, parents[box]);
+            if (!nameToLevel.count(parents[box]) && (earlier == names.begin() + box)) {
+                OPM_THROW(std::invalid_argument, "Refinement '" + names[box] + "' names parent grid '"
+                          + parents[box] + "', which has not been built yet. Parent LGRs must be "
+                          "ordered before their children.");
             }
         }
     }

@@ -1029,6 +1029,11 @@ const typename CpGridTraits::Communication& Dune::CpGrid::comm () const
     return current_data_->back()->ccobj_;
 }
 
+const typename CpGridTraits::Communication& Dune::CpGrid::getLevelZeroComm() const
+{
+    return current_data_->front()->ccobj_;
+}
+
 //
 
 const std::vector<double>& CpGrid::zcornData() const {
