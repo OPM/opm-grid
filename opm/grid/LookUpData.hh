@@ -41,8 +41,10 @@
 
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 
+#include <array>
 #include <functional>
 #include <string>
+#include <utility>
 #include <type_traits>
 #include <vector>
 
@@ -155,6 +157,17 @@ public:
     auto getFieldPropIdx(const ElementType& elem) const;
 
 protected:
+    /// Per level, a CARFIN block's own values of keyword; nullptr where the
+    /// refined cells take their father's.
+    template<typename T>
+    std::vector<const std::vector<T>*> lgrArrays_(const FieldPropsManager& fieldPropsManager,
+                                                  const std::string& keyword) const;
+
+    /// The element's own value from lgrArrays_(), or nullptr.
+    template<typename T, typename ElemOrIndex>
+    const T* lgrValue_(const std::vector<const std::vector<T>*>& arrays,
+                       const ElemOrIndex& elemOrIndex) const;
+
     const GridView& gridView_;
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView> elemMapper_;
     bool isFieldPropInLgr_;
@@ -297,7 +310,26 @@ std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf
     unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_double(propString);
+    const auto lgrArrays = this->template lgrArrays_<double>(fieldPropsManager, propString);
     if ( (propString == "PORV") && (gridView_.grid().maxLevel() > 0)) {
+        // A block's own PORO, NTG or MULTPV scale the share of the father's pore
+        // volume, so the father's MINPV and PORV edits still hold.
+        const auto factors = std::array {
+            std::pair { std::string { "PORO" }, this->template lgrArrays_<double>(fieldPropsManager, "PORO") },
+            std::pair { std::string { "NTG" }, this->template lgrArrays_<double>(fieldPropsManager, "NTG") },
+            std::pair { std::string { "MULTPV" }, this->template lgrArrays_<double>(fieldPropsManager, "MULTPV") },
+        };
+        auto porvRatio = [&](const auto& element, const auto fatherIdx) {
+            double ratio = 1.0;
+            for (const auto& [name, arrays] : factors) {
+                if (const auto* own = this->lgrValue_(arrays, element)) {
+                    const auto inherited = fieldPropsManager.has_double(name)
+                        ? fieldPropsManager.get_double(name)[fatherIdx] : 1.0;
+                    ratio = (inherited > 0.0) ? ratio * (*own / inherited) : 0.0;
+                }
+            }
+            return ratio;
+        };
         // PORV poreVolume. LGRs supported (so far) only for CpGrid.
         // For CpGrid with LGRs, poreVolume of a cell on the leaf grid view which has a parent cell on level 0,
         // is computed as  porv[parent] * leafCellVolume / parentCellVolume. In this way, the sum of the pore
@@ -308,7 +340,8 @@ std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf
             if (element.hasFather()) {
                 const auto fatherVolume = element.father().geometry().volume();
                 const auto& elemVolume = element.geometry().volume();
-                fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] * elemVolume / fatherVolume;
+                fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] * elemVolume / fatherVolume
+                    * porvRatio(element, fieldPropIdx);
             }
             else {
                 fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
@@ -319,7 +352,8 @@ std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf
         for (const auto& element : elements(gridView_)) {
             const auto& elemIdx = this-> elemMapper_.index(element);
             const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
-            fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
+            const auto* own = this->lgrValue_(lgrArrays, element);
+            fieldPropOnLeaf[elemIdx] = own ? *own : fieldProp[fieldPropIdx];
         }
     }
     return fieldPropOnLeaf;
@@ -336,11 +370,14 @@ std::vector<IntType> Opm::LookUpData<Grid,GridView>::assignFieldPropsIntOnLeaf(c
     unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_int(propString);
+    const auto lgrArrays = this->template lgrArrays_<int>(fieldPropsManager, propString);
     for (const auto& element : elements(gridView_)) {
         const auto& elemIdx = this-> elemMapper_.index(element);
         const auto& fieldPropIdx = this->getFieldPropIdx(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
-        fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] - needsTranslation;
-        valueCheck(fieldProp[fieldPropIdx], fieldPropIdx);
+        const auto* own = this->lgrValue_(lgrArrays, element);
+        const auto value = own ? *own : fieldProp[fieldPropIdx];
+        fieldPropOnLeaf[elemIdx] = value - needsTranslation;
+        valueCheck(value, fieldPropIdx);
     }
     return fieldPropOnLeaf;
 }
@@ -351,6 +388,10 @@ double Opm::LookUpData<Grid,GridView>::fieldPropDouble(const FieldPropsManager& 
                                                        const std::string& propString,
                                                        const ElemOrIndex& elemOrIndex) const
 {
+    if (const auto* own = this->lgrValue_(this->template lgrArrays_<double>(fieldPropsManager, propString),
+                                          elemOrIndex)) {
+        return *own;
+    }
     const auto& fieldPropVec = fieldPropsManager.get_double(propString);
     return this ->operator()(elemOrIndex,fieldPropVec);
 }
@@ -361,6 +402,10 @@ int Opm::LookUpData<Grid,GridView>::fieldPropInt(const FieldPropsManager& fieldP
                                                  const std::string& propString,
                                                  const ElemOrIndex& elemOrIndex) const
 {
+    if (const auto* own = this->lgrValue_(this->template lgrArrays_<int>(fieldPropsManager, propString),
+                                          elemOrIndex)) {
+        return *own;
+    }
     const auto& fieldPropVec = fieldPropsManager.get_int(propString);
     return this ->operator()(elemOrIndex,fieldPropVec);
 }
@@ -409,6 +454,62 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrI
         }
     }
 
+}
+
+template<typename Grid, typename GridView>
+template<typename T>
+std::vector<const std::vector<T>*>
+Opm::LookUpData<Grid,GridView>::lgrArrays_(const FieldPropsManager& fieldPropsManager,
+                                           const std::string& keyword) const
+{
+    auto arrays = std::vector<const std::vector<T>*>{};
+    if constexpr (std::is_same_v<Grid, Dune::CpGrid>) {
+        if (gridView_.grid().maxLevel() == 0) {
+            return arrays;
+        }
+        for (const auto& [name, level] : gridView_.grid().getLgrNameToLevel()) {
+            const std::vector<T>* array = nullptr;
+            if constexpr (std::is_same_v<T, double>) {
+                array = fieldPropsManager.lgr_double(name, keyword);
+            }
+            else {
+                array = fieldPropsManager.lgr_int(name, keyword);
+            }
+            if (array != nullptr) {
+                if (arrays.size() <= static_cast<std::size_t>(level)) {
+                    arrays.resize(level + 1, nullptr);
+                }
+                arrays[level] = array;
+            }
+        }
+    }
+    return arrays;
+}
+
+template<typename Grid, typename GridView>
+template<typename T, typename ElemOrIndex>
+const T* Opm::LookUpData<Grid,GridView>::lgrValue_(const std::vector<const std::vector<T>*>& arrays,
+                                                   const ElemOrIndex& elemOrIndex) const
+{
+    if constexpr (std::is_same_v<Grid, Dune::CpGrid>) {
+        if (arrays.empty()) {
+            return nullptr;
+        }
+        auto value = [&arrays](const auto& elem) -> const T* {
+            const auto level = static_cast<std::size_t>(elem.level());
+            if ((level == 0) || (level >= arrays.size()) || (arrays[level] == nullptr)) {
+                return nullptr;
+            }
+            return &(*arrays[level])[elem.getLevelCartesianIdx()];
+        };
+        if constexpr (std::is_integral_v<ElemOrIndex>) {
+            return value(Dune::cpgrid::Entity<0>(gridView_.grid().currentLeafData(), elemOrIndex, true));
+        }
+        else {
+            return value(elemOrIndex);
+        }
+    }
+    return nullptr;
 }
 
 /// LookUpCartesianData

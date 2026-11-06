@@ -54,6 +54,7 @@
 #include <opm/grid/GraphOfGridWrappers.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
+#include <opm/grid/cpgrid/refinement/conforming/RefinedDistribution.hpp>
 //#include <opm/grid/common/WellConnections.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
 
@@ -237,6 +238,11 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     // - without LGRs: leaf grid view coincides with level zero grid. Supported.
     // - with LGRs: not supported yet. Throw in that case.
     int selectedLevel = validLevel? level : 0;
+    // Conforming refine-before-redistribute: partition level zero, then distribute the refined leaf.
+    const bool refinedLeaf = (lgr_backend_ == Opm::Refinement::Backend::Conforming) && (maxLevel() > 0) && (level == -1);
+    if (refinedLeaf) {
+        level = 0;
+    }
     if (validLevel && (level>0)) {
         if (comm().rank() == 0) {
             OPM_THROW(std::logic_error, "Loadbalancing a refined level grid is not supported, yet.");
@@ -255,7 +261,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         }
     }
 
-    if ((maxLevel()>0) && (partitionMethod!= Dune::PartitionMethod::zoltanGoG)) {
+    if ((maxLevel()>0) && (partitionMethod!= Dune::PartitionMethod::zoltanGoG) && !refinedLeaf) {
         if (comm().rank() == 0) {
             OPM_THROW(std::logic_error, "Loadbalancing level zero grid of a grid with local refinement is supported for ZOLTANGOG.");
         }
@@ -384,6 +390,17 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             }
         }
         comm().barrier();
+
+        if (refinedLeaf) {
+            const auto leafPart = Opm::Refinement::leafPartitionFromLevelZero(*this, computedCellPart);
+            Opm::Refinement::prepareLeafForScatter(*data_.back(), leafPart, cc);
+            std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
+                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, /* transmissibilities = */ nullptr,
+                                             leafPart, allowDistributedWells, /* gridAndWells = */ nullptr, /* level = */ -1);
+            computedCellPart = leafPart;
+            selectedLevel = static_cast<int>(data_.size()) - 1;
+            level = -1;
+        }
 
         // first create the overlap
         auto noImportedOwner = addOverlapLayer(*this,
@@ -1161,6 +1178,9 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
     };
 
     assert (current_data_->back()->cell_to_point_[cell_index].size() == 8);
+    if (lgr_backend_ == Opm::Refinement::Backend::Conforming && maxLevel() > 0) {
+        return faceCenterEclConforming_(cell_index, face, intersection);
+    }
     Dune::FieldVector<double,3> center(0.0);
 
     bool isCoarseCellInside = (intersection.inside().level() == 0);
@@ -1464,6 +1484,27 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
                                                 remove_ij_boundary,
                                                 turn_normals,
                                                 /* pinchActive = */ false,
+                                                /* tolerance_unique_ponts = */ 0.0,
+                                                edge_conformal);
+
+    current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
+                                            current_data_->back()->logical_cartesian_size_.size(),
+                                            0);
+}
+
+void CpGrid::processEclipseFormat(const grdecl& input_data,
+                                  const std::set<std::pair<int,int>>& pinchNnc,
+                                  const bool pinchActive,
+                                  const bool edge_conformal)
+{
+    std::array<std::set<std::pair<int, int>>, 2> nnc;
+    nnc[0] = pinchNnc;
+    current_data_->back()->processEclipseFormat(input_data,
+                                                nullptr,
+                                                nnc,
+                                                /* remove_ij_boundary = */ false,
+                                                /* turn_normals = */ false,
+                                                pinchActive,
                                                 /* tolerance_unique_ponts = */ 0.0,
                                                 edge_conformal);
 
