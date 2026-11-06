@@ -54,6 +54,7 @@
 #include <opm/grid/GraphOfGridWrappers.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
+#include <opm/grid/cpgrid/refinement/conforming/RefinedDistribution.hpp>
 //#include <opm/grid/common/WellConnections.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
 
@@ -237,6 +238,11 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     // - without LGRs: leaf grid view coincides with level zero grid. Supported.
     // - with LGRs: not supported yet. Throw in that case.
     int selectedLevel = validLevel? level : 0;
+    // Conforming refine-before-redistribute: partition level zero, then distribute the refined leaf.
+    const bool refinedLeaf = (lgr_backend_ == Opm::Refinement::Backend::Conforming) && (maxLevel() > 0) && (level == -1);
+    if (refinedLeaf) {
+        level = 0;
+    }
     if (validLevel && (level>0)) {
         if (comm().rank() == 0) {
             OPM_THROW(std::logic_error, "Loadbalancing a refined level grid is not supported, yet.");
@@ -255,7 +261,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         }
     }
 
-    if ((maxLevel()>0) && (partitionMethod!= Dune::PartitionMethod::zoltanGoG)) {
+    if ((maxLevel()>0) && (partitionMethod!= Dune::PartitionMethod::zoltanGoG) && !refinedLeaf) {
         if (comm().rank() == 0) {
             OPM_THROW(std::logic_error, "Loadbalancing level zero grid of a grid with local refinement is supported for ZOLTANGOG.");
         }
@@ -384,6 +390,17 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             }
         }
         comm().barrier();
+
+        if (refinedLeaf) {
+            const auto leafPart = Opm::Refinement::leafPartitionFromLevelZero(*this, computedCellPart);
+            Opm::Refinement::prepareLeafForScatter(*data_.back(), leafPart, cc);
+            std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
+                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, /* transmissibilities = */ nullptr,
+                                             leafPart, allowDistributedWells, /* gridAndWells = */ nullptr, /* level = */ -1);
+            computedCellPart = leafPart;
+            selectedLevel = static_cast<int>(data_.size()) - 1;
+            level = -1;
+        }
 
         // first create the overlap
         auto noImportedOwner = addOverlapLayer(*this,

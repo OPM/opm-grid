@@ -22,12 +22,16 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/NestedRefinementUtilities.hpp>
+#include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
+#include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
+#include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <opm/common/ErrorMacros.hpp>
 
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -42,11 +46,46 @@ void CpGrid::setLgrBackend(Opm::Refinement::Backend backend)
         OPM_THROW(std::logic_error, "The LGR backend cannot change once the grid is refined.");
     }
     lgr_backend_ = backend;
+    // Only the Conforming builder resamples the corner-point input.
+    current_data_->front()->retain_cp_input_ = (backend == Opm::Refinement::Backend::Conforming);
 }
 
 void CpGrid::setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder)
 {
     refinement_builder_ = std::move(builder);
+}
+
+// The input is retained on rank 0's undistributed level zero; every rank's builder resamples it.
+// Entered on all ranks, whether or not the current view already holds it.
+void CpGrid::broadcastRetainedInput_()
+{
+    auto input = std::make_shared<Opm::Refinement::RetainedCornerPointInput>();
+    int present = 0;
+    if (comm().rank() == 0 && !data_.empty()) {
+        if (const auto source = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*data_[0])) {
+            *input = *source;
+            present = 1;
+        }
+    }
+    comm().broadcast(&present, 1, 0);
+    if (!present) {
+        return;
+    }
+    comm().broadcast(input->dims.data(), 3, 0);
+    int edgeConformal = input->edgeConformal ? 1 : 0;
+    comm().broadcast(&edgeConformal, 1, 0);
+    input->edgeConformal = (edgeConformal != 0);
+    std::array<int,3> sizes{static_cast<int>(input->coord.size()),
+                            static_cast<int>(input->zcorn.size()),
+                            static_cast<int>(input->actnum.size())};
+    comm().broadcast(sizes.data(), 3, 0);
+    input->coord.resize(sizes[0]);
+    input->zcorn.resize(sizes[1]);
+    input->actnum.resize(sizes[2]);
+    if (sizes[0] > 0) comm().broadcast(input->coord.data(), sizes[0], 0);
+    if (sizes[1] > 0) comm().broadcast(input->zcorn.data(), sizes[1], 0);
+    if (sizes[2] > 0) comm().broadcast(input->actnum.data(), sizes[2], 0);
+    Opm::Refinement::GridStateWriter::setRetainedCornerPointInput(*current_data_->front(), input);
 }
 
 void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement> requests)
@@ -59,11 +98,10 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
         for (const auto& request : requests) {
             const bool graded = std::any_of(request.subdivision.begin(), request.subdivision.end(),
                                             [](const auto& sub) { return !sub.empty(); });
-            if (graded || !request.minpvRemoved.empty() || request.pillarsFromBoxLayer) {
+            if (graded || !request.minpvRemoved.empty()) {
                 OPM_THROW(std::invalid_argument,
-                          "Refinement '" + request.name + "' is graded, removes cells by a block "
-                          "MINPV or takes its pillars from the box layer; only the Conforming LGR "
-                          "backend refines that.");
+                          "Refinement '" + request.name + "' is graded or removes cells by a block "
+                          "MINPV; only the Conforming LGR backend refines that.");
             }
             cellsPerDim.push_back(request.cellsPerDim);
             startIJK.push_back(request.startIJK);
@@ -75,8 +113,18 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
         return;
     }
 
-    if (!refinement_builder_) {
-        OPM_THROW(std::logic_error, "The Conforming LGR backend has no refinement builder.");
+    if (comm().size() > 1) {
+        broadcastRetainedInput_();
+    }
+    auto builder = refinement_builder_;
+    if (!builder) {
+        if (auto input = Opm::Refinement::GridStateWriter::retainedCornerPointInput(*current_data_->front())) {
+            builder = std::make_shared<Opm::Refinement::ConformingBlockBuilder>(std::move(input));
+        }
+    }
+    if (!builder) {
+        OPM_THROW(std::logic_error, "The Conforming LGR backend has no refinement builder and no "
+                  "retained corner-point input; select the backend before processEclipseFormat().");
     }
     // A parent LGR must exist, or come earlier in the requests, before its children.
     std::vector<std::string> names, parents;
@@ -95,7 +143,9 @@ void CpGrid::addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement>
         }
     }
     const int preBuildMaxLevel = maxLevel();
-    refinement_builder_->build(*this, requests);
+    builder->build(*this, requests);
+    // A grid is refined once: its level zero no longer needs the description.
+    Opm::Refinement::GridStateWriter::setRetainedCornerPointInput(*current_data_->front(), nullptr);
 
     for (std::size_t box = 0; box < requests.size(); ++box) {
         lgr_names_[requests[box].name] = preBuildMaxLevel + static_cast<int>(box) + 1;

@@ -42,6 +42,8 @@
 #ifndef OPM_LEVELHIERARCHY_HEADER
 #define OPM_LEVELHIERARCHY_HEADER
 
+#include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
+
 #include <array>
 #include <memory>
 #include <tuple>
@@ -83,6 +85,8 @@ struct LevelHierarchy
     std::vector<int> cell_to_idxInParentCell;
     /** To keep track of refinement processes */
     int refinement_max_level{0};
+    /** Graded subdivision of a refined level; empty for a uniform one. */
+    std::array<Opm::Refinement::AxisSubdivision,3> subdivision{};
 };
 
 } // namespace cpgrid

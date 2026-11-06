@@ -71,6 +71,7 @@
 #include "LevelHierarchy.hpp"
 
 #include <array>
+#include <cstdint>
 #include <initializer_list>
 #include <set>
 #include <vector>
@@ -78,6 +79,7 @@
 namespace Opm
 {
 class EclipseState;
+namespace Refinement { struct GridStateWriter; struct RetainedCornerPointInput; }
 }
 namespace Dune
 {
@@ -121,6 +123,7 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
     friend class Dune::cpgrid::IdSet;
     friend class Dune::cpgrid::LevelGlobalIdSet;
+    friend struct ::Opm::Refinement::GridStateWriter;
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
@@ -390,6 +393,9 @@ public:
     {
         return  global_cell_;
     }
+
+    /// See CpGrid::stableCellId().
+    std::vector<std::int64_t> stableCellId() const;
 
     /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
     ///        Assumption: all grid cells are active.
@@ -823,6 +829,10 @@ private:
 
     /// \brief Sorted vector of aquifer cell indices.
     std::vector<int> aquifer_cells_;
+
+    /// Corner-point input kept for the Conforming refinement backend.
+    std::shared_ptr<const Opm::Refinement::RetainedCornerPointInput> retained_cp_input_;
+    bool retain_cp_input_{false};
 
 #if HAVE_MPI
 
