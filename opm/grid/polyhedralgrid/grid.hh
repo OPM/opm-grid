@@ -1924,10 +1924,14 @@ namespace Dune
         {
           if( dim == 2 )
           {
-            // for 2d Cartesian grids the face ordering is wrong
+            // for 2d Cartesian grids the face ordering is wrong. It is only changed if it still is, as init() is called
+            // again for a grid that was taken from a grid that has had its faces ordered.
             int f = grid_->cell_facepos[ c ];
-            std::swap( grid_->cell_faces[ f+1 ], grid_->cell_faces[ f+2 ] );
-            std::swap( grid_->cell_facetag[ f+1 ], grid_->cell_facetag[ f+2 ] );
+            if( grid_->cell_facetag[ f+1 ] > grid_->cell_facetag[ f+2 ] )
+            {
+              std::swap( grid_->cell_faces[ f+1 ], grid_->cell_faces[ f+2 ] );
+              std::swap( grid_->cell_facetag[ f+1 ], grid_->cell_facetag[ f+2 ] );
+            }
           }
 
           typedef std::map< int, std::set<int> > vertexlist_t;

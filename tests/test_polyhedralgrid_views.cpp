@@ -213,3 +213,37 @@ BOOST_AUTO_TEST_CASE(MovingDataNeedsTheViewOfLoadBalance)
     BOOST_CHECK_THROW(grid.gatherData(handle), std::logic_error);
     BOOST_CHECK_THROW(grid.scatterData(handle), std::logic_error);
 }
+
+namespace
+{
+// Whether the faces of every cell of a two dimensional grid are numbered as those of the reference element: x minus, x plus, y minus, y plus.
+bool facesFollowTheReferenceElement(const Dune::PolyhedralGrid<2, 2>& grid)
+{
+    const double expected[4][2] = {{-1.0, 0.0}, {1.0, 0.0}, {0.0, -1.0}, {0.0, 1.0}};
+    for (const auto& element : elements(grid.leafGridView())) {
+        const auto center = element.geometry().center();
+        for (int i = 0; i < 4; ++i) {
+            const auto faceCenter = element.template subEntity<1>(i).geometry().center();
+            if (std::abs(faceCenter[0] - center[0] - 0.5 * expected[i][0]) > 1e-12
+                || std::abs(faceCenter[1] - center[1] - 0.5 * expected[i][1]) > 1e-12) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+} // anonymous namespace
+
+// The faces of the cells of a two dimensional grid keep their numbers in the distributed view.
+BOOST_AUTO_TEST_CASE(TwoDimensionalFacesKeepTheirNumbersInTheDistributedView)
+{
+    Dune::PolyhedralGrid<2, 2> grid(std::vector<int>{4, 2}, std::vector<double>{1.0, 1.0});
+    BOOST_CHECK(facesFollowTheReferenceElement(grid));
+
+    auto local = Dune::unstructured::extractLocalGrid(grid, std::vector<int>{0, 1, 4, 5});
+    grid.setDistributedView(Dune::PolyhedralGrid<2, 2>::UnstructuredGridPtr(local.grid.release()));
+    BOOST_CHECK(facesFollowTheReferenceElement(grid));
+    grid.switchToDistributedView();
+    BOOST_CHECK_EQUAL(grid.size(0), 4);
+    BOOST_CHECK(facesFollowTheReferenceElement(grid));
+}
