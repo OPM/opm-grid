@@ -23,6 +23,7 @@
 
 #include <opm/grid/UnstructuredGrid.h>
 #include <opm/grid/common/UnstructuredGridConnections.hpp>
+#include <opm/grid/common/UnstructuredGridPartitioning.hpp>
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/polyhedralgrid.hh>
@@ -252,4 +253,30 @@ BOOST_AUTO_TEST_CASE(PolyhedralGridKeepsTheCornersWithoutSpaceBetweenTheCells)
         ++numberOfCells;
     }
     BOOST_CHECK_EQUAL(numberOfCells, 2);
+}
+
+// A process can have the cell below the space between two cells without the cell above, at the edge of its overlap. The cell must still find its
+// corners, with and without space between the cells.
+BOOST_AUTO_TEST_CASE(PolyhedralGridOfTheCellBelowOnItsOwnKeepsTheCorners)
+{
+    const std::vector<std::vector<std::array<double, 8>>> columns{
+        {flat(0.0, 10.0), flat(10.0, 10.0), flat(15.0, 25.0)},
+        {flat(0.0, 10.0), flat(10.0, 10.0), flat(10.0, 20.0)}};
+    for (const auto& layers : columns) {
+        auto grid = column(layers);
+        BOOST_REQUIRE(grid);
+        BOOST_REQUIRE_EQUAL(grid->number_of_cells, 2);
+        BOOST_CHECK_EQUAL(Dune::unstructured::connectCellsAcrossGaps(*grid, {{0, 1}}), 1);
+        for (const std::vector<int>& cells : {std::vector<int>{1}, std::vector<int>{0}, std::vector<int>{0, 1}}) {
+            auto local = Dune::unstructured::extractLocalGrid(*grid, cells);
+            Dune::PolyhedralGrid<3, 3>::UnstructuredGridPtr gridPtr(local.grid.release());
+            Dune::PolyhedralGrid<3, 3> polyhedralGrid(std::move(gridPtr));
+            int numberOfCells = 0;
+            for (const auto& element : elements(polyhedralGrid.leafGridView())) {
+                BOOST_CHECK_EQUAL(element.geometry().corners(), 8);
+                ++numberOfCells;
+            }
+            BOOST_CHECK_EQUAL(numberOfCells, static_cast<int>(cells.size()));
+        }
+    }
 }

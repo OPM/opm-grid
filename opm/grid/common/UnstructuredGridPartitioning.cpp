@@ -152,11 +152,38 @@ LocalGrid extractLocalGrid(const UnstructuredGrid& grid,
 
     LocalGrid result;
 
+    // A cell that connectCellsAcrossGaps() has connected to the cell above has the bottom face of that cell as one more
+    // face with the tag of the top, next to its own top. If the cell above is not in the sub grid, this face would be a
+    // second top with no cell on the other side, and the corners of the cell could not be found from the faces. The cell
+    // does not have the face then, which is how the cell was before it was connected.
+    constexpr int topTag = 4;
+    const auto isFaceOfCellAbove = [&](const int cell, const auto pos) {
+        if (grid.cell_facetag == nullptr || grid.cell_facetag[pos] != topTag) {
+            return false;
+        }
+        const int face = grid.cell_faces[pos];
+        const int other = (grid.face_cells[2 * face] == cell) ? grid.face_cells[2 * face + 1]
+                                                              : grid.face_cells[2 * face];
+        if (other < 0 || globalToLocalCell.count(other) > 0) {
+            return false;
+        }
+        for (auto q = grid.cell_facepos[cell]; q < grid.cell_facepos[cell + 1]; ++q) {
+            if (grid.cell_facetag[q] == topTag && (grid.face_cells[2 * grid.cell_faces[q]] < 0
+                                                   || grid.face_cells[2 * grid.cell_faces[q] + 1] < 0)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
     // Faces: all faces of the cells, in increasing global order.
     std::size_t numCellFaces = 0;
     for (const int cell : cells) {
-        numCellFaces += grid.cell_facepos[cell + 1] - grid.cell_facepos[cell];
         for (auto pos = grid.cell_facepos[cell]; pos < grid.cell_facepos[cell + 1]; ++pos) {
+            if (isFaceOfCellAbove(cell, pos)) {
+                continue;
+            }
+            ++numCellFaces;
             result.globalFace.push_back(grid.cell_faces[pos]);
         }
     }
@@ -240,6 +267,9 @@ LocalGrid extractLocalGrid(const UnstructuredGrid& grid,
     for (std::size_t c = 0; c < cells.size(); ++c) {
         const int gc = cells[c];
         for (auto pos = grid.cell_facepos[gc]; pos < grid.cell_facepos[gc + 1]; ++pos) {
+            if (isFaceOfCellAbove(gc, pos)) {
+                continue;
+            }
             local.cell_faces[facePos] = globalToLocalFace.at(grid.cell_faces[pos]);
             if (hasTags) {
                 local.cell_facetag[facePos] = grid.cell_facetag[pos];
