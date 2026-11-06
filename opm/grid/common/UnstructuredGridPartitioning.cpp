@@ -35,6 +35,12 @@ extern "C" {
 extern "C" {
 #include <metis.h>
 }
+#if IS_SCOTCH_METIS_HEADER
+// The METIS of Scotch does not define the value that tells that it succeeded.
+#ifndef METIS_OK
+#define METIS_OK 1
+#endif
+#endif
 #endif
 
 #include <algorithm>
@@ -547,10 +553,23 @@ std::vector<int> partitionWithMetis([[maybe_unused]] const UnstructuredGrid& gri
         xadj[cell + 1] = static_cast<Index>(adjncy.size());
     }
 
+#if defined(REALTYPEWIDTH)
+    using Real = ::real_t;
+#else
+    using Real = double;
+#endif
+#if IS_SCOTCH_METIS_HEADER
+    // The METIS of Scotch has no options, and takes the imbalance as the fraction above one, as MetisPartition does.
+    Index* options = nullptr;
+    Real imbalance = static_cast<Real>(imbalanceTol >= 1.0 ? imbalanceTol - 1.0 : imbalanceTol);
+    Real* ubvec = &imbalance;
+#else
     Index options[METIS_NOPTIONS];
     METIS_SetDefaultOptions(options);
     // The imbalance is given in parts per thousand above one.
     options[METIS_OPTION_UFACTOR] = std::max<Index>(1, static_cast<Index>(std::lround((imbalanceTol - 1.0) * 1000.0)));
+    Real* ubvec = nullptr;
+#endif
 
     Index numVertices = numCells;
     Index numConstraints = 1;
@@ -559,7 +578,7 @@ std::vector<int> partitionWithMetis([[maybe_unused]] const UnstructuredGrid& gri
     std::vector<Index> part(numCells, 0);
     const int status = METIS_PartGraphKway(&numVertices, &numConstraints, xadj.data(), adjncy.data(),
                                            /* vwgt = */ nullptr, /* vsize = */ nullptr, adjwgt.data(),
-                                           &numPartsMetis, /* tpwgts = */ nullptr, /* ubvec = */ nullptr,
+                                           &numPartsMetis, /* tpwgts = */ nullptr, ubvec,
                                            options, &objective, part.data());
     if (status != METIS_OK) {
         OPM_THROW(std::runtime_error, "partitionWithMetis(): METIS failed to partition the grid.");
