@@ -30,6 +30,7 @@
 #include <opm/grid/polyhedralgrid/cartesianindexmapper.hh>
 
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 
 using Grid = Dune::PolyhedralGrid<3, 3>;
@@ -177,4 +178,38 @@ BOOST_AUTO_TEST_CASE(ReplaceDistributedViewWhileActive)
 
     grid.switchToGlobalView();
     BOOST_CHECK_EQUAL(grid.size(0), 8);
+}
+
+namespace
+{
+// A handle with one int per cell, only to ask for the data to be moved.
+class OneValueHandle : public Dune::CommDataHandleIF<OneValueHandle, int>
+{
+public:
+    bool contains(int, int codim) const { return codim == 0; }
+    bool fixedSize(int, int) const { return true; }
+
+    template <class Entity>
+    std::size_t size(const Entity&) const { return 1; }
+
+    template <class Buffer, class Entity>
+    void gather(Buffer& buffer, const Entity&) const { buffer.write(0); }
+
+    template <class Buffer, class Entity>
+    void scatter(Buffer& buffer, const Entity&, std::size_t)
+    {
+        int value;
+        buffer.read(value);
+    }
+};
+} // anonymous namespace
+
+// The data can only be moved between the views that loadBalance() made, as the others have no map of the cells.
+BOOST_AUTO_TEST_CASE(MovingDataNeedsTheViewOfLoadBalance)
+{
+    Grid grid(std::vector<int>{4, 2, 1}, std::vector<double>{1.0, 1.0, 1.0});
+    grid.setDistributedView(localGrid(grid, localCells(grid)));
+    OneValueHandle handle;
+    BOOST_CHECK_THROW(grid.gatherData(handle), std::logic_error);
+    BOOST_CHECK_THROW(grid.scatterData(handle), std::logic_error);
 }

@@ -826,6 +826,10 @@ namespace Dune
       const bool wasDistributed = distributedViewActive_;
       switchToGlobalView();
 
+      // The data of the view that was installed before does not belong to this view.
+      dataMovementAvailable_ = false;
+      rankCells_.clear();
+
       // Make the new grid the active one to let init() derive its data.
       ViewData fresh;
       fresh.gridPtr = std::move( gridPtr );
@@ -957,6 +961,7 @@ namespace Dune
                           std::move( distributed.isOwner ), overlapLayers );
       distributedView_.globalCellIndex = std::move( distributed.globalCells );
       rankCells_ = std::move( distributed.cellsOfRank );
+      dataMovementAvailable_ = true;
       switchToDistributedView();
       return true;
 #else
@@ -1140,6 +1145,10 @@ namespace Dune
       {
         return;
       }
+      if( ! dataMovementAvailable_ )
+      {
+        OPM_THROW(std::logic_error, "scatterData() needs the distributed view that loadBalance() made.");
+      }
       // The view is switched temporarily, which does not change the grid as seen from outside.
       auto& self = const_cast< PolyhedralGrid& >( *this );
       const bool wasDistributed = distributedViewActive_;
@@ -1213,6 +1222,10 @@ namespace Dune
       if( ! hasDistributedView_ || ! handle.contains( dim, 0 ) )
       {
         return;
+      }
+      if( ! dataMovementAvailable_ )
+      {
+        OPM_THROW(std::logic_error, "gatherData() needs the distributed view that loadBalance() made.");
       }
       auto& self = const_cast< PolyhedralGrid& >( *this );
       const bool wasDistributed = distributedViewActive_;
@@ -2423,6 +2436,9 @@ namespace Dune
     std::vector< int > globalCellIndex_;
     // Rank 0 only: for each rank the global indices of its cells, in the order of the distributed view.
     std::vector< std::vector< int > > rankCells_;
+    // Whether the distributed view has the global indices and rankCells_ that scatterData() and gatherData() need. Only a
+    // view that loadBalance() made has them, and the same on all processes.
+    bool dataMovementAvailable_ = false;
 #if HAVE_MPI
     // Created on demand in the global view, always present in the distributed view.
     mutable std::unique_ptr< CellCommunicationType > cellComm_;
