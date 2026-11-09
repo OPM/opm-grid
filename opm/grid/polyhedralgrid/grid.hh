@@ -351,14 +351,18 @@ namespace Dune
      *  \param[in]  mergeMinpvCells  merge the cells that MINPV removes into the cell below, which gets their volume
      *                              in the geometry. Otherwise, as the CpGrid does it, they are collapsed and the cells
      *                              above and below are connected across them (default).
+     *  \param[in]  comm         communicator of the processes that share the grid. It is used for all
+     *                          communication of the grid, so it must be the one of the simulation
+     *                          (default = all processes).
      */
     explicit PolyhedralGrid (const Opm::EclipseGrid& inputGrid,
                              const std::vector<double>& poreVolumes = std::vector<double>{},
                              const bool edge_conformal = false,
-                             const bool mergeMinpvCells = false)
+                             const bool mergeMinpvCells = false,
+                             const Communication& comm = Communication( MPIHelper::getCommunicator() ))
       : gridPtr_      { createGrid(inputGrid, poreVolumes, static_cast<int>(edge_conformal), mergeMinpvCells) }
       , grid_         { gridPtr_.get() }
-      , comm_         { MPIHelper::getCommunicator() }
+      , comm_         { comm }
       , leafIndexSet_ { *this }
       , globalIdSet_  { *this }
       , localIdSet_   { *this }
@@ -371,12 +375,14 @@ namespace Dune
      *
      *  \param[in]  n Number of cells in each direction
      *  \param[in]  dx Size of cells in each direction
+     *  \param[in]  comm communicator of the processes that share the grid (default = all processes)
      */
     explicit PolyhedralGrid ( const std::vector< int >& n,
-                              const std::vector< double >& dx )
+                              const std::vector< double >& dx,
+                              const Communication& comm = Communication( MPIHelper::getCommunicator() ) )
     : gridPtr_( createGrid( n, dx ) ),
       grid_( gridPtr_.get() ),
-      comm_( MPIHelper::getCommunicator()),
+      comm_( comm ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -390,11 +396,13 @@ namespace Dune
      *  \note The grid will take ownership of the supplied grid pointer.
      *
      *  \param[in]  gridPtr  pointer to UnstructuredGrid
+     *  \param[in]  comm     communicator of the processes that share the grid (default = all processes)
      */
-    explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
+    explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr,
+                              const Communication& comm = Communication( MPIHelper::getCommunicator() ) )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( gridPtr_.get() ),
-      comm_( MPIHelper::getCommunicator() ),
+      comm_( comm ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -409,11 +417,13 @@ namespace Dune
      *  Therefore, they must remain valid until the grid is destroyed.
      *
      *  \param[in]  grid    UnstructuredGrid reference
+     *  \param[in]  comm    communicator of the processes that share the grid (default = all processes)
      */
-    explicit PolyhedralGrid ( const UnstructuredGridType& grid )
+    explicit PolyhedralGrid ( const UnstructuredGridType& grid,
+                              const Communication& comm = Communication( MPIHelper::getCommunicator() ) )
     : gridPtr_(),
       grid_( &grid ),
-      comm_( MPIHelper::getCommunicator() ),
+      comm_( comm ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),

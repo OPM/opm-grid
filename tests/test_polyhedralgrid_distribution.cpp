@@ -272,6 +272,35 @@ BOOST_AUTO_TEST_CASE(IdsDoNotDependOnTheView)
     BOOST_CHECK_EQUAL(distinct.size(), localIds.size());
 }
 
+// The grid communicates on the communicator it was given and not on all processes.
+BOOST_AUTO_TEST_CASE(UsesTheGivenCommunicator)
+{
+    using Communication = Grid::Communication;
+
+    // A grid on its own on each process is not distributed.
+    Grid alone(std::vector<int>{nx, ny, 1}, std::vector<double>{1.0, 1.0, 1.0}, Communication(MPI_COMM_SELF));
+    BOOST_CHECK_EQUAL(alone.comm().size(), 1);
+    BOOST_CHECK(!alone.loadBalance(std::vector<int>(nx * ny, 0)));
+
+    // A copy of the communicator of all processes works as well, and is not the same communicator.
+    MPI_Comm copy;
+    MPI_Comm_dup(MPI_COMM_WORLD, &copy);
+    {
+        Grid grid(std::vector<int>{nx, ny, 1}, std::vector<double>{1.0, 1.0, 1.0}, Communication(copy));
+        BOOST_CHECK_EQUAL(grid.comm().size(), Dune::MPIHelper::getCommunication().size());
+        if (grid.comm().size() > 1) {
+            BOOST_REQUIRE(grid.loadBalance(makePartition(grid)));
+            int owned = 0;
+            for (const auto& cell : elements(grid.leafGridView(), Dune::Partitions::interior)) {
+                static_cast<void>(cell);
+                ++owned;
+            }
+            BOOST_CHECK_EQUAL(grid.comm().sum(owned), nx * ny);
+        }
+    }
+    MPI_Comm_free(&copy);
+}
+
 BOOST_AUTO_TEST_CASE(InvalidPartitionThrowsOnAllRanks)
 {
     Grid grid = makeGrid();
