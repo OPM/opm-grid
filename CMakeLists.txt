@@ -29,7 +29,8 @@ option(REQUIRE_ZOLTAN "Require Zoltan to be found (needed for productive run" ON
 macro(opm-grid_prereqs_hook)
   target_link_libraries(opmgrid PUBLIC opmcommon)
 
-  if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
+  if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN
+     AND NOT CMAKE_DISABLE_FIND_PACKAGE_ZOLTAN)
     message(SEND_ERROR
       "opm-grid with MPI support requires the package ZOLTAN. "
       "Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)"
