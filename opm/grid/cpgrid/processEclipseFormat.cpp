@@ -467,7 +467,13 @@ namespace cpgrid
         processed_grid output{};
         int process_ok{};
 
-        if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
+        // Only aquifers that take over grid cells shape the grid; otherwise it must
+        // come out as without AQUNUM: no kept cells, overridden volumes or NNCs.
+        const bool numAquiferInGrid = (ecl_state != nullptr)
+            && ecl_state->aquifer().hasNumericalAquifer()
+            && (ecl_state->numericalAquiferMode() == Opm::NumericalAquiferMode::GridCells);
+
+        if (numAquiferInGrid) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
                 static_cast<std::size_t>(input_data.dims[1]) *
@@ -510,7 +516,7 @@ namespace cpgrid
             // removeUnusedNodes(output);
         }
 
-        if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
+        if (numAquiferInGrid) {
             const std::size_t global_nc =
                 static_cast<std::size_t>(input_data.dims[0]) *
                 static_cast<std::size_t>(input_data.dims[1]) *
@@ -554,7 +560,7 @@ namespace cpgrid
 #endif
         // here we need the cell volumes based on the active index order
         std::unordered_map<std::size_t, double> aquifer_cell_volumes_local{};
-        if ((ecl_state != nullptr) && ecl_state->aquifer().hasNumericalAquifer()) {
+        if (numAquiferInGrid) {
             const auto& aquifer_cell_volumes = ecl_state->aquifer()
                 .numericalAquifers().aquiferCellVolumes();
 
