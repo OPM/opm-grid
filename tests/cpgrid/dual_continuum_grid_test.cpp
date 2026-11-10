@@ -29,7 +29,9 @@
 #include <opm/grid/CpGrid.hpp>
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/NNC.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <algorithm>
@@ -98,7 +100,8 @@ Opm::Deck makeDeck(const bool dual = true, const std::string& extraGridKeywords 
         "RUNSPEC\nOIL\nWATER\nDIMENS\n " + std::to_string(nx) + ' ' + std::to_string(ny) + ' '
         + std::to_string(nz) + " /\n" + (dual ? "DUALPORO\n" : "")
         + "GRID\n" + extraGridKeywords + "COORD\n" + coord.str() + "/\nZCORN\n" + zcorn.str() + "/\n"
-        "PORO\n " + std::to_string(cells) + "*0.2 /\nPERMX\n " + std::to_string(cells) + "*1.0 /\n";
+        "PORO\n " + std::to_string(cells) + "*0.2 /\nPERMX\n " + std::to_string(cells) + "*1.0 /\n"
+        + (dual ? "SIGMA\n 0.12 /\n" : "");
     return Opm::Parser{}.parseString(deckData);
 }
 
@@ -247,4 +250,38 @@ BOOST_AUTO_TEST_CASE(MinpvIsNotYetSupported)
     Dune::CpGrid grid;
     BOOST_CHECK_THROW(grid.processEclipseFormat(&eclGrid, nullptr, false, false, false),
                       std::invalid_argument);
+}
+
+BOOST_AUTO_TEST_CASE(EclipseStateNncGiveTheMatrixFractureCouplingFaces)
+{
+    // From an EclipseState, whose input NNCs hold the coupling of each twin pair.
+    const auto deck = makeDeck();
+    Opm::EclipseState eclState(deck);
+    const auto& eclGrid = eclState.getInputGrid();
+    const auto numNnc = eclState.getInputNNC().input().size();
+    BOOST_REQUIRE_EQUAL(numNnc, eclGrid.getCartesianSize() / 2);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclGrid, &eclState, false, false, false);
+    const auto withoutNnc = makeCpGrid(eclGrid);
+
+    BOOST_REQUIRE_EQUAL(grid.numCells(), static_cast<int>(eclGrid.getNumActive()));
+    BOOST_CHECK_EQUAL(grid.numFaces(), withoutNnc->numFaces() + static_cast<int>(numNnc));
+
+    // Every twin pair is connected by one NNC face, and these come first.
+    std::unordered_map<int, int> cellOfGlobal;
+    for (int c = 0; c < grid.numCells(); ++c) {
+        cellOfGlobal[grid.globalCell()[c]] = c;
+    }
+    const int half = static_cast<int>(eclGrid.getCartesianSize() / 2);
+    for (std::size_t f = 0; f < numNnc; ++f) {
+        const int a = grid.faceCell(static_cast<int>(f), 0);
+        const int b = grid.faceCell(static_cast<int>(f), 1);
+        BOOST_REQUIRE(a >= 0 && b >= 0);
+        BOOST_CHECK_EQUAL(grid.globalCell()[b], grid.globalCell()[a] + half);
+        BOOST_CHECK_EQUAL(grid.numFaceVertices(static_cast<int>(f)), 0);
+    }
+    for (int g = 0; g < half; ++g) {
+        BOOST_CHECK(cellOfGlobal.count(g) == 1 && cellOfGlobal.count(g + half) == 1);
+    }
 }

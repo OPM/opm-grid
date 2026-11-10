@@ -314,6 +314,72 @@ void CpGridData::appendDisjointGrid(const CpGridData& other)
 #endif
 }
 
+void CpGridData::appendNncFaces(const std::vector<std::pair<int, int>>& cell_pairs)
+{
+    if (cell_pairs.empty()) {
+        return;
+    }
+
+    const int num_cells = cell_to_face_.size();
+    for (const auto& [c1, c2] : cell_pairs) {
+        if (c1 < 0 || c2 < 0 || c1 >= num_cells || c2 >= num_cells || c1 == c2) {
+            OPM_THROW(std::invalid_argument,
+                      "Invalid NNC between cells " + std::to_string(c1) + " and "
+                      + std::to_string(c2) + " in a grid with " + std::to_string(num_cells)
+                      + " cells.");
+        }
+    }
+
+    // New face-to-cell table: the NNC faces, then the existing faces. The
+    // cell-to-face table is then the inverse relation, as when processing
+    // the Eclipse format, and lists the faces of each cell in increasing order.
+    OrientedEntityTable<1, 0> face_to_cell;
+    EntityRep<0> cells[2];
+    for (const auto& [c1, c2] : cell_pairs) {
+        cells[0].setValue(c1, true);
+        cells[1].setValue(c2, false);
+        if (cells[1] < cells[0]) {
+            std::swap(cells[0], cells[1]);
+        }
+        face_to_cell.appendRow(cells, cells + 2);
+    }
+    appendOffsetRows(face_to_cell, face_to_cell_, 0);
+
+    const auto cell_to_face = face_to_cell.makeInverseRelation();
+
+    // The NNC faces have no points.
+    Opm::SparseTable<int> face_to_point;
+    const std::vector<int> no_points;
+    for (std::size_t i = 0; i < cell_pairs.size(); ++i) {
+        face_to_point.appendRow(no_points.begin(), no_points.end());
+    }
+    for (const auto& row : face_to_point_) {
+        face_to_point.appendRow(row.begin(), row.end());
+    }
+
+    // As for NNC faces from the Eclipse format: unit area, and the normal
+    // and centroid are not defined.
+    const PointType undefined(-1e100);
+    std::vector<face_tag> tags(cell_pairs.size(), NNC_FACE);
+    tags.insert(tags.end(), face_tag_.begin(), face_tag_.end());
+
+    std::vector<PointType> normals(cell_pairs.size(), undefined);
+    normals.insert(normals.end(), face_normals_.begin(), face_normals_.end());
+
+    auto& face_geometry = geometry_.geomVector(std::integral_constant<int, 1>());
+    std::vector<Geometry<2, 3>> geometries(cell_pairs.size(), Geometry<2, 3>(undefined, 1.0));
+    geometries.insert(geometries.end(), face_geometry.begin(), face_geometry.end());
+
+    face_to_cell_ = std::move(face_to_cell);
+    cell_to_face_ = std::move(cell_to_face);
+    face_to_point_ = std::move(face_to_point);
+    face_tag_.assign(tags.begin(), tags.end());
+    face_normals_.assign(normals.begin(), normals.end());
+    face_geometry.assign(geometries.begin(), geometries.end());
+
+    computeUniqueBoundaryIds();
+}
+
 int CpGridData::size(int codim) const
 {
     switch (codim) {
