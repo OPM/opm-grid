@@ -205,13 +205,19 @@ public:
 } // anonymous namespace
 
 // The data can only be moved between the views that loadBalance() made, as the others have no map of the cells.
+// Without MPI there is nothing to move and both methods do nothing.
 BOOST_AUTO_TEST_CASE(MovingDataNeedsTheViewOfLoadBalance)
 {
     Grid grid(std::vector<int>{4, 2, 1}, std::vector<double>{1.0, 1.0, 1.0});
     grid.setDistributedView(localGrid(grid, localCells(grid)));
     OneValueHandle handle;
+#if HAVE_MPI
     BOOST_CHECK_THROW(grid.gatherData(handle), std::logic_error);
     BOOST_CHECK_THROW(grid.scatterData(handle), std::logic_error);
+#else
+    BOOST_CHECK_NO_THROW(grid.gatherData(handle));
+    BOOST_CHECK_NO_THROW(grid.scatterData(handle));
+#endif
 }
 
 namespace
