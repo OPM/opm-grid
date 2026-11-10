@@ -338,6 +338,36 @@ namespace Dune
 
         //@}
 
+        /// \name Combining grids.
+        //@{
+        /// Append another grid to this one as a disjoint union.
+        ///
+        /// Intended for continuum models where a second set of cells
+        /// is needed on top of the first one, for instance the fracture
+        /// continuum of a dual-porosity model. Each of the two grids is an
+        /// ordinary corner-point grid, built from its own corners (pillars)
+        /// and its own set of active cells.
+        ///
+        /// The cells of \p other are numbered after those of this grid, and
+        /// its faces and vertices likewise. No face connects the two parts,
+        /// so any coupling between them must be added by the caller, for
+        /// instance as non-neighbour connections. The logical Cartesian grid
+        /// is extended in the k direction: cell (i,j,k) of \p other has the
+        /// Cartesian index of cell (i,j,k+NZ) of the combined grid, where NZ
+        /// is the logical NZ of this grid before the call, independent of
+        /// which cells are active. Consequently, with two grids of equal
+        /// logical size N, cell g of the first and cell g+N of the second
+        /// grid are the same logical cell of the two continua.
+        ///
+        /// Both grids must be serial, hence call this before load balancing,
+        /// and must not have local grid refinement. They must have the same
+        /// logical NX and NY. On failure the grid is unchanged and an
+        /// exception is thrown.
+        ///
+        /// \param[in] other Grid to append. It is not modified.
+        void extendGrid(const CpGrid& other);
+        //@}
+
         /// \name Cartesian grid extensions.
         ///
         /// A cornerpoint grid can be seen as a degenerated and distorted cartesian

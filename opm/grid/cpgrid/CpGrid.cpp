@@ -1472,6 +1472,23 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
                                             0);
 }
 
+void CpGrid::extendGrid(const CpGrid& other)
+{
+    const auto isPlainSerialGrid = [](const CpGrid& grid)
+    {
+        return grid.data_.size() == 1 && grid.distributed_data_.empty()
+            && grid.current_data_ == &grid.data_;
+    };
+
+    if (!isPlainSerialGrid(*this) || !isPlainSerialGrid(other)) {
+        OPM_THROW(std::invalid_argument,
+                  "extendGrid() requires two serial grids without local grid refinement. "
+                  "Extend the grid before load balancing.");
+    }
+
+    data_.back()->appendDisjointGrid(*other.data_.back());
+}
+
 template<int dim>
 cpgrid::Entity<dim> createEntity(const CpGrid& grid,int index,bool orientation)
 {
