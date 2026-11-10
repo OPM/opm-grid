@@ -50,7 +50,12 @@ EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& input
             updatedACTNUM[global_cell[c]] = 1;
         }
 
-        return Opm::EclipseGrid( inputGrid, grid.zcornData( ).data() , updatedACTNUM );
+        // The ZCORN of the grid has the cells removed by MINPV collapsed. In a dual-continuum
+        // grid a fracture cell reports the geometry of its matrix twin, which must stay that
+        // of the input: the twin of a removed cell is not necessarily removed. Only the
+        // activity is updated.
+        const double* zcorn = inputGrid.dualPorosity() ? nullptr : grid.zcornData( ).data();
+        return Opm::EclipseGrid( inputGrid, zcorn, updatedACTNUM );
     } else {
         // This will throw up if the clip_z option has been used in the
         // processEclipseFormat() method to extend the grid in the z
