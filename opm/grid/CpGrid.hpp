@@ -263,6 +263,12 @@ namespace Dune
         /// \param[in] edge_conformal Whether or not to construct an
         /// edge-conformal grid.  Typically useful in geo-mechanical
         /// applications.
+        ///
+        /// If \p ecl_grid is a dual-continuum grid (DUALPORO/DUALPERM) the
+        /// result is one grid per continuum, joined with extendGrid(): the
+        /// matrix cells first, then the fracture cells, which have the
+        /// geometry of their matrix twins. MINPV and PINCH are not yet
+        /// supported in this case, and \p ecl_state is not used.
         std::vector<std::size_t>
         processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
@@ -651,6 +657,16 @@ namespace Dune
         /// --------------- Adaptivity (end) ---------------
 
     private:
+        /// Process a dual-continuum EclipseGrid into one grid per continuum,
+        /// joined with extendGrid().
+        std::vector<std::size_t>
+        processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+                                          bool periodic_extension,
+                                          bool turn_normals,
+                                          bool clip_z,
+                                          bool pinchActive,
+                                          bool edge_conformal);
+
         void updateCornerHistoryLevels(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                        const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                        const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,

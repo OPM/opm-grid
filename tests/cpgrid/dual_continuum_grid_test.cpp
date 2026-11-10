@@ -38,6 +38,7 @@
 #include <cstddef>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -60,9 +61,10 @@ constexpr int nx = 3;
 constexpr int ny = 2;
 constexpr int nz = 4; // two matrix layers, two stacked fracture layers
 
-// Dual-porosity corner-point deck whose fracture layers are stacked below
-// the matrix layers, with non-parallel pillars.
-Opm::Deck makeDeck()
+// Corner-point deck whose fracture layers are stacked below the matrix
+// layers, with non-parallel pillars. Without DUALPORO it is an ordinary
+// single-porosity grid with four layers.
+Opm::Deck makeDeck(const bool dual = true, const std::string& extraGridKeywords = "")
 {
     constexpr double top = 2000.0;
     constexpr double dz = 10.0;
@@ -94,8 +96,8 @@ Opm::Deck makeDeck()
     const int cells = nx * ny * nz;
     const std::string deckData =
         "RUNSPEC\nOIL\nWATER\nDIMENS\n " + std::to_string(nx) + ' ' + std::to_string(ny) + ' '
-        + std::to_string(nz) + " /\nDUALPORO\n"
-        "GRID\nCOORD\n" + coord.str() + "/\nZCORN\n" + zcorn.str() + "/\n"
+        + std::to_string(nz) + " /\n" + (dual ? "DUALPORO\n" : "")
+        + "GRID\n" + extraGridKeywords + "COORD\n" + coord.str() + "/\nZCORN\n" + zcorn.str() + "/\n"
         "PORO\n " + std::to_string(cells) + "*0.2 /\nPERMX\n " + std::to_string(cells) + "*1.0 /\n";
     return Opm::Parser{}.parseString(deckData);
 }
@@ -118,12 +120,11 @@ std::unique_ptr<Dune::CpGrid> makeCpGrid(const Opm::EclipseGrid& eclGrid)
     return grid;
 }
 
+// processEclipseFormat() builds the dual-continuum grid from a
+// dual-continuum EclipseGrid.
 std::unique_ptr<Dune::CpGrid> makeDualCpGrid(const Opm::EclipseGrid& eclGrid)
 {
-    auto grid = makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix));
-    const auto fracture = makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture));
-    grid->extendGrid(*fracture);
-    return grid;
+    return makeCpGrid(eclGrid);
 }
 
 } // anonymous namespace
@@ -188,7 +189,8 @@ BOOST_AUTO_TEST_CASE(MatrixAndFractureCellsAreNeverNeighbours)
 
     // Stacked in a single grid, the last matrix layer and the first fracture
     // layer share faces; this is what the simulator had to zero out.
-    const auto stacked = makeCpGrid(eclGrid);
+    const Opm::EclipseGrid stackedEclGrid(makeDeck(/*dual=*/false));
+    const auto stacked = makeCpGrid(stackedEclGrid);
     const int half = static_cast<int>(eclGrid.getCartesianSize() / 2);
     const auto crossing = [&](const Dune::CpGrid& g)
     {
@@ -210,4 +212,39 @@ BOOST_AUTO_TEST_CASE(MatrixAndFractureCellsAreNeverNeighbours)
 
     // The same cells, just not connected across the continua.
     BOOST_CHECK_EQUAL(dual->numCells(), stacked->numCells());
+}
+
+BOOST_AUTO_TEST_CASE(MatchesJoiningTheContinuumGridsByHand)
+{
+    const auto deck = makeDeck();
+    const auto active = actnum();
+    const Opm::EclipseGrid eclGrid(deck, active.data());
+
+    const auto automatic = makeCpGrid(eclGrid);
+
+    auto byHand = makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix));
+    byHand->extendGrid(*makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture)));
+
+    BOOST_REQUIRE_EQUAL(automatic->numCells(), byHand->numCells());
+    BOOST_CHECK_EQUAL(automatic->numFaces(), byHand->numFaces());
+    BOOST_CHECK_EQUAL(automatic->numVertices(), byHand->numVertices());
+    BOOST_CHECK(automatic->globalCell() == byHand->globalCell());
+    BOOST_CHECK(automatic->logicalCartesianSize() == byHand->logicalCartesianSize());
+}
+
+BOOST_AUTO_TEST_CASE(SinglePorosityGridIsNotSplit)
+{
+    const Opm::EclipseGrid eclGrid(makeDeck(/*dual=*/false));
+    const auto grid = makeCpGrid(eclGrid);
+    BOOST_CHECK_EQUAL(grid->numCells(), nx * ny * nz);
+    const std::array<int, 3> size{nx, ny, nz};
+    BOOST_CHECK(grid->logicalCartesianSize() == size);
+}
+
+BOOST_AUTO_TEST_CASE(MinpvIsNotYetSupported)
+{
+    const Opm::EclipseGrid eclGrid(makeDeck(/*dual=*/true, "MINPV\n 1 /\n"));
+    Dune::CpGrid grid;
+    BOOST_CHECK_THROW(grid.processEclipseFormat(&eclGrid, nullptr, false, false, false),
+                      std::invalid_argument);
 }
