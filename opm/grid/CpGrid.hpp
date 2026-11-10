@@ -683,7 +683,7 @@ namespace Dune
         /// joined with extendGrid().
         std::vector<std::size_t>
         processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
-                                          const Opm::EclipseState* ecl_state,
+                                          Opm::EclipseState* ecl_state,
                                           bool periodic_extension,
                                           bool turn_normals,
                                           bool clip_z,

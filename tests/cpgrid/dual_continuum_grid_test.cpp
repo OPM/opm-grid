@@ -38,6 +38,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -66,7 +67,8 @@ constexpr int nz = 4; // two matrix layers, two stacked fracture layers
 // Corner-point deck whose fracture layers are stacked below the matrix
 // layers, with non-parallel pillars. Without DUALPORO it is an ordinary
 // single-porosity grid with four layers.
-Opm::Deck makeDeck(const bool dual = true, const std::string& extraGridKeywords = "")
+Opm::Deck makeDeck(const bool dual = true, const std::string& extraGridKeywords = "",
+                   const std::map<int, double>& poroOverride = {})
 {
     constexpr double top = 2000.0;
     constexpr double dz = 10.0;
@@ -96,11 +98,16 @@ Opm::Deck makeDeck(const bool dual = true, const std::string& extraGridKeywords 
     }
 
     const int cells = nx * ny * nz;
+    std::ostringstream poro;
+    for (int c = 0; c < cells; ++c) {
+        const auto it = poroOverride.find(c);
+        poro << (it != poroOverride.end() ? it->second : 0.2) << ' ';
+    }
     const std::string deckData =
         "RUNSPEC\nOIL\nWATER\nDIMENS\n " + std::to_string(nx) + ' ' + std::to_string(ny) + ' '
         + std::to_string(nz) + " /\n" + (dual ? "DUALPORO\n" : "")
         + "GRID\n" + extraGridKeywords + "COORD\n" + coord.str() + "/\nZCORN\n" + zcorn.str() + "/\n"
-        "PORO\n " + std::to_string(cells) + "*0.2 /\nPERMX\n " + std::to_string(cells) + "*1.0 /\n"
+        "PORO\n " + poro.str() + "/\nPERMX\n " + std::to_string(cells) + "*1.0 /\n"
         + (dual ? "SIGMA\n 0.12 /\n" : "");
     return Opm::Parser{}.parseString(deckData);
 }
@@ -244,11 +251,170 @@ BOOST_AUTO_TEST_CASE(SinglePorosityGridIsNotSplit)
     BOOST_CHECK(grid->logicalCartesianSize() == size);
 }
 
-BOOST_AUTO_TEST_CASE(MinpvIsNotYetSupported)
+namespace {
+
+// Number of faces, of any kind, shared by two active cells given by Cartesian index.
+int sharedFaces(const Dune::CpGrid& grid, const int cartesian1, const int cartesian2)
 {
-    const Opm::EclipseGrid eclGrid(makeDeck(/*dual=*/true, "MINPV\n 1 /\n"));
+    int c1 = -1;
+    int c2 = -1;
+    for (int c = 0; c < grid.numCells(); ++c) {
+        if (grid.globalCell()[c] == cartesian1) { c1 = c; }
+        if (grid.globalCell()[c] == cartesian2) { c2 = c; }
+    }
+    if (c1 < 0 || c2 < 0) {
+        return -1;
+    }
+    int count = 0;
+    const auto faces = grid.cellFaceRow(c1);
+    for (int i = 0; i < faces.size(); ++i) {
+        const int face = faces[i].index();
+        if (grid.faceCell(face, 0) == c2 || grid.faceCell(face, 1) == c2) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+// Two columns, three matrix layers on top of three fracture layers. The middle
+// layer of the first column is very thin, in the matrix geometry that both
+// continua share.
+Opm::Deck makeThinLayerDeck(const std::string& pinch, const std::string& actnum)
+{
+    constexpr int nxp = 2;
+    constexpr int nzp = 6;
+    std::ostringstream coord;
+    for (int j = 0; j <= 1; ++j) {
+        for (int i = 0; i <= nxp; ++i) {
+            coord << 100.0 * i << ' ' << 100.0 * j << " 2000 " << 100.0 * i << ' ' << 100.0 * j << " 2200\n";
+        }
+    }
+    // Depths of the layer boundaries of the matrix, per column. The middle layer of the first
+    // column is thinner than the PINCH threshold. The fracture layers are the matrix layers 60 m below.
+    const std::array<std::array<double, 4>, 2> boundary{{{2000.0, 2010.0, 2010.2, 2020.0},
+                                                         {2000.0, 2010.0, 2020.0, 2030.0}}};
+    const auto top = [&boundary](const int k, const int column) {
+        return boundary[column][k % 3] + 60.0 * (k / 3);
+    };
+    const auto bottom = [&boundary](const int k, const int column) {
+        return boundary[column][k % 3 + 1] + 60.0 * (k / 3);
+    };
+    std::ostringstream zcorn;
+    for (int k = 0; k < nzp; ++k) {
+        for (int face = 0; face < 2; ++face) {
+            for (int jj = 0; jj < 2; ++jj) {
+                for (int i = 0; i < nxp; ++i) {
+                    for (int ii = 0; ii < 2; ++ii) {
+                        zcorn << (face == 0 ? top(k, i) : bottom(k, i)) << ' ';
+                    }
+                }
+                zcorn << '\n';
+            }
+        }
+    }
+    const int cells = nxp * 1 * nzp;
+    return Opm::Parser{}.parseString(
+        "RUNSPEC\nOIL\nWATER\nDIMENS\n 2 1 6 /\nDUALPORO\nGRID\n" + pinch + "COORD\n" + coord.str()
+        + "/\nZCORN\n" + zcorn.str() + "/\nACTNUM\n" + actnum + "/\nPORO\n " + std::to_string(cells)
+        + "*0.2 /\nPERMX\n " + std::to_string(cells) + "*1.0 /\nSIGMA\n 0.12 /\n");
+}
+
+} // anonymous namespace
+
+BOOST_AUTO_TEST_CASE(MinpvRemovesCellsOfEachContinuum)
+{
+    // Matrix cell 3 and fracture cell 12+4 have too little pore volume.
+    const auto deck = makeDeck(true, "MINPV\n 1e4 /\n", {{3, 0.001}, {16, 0.001}});
+    Opm::EclipseState eclState(deck);
+    const auto& eclGrid = eclState.getInputGrid();
+
     Dune::CpGrid grid;
-    BOOST_CHECK_THROW(grid.processEclipseFormat(&eclGrid, nullptr, false, false, false),
+    auto removed = grid.processEclipseFormat(&eclGrid, &eclState, false, false, false);
+    std::sort(removed.begin(), removed.end());
+
+    // The cells are reported with the Cartesian index of the dual-continuum grid.
+    BOOST_CHECK((removed == std::vector<std::size_t>{3, 16}));
+    BOOST_CHECK_EQUAL(grid.numCells(), nx * ny * nz - 2);
+    for (const int cell : {3, 16}) {
+        BOOST_CHECK(std::find(grid.globalCell().begin(), grid.globalCell().end(), cell)
+                    == grid.globalCell().end());
+    }
+
+    // The twins of the removed cells stay. Their coupling is dropped with the cell.
+    for (const int cell : {3 + 12, 16 - 12}) {
+        BOOST_CHECK(std::find(grid.globalCell().begin(), grid.globalCell().end(), cell)
+                    != grid.globalCell().end());
+    }
+    BOOST_CHECK_EQUAL(sharedFaces(grid, 0, 12), 1);
+    BOOST_CHECK_EQUAL(sharedFaces(grid, 3, 15), -1);
+    BOOST_CHECK_EQUAL(sharedFaces(grid, 4, 16), -1);
+}
+
+BOOST_AUTO_TEST_CASE(MinpvOfEachContinuumFollowsItsOwnPoreVolume)
+{
+    // Only the pore volume of the continuum's own cells counts: with a small
+    // value in the matrix cell, the fracture twin is kept.
+    const auto deck = makeDeck(true, "MINPV\n 1e4 /\n", {{3, 0.001}});
+    Opm::EclipseState eclState(deck);
+    Dune::CpGrid grid;
+    auto removed = grid.processEclipseFormat(&eclState.getInputGrid(), &eclState, false, false, false);
+    BOOST_CHECK((removed == std::vector<std::size_t>{3}));
+    BOOST_CHECK_EQUAL(grid.numCells(), nx * ny * nz - 1);
+}
+
+BOOST_AUTO_TEST_CASE(PinchedOutLayerIsBridgedInEachContinuum)
+{
+    // The zero-thickness layer is inactive in both continua. With the default
+    // PINCH options the cells above and below it are connected by a face.
+    const std::string actnum = " 1 1  0 1  1 1   1 1  0 1  1 1 ";
+    const auto deck = makeThinLayerDeck("PINCH\n 0.5 /\n", actnum);
+    Opm::EclipseState eclState(deck);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclState.getInputGrid(), &eclState, false, false, false);
+
+    BOOST_CHECK_EQUAL(grid.numCells(), 12 - 2);
+    // Column 0: layers 0 and 2 of the matrix (cells 0 and 4) and of the fracture (6 and 10).
+    BOOST_CHECK_EQUAL(sharedFaces(grid, 0, 4), 1);
+    BOOST_CHECK_EQUAL(sharedFaces(grid, 6, 10), 1);
+    // The continua are not connected through the pinched layers.
+    BOOST_CHECK_EQUAL(sharedFaces(grid, 4, 6), 0);
+    BOOST_CHECK(eclState.getPinchNNC().empty());
+}
+
+BOOST_AUTO_TEST_CASE(PinchOutConnectionsOfBothContinuaUseTheDualGridNumbering)
+{
+    // Item 4 of PINCH set to ALL: the transmissibility across the pinched layer is
+    // given to the simulator as a connection, one per continuum.
+    const std::string actnum = " 1 1  0 1  1 1   1 1  0 1  1 1 ";
+    const auto deck = makeThinLayerDeck("PINCH\n 0.5 GAP 1* ALL /\n", actnum);
+    Opm::EclipseState eclState(deck);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclState.getInputGrid(), &eclState, false, false, false);
+
+    const auto& pinch = eclState.getPinchNNC();
+    BOOST_REQUIRE_EQUAL(pinch.size(), std::size_t{2});
+    BOOST_CHECK_EQUAL(pinch[0].cell1, std::size_t{0});
+    BOOST_CHECK_EQUAL(pinch[0].cell2, std::size_t{4});
+    BOOST_CHECK_EQUAL(pinch[1].cell1, std::size_t{6});
+    BOOST_CHECK_EQUAL(pinch[1].cell2, std::size_t{10});
+    BOOST_CHECK(pinch[0].trans > 0.0);
+    // Same permeability and geometry in both continua.
+    BOOST_CHECK_CLOSE(pinch[0].trans, pinch[1].trans, 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(NumericalAquifersAreRejected)
+{
+    const auto deck = Opm::Parser{}.parseString(
+        "RUNSPEC\nOIL\nWATER\nDIMENS\n 2 1 2 /\nAQUDIMS\n 1 1 1* 1* 1* 1* 1* 1* /\nDUALPORO\nGRID\n"
+        "DX\n 4*100 /\nDY\n 4*100 /\nDZ\n 4*10 /\nTOPS\n 2*2000 /\nPORO\n 4*0.2 /\nPERMX\n 4*1 /\n"
+        "SIGMA\n 0.1 /\n"
+        "AQUNUM\n 1 1 1 1 1.0e3 100 0.3 100 1* 1* 1* 1* /\n/\n"
+        "AQUCON\n 1 2 2 1 1 1 1 'I-' 1* 1* 'NO' /\n/\n");
+    Opm::EclipseState eclState(deck);
+    Dune::CpGrid grid;
+    BOOST_CHECK_THROW(grid.processEclipseFormat(&eclState.getInputGrid(), &eclState, false, false, false),
                       std::invalid_argument);
 }
 
