@@ -87,6 +87,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp
+  tests/cpgrid/extend_grid_test.cpp
   tests/cpgrid/facetag_test.cpp
   tests/cpgrid/geometry_test.cpp
   tests/cpgrid/grid_nnc.cpp

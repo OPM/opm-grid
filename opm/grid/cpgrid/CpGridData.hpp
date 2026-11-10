@@ -558,6 +558,24 @@ public:
         return zcorn;
     }
 
+    /// Append the cells of another (serial, single-level) grid to this one
+    /// as a disjoint union.
+    ///
+    /// The cells, faces and vertices of \p other are added after those of
+    /// this grid. No face connects the two parts. The logical Cartesian
+    /// grid is extended in the k direction: cell (i,j,k) of \p other gets
+    /// the Cartesian index of cell (i,j,k+NZ) of the extended grid, whether
+    /// or not the cells of either part are active. The two parts must
+    /// therefore have the same logical NX and NY.
+    ///
+    /// All derived geometry, such as cell volumes, centroids, face areas
+    /// and normals, is carried over unchanged. This means that each part
+    /// can have its own pillars.
+    ///
+    /// \param[in] other Grid to append. Must have been processed, be
+    ///   serial and have no local grid refinement.
+    void appendDisjointGrid(const CpGridData& other);
+
 
     /// Get the index set. This is the lead as well as th level index set.
     /// \return The index set.
