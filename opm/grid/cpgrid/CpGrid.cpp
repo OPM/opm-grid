@@ -1424,6 +1424,11 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              const bool pinchActive,
                              const bool edge_conformal)
 {
+    if (ecl_grid != nullptr && ecl_grid->dualPorosity()) {
+        return this->processDualContinuumEclipseFormat(*ecl_grid, periodic_extension, turn_normals,
+                                                       clip_z, pinchActive, edge_conformal);
+    }
+
     auto removed_cells = current_data_->back()->
         processEclipseFormat(ecl_grid, ecl_state,
                              periodic_extension,
@@ -1431,6 +1436,44 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              clip_z,
                              pinchActive,
                              edge_conformal);
+
+    current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
+                                            current_data_->back()->logical_cartesian_size_.size(),
+                                            0);
+    return removed_cells;
+}
+
+std::vector<std::size_t>
+CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+                                          const bool periodic_extension,
+                                          const bool turn_normals,
+                                          const bool clip_z,
+                                          const bool pinchActive,
+                                          const bool edge_conformal)
+{
+    // MINPV and PINCH processing uses pore volumes and multipliers that are
+    // indexed by the cells of the doubled grid. Applying them per continuum
+    // needs those arrays split accordingly, which is not done yet.
+    if (ecl_grid.isPinchActive() || ecl_grid.getMinpvMode() != Opm::MinpvMode::Inactive) {
+        OPM_THROW(std::invalid_argument,
+                  "MINPV and PINCH are not yet supported for dual-continuum grids.");
+    }
+
+    // One grid per continuum, each with its own cells and geometry, joined
+    // into one grid with the matrix cells first.
+    const auto matrix = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix);
+    const auto fracture = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture);
+
+    auto removed_cells = current_data_->back()->
+        processEclipseFormat(&matrix, nullptr, periodic_extension, turn_normals,
+                             clip_z, pinchActive, edge_conformal);
+
+    CpGrid fracture_grid(current_data_->back()->ccobj_);
+    fracture_grid.current_data_->back()->
+        processEclipseFormat(&fracture, nullptr, periodic_extension, turn_normals,
+                             clip_z, pinchActive, edge_conformal);
+
+    this->extendGrid(fracture_grid);
 
     current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
                                             current_data_->back()->logical_cartesian_size_.size(),
