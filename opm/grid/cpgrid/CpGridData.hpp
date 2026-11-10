@@ -576,6 +576,20 @@ public:
     ///   serial and have no local grid refinement.
     void appendDisjointGrid(const CpGridData& other);
 
+    /// Add a face for each of a number of connections between cells that
+    /// do not otherwise share a face (non-neighbouring connections, NNCs).
+    ///
+    /// The new faces have the NNC face tag, no points and no geometry
+    /// (unit area), as the NNC faces made when the grid is processed from
+    /// the Eclipse format. They are numbered before the existing faces,
+    /// which keeps the top and bottom faces last in the face list of each
+    /// cell. The face numbers of the existing faces thus increase by the
+    /// number of new faces.
+    ///
+    /// \param[in] cell_pairs Pairs of distinct, existing cells. The pairs
+    ///   must be unique and must not already be connected by a face.
+    void appendNncFaces(const std::vector<std::pair<int, int>>& cell_pairs);
+
 
     /// Get the index set. This is the lead as well as th level index set.
     /// \return The index set.

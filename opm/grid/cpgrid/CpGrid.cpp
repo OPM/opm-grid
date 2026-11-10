@@ -43,7 +43,9 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/common/OpmLog/OpmLog.hpp>
 
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
@@ -1425,8 +1427,9 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              const bool edge_conformal)
 {
     if (ecl_grid != nullptr && ecl_grid->dualPorosity()) {
-        return this->processDualContinuumEclipseFormat(*ecl_grid, periodic_extension, turn_normals,
-                                                       clip_z, pinchActive, edge_conformal);
+        return this->processDualContinuumEclipseFormat(*ecl_grid, ecl_state, periodic_extension,
+                                                       turn_normals, clip_z, pinchActive,
+                                                       edge_conformal);
     }
 
     auto removed_cells = current_data_->back()->
@@ -1445,6 +1448,7 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
 
 std::vector<std::size_t>
 CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+                                          const Opm::EclipseState* ecl_state,
                                           const bool periodic_extension,
                                           const bool turn_normals,
                                           const bool clip_z,
@@ -1474,6 +1478,17 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                              clip_z, pinchActive, edge_conformal);
 
     this->extendGrid(fracture_grid);
+
+    // The explicit NNCs include the coupling between each matrix cell and its
+    // fracture twin. They connect cells of different continua, so they could not be
+    // added when processing the continua one by one.
+    if (ecl_state != nullptr) {
+        std::vector<std::pair<int, int>> nnc;
+        for (const auto& entry : ecl_state->getInputNNC().input()) {
+            nnc.emplace_back(entry.cell1, entry.cell2);
+        }
+        this->addNnc(nnc);
+    }
 
     current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
                                             current_data_->back()->logical_cartesian_size_.size(),
@@ -1530,6 +1545,61 @@ void CpGrid::extendGrid(const CpGrid& other)
     }
 
     data_.back()->appendDisjointGrid(*other.data_.back());
+}
+
+void CpGrid::addNnc(const std::vector<std::pair<int, int>>& nnc)
+{
+    if (data_.size() != 1 || !distributed_data_.empty() || current_data_ != &data_) {
+        OPM_THROW(std::invalid_argument,
+                  "addNnc() requires a serial grid without local grid refinement.");
+    }
+
+    auto& data = *data_.back();
+    const auto& global_cell = data.global_cell_;
+    const auto localIndex = [&global_cell](const int cartesian)
+    {
+        // The active cells are numbered in increasing Cartesian order.
+        const auto it = std::lower_bound(global_cell.begin(), global_cell.end(), cartesian);
+        return (it != global_cell.end() && *it == cartesian)
+            ? static_cast<int>(it - global_cell.begin())
+            : -1;
+    };
+    const auto areNeighbours = [this](const int c1, const int c2)
+    {
+        const auto faces = this->cellFaceRow(c1);
+        for (int i = 0; i < faces.size(); ++i) {
+            const int face = faces[i].index();
+            const int other = (this->faceCell(face, 0) == c1) ? this->faceCell(face, 1)
+                                                               : this->faceCell(face, 0);
+            if (other == c2) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Ordered and unique by Cartesian index, as the NNC faces made when processing the
+    // Eclipse format.
+    std::set<std::pair<int, int>> unique_nnc;
+    for (const auto& [a, b] : nnc) {
+        unique_nnc.emplace(std::min(a, b), std::max(a, b));
+    }
+
+    std::vector<std::pair<int, int>> cell_pairs;
+    for (const auto& [a, b] : unique_nnc) {
+        const int c1 = localIndex(a);
+        const int c2 = localIndex(b);
+        if (c1 < 0 || c2 < 0) {
+            Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
+            continue;
+        }
+        if (areNeighbours(c1, c2)) {
+            continue;
+        }
+        cell_pairs.emplace_back(c1, c2);
+    }
+
+    data.appendNncFaces(cell_pairs);
 }
 
 template<int dim>

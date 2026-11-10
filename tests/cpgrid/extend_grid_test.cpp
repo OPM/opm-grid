@@ -500,3 +500,93 @@ BOOST_AUTO_TEST_CASE(RejectsIncompatibleGridsAndLeavesGridUnchanged)
     BOOST_CHECK_EQUAL(grid->numVertices(), vertices);
     BOOST_CHECK(grid->logicalCartesianSize() == size);
 }
+
+BOOST_AUTO_TEST_CASE(AddNncConnectsCellsAcrossTheParts)
+{
+    // Two equal parts, cells 1 and 7 of each inactive.
+    const GridSpec spec = firstSpec();
+    auto grid = makeCpGrid(spec);
+    grid->extendGrid(*makeCpGrid(spec));
+    auto reference = makeCpGrid(spec);
+    reference->extendGrid(*makeCpGrid(spec));
+
+    const int n = reference->numCells() / 2;
+    const int logical_half = 3 * 2 * 2;
+
+    // The twins, with duplicates, a reversed pair, a pair of cells that share a
+    // face, and pairs with an inactive cell: all but the first ten twins are ignored.
+    std::vector<std::pair<int, int>> nnc;
+    for (int g = 0; g < logical_half; ++g) {
+        nnc.emplace_back(g, g + logical_half);
+    }
+    nnc.emplace_back(logical_half, 0);
+    nnc.emplace_back(0, 0 + logical_half);
+    nnc.emplace_back(0, 3);
+    grid->addNnc(nnc);
+
+    const int num_nnc = 10; // 12 pairs, minus those with the inactive cells 1 and 7
+    BOOST_REQUIRE_EQUAL(grid->numFaces(), reference->numFaces() + num_nnc);
+    BOOST_CHECK_EQUAL(grid->numCells(), reference->numCells());
+
+    // The new faces come first, and connect each cell to its twin.
+    for (int f = 0; f < num_nnc; ++f) {
+        const int a = grid->faceCell(f, 0);
+        const int b = grid->faceCell(f, 1);
+        BOOST_REQUIRE(a >= 0 && a < n);
+        BOOST_REQUIRE(b >= n);
+        BOOST_CHECK_EQUAL(grid->globalCell()[b], grid->globalCell()[a] + logical_half);
+        BOOST_CHECK_EQUAL(grid->numFaceVertices(f), 0);
+        BOOST_CHECK_EQUAL(grid->faceArea(f), 1.0);
+        BOOST_CHECK_EQUAL(grid->boundaryId(f), 0);
+    }
+
+    // The other faces are unchanged but for the new numbering.
+    for (int f = 0; f < reference->numFaces(); ++f) {
+        const int ff = f + num_nnc;
+        BOOST_CHECK_CLOSE_FRACTION(grid->faceArea(ff), reference->faceArea(f), tol);
+        checkVector(grid->faceCentroid(ff), reference->faceCentroid(f));
+        checkVector(grid->faceNormal(ff), reference->faceNormal(f));
+        BOOST_CHECK_EQUAL(grid->faceCell(ff, 0), reference->faceCell(f, 0));
+        BOOST_CHECK_EQUAL(grid->faceCell(ff, 1), reference->faceCell(f, 1));
+        BOOST_CHECK_EQUAL(grid->boundaryId(ff), reference->boundaryId(f));
+        BOOST_REQUIRE_EQUAL(grid->numFaceVertices(ff), reference->numFaceVertices(f));
+        for (int k = 0; k < reference->numFaceVertices(f); ++k) {
+            BOOST_CHECK_EQUAL(grid->faceVertex(ff, k), reference->faceVertex(f, k));
+        }
+    }
+
+    int cells_with_nnc = 0;
+    for (int c = 0; c < grid->numCells(); ++c) {
+        const int faces = grid->numCellFaces(c);
+        const bool has_nnc = faces == reference->numCellFaces(c) + 1;
+        BOOST_REQUIRE(has_nnc || faces == reference->numCellFaces(c));
+        cells_with_nnc += has_nnc;
+
+        // The NNC face is first, and the faces after it are the old ones in the old order.
+        const int skip = has_nnc ? 1 : 0;
+        if (has_nnc) {
+            BOOST_CHECK(grid->cellFace(c, 0) < num_nnc);
+        }
+        for (int k = 0; k < reference->numCellFaces(c); ++k) {
+            BOOST_CHECK_EQUAL(grid->cellFace(c, k + skip), reference->cellFace(c, k) + num_nnc);
+        }
+    }
+    BOOST_CHECK_EQUAL(cells_with_nnc, 2 * num_nnc);
+
+    // Through the Dune interface the NNC is an intersection with index -1.
+    int nnc_intersections = 0;
+    for (const auto& element : Dune::elements(grid->leafGridView())) {
+        for (const auto& is : Dune::intersections(grid->leafGridView(), element)) {
+            if (is.indexInInside() == -1) {
+                ++nnc_intersections;
+                BOOST_CHECK(is.neighbor());
+                BOOST_CHECK_EQUAL((element.index() < n), (is.outside().index() >= n));
+            }
+        }
+    }
+    BOOST_CHECK_EQUAL(nnc_intersections, 2 * num_nnc);
+
+    // Connections that exist are not added again.
+    grid->addNnc(nnc);
+    BOOST_CHECK_EQUAL(grid->numFaces(), reference->numFaces() + num_nnc);
+}

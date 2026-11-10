@@ -58,6 +58,7 @@
 #include <opm/grid/utility/OpmWellType.hpp>
 
 #include <set>
+#include <utility>
 
 namespace Opm
 {
@@ -267,8 +268,9 @@ namespace Dune
         /// If \p ecl_grid is a dual-continuum grid (DUALPORO/DUALPERM) the
         /// result is one grid per continuum, joined with extendGrid(): the
         /// matrix cells first, then the fracture cells, which have the
-        /// geometry of their matrix twins. MINPV and PINCH are not yet
-        /// supported in this case, and \p ecl_state is not used.
+        /// geometry of their matrix twins, and the explicit NNCs of \p ecl_state
+        /// are added to the grid, including the matrix-fracture couplings.
+        /// MINPV and PINCH are not yet supported in this case.
         std::vector<std::size_t>
         processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
@@ -372,6 +374,26 @@ namespace Dune
         ///
         /// \param[in] other Grid to append. It is not modified.
         void extendGrid(const CpGrid& other);
+
+        /// Add non-neighbouring connections (NNCs) between cells.
+        ///
+        /// A face is added for each connection, as for the explicit NNCs
+        /// of a grid processed from the Eclipse format, so that the
+        /// connection is part of the grid topology: it is an intersection
+        /// between the cells with intersection index -1, and it counts in
+        /// numFaces(). Use it for connections that cannot be known when the
+        /// grids are processed, such as between the two parts of an extended
+        /// grid.
+        ///
+        /// Connections between cells that are not both active are skipped,
+        /// as are duplicates and connections between cells that already share
+        /// a face.
+        ///
+        /// The grid must be serial, without local grid refinement. The face
+        /// numbers of the existing faces increase by the number of added faces.
+        ///
+        /// \param[in] nnc Pairs of global Cartesian cell indices.
+        void addNnc(const std::vector<std::pair<int, int>>& nnc);
         //@}
 
         /// \name Cartesian grid extensions.
@@ -661,6 +683,7 @@ namespace Dune
         /// joined with extendGrid().
         std::vector<std::size_t>
         processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+                                          const Opm::EclipseState* ecl_state,
                                           bool periodic_extension,
                                           bool turn_normals,
                                           bool clip_z,
