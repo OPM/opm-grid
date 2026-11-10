@@ -118,6 +118,19 @@ macro(opm-grid_tests_hook)
       set_tests_properties(${test4}_parallel PROPERTIES PROCESSORS 4)
     endforeach()
 
+    foreach(procs 2 4)
+      add_test(
+        NAME
+          polyhedralgrid_distribution_parallel${procs}
+        COMMAND
+          ${MPIEXEC_EXECUTABLE}
+          ${MPIEXEC_NUMPROC_FLAG}
+          ${procs}
+          $<TARGET_FILE:test_polyhedralgrid_distribution>
+      )
+      set_tests_properties(polyhedralgrid_distribution_parallel${procs} PROPERTIES PROCESSORS ${procs})
+    endforeach()
+
     if(HAVE_OPM_TESTS)
       opm_add_executable(
         TARGET
