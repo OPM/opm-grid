@@ -1466,6 +1466,12 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
     const auto fracture = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture);
     const auto continuumSize = ecl_grid.getCartesianSize() / 2;
 
+    // The corner-point preprocessing cannot make a grid without cells.
+    if (matrix.getNumActive() == 0 || fracture.getNumActive() == 0) {
+        OPM_THROW(std::invalid_argument,
+                  "A dual-continuum grid needs active cells in both the matrix and the fracture continuum.");
+    }
+
     // The pore volumes, permeabilities and multipliers used for the MINPV and PINCH
     // processing are those of the dual-continuum grid, indexed by its cells.
     cpgrid::ContinuumSlice matrixSlice{0, {}};
