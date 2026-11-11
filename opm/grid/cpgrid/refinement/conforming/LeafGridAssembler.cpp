@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdlib>
 #include <functional>
 #include <map>
@@ -421,6 +422,72 @@ std::optional<std::vector<int>> mergedOutline(const std::vector<std::vector<int>
     return outline;
 }
 
+// Points with an index each, found by their coordinates: a point within tol of a stored
+// point is that point. Two computations of one point, such as a corner of a box and the
+// same corner computed by the box across a throw, can differ by round-off. tol is 1e-9
+// times the extent of the given corners (their largest span along x, y or z), at least
+// 1e-9: far below the size of a cell, and above the round-off of the coordinates. The
+// points are kept in cubic buckets of size tol, so a point within tol of x lies in the
+// bucket of x or in one of its 26 neighbours.
+class PointLookup
+{
+public:
+    explicit PointLookup(const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& corners)
+    {
+        double extent = 1.0;
+        if (!corners.empty()) {
+            auto lo = corners[0].center();
+            auto hi = lo;
+            for (const auto& corner : corners) {
+                for (int d = 0; d < 3; ++d) {
+                    lo[d] = std::min(lo[d], corner.center()[d]);
+                    hi[d] = std::max(hi[d], corner.center()[d]);
+                }
+            }
+            extent = std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], extent});
+        }
+        tol_ = 1e-9 * extent;
+    }
+
+    // The index of a stored point within tol of x, or -1.
+    int find(const Dune::FieldVector<double,3>& x) const
+    {
+        const auto bucket = bucketOf(x);
+        for (long long di = -1; di <= 1; ++di) {
+            for (long long dj = -1; dj <= 1; ++dj) {
+                for (long long dk = -1; dk <= 1; ++dk) {
+                    const auto it = buckets_.find({bucket[0] + di, bucket[1] + dj, bucket[2] + dk});
+                    if (it == buckets_.end()) {
+                        continue;
+                    }
+                    for (const auto& [point, index] : it->second) {
+                        if ((point - x).two_norm() <= tol_) {
+                            return index;
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    void add(const Dune::FieldVector<double,3>& x, int index)
+    {
+        buckets_[bucketOf(x)].emplace_back(x, index);
+    }
+
+private:
+    std::array<long long,3> bucketOf(const Dune::FieldVector<double,3>& x) const
+    {
+        return { static_cast<long long>(std::floor(x[0] / tol_)),
+                 static_cast<long long>(std::floor(x[1] / tol_)),
+                 static_cast<long long>(std::floor(x[2] / tol_)) };
+    }
+
+    double tol_;
+    std::map<std::array<long long,3>, std::vector<std::pair<Dune::FieldVector<double,3>, int>>> buckets_;
+};
+
 } // anonymous namespace
 
 namespace Opm
@@ -641,12 +708,6 @@ void LeafGridAssembler::collectBoxData()
     }
 }
 
-std::array<double,3> LeafGridAssembler::coordKey(const Dune::cpgrid::Geometry<0,3>& corner)
-{
-    const auto& c = corner.center();
-    return std::array<double,3>{ c[0], c[1], c[2] };
-}
-
 void LeafGridAssembler::buildCornerPool()
 {
     // ----- Corner pool ---------------------------------------------------
@@ -667,12 +728,26 @@ void LeafGridAssembler::buildCornerPool()
     // The refined corners in the leaf, by their coordinates. A corner on the face or
     // edge two touching boxes share has equal coordinates in both boxes: both refine the
     // same parent description with uniform subdivisions, which put the corner at the
-    // same fraction of the parent cell (graded boxes that touch are refused). The map
+    // same fraction of the parent cell (graded boxes that touch are refused). The lookup
     // makes it one leaf corner. Boxes do not overlap, so refined corners of two boxes
-    // are equal only on what the boxes share. The key is a std::array<double,3>, not a
-    // Dune::FieldVector<double,3>: a std::map key needs operator<, which
-    // FieldVector<double,3> does not have.
-    std::map<std::array<double,3>, int> refinedCornerPool;
+    // are equal only on what the boxes share. A refined corner can also lie on a
+    // level-zero point of its host's faces that is not a corner of the host, such as a
+    // corner of the cell across a fault: it is then that point. So the lookup starts with
+    // the points of the faces of every host cell.
+    PointLookup cornerPool(corners0);
+    for (int c = 0; c < numCells0_; ++c) {
+        if (boxOfCell_[c] < 0) {
+            continue;
+        }
+        const auto row = level0_.cellToFace(c);
+        for (int e = 0; e < row.size(); ++e) {
+            for (const int p : faceToPoint0_[row[e].index()]) {
+                if (cornerPool.find(corners0[p].center()) < 0) {
+                    cornerPool.add(corners0[p].center(), p);
+                }
+            }
+        }
+    }
 
     for (int b = 0; b < numBoxes_; ++b) {
         BoxData& box = boxes_[b];
@@ -691,20 +766,20 @@ void LeafGridAssembler::buildCornerPool()
                 levelCornerOrigin[corner] = leafCornerOrigin_[leafCorner];
             }
             else {
-                const auto key = coordKey(cornersL[corner]);
-                const auto existing = refinedCornerPool.find(key);
-                if (existing != refinedCornerPool.end()) {
-                    // Shared with a box processed before: reuse the corner, with
-                    // its origin (the level grid it comes from) from that box.
-                    box.cornerToLeaf[corner] = existing->second;
-                    levelCornerOrigin[corner] = leafCornerOrigin_[existing->second];
+                const auto x = cornersL[corner].center();
+                const int existing = cornerPool.find(x);
+                if (existing >= 0) {
+                    // A point of a host's faces, or shared with a box processed before:
+                    // reuse the corner, with its origin (the grid it comes from).
+                    box.cornerToLeaf[corner] = existing;
+                    levelCornerOrigin[corner] = leafCornerOrigin_[existing];
                 }
                 else {
                     const int leafCorner = static_cast<int>(leafCorners.size());
                     box.cornerToLeaf[corner] = leafCorner;
                     leafCorners.push_back(cornersL[corner]);
                     leafCornerOrigin_.push_back({b + 1, corner});
-                    refinedCornerPool.emplace(key, leafCorner);
+                    cornerPool.add(x, leafCorner);
                 }
             }
         }
@@ -1359,22 +1434,24 @@ void LeafGridAssembler::buildSyntheticFaces()
     if (!faultedSides().empty() || !removedChildSides.empty()) {
         // The leaf corners by their coordinates. The processing of a side refines the
         // box's host cells with refineBlock, as the box's level grid does, so a corner of
-        // a piece that is a corner of a box cell has that corner's coordinates.
-        std::map<std::array<double,3>, int> cornerByCoord;
+        // a piece that is a corner of a box cell has that corner's coordinates, up to the
+        // round-off where the box across a throw computes it.
+        PointLookup cornerByCoord(
+            GridStateWriter::geometry(level0_).geomVector(std::integral_constant<int,3>()));
         for (int c = 0; c < static_cast<int>(leafCorners.size()); ++c) {
-            cornerByCoord[coordKey(leafCorners[c])] = c;
+            cornerByCoord.add(leafCorners[c].center(), c);
         }
 
         // Map a coordinate to a leaf-pool corner (dedup; append if new).
         const auto poolCorner = [&](const std::array<double,3>& nd) {
-            auto pit = cornerByCoord.find(nd);
-            if (pit != cornerByCoord.end()) {
-                return pit->second;
+            const Dune::FieldVector<double,3> x{ nd[0], nd[1], nd[2] };
+            const int existing = cornerByCoord.find(x);
+            if (existing >= 0) {
+                return existing;
             }
             const int idx = static_cast<int>(leafCorners.size());
-            leafCorners.push_back(Dune::cpgrid::Geometry<0,3>(
-                Dune::FieldVector<double,3>{ nd[0], nd[1], nd[2] }));
-            cornerByCoord.emplace(nd, idx);
+            leafCorners.push_back(Dune::cpgrid::Geometry<0,3>(x));
+            cornerByCoord.add(x, idx);
             return idx;
         };
         // The faceGroups map stores polygon pieces that have the same adjacent leaf cells

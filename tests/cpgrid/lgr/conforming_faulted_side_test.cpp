@@ -199,6 +199,23 @@ int maxFacesPerPair(const Dune::CpGrid& grid)
     return most;
 }
 
+// Vertices of a grid view at a point another of its vertices has: points are equal after
+// rounding to 1e-9. The leaf keeps every vertex of level zero, so a refinement that adds
+// no vertex at a point that has one gives the leaf as many as level zero.
+template <class GridView>
+int duplicateVertices(const GridView& view)
+{
+    std::set<std::array<long long,3>> points;
+    int duplicates = 0;
+    for (const auto& vertex : Dune::vertices(view)) {
+        const auto c = vertex.geometry().center();
+        if (!points.insert({std::llround(c[0]*1e9), std::llround(c[1]*1e9), std::llround(c[2]*1e9)}).second) {
+            ++duplicates;
+        }
+    }
+    return duplicates;
+}
+
 // Cells i >= faultI are `throwBy` deeper; layers 2 thick.
 Depth faulted(int faultI, double throwBy)
 {
@@ -501,7 +518,41 @@ BOOST_AUTO_TEST_CASE(boxesAcrossAThrowThatLinesUpSubLayers)
                                           << " instead of " << areaPerDepth*(3.0 - shift));
                 BOOST_CHECK_MESSAGE(smallest > 1e-10, label << ": a face of area " << smallest);
                 BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+                const int added = duplicateVertices(grid.leafGridView())
+                                - duplicateVertices(grid.levelGridView(0));
+                BOOST_CHECK_MESSAGE(added == 0, label << ": " << added
+                                                      << " leaf vertices at a point that has one");
             }
+        }
+    }
+}
+
+// A 2x1x1 grid whose cell I = 1 is shifted up, with a box on cell I = 0 only. Where a
+// sub-layer of the box lines up with a corner of the coarse cell across the fault, the
+// box's children have a corner there: the leaf has one vertex at that point.
+BOOST_AUTO_TEST_CASE(oneBoxNextToAShiftedCell)
+{
+    for (const double shift : {0.5, 1.0, 1.5, 2.0}) {
+        // Cell (0,0,0) at depth [10, 13], cell (1,0,0) `shift` higher.
+        const auto g = makeGrid({2, 1, 1}, vertical, [shift](int i_, int, int k_) {
+            return 10.0 + 3.0*nodeOf(k_) - ((cellOf(i_) >= 1) ? shift : 0.0);
+        });
+        for (const auto& factors : std::vector<std::array<int,3>>{ {1,2,3}, {5,4,6}, {2,2,2} }) {
+            const std::string label = "shift " + std::to_string(shift) + ", "
+                + std::to_string(factors[0]) + "x" + std::to_string(factors[1]) + "x"
+                + std::to_string(factors[2]);
+            Dune::CpGrid grid;
+            grid.processEclipseFormat(g.raw(), false);
+            const double volume = totalVolume(grid);
+            refine(grid, g, {box("LGR1", factors, {0,0,0}, {1,1,1})});
+
+            const int added = duplicateVertices(grid.leafGridView())
+                            - duplicateVertices(grid.levelGridView(0));
+            BOOST_CHECK_MESSAGE(added == 0, label << ": " << added
+                                                  << " leaf vertices at a point that has one");
+            BOOST_CHECK_MESSAGE(worstClosure(grid) < 1e-12, label << ": a cell is not closed");
+            BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+            BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
         }
     }
 }
