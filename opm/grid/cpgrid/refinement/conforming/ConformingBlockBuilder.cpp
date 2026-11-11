@@ -380,7 +380,8 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
                 ? assembleBlockLevelGrid(*storage[parentLevel], pg.dims,
                                          pg.coord, pg.zcorn, pg.actnum,
                                          req, static_cast<int>(b) + 1, parentLevel,
-                                         storage, &childRefined)
+                                         storage, &childRefined,
+                                         input_->pinchActive || input_->edgeConformal)
                 : assembleEmptyLevelGrid(req, static_cast<int>(b) + 1, storage);
             storage.push_back(std::move(level));
             levelGeom[b + 1] = LevelGeom{ childRefined.intDims(),
