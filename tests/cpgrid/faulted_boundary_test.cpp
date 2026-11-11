@@ -21,68 +21,17 @@
 #define BOOST_TEST_MODULE FaultedBoundaryTests
 #include <boost/test/unit_test.hpp>
 
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/FaultedBoundaryFaces.hpp>
 
-#include <dune/common/parallel/mpihelper.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
 #include <array>
-#include <functional>
 #include <map>
 #include <set>
 #include <vector>
 
-namespace
-{
-
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-int cellOf(int doubled) { return doubled / 2; }
-int sideOf(int doubled) { return doubled % 2; }
-
-struct Grdecl
-{
-    std::array<int,3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-};
-
-// Vertical-pillar grdecl with per-corner depths from depth(i_, j_, k_) on the
-// doubled lattice (same convention as the other refinement tests).
-Grdecl makeGrid(const std::array<int,3>& dims,
-                const std::function<double(int,int,int)>& depth)
-{
-    Grdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            double* p = &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)];
-            p[0] = i; p[1] = j; p[2] = 0.0;
-            p[3] = i; p[4] = j; p[5] = 100.0;
-        }
-    }
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
-
-} // namespace
+using namespace Opm::ConformingTest;
 
 BOOST_GLOBAL_FIXTURE(MPIFixture);
 
@@ -99,7 +48,9 @@ BOOST_AUTO_TEST_CASE(faultedIBoundarySplitsConnections)
 
     const auto conns = Opm::Refinement::boxBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
-        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true);
+        Opm::Refinement::BlockRefinement{ .name = "BOX", .cellsPerDim = {2,2,2},
+                                          .startIJK = {2,0,0}, .endIJK = {4,2,2} },
+        /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true);
 
     BOOST_REQUIRE(!conns.empty());
 
@@ -114,7 +65,8 @@ BOOST_AUTO_TEST_CASE(faultedIBoundarySplitsConnections)
             ++domainParts;                                // throw scarp (faces domain)
         }
         else {
-            BOOST_CHECK_EQUAL(c.coarseNeighborCart % 5, 1); // coarse neighbour at i=1
+            // grid dims {5,2,2}: coarse cart = i + 5*j + 10*k
+            BOOST_CHECK_EQUAL(Opm::Lgr::getIJK(c.coarseNeighborCart, g.dims)[0], 1); // coarse neighbour at i=1
             neighborsOf[c.boxCell].insert(c.coarseNeighborCart);
         }
     }
@@ -141,14 +93,16 @@ BOOST_AUTO_TEST_CASE(unfaultedBoundaryGivesOneToOne)
 
     const auto conns = Opm::Refinement::boxBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
-        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/+1, /*edgeConformal=*/true);
+        Opm::Refinement::BlockRefinement{ .name = "BOX", .cellsPerDim = {2,2,2},
+                                          .startIJK = {2,0,0}, .endIJK = {4,2,2} },
+        /*axis=*/0, /*side=*/+1, /*edgeConformal=*/true);
 
     BOOST_REQUIRE(!conns.empty());
 
     std::map<std::array<int,3>, std::set<int>> neighborsOf;
     for (const auto& c : conns) {
         BOOST_CHECK_EQUAL(c.boxCell[0], 3);               // box's last i-layer
-        BOOST_CHECK_EQUAL(c.coarseNeighborCart % 5, 4);   // coarse neighbour at i=4
+        BOOST_CHECK_EQUAL(Opm::Lgr::getIJK(c.coarseNeighborCart, g.dims)[0], 4); // coarse neighbour at i=4
         neighborsOf[c.boxCell].insert(c.coarseNeighborCart);
     }
     BOOST_CHECK_EQUAL(neighborsOf.size(), 16u);
@@ -161,12 +115,13 @@ BOOST_AUTO_TEST_CASE(domainBoundarySideFacesTheDomain)
 {
     // The box's j-minus side is the domain edge (box starts at j=0): no shell,
     // so each boundary cell gets one face toward the domain.
-    auto depth = [](int, int, int k_) { return 2.0*(cellOf(k_) + sideOf(k_)); };
-    auto g = makeGrid({5, 2, 2}, depth);
+    auto g = makeGrid({5, 2, 2}, flat);
 
     const auto conns = Opm::Refinement::boxBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
-        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/1, /*side=*/-1, /*edgeConformal=*/true);
+        Opm::Refinement::BlockRefinement{ .name = "BOX", .cellsPerDim = {2,2,2},
+                                          .startIJK = {2,0,0}, .endIJK = {4,2,2} },
+        /*axis=*/1, /*side=*/-1, /*edgeConformal=*/true);
 
     std::set<std::array<int,3>> cells;
     for (const auto& c : conns) {

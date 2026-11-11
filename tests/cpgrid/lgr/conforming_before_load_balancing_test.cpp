@@ -25,8 +25,7 @@
 #include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
-#include <dune/common/parallel/mpihelper.hh>
-#include <dune/grid/common/rangegenerators.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
@@ -41,15 +40,7 @@
 // on several: before load balancing the whole grid is on rank 0, and the other ranks hold
 // no cells.
 
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
+using namespace Opm::ConformingTest;
 
 BOOST_GLOBAL_FIXTURE(MPIFixture);
 
@@ -104,11 +95,7 @@ PORO
     // of each of the 287 active cells inside it.
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_EQUAL(grid.size(0), (comm.rank() == 0) ? 288 + 287*8 : 0);
-    double volume = 0.0;
-    for (const auto& element : Dune::elements(grid.leafGridView())) {
-        volume += element.geometry().volume();
-    }
-    BOOST_CHECK_CLOSE(comm.sum(volume), 575.0, 1e-10);
+    BOOST_CHECK_CLOSE(comm.sum(totalVolume(grid)), 575.0, 1e-10);
     // The refined grid keeps level zero's communicator, so load balancing sees every rank.
     BOOST_CHECK_EQUAL(grid.comm().size(), comm.size());
 }

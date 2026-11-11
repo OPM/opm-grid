@@ -28,77 +28,20 @@
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <dune/common/parallel/mpihelper.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <functional>
 #include <map>
 #include <set>
 #include <utility>
 #include <vector>
 
+using namespace Opm::ConformingTest;
+
 namespace
 {
-
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-struct TestGrdecl
-{
-    std::array<int,3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
-
-    grdecl raw() const
-    {
-        grdecl g;
-        g.dims[0] = dims[0]; g.dims[1] = dims[1]; g.dims[2] = dims[2];
-        g.coord = coord.data();
-        g.zcorn = zcorn.data();
-        g.actnum = actnum.empty() ? nullptr : actnum.data();
-        return g;
-    }
-};
-
-int cellOf(int doubled) { return doubled / 2; }
-int sideOf(int doubled) { return doubled % 2; }
-
-TestGrdecl makeVerticalPillarGrid(const std::array<int,3>& dims,
-                                  const std::function<double(int,int,int)>& depth)
-{
-    TestGrdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            double* p = &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)];
-            p[0] = i; p[1] = j; p[2] = 0.0;
-            p[3] = i; p[4] = j; p[5] = 100.0;
-        }
-    }
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
 
 // Number of K faces between each pair of cells (k of the cell above, k of the cell
 // below) in each column (i, j) of a grid, by the grid's own Cartesian indices.
@@ -133,17 +76,13 @@ BOOST_AUTO_TEST_CASE(levelGridWithParentRelations)
         const double y = cellOf(j_) + sideOf(j_);
         return 2.0*(cellOf(k_) + sideOf(k_)) + 0.25*std::sin(x) + 0.15*std::cos(0.7*y);
     };
-    auto parent = makeVerticalPillarGrid({4, 3, 2}, depth);
+    auto parent = makeGrid({4, 3, 2}, depth);
 
     Dune::CpGrid parentGrid;
     auto rawParent = parent.raw();
     parentGrid.processEclipseFormat(rawParent, false);
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 3, 2};
-    req.startIJK = {1, 0, 0};
-    req.endIJK = {3, 2, 2};
+    const auto req = box("LGR1", {2, 3, 2}, {1, 0, 0}, {3, 2, 2});
 
     auto& storage = parentGrid.currentData();
     auto level = Opm::Refinement::assembleBlockLevelGrid(*storage[0], parent.dims,
@@ -184,7 +123,7 @@ BOOST_AUTO_TEST_CASE(levelGridWithParentRelations)
 
 BOOST_AUTO_TEST_CASE(inactiveParentsHaveNoChildren)
 {
-    auto parent = makeVerticalPillarGrid({3, 2, 2}, [](int, int, int k_) {
+    auto parent = makeGrid({3, 2, 2}, [](int, int, int k_) {
         return static_cast<double>(cellOf(k_) + sideOf(k_));
     });
     parent.actnum.assign(3*2*2, 1);
@@ -194,11 +133,7 @@ BOOST_AUTO_TEST_CASE(inactiveParentsHaveNoChildren)
     auto rawParent = parent.raw();
     parentGrid.processEclipseFormat(rawParent, false);
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 2, 2};
-    req.startIJK = {0, 0, 0};
-    req.endIJK = {3, 2, 1};
+    const auto req = box("LGR1", {2, 2, 2}, {0, 0, 0}, {3, 2, 1});
 
     auto& storage = parentGrid.currentData();
     auto level = Opm::Refinement::assembleBlockLevelGrid(*storage[0], parent.dims,
@@ -223,17 +158,13 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockLevelGrid)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 0.6 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
 
     Dune::CpGrid parentGrid;
     auto rawParent = parent.raw();
     parentGrid.processEclipseFormat(rawParent, false);
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 2, 2};
-    req.startIJK = {1, 0, 0};
-    req.endIJK = {3, 2, 2};
+    const auto req = box("LGR1", {2, 2, 2}, {1, 0, 0}, {3, 2, 2});
 
     auto& storage = parentGrid.currentData();
     auto level = Opm::Refinement::assembleBlockLevelGrid(*storage[0], parent.dims,
@@ -262,7 +193,7 @@ BOOST_AUTO_TEST_CASE(pinchConnectionCarriedToChildren)
     // 3x1x4 parent, unit columns; layers 2 thick, except layer k = 2, which is
     // collapsed (zero thickness) at depth 4.
     const std::array<double,5> nodeDepth = {0.0, 2.0, 4.0, 4.0, 6.0};
-    auto parent = makeVerticalPillarGrid({3, 1, 4}, [&nodeDepth](int, int, int k_) {
+    auto parent = makeGrid({3, 1, 4}, [&nodeDepth](int, int, int k_) {
         return nodeDepth[cellOf(k_) + sideOf(k_)];
     });
 
@@ -285,11 +216,7 @@ BOOST_AUTO_TEST_CASE(pinchConnectionCarriedToChildren)
 
     // The box covers columns i = 0, 1 and every layer; each parent becomes 2x1x2
     // children, so parent layer k holds refined layers 2k and 2k+1.
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 1, 2};
-    req.startIJK = {0, 0, 0};
-    req.endIJK = {2, 1, 4};
+    const auto req = box("LGR1", {2, 1, 2}, {0, 0, 0}, {2, 1, 4});
     auto level = Opm::Refinement::assembleBlockLevelGrid(*storage[0], parent.dims,
                                                          parent.coord.data(), parent.zcorn.data(),
                                                          nullptr, req, /* levelIndex = */ 1,

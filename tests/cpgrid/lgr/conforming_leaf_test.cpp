@@ -22,134 +22,19 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
-#include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
-#include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <dune/common/parallel/mpihelper.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
-#include <algorithm>
 #include <array>
-#include <functional>
-#include <memory>
-#include <string>
+#include <cmath>
 #include <vector>
 
 // The leaf of the conforming refinement: cells whose children a box's MINPV removes,
 // the corner order of a box on a left-handed grid, the level-zero face an LGR
 // boundary face comes from, and the leaf index each grid gives its cells.
 
-namespace
-{
-
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-using Pillar = std::function<std::array<double,6>(int, int)>;
-
-struct TestGrdecl
-{
-    std::array<int,3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
-
-    grdecl raw() const
-    {
-        grdecl g;
-        g.dims[0] = dims[0]; g.dims[1] = dims[1]; g.dims[2] = dims[2];
-        g.coord = coord.data();
-        g.zcorn = zcorn.data();
-        g.actnum = actnum.empty() ? nullptr : actnum.data();
-        return g;
-    }
-};
-
-int cellOf(int doubled) { return doubled / 2; }
-int sideOf(int doubled) { return doubled % 2; }
-int nodeOf(int doubled) { return cellOf(doubled) + sideOf(doubled); }
-
-std::array<double,6> vertical(int i, int j)
-{
-    return { double(i), double(j), 0.0, double(i), double(j), 100.0 };
-}
-
-std::array<double,6> leftHanded(int i, int j)
-{
-    return { double(i), -double(j), 0.0, double(i), -double(j), 100.0 };
-}
-
-TestGrdecl makeGrid(const std::array<int,3>& dims, const Pillar& pillar,
-                    const std::function<double(int,int,int)>& depth)
-{
-    TestGrdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            const auto p = pillar(i, j);
-            std::copy(p.begin(), p.end(), &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)]);
-        }
-    }
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
-
-Opm::Refinement::BlockRefinement box(std::array<int,3> cellsPerDim, std::array<int,3> start,
-                                     std::array<int,3> end)
-{
-    Opm::Refinement::BlockRefinement request;
-    request.name = "LGR1";
-    request.cellsPerDim = cellsPerDim;
-    request.startIJK = start;
-    request.endIJK = end;
-    return request;
-}
-
-void refine(Dune::CpGrid& grid, const TestGrdecl& g, Opm::Refinement::BlockRefinement request)
-{
-    grid.processEclipseFormat(g.raw(), false);
-    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
-    grid.setRefinementBuilder(std::make_shared<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum));
-    grid.addLgrsUpdateLeafView({std::move(request)});
-}
-
-double worstClosure(const Dune::CpGrid& grid)
-{
-    double worst = 0.0;
-    for (const auto& element : Dune::elements(grid.leafGridView())) {
-        Dune::FieldVector<double,3> sum(0.0);
-        double area = 0.0;
-        for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
-            auto n = is.centerUnitOuterNormal();
-            n *= is.geometry().volume();
-            sum += n;
-            area += is.geometry().volume();
-        }
-        worst = std::max(worst, sum.two_norm() / area);
-    }
-    return worst;
-}
-
-} // anonymous namespace
+using namespace Opm::ConformingTest;
 
 BOOST_GLOBAL_FIXTURE(MPIFixture);
 
@@ -157,11 +42,12 @@ BOOST_GLOBAL_FIXTURE(MPIFixture);
 // and its coarse neighbour keeps its face toward it as a boundary face.
 BOOST_AUTO_TEST_CASE(hostWithNoChildLeft)
 {
-    const auto g = makeGrid({4, 1, 1}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
-    auto request = box({2,1,1}, {1,0,0}, {3,1,1});
+    const auto g = makeGrid({4, 1, 1}, flat);
+    auto request = box("LGR1", {2,1,1}, {1,0,0}, {3,1,1});
     request.minpvRemoved = {1, 1, 0, 0};                 // children of host i = 1
     Dune::CpGrid grid;
-    refine(grid, g, request);
+    grid.processEclipseFormat(g.raw(), false);
+    refine(grid, g, {request});
 
     BOOST_CHECK_EQUAL(grid.size(0), 1 + 2 + 1);
     BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
@@ -175,11 +61,12 @@ BOOST_AUTO_TEST_CASE(hostWithNoChildLeft)
 // into nothing, and their neighbours keep their faces toward them as boundary faces.
 BOOST_AUTO_TEST_CASE(boxWithNoChildLeft)
 {
-    const auto g = makeGrid({4, 3, 3}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
-    auto request = box({2,2,2}, {1,1,1}, {3,2,2});      // hosts (1,1,1) and (2,1,1)
+    const auto g = makeGrid({4, 3, 3}, flat);
+    auto request = box("LGR1", {2,2,2}, {1,1,1}, {3,2,2});  // hosts (1,1,1) and (2,1,1)
     request.minpvRemoved.assign(4*2*2, 1);
     Dune::CpGrid grid;
-    refine(grid, g, request);
+    grid.processEclipseFormat(g.raw(), false);
+    refine(grid, g, {request});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_EQUAL(grid.levelGridView(1).size(0), 0);
@@ -205,7 +92,8 @@ BOOST_AUTO_TEST_CASE(thinBoxCornerOrder)
                         return upwardZcorn ? 4.0 - depth : depth;
                     });
                 Dune::CpGrid grid;
-                refine(grid, g, box({2,1,2}, {1,0,0}, {2,1,2}));
+                grid.processEclipseFormat(g.raw(), false);
+                refine(grid, g, {box("LGR1", {2,1,2}, {1,0,0}, {2,1,2})});
 
                 for (const auto& element : Dune::elements(grid.leafGridView())) {
                     const auto& geometry = element.geometry();
@@ -230,7 +118,8 @@ BOOST_AUTO_TEST_CASE(parentFaceHoldsTheLgrBoundaryFace)
         return 2.0*nodeOf(k_) + ((cellOf(i_) >= 2) ? 0.6 : 0.0);
     });
     Dune::CpGrid grid;
-    refine(grid, g, box({2,2,2}, {2,0,0}, {4,2,2}));
+    grid.processEclipseFormat(g.raw(), false);
+    refine(grid, g, {box("LGR1", {2,2,2}, {2,0,0}, {4,2,2})});
 
     int checked = 0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
@@ -256,26 +145,23 @@ BOOST_AUTO_TEST_CASE(parentFaceHoldsTheLgrBoundaryFace)
 // children removed together share a corner no other cell has.
 BOOST_AUTO_TEST_CASE(removedChildOnTheBoxSide)
 {
-    const auto g = makeGrid({4, 3, 3}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
+    const auto g = makeGrid({4, 3, 3}, flat);
     // Hosts (1,1,1) and (2,1,1) into 4x2x2 children of volume 0.25. Child 0 is the
     // corner child on the -I, -J and -K sides; child 8 is above it.
     for (const auto& removed : std::vector<std::vector<int>>{ {0}, {0, 8} }) {
-        auto request = box({2,2,2}, {1,1,1}, {3,2,2});
+        auto request = box("LGR1", {2,2,2}, {1,1,1}, {3,2,2});
         request.minpvRemoved.assign(16, 0);
         for (const int child : removed) {
             request.minpvRemoved[child] = 1;
         }
         Dune::CpGrid grid;
-        refine(grid, g, request);
+        grid.processEclipseFormat(g.raw(), false);
+        refine(grid, g, {request});
 
         const int count = static_cast<int>(removed.size());
         BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 16 - count);
         BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
-        double volume = 0.0;
-        for (const auto& element : Dune::elements(grid.leafGridView())) {
-            volume += element.geometry().volume();
-        }
-        BOOST_CHECK_CLOSE(volume, 72.0 - 0.25*count, 1e-10);
+        BOOST_CHECK_CLOSE(totalVolume(grid), 72.0 - 0.25*count, 1e-10);
     }
 }
 
@@ -283,9 +169,10 @@ BOOST_AUTO_TEST_CASE(removedChildOnTheBoxSide)
 // comes from, and the hosts of the box, refined, have no leaf cell.
 BOOST_AUTO_TEST_CASE(levelCellsMapToTheLeaf)
 {
-    const auto g = makeGrid({4, 1, 1}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
+    const auto g = makeGrid({4, 1, 1}, flat);
     Dune::CpGrid grid;
-    refine(grid, g, box({2,1,1}, {1,0,0}, {3,1,1}));
+    grid.processEclipseFormat(g.raw(), false);
+    refine(grid, g, {box("LGR1", {2,1,1}, {1,0,0}, {3,1,1})});
 
     const auto& data = grid.currentData();
     for (const auto& element : Dune::elements(grid.leafGridView())) {

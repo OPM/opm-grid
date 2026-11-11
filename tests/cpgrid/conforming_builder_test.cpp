@@ -22,12 +22,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
-#include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <dune/common/parallel/mpihelper.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
 #include <algorithm>
 #include <array>
@@ -41,81 +39,10 @@
 #include <string>
 #include <vector>
 
+using namespace Opm::ConformingTest;
+
 namespace
 {
-
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-struct TestGrdecl
-{
-    std::array<int,3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
-
-    grdecl raw() const
-    {
-        grdecl g;
-        g.dims[0] = dims[0]; g.dims[1] = dims[1]; g.dims[2] = dims[2];
-        g.coord = coord.data();
-        g.zcorn = zcorn.data();
-        g.actnum = actnum.empty() ? nullptr : actnum.data();
-        return g;
-    }
-};
-
-int cellOf(int doubled) { return doubled / 2; }
-int sideOf(int doubled) { return doubled % 2; }
-
-TestGrdecl makeVerticalPillarGrid(const std::array<int,3>& dims,
-                                  const std::function<double(int,int,int)>& depth)
-{
-    TestGrdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            double* p = &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)];
-            p[0] = i; p[1] = j; p[2] = 0.0;
-            p[3] = i; p[4] = j; p[5] = 100.0;
-        }
-    }
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
-
-void useConformingBuilder(Dune::CpGrid& grid, std::unique_ptr<Opm::Refinement::Builder> builder)
-{
-    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
-    grid.setRefinementBuilder(std::move(builder));
-}
-
-double totalVolume(const Dune::CpGrid& grid)
-{
-    double vol = 0.0;
-    for (const auto& element : Dune::elements(grid.leafGridView())) {
-        vol += element.geometry().volume();
-    }
-    return vol;
-}
 
 // Cartesian index triplet of a leaf cell; a refined cell has its level-zero parent's.
 std::array<int,3> ijkOf(const Dune::CpGrid& grid, int cell)
@@ -159,18 +86,14 @@ void checkValidFaultedLeaf(const Dune::CpGrid& grid, double volumeBefore)
 {
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
+    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);
     int refinedToCoarse = 0;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-        Dune::FieldVector<double,3> closure(0.0);
         for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
-            auto n = is.centerUnitOuterNormal();
-            n *= is.geometry().volume();
-            closure += n;
             if (is.neighbor() && is.inside().hasFather() != is.outside().hasFather()) {
                 ++refinedToCoarse;
             }
         }
-        BOOST_CHECK_SMALL(closure.two_norm(), 1e-9);
     }
     BOOST_CHECK_GT(refinedToCoarse, 0);
     checkFacesWindAroundNormal(grid);
@@ -188,7 +111,7 @@ BOOST_AUTO_TEST_CASE(endToEndSingleBox)
         const double y = cellOf(j_) + sideOf(j_);
         return 2.0*(cellOf(k_) + sideOf(k_)) + 0.3*std::sin(0.9*x) + 0.2*std::cos(0.6*y);
     };
-    auto parent = makeVerticalPillarGrid({4, 3, 3}, depth);
+    auto parent = makeGrid({4, 3, 3}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
@@ -196,8 +119,7 @@ BOOST_AUTO_TEST_CASE(endToEndSingleBox)
     const double volumeBefore = totalVolume(grid);
     const int cellsBefore = grid.size(0);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Box of 2x1x1 parents, refined 2x2x2.
     grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{3,2,2}}, {"LGR1"});
@@ -293,16 +215,13 @@ BOOST_AUTO_TEST_CASE(stableCellIdDisambiguatesRefinedSiblings)
     // across ranks. stableCellId() must give every leaf cell a unique id:
     // coarse cells keep their Cartesian index; refined cells encode
     // (parent Cartesian, child index) under a tag bit.
-    auto parent = makeVerticalPillarGrid({4, 3, 3}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({4, 3, 3}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
     grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{3,2,2}}, {"LGR1"}); // 2 parents -> 16 refined
 
     constexpr std::int64_t tag = std::int64_t(1) << 62;
@@ -349,17 +268,14 @@ BOOST_AUTO_TEST_CASE(stableCellIdDisambiguatesRefinedSiblings)
 
 BOOST_AUTO_TEST_CASE(twoSeparatedBoxesAndGuards)
 {
-    auto parent = makeVerticalPillarGrid({6, 3, 3}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({6, 3, 3}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Overlapping boxes are rejected (validation).
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}},
@@ -396,7 +312,7 @@ BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
 {
     const auto isHost = [](int i, int j) { return (i < 2) && (j < 2); };
     for (const bool collapsed : {false, true}) {
-        auto parent = makeVerticalPillarGrid({4, 4, 1}, [&](int i_, int j_, int k_) {
+        auto parent = makeGrid({4, 4, 1}, [&](int i_, int j_, int k_) {
             const bool host = isHost(cellOf(i_), cellOf(j_));
             return (collapsed && host) ? 0.0 : 10.0*sideOf(k_);
         });
@@ -415,8 +331,7 @@ BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
             Dune::CpGrid grid;
             grid.processEclipseFormat(rawParent, false);
             BOOST_REQUIRE_EQUAL(grid.size(0), 12);
-            useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-                parent.dims, parent.coord, parent.zcorn, parent.actnum));
+            useConformingBuilder(grid, parent);
 
             grid.addLgrsUpdateLeafView({{3,3,1}}, {{0,0,0}}, {{2,2,1}}, {"LGR1"});
 
@@ -431,8 +346,7 @@ BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
             Dune::CpGrid grid;
             grid.processEclipseFormat(rawParent, false);
             const double volumeBefore = totalVolume(grid);
-            useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-                parent.dims, parent.coord, parent.zcorn, parent.actnum));
+            useConformingBuilder(grid, parent);
 
             grid.addLgrsUpdateLeafView({{3,3,1}, {2,2,2}},
                                        {{0,0,0}, {3,3,0}},
@@ -453,17 +367,14 @@ BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
 // interior to a parent cell must merge into single leaf vertices.
 BOOST_AUTO_TEST_CASE(edgeSharingBoxesMergeCorners)
 {
-    auto parent = makeVerticalPillarGrid({4, 4, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({4, 4, 2}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Box A = i,j in [0,2); box B = i,j in [2,4); both k in [0,2).
     // They meet along the vertical edge (i=2, j=2). Factors 2x2x2.
@@ -522,17 +433,14 @@ BOOST_AUTO_TEST_CASE(edgeSharingBoxesMergeCorners)
 // differ between the two boxes; the in-face subdivisions must match.
 BOOST_AUTO_TEST_CASE(faceSharingBoxes)
 {
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({4, 2, 2}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Box A = i in [0,2), box B = i in [2,4); both full in j,k -> share the
     // i=2 face. Different in-plane-normal factor (rx 2 vs 3), matching
@@ -601,16 +509,13 @@ BOOST_AUTO_TEST_CASE(faceSharingBoxes)
 // Non-matching in-face subdivisions are rejected.
 BOOST_AUTO_TEST_CASE(faceSharingNonMatchingSubdivisionsThrow)
 {
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({4, 2, 2}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // ry differs (2 vs 3) on the shared i=2 face.
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}, {2,3,2}},
@@ -619,24 +524,6 @@ BOOST_AUTO_TEST_CASE(faceSharingNonMatchingSubdivisionsThrow)
                                                  {"A", "B"}),
                       std::logic_error);
     BOOST_CHECK_EQUAL(grid.maxLevel(), 0);
-}
-
-// Worst-cell closure: max over leaf cells of |sum of area-weighted outward
-// normals|. Zero iff every cell is closed (a necessary condition for a conformal
-// leaf with no unmatched/hanging faces).
-double maxClosure(const Dune::CpGrid& grid)
-{
-    double worst = 0.0;
-    for (const auto& e : Dune::elements(grid.leafGridView())) {
-        Dune::FieldVector<double,3> closure(0.0);
-        for (const auto& is : Dune::intersections(grid.leafGridView(), e)) {
-            auto n = is.centerUnitOuterNormal();
-            n *= is.geometry().volume();
-            closure += n;
-        }
-        worst = std::max(worst, closure.two_norm());
-    }
-    return worst;
 }
 
 // Every interior face is seen from both sides (a hanging/unmatched face would be
@@ -665,17 +552,6 @@ void checkEveryInteriorFaceTwoSided(const Dune::CpGrid& grid)
 // ---------------------------------------------------------------------------
 namespace
 {
-
-Opm::Refinement::BlockRefinement gradedTestBox(const std::string& name, std::array<int,3> cellsPerDim,
-                                               std::array<int,3> start, std::array<int,3> end)
-{
-    Opm::Refinement::BlockRefinement request;
-    request.name = name;
-    request.cellsPerDim = cellsPerDim;
-    request.startIJK = start;
-    request.endIJK = end;
-    return request;
-}
 
 // Two parent cells, each split 0.3 / 0.7.
 Opm::Refinement::AxisSubdivision twoParentsSplit03()
@@ -710,17 +586,14 @@ Opm::Refinement::AxisSubdivision columnsFromWidths(const std::vector<int>& count
 std::unique_ptr<Dune::CpGrid> refineGradedPair(const std::vector<Opm::Refinement::BlockRefinement>& requests,
                                                double* volumeBefore = nullptr)
 {
-    auto parent = makeVerticalPillarGrid({2, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({2, 2, 2}, flat);
     auto grid = std::make_unique<Dune::CpGrid>();
     auto rawParent = parent.raw();
     grid->processEclipseFormat(rawParent, false);
     if (volumeBefore) {
         *volumeBefore = totalVolume(*grid);
     }
-    useConformingBuilder(*grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(*grid, parent);
     try {
         grid->addLgrsUpdateLeafView(requests);
     }
@@ -741,9 +614,9 @@ std::unique_ptr<Dune::CpGrid> refineGradedPair(const std::vector<Opm::Refinement
 BOOST_AUTO_TEST_CASE(gradedBoxSharingAFaceIsRefused)
 {
     // A is the column I = 0, B the column I = 1: they share the face x = 1.
-    auto a = gradedTestBox("A", {2,2,2}, {0,0,0}, {1,2,2});
+    auto a = box("A", {2,2,2}, {0,0,0}, {1,2,2});
     a.subdivision[1] = twoParentsSplit03();
-    const auto b = gradedTestBox("B", {2,2,2}, {1,0,0}, {2,2,2});
+    const auto b = box("B", {2,2,2}, {1,0,0}, {2,2,2});
     BOOST_CHECK(!refineGradedPair({a, b}));
 
     auto unset = a;
@@ -753,7 +626,7 @@ BOOST_AUTO_TEST_CASE(gradedBoxSharingAFaceIsRefused)
     // Two and three columns in the two J parents: 5 columns, 5/2 = 2 per parent.
     auto mixed = a;
     mixed.subdivision[1] = { {0, 0, 1, 1, 1}, {0.0, 0.3, 0.0, 0.2, 0.5}, {0.3, 1.0, 0.2, 0.5, 1.0} };
-    BOOST_CHECK(!refineGradedPair({mixed, gradedTestBox("B", {2,3,2}, {1,0,0}, {2,2,2})}));
+    BOOST_CHECK(!refineGradedPair({mixed, box("B", {2,3,2}, {1,0,0}, {2,2,2})}));
 }
 
 // A graded box sharing only an edge with another box is refused: the shared points
@@ -763,25 +636,25 @@ BOOST_AUTO_TEST_CASE(gradedBoxSharingAnEdgeIsRefused)
 {
     // A is the column (0,0), B the column (1,1): they share the vertical edge on the
     // pillar (1,1).
-    auto thirds = gradedTestBox("A", {2,2,3}, {0,0,0}, {1,1,2});
+    auto thirds = box("A", {2,2,3}, {0,0,0}, {1,1,2});
     thirds.subdivision[2] = columnsFromWidths({3, 3}, {0.3, 0.3, 0.3, 0.3, 0.3, 0.3});
-    BOOST_CHECK(!refineGradedPair({thirds, gradedTestBox("B", {2,2,3}, {1,1,0}, {2,2,2})}));
+    BOOST_CHECK(!refineGradedPair({thirds, box("B", {2,2,3}, {1,1,0}, {2,2,2})}));
 
-    auto split = gradedTestBox("A", {2,2,2}, {0,0,0}, {1,1,2});
+    auto split = box("A", {2,2,2}, {0,0,0}, {1,1,2});
     split.subdivision[2] = twoParentsSplit03();
-    BOOST_CHECK(!refineGradedPair({split, gradedTestBox("B", {2,2,2}, {1,1,0}, {2,2,2})}));
+    BOOST_CHECK(!refineGradedPair({split, box("B", {2,2,2}, {1,1,0}, {2,2,2})}));
 }
 
 // A graded box meeting another box at a corner only is built: the corner is a corner
 // of level zero.
 BOOST_AUTO_TEST_CASE(gradedBoxMeetingAtACornerBuilds)
 {
-    auto a = gradedTestBox("A", {2,2,2}, {0,0,0}, {1,1,1});
+    auto a = box("A", {2,2,2}, {0,0,0}, {1,1,1});
     for (int d = 0; d < 3; ++d) {
         a.subdivision[d] = { {0, 0}, {0.0, 0.3}, {0.3, 1.0} };
     }
     double volumeBefore = 0.0;
-    const auto grid = refineGradedPair({a, gradedTestBox("B", {2,2,2}, {1,1,1}, {2,2,2})},
+    const auto grid = refineGradedPair({a, box("B", {2,2,2}, {1,1,1}, {2,2,2})},
                                        &volumeBefore);
     BOOST_REQUIRE(grid);
     BOOST_CHECK_EQUAL(grid->maxLevel(), 2);
@@ -803,16 +676,13 @@ BOOST_AUTO_TEST_CASE(gradedBoxMeetingAtACornerBuilds)
 // interface never carries a fault, so this is the pure mosaic case.
 BOOST_AUTO_TEST_CASE(stackedCompatibleInFaceMosaicBuilds)
 {
-    auto parent = makeVerticalPillarGrid({2, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({2, 2, 2}, flat);
     Dune::CpGrid grid;
     auto raw = parent.raw();
     grid.processEclipseFormat(raw, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Lower slab k in [0,1): x4 in I,J, x2 in K. Upper slab k in [1,2): x2 all.
     grid.addLgrsUpdateLeafView(
@@ -822,7 +692,7 @@ BOOST_AUTO_TEST_CASE(stackedCompatibleInFaceMosaicBuilds)
     // LO: 4 parents x (4*4*2)=32 -> 128. HI: 4 parents x (2*2*2)=8 -> 32.
     BOOST_CHECK_EQUAL(grid.size(0), 128 + 32);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
-    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);          // every cell closed
+    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);        // every cell closed
     checkEveryInteriorFaceTwoSided(grid);               // no hanging faces
 
     // The interface couples the two boxes: x4-vs-x2 in I and J -> each coarser
@@ -861,16 +731,13 @@ BOOST_AUTO_TEST_CASE(stackedCompatibleInFaceMosaicBuilds)
 // mosaic also works on a vertical interface when there is no fault.
 BOOST_AUTO_TEST_CASE(sideBySideCompatibleInFaceMosaicBuilds)
 {
-    auto parent = makeVerticalPillarGrid({2, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({2, 2, 2}, flat);
     Dune::CpGrid grid;
     auto raw = parent.raw();
     grid.processEclipseFormat(raw, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Box A i in [0,1): x4 in K, x2 in I,J. Box B i in [1,2): x2 all. Shared i=1
     // vertical face; in-face J equal, in-face K differs 4 vs 2.
@@ -898,14 +765,13 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultEqualSubdiv)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 0.6 : base;     // fault between i=1 and i=2
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
     Dune::CpGrid grid;
     auto raw = parent.raw();
     grid.processEclipseFormat(raw, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Box A i in [0,2), box B i in [2,4); shared i=2 face IS the fault. Equal
     // subdivisions both sides.
@@ -914,7 +780,7 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultEqualSubdiv)
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
-    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);          // every cell closed
+    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);        // every cell closed
     checkEveryInteriorFaceTwoSided(grid);               // no hanging faces
 
     // The two boxes are actually connected across the fault: there exist interior
@@ -946,14 +812,13 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultCompatibleSubdiv)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 0.6 : base;     // fault between i=1 and i=2
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
     Dune::CpGrid grid;
     auto raw = parent.raw();
     grid.processEclipseFormat(raw, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // Box A i in [0,2): x4 in K, x2 in I,J. Box B i in [2,4): x2 all. Shared i=2
     // face IS the fault; in-face J equal, in-face K differs 4 vs 2 (compatible).
@@ -962,7 +827,7 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultCompatibleSubdiv)
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
-    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);          // every cell closed
+    BOOST_CHECK_SMALL(maxClosure(grid), 1e-9);        // every cell closed
     checkEveryInteriorFaceTwoSided(grid);               // no hanging faces
 
     int abConnections = 0;
@@ -986,16 +851,13 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultCompatibleSubdiv)
 // by the leaf assembly, after the nested level grids were built.
 BOOST_AUTO_TEST_CASE(nestedRefinementReachesLeafBoundary)
 {
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({4, 2, 2}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // LGR1: 2x1x1 GLOBAL parents -> local refined dims 4x2x2.
     // NEST1 {0,0,0}-{2,2,2} touches LGR1's boundary (startIJK has zeros), so it
@@ -1019,16 +881,13 @@ BOOST_AUTO_TEST_CASE(nestedRefinementReachesLeafBoundary)
 // topological sort is what guarantees this never happens in practice).
 BOOST_AUTO_TEST_CASE(nestedChildBeforeParentThrows)
 {
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    });
+    auto parent = makeGrid({4, 2, 2}, flat);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     const auto isUnbuiltParent = [](const std::logic_error& e) {
         return std::string(e.what()).find("has not been built yet")
@@ -1062,15 +921,14 @@ BOOST_AUTO_TEST_CASE(nestedFullyContainedBuilds)
         const double y = cellOf(j_) + sideOf(j_);
         return 2.0*(cellOf(k_) + sideOf(k_)) + 0.3*std::sin(0.9*x) + 0.2*std::cos(0.6*y);
     };
-    auto parent = makeVerticalPillarGrid({4, 3, 3}, depth);
+    auto parent = makeGrid({4, 3, 3}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // LGR1: GLOBAL cells i:1-2, j:1, k:1 (2x1x1) refined 3x3x3 -> LGR1-local 6x3x3 = 54.
     // NEST1: LGR1-local i:1-4, j:1, k:1 (4 LGR1 cells) refined 2x2x2 = 32 -> strictly
@@ -1151,15 +1009,14 @@ BOOST_AUTO_TEST_CASE(faultInsideBoxEndToEnd)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 0.6 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     // The box {1..3} has the fault *inside* (between i=1 and i=2) and
     // unfaulted boundaries (i=0|1 and i=3|4 columns are unfaulted... note
@@ -1198,15 +1055,14 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryBuilds)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 0.6 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,0}}, {{4,2,2}}, {"LGR1"}));
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
@@ -1258,15 +1114,14 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryJDirectionBuilds)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(j_) >= 2) ? base + 0.6 : base;
     };
-    auto parent = makeVerticalPillarGrid({2, 4, 2}, depth);
+    auto parent = makeGrid({2, 4, 2}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,2,0}}, {{2,4,2}}, {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
@@ -1281,15 +1136,14 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryUpThrownSideBuilds)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 0.6 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,0,0}}, {{2,2,2}}, {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
@@ -1304,15 +1158,14 @@ BOOST_AUTO_TEST_CASE(faultLargeThrowAtBoxBoundaryBuilds)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 3.0 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 3}, depth);
+    auto parent = makeGrid({4, 2, 3}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,0}}, {{4,2,3}}, {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
@@ -1351,7 +1204,7 @@ BOOST_AUTO_TEST_CASE(faultThrowTallerThanBoxKeepsConnections)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 5.0 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 8}, depth);
+    auto parent = makeGrid({4, 2, 8}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
@@ -1360,8 +1213,7 @@ BOOST_AUTO_TEST_CASE(faultThrowTallerThanBoxKeepsConnections)
     const double areaBefore = areaAcrossIFace(grid, 2, 1, 3, 5);
     BOOST_REQUIRE_GT(areaBefore, 0.0);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,3}}, {{4,2,5}}, {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
@@ -1377,14 +1229,13 @@ BOOST_AUTO_TEST_CASE(boxesMeetingOnlyAcrossThrowMustNest)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + 5.0 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 8}, depth);
+    auto parent = makeGrid({4, 2, 8}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,3,2}, {2,2,3}},
                                                  {{0,0,6}, {2,0,3}},
@@ -1405,15 +1256,14 @@ BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 1) ? base + 0.6 : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid({4, 2, 2}, depth);
 
     Dune::CpGrid grid;
     auto rawParent = parent.raw();
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     BOOST_CHECK_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,0}}, {{4,2,2}}, {"LGR1"}));
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
@@ -1426,14 +1276,13 @@ BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
 BOOST_AUTO_TEST_CASE(throwInsideBoxJoiningCellsOutsideIsRefused)
 {
     // Columns i >= 2 are 0.6 deeper; layers 2 thick.
-    auto parent = makeVerticalPillarGrid({4, 3, 2}, [](int i_, int, int k_) {
+    auto parent = makeGrid({4, 3, 2}, [](int i_, int, int k_) {
         return 2.0*(cellOf(k_) + sideOf(k_)) + ((cellOf(i_) >= 2) ? 0.6 : 0.0);
     });
     auto rawParent = parent.raw();
     const auto refine = [&](Dune::CpGrid& grid, std::array<int,3> start, std::array<int,3> end) {
         grid.processEclipseFormat(rawParent, false);
-        useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-            parent.dims, parent.coord, parent.zcorn, parent.actnum));
+        useConformingBuilder(grid, parent);
         grid.addLgrsUpdateLeafView({{3,1,3}}, {start}, {end}, {"LGR1"});
     };
     const auto namesTheCells = [](const std::string& box, const std::string& outside) {
@@ -1484,7 +1333,7 @@ BOOST_AUTO_TEST_CASE(processGrdeclSplitsFaultedCoarseFineColumnPair)
         static const double fine[4] = {1.0, 3.0, 3.0, 5.0};   // refined, throw +1
         return fine[k_];
     };
-    auto g = makeVerticalPillarGrid({2, 1, 2}, depth);
+    auto g = makeGrid({2, 1, 2}, depth);
     auto raw = g.raw();
 
     struct processed_grid out;
@@ -1532,7 +1381,7 @@ namespace
 TestGrdecl makeSkewPillarGrid(const std::array<int,3>& dims,
                               const std::function<double(int,int,int)>& depth)
 {
-    TestGrdecl g = makeVerticalPillarGrid(dims, depth);
+    TestGrdecl g = makeGrid(dims, depth);
     const auto& [nx, ny, nz] = dims;
     static_cast<void>(nz);
     for (int j = 0; j <= ny; ++j) {
@@ -1607,8 +1456,7 @@ BOOST_AUTO_TEST_CASE(skewPillarFaceSharingBoxes)
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     grid.addLgrsUpdateLeafView({{2,2,2}, {3,2,2}},
                                {{0,0,0}, {2,0,0}},
@@ -1637,8 +1485,7 @@ BOOST_AUTO_TEST_CASE(skewPillarCompatibleSubdivisionMosaic)
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     grid.addLgrsUpdateLeafView({{2,4,4}, {2,2,2}},
                                {{0,0,0}, {2,0,0}},
@@ -1668,8 +1515,7 @@ BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareKFace)
     grid.processEclipseFormat(rawParent, false);
     const double volumeBefore = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        parent.dims, parent.coord, parent.zcorn, parent.actnum));
+    useConformingBuilder(grid, parent);
 
     grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,3}},
                                {{0,0,0}, {0,0,2}},
@@ -1691,11 +1537,7 @@ BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareKFace)
 BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareRefinedPillars)
 {
     const auto coordOf = [](const auto& parent, int k0, int k1) {
-        Opm::Refinement::BlockRefinement req;
-        req.name = "B";
-        req.cellsPerDim = {2, 2, 1};
-        req.startIJK = {0, 0, k0};
-        req.endIJK = {2, 2, k1};
+        const auto req = box("B", {2, 2, 1}, {0, 0, k0}, {2, 2, k1});
         return Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
                                             parent.zcorn.data(), nullptr, req).coord;
     };
