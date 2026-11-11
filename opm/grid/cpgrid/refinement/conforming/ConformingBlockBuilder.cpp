@@ -52,9 +52,10 @@ ConformingBlockBuilder::ConformingBlockBuilder(const std::array<int,3>& parentDi
                                                std::vector<double> zcorn,
                                                std::vector<int> actnum,
                                                bool edgeConformal)
-    : input_(std::make_shared<const RetainedCornerPointInput>(
-          RetainedCornerPointInput{ parentDims, std::move(coord), std::move(zcorn),
-                                    std::move(actnum), edgeConformal }))
+    : ConformingBlockBuilder {
+          std::make_shared<const RetainedCornerPointInput>(parentDims, std::move(coord), std::move(zcorn),
+                                                           std::move(actnum), edgeConformal)
+      }
 {
 }
 

@@ -144,6 +144,8 @@ public:
     std::shared_ptr<Dune::cpgrid::CpGridData> build();
 
 private:
+    // TODO: store the box's level index (b + 1) here, and give SourceRef a boxIndex(), to
+    // drop the b + 1 and grid - 1 conversions in the stages.
     struct BoxData
     {
         Dune::cpgrid::CpGridData* level;
@@ -202,15 +204,15 @@ private:
     /// The key of a corner in the maps of corners by coordinates.
     static std::array<double,3> coordKey(const Dune::cpgrid::Geometry<0,3>& corner);
     /// The box refining a cell of the grid box b refines, or -1 (after collectBoxData).
-    int boxOfParentCell(int b, int cell) const;
+    int boxOfParentGridCell(int b, int cell) const;
     /// The leaf index of an unrefined cell of the grid box b refines (after buildLeafCells).
-    int leafOfParentCell(int b, int cell) const;
+    int leafOfParentGridCell(int b, int cell) const;
     /// The IJK of a cell of the grid box b refines (after collectBoxData).
-    std::array<int,3> parentIJK(int b, int cell) const;
+    std::array<int,3> parentGridIJK(int b, int cell) const;
     /// The cell across a nested box's side (after collectBoxData).
     int nestedNeighborOf(int b, int parent, int axis, int side) const;
     /// The level-zero cell across a host cell's face on a box side (after collectBoxData).
-    int outsideNeighborOf(int b, int parent, int axis, int side) const;
+    int outsideNeighborOf(int parent, int axis, int side) const;
 
     // Const access for the stages after the one that writes each member.
     const std::vector<BoxData>& boxes() const { return boxes_; }
@@ -222,7 +224,7 @@ private:
     int numLeafCells() const { return numLeafCells_; }
     const std::vector<bool>& faceDropped() const { return faceDropped_; }
     const std::set<std::tuple<int,int,int>>& faultedSides() const { return faultedSides_; }
-    const std::map<std::tuple<int,int,int>, std::array<std::array<int,2>,3>>& acrossRange() const { return acrossRange_; }
+    const std::map<std::tuple<int,int,int>, CellRange>& acrossRange() const { return acrossRange_; }
     const std::vector<SourceRef>& leafFaces() const { return leafFaces_; }
     const std::vector<int>& mosaicOutside() const { return mosaicOutside_; }
     const std::vector<std::map<int,int>>& refinedCartToCell() const { return refinedCartToCell_; }
@@ -253,7 +255,6 @@ private:
     // The box of each level-zero cell, or -1.
     const std::vector<int> boxOfCell_;
     const std::vector<std::array<int,8>>& cellToPoint0_;
-    const Dune::cpgrid::OrientedEntityTable<0,1>& cellToFace0_;
     const Dune::cpgrid::OrientedEntityTable<1,0>& faceToCell0_;
     const Opm::SparseTable<int>& faceToPoint0_;
     const Dune::cpgrid::EntityVariable<enum face_tag, 1>& faceTag0_;
@@ -294,7 +295,7 @@ private:
     std::set<std::tuple<int,int,int>> faultedSides_;
     // Parent IJK range of the cells really across each box side, from the level-zero
     // faces: a throw taller than the box puts them outside the box's own layers.
-    std::map<std::tuple<int,int,int>, std::array<std::array<int,2>,3>> acrossRange_;
+    std::map<std::tuple<int,int,int>, CellRange> acrossRange_;
 
     // Written by buildLeafFaces.
     std::vector<SourceRef> leafFaces_;

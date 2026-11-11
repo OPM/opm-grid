@@ -39,15 +39,15 @@ namespace Refinement
 {
 
 std::vector<BoundaryConnection>
-faultedBoundaryConnections(const std::array<int,3>& parentDims,
-                           const double* coord,
-                           const double* zcorn,
-                           const int* actnum,
-                           const BlockRefinement& box,
-                           int axis,
-                           int side,
-                           bool edgeConformal,
-                           const std::array<std::array<int,2>,3>* across)
+boxBoundaryConnections(const std::array<int,3>& parentDims,
+                       const double* coord,
+                       const double* zcorn,
+                       const int* actnum,
+                       const BlockRefinement& box,
+                       int axis,
+                       int side,
+                       bool edgeConformal,
+                       const CellRange* across)
 {
     std::vector<BoundaryConnection> result;
 
@@ -73,8 +73,8 @@ faultedBoundaryConnections(const std::array<int,3>& parentDims,
         miniStart[p] = std::max(0, miniStart[p] - 1);
         miniEnd[p]   = std::min(parentDims[p], miniEnd[p] + 1);
         if (across) {
-            miniStart[p] = std::min(miniStart[p], (*across)[p][0]);
-            miniEnd[p]   = std::max(miniEnd[p], (*across)[p][1] + 1);
+            miniStart[p] = std::min(miniStart[p], across->startIJK[p]);
+            miniEnd[p]   = std::max(miniEnd[p], across->endIJK[p]);
         }
     }
 

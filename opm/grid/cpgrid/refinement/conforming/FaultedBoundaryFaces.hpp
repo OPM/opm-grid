@@ -46,7 +46,7 @@ struct BoundaryConnection
     std::vector<std::array<double,3>> faceNodes; ///< face corner coordinates
 };
 
-/// Compute the connections at one box-boundary side using the corner-point
+/// Compute the connections at one box side, faulted or not, using the corner-point
 /// processor, so faults on that boundary are handled the same way faults
 /// elsewhere are: a refined boundary cell may connect to more than one coarse
 /// neighbour (the throw splits the face).
@@ -60,19 +60,18 @@ struct BoundaryConnection
 ///
 /// axis in {0,1,2}; side in {-1, +1}. edgeConformal selects edge-conformal
 /// processing, matching the leaf's final edgeConformalizeLeaf pass. across, if
-/// given, is the inclusive parent IJK range of the cells actually across the side;
-/// the mini region grows to cover it, since a large throw puts them outside the
-/// box's own layers.
+/// given, holds the parent cells actually across the side; the mini region grows
+/// to cover it, since a large throw puts them outside the box's own layers.
 std::vector<BoundaryConnection>
-faultedBoundaryConnections(const std::array<int,3>& parentDims,
-                           const double* coord,
-                           const double* zcorn,
-                           const int* actnum,
-                           const BlockRefinement& box,
-                           int axis,
-                           int side,
-                           bool edgeConformal,
-                           const std::array<std::array<int,2>,3>* across = nullptr);
+boxBoundaryConnections(const std::array<int,3>& parentDims,
+                       const double* coord,
+                       const double* zcorn,
+                       const int* actnum,
+                       const BlockRefinement& box,
+                       int axis,
+                       int side,
+                       bool edgeConformal,
+                       const CellRange* across = nullptr);
 
 } // namespace Refinement
 } // namespace Opm
