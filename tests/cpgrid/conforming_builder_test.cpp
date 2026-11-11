@@ -122,7 +122,10 @@ BOOST_AUTO_TEST_CASE(endToEndSingleBox)
     useConformingBuilder(grid, parent);
 
     // Box of 2x1x1 parents, refined 2x2x2.
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{3,2,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{1,1,1}},
+                               /* endIJK_vec = */        {{3,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_EQUAL(grid.size(0), cellsBefore - 2 + 2*8);
@@ -222,7 +225,10 @@ BOOST_AUTO_TEST_CASE(stableCellIdDisambiguatesRefinedSiblings)
     grid.processEclipseFormat(rawParent, false);
 
     useConformingBuilder(grid, parent);
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{3,2,2}}, {"LGR1"}); // 2 parents -> 16 refined
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{1,1,1}},
+                               /* endIJK_vec = */        {{3,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"}); // 2 parents -> 16 refined
 
     constexpr std::int64_t tag = std::int64_t(1) << 62;
     constexpr std::int64_t childMask = (std::int64_t(1) << 20) - 1;
@@ -278,18 +284,18 @@ BOOST_AUTO_TEST_CASE(twoSeparatedBoxesAndGuards)
     useConformingBuilder(grid, parent);
 
     // Overlapping boxes are rejected (validation).
-    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}},
-                                                 {{0,0,0}, {1,0,0}},
-                                                 {{3,2,2}, {4,2,2}},
-                                                 {"A", "B"}),
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
+                                                 /* startIJK_vec = */      {{0,0,0}, {1,0,0}},
+                                                 /* endIJK_vec = */        {{3,2,2}, {4,2,2}},
+                                                 /* lgr_name_vec = */      {"A", "B"}),
                       std::invalid_argument);
     BOOST_CHECK_EQUAL(grid.maxLevel(), 0); // grid unchanged
 
     // Two separated boxes work.
-    grid.addLgrsUpdateLeafView({{2,2,2}, {3,3,3}},
-                               {{0,0,0}, {4,1,1}},
-                               {{1,1,1}, {6,3,3}},
-                               {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                               /* startIJK_vec = */      {{0,0,0}, {4,1,1}},
+                               /* endIJK_vec = */        {{1,1,1}, {6,3,3}},
+                               /* lgr_name_vec = */      {"A", "B"});
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_EQUAL(grid.getLgrNameToLevel().at("A"), 1);
     BOOST_CHECK_EQUAL(grid.getLgrNameToLevel().at("B"), 2);
@@ -333,7 +339,10 @@ BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
             BOOST_REQUIRE_EQUAL(grid.size(0), 12);
             useConformingBuilder(grid, parent);
 
-            grid.addLgrsUpdateLeafView({{3,3,1}}, {{0,0,0}}, {{2,2,1}}, {"LGR1"});
+            grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,3,1}},
+                                       /* startIJK_vec = */      {{0,0,0}},
+                                       /* endIJK_vec = */        {{2,2,1}},
+                                       /* lgr_name_vec = */      {"LGR1"});
 
             BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
             BOOST_CHECK_EQUAL(grid.getLgrNameToLevel().at("LGR1"), 1);
@@ -348,10 +357,10 @@ BOOST_AUTO_TEST_CASE(boxWithoutHostsIsEmptyLgr)
             const double volumeBefore = totalVolume(grid);
             useConformingBuilder(grid, parent);
 
-            grid.addLgrsUpdateLeafView({{3,3,1}, {2,2,2}},
-                                       {{0,0,0}, {3,3,0}},
-                                       {{2,2,1}, {4,4,1}},
-                                       {"EMPTY", "B"});
+            grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,3,1}, {2,2,2}},
+                                       /* startIJK_vec = */      {{0,0,0}, {3,3,0}},
+                                       /* endIJK_vec = */        {{2,2,1}, {4,4,1}},
+                                       /* lgr_name_vec = */      {"EMPTY", "B"});
 
             BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
             BOOST_CHECK_EQUAL(grid.size(1, 0), 0);
@@ -378,10 +387,10 @@ BOOST_AUTO_TEST_CASE(edgeSharingBoxesMergeCorners)
 
     // Box A = i,j in [0,2); box B = i,j in [2,4); both k in [0,2).
     // They meet along the vertical edge (i=2, j=2). Factors 2x2x2.
-    grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}},
-                               {{0,0,0}, {2,2,0}},
-                               {{2,2,2}, {4,4,2}},
-                               {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,2,0}},
+                               /* endIJK_vec = */        {{2,2,2}, {4,4,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
@@ -445,10 +454,10 @@ BOOST_AUTO_TEST_CASE(faceSharingBoxes)
     // Box A = i in [0,2), box B = i in [2,4); both full in j,k -> share the
     // i=2 face. Different in-plane-normal factor (rx 2 vs 3), matching
     // in-face factors (ry=rz=2).
-    grid.addLgrsUpdateLeafView({{2,2,2}, {3,2,2}},
-                               {{0,0,0}, {2,0,0}},
-                               {{2,2,2}, {4,2,2}},
-                               {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,0,0}},
+                               /* endIJK_vec = */        {{2,2,2}, {4,2,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
@@ -518,10 +527,10 @@ BOOST_AUTO_TEST_CASE(faceSharingNonMatchingSubdivisionsThrow)
     useConformingBuilder(grid, parent);
 
     // ry differs (2 vs 3) on the shared i=2 face.
-    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}, {2,3,2}},
-                                                 {{0,0,0}, {2,0,0}},
-                                                 {{2,2,2}, {4,2,2}},
-                                                 {"A", "B"}),
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,3,2}},
+                                                 /* startIJK_vec = */      {{0,0,0}, {2,0,0}},
+                                                 /* endIJK_vec = */        {{2,2,2}, {4,2,2}},
+                                                 /* lgr_name_vec = */      {"A", "B"}),
                       std::logic_error);
     BOOST_CHECK_EQUAL(grid.maxLevel(), 0);
 }
@@ -685,8 +694,10 @@ BOOST_AUTO_TEST_CASE(stackedCompatibleInFaceMosaicBuilds)
     useConformingBuilder(grid, parent);
 
     // Lower slab k in [0,1): x4 in I,J, x2 in K. Upper slab k in [1,2): x2 all.
-    grid.addLgrsUpdateLeafView(
-        {{4,4,2}, {2,2,2}}, {{0,0,0}, {0,0,1}}, {{2,2,1}, {2,2,2}}, {"LO", "HI"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{4,4,2}, {2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {0,0,1}},
+                               /* endIJK_vec = */        {{2,2,1}, {2,2,2}},
+                               /* lgr_name_vec = */      {"LO", "HI"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     // LO: 4 parents x (4*4*2)=32 -> 128. HI: 4 parents x (2*2*2)=8 -> 32.
@@ -741,8 +752,10 @@ BOOST_AUTO_TEST_CASE(sideBySideCompatibleInFaceMosaicBuilds)
 
     // Box A i in [0,1): x4 in K, x2 in I,J. Box B i in [1,2): x2 all. Shared i=1
     // vertical face; in-face J equal, in-face K differs 4 vs 2.
-    grid.addLgrsUpdateLeafView(
-        {{2,2,4}, {2,2,2}}, {{0,0,0}, {1,0,0}}, {{1,2,2}, {2,2,2}}, {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,4}, {2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {1,0,0}},
+                               /* endIJK_vec = */        {{1,2,2}, {2,2,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     // A: 4 parents x (2*2*4)=16 -> 64. B: 4 parents x 8 -> 32.
@@ -775,8 +788,10 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultEqualSubdiv)
 
     // Box A i in [0,2), box B i in [2,4); shared i=2 face IS the fault. Equal
     // subdivisions both sides.
-    grid.addLgrsUpdateLeafView(
-        {{2,2,2}, {2,2,2}}, {{0,0,0}, {2,0,0}}, {{2,2,2}, {4,2,2}}, {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,0,0}},
+                               /* endIJK_vec = */        {{2,2,2}, {4,2,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
@@ -822,8 +837,10 @@ BOOST_AUTO_TEST_CASE(faceSharingAcrossFaultCompatibleSubdiv)
 
     // Box A i in [0,2): x4 in K, x2 in I,J. Box B i in [2,4): x2 all. Shared i=2
     // face IS the fault; in-face J equal, in-face K differs 4 vs 2 (compatible).
-    grid.addLgrsUpdateLeafView(
-        {{2,2,4}, {2,2,2}}, {{0,0,0}, {2,0,0}}, {{2,2,2}, {4,2,2}}, {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,4}, {2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,0,0}},
+                               /* endIJK_vec = */        {{2,2,2}, {4,2,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
@@ -867,11 +884,11 @@ BOOST_AUTO_TEST_CASE(nestedRefinementReachesLeafBoundary)
                != std::string::npos;
     };
     BOOST_CHECK_EXCEPTION(
-        grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}},
-                                   {{1,0,0}, {0,0,0}},
-                                   {{3,1,1}, {2,2,2}},
-                                   {"LGR1", "NEST1"},
-                                   {"GLOBAL", "LGR1"}),
+        grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */        {{2,2,2}, {2,2,2}},
+                                   /* startIJK_vec = */             {{1,0,0}, {0,0,0}},
+                                   /* endIJK_vec = */               {{3,1,1}, {2,2,2}},
+                                   /* lgr_name_vec = */             {"LGR1", "NEST1"},
+                                   /* lgr_parent_grid_name_vec = */ {"GLOBAL", "LGR1"}),
         std::logic_error, isNestedLeafBoundary);
 }
 
@@ -894,11 +911,11 @@ BOOST_AUTO_TEST_CASE(nestedChildBeforeParentThrows)
                != std::string::npos;
     };
     BOOST_CHECK_EXCEPTION(
-        grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}},
-                                   {{0,0,0}, {1,0,0}},
-                                   {{2,2,2}, {3,1,1}},
-                                   {"NEST1", "LGR1"},
-                                   {"LGR1", "GLOBAL"}),
+        grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */        {{2,2,2}, {2,2,2}},
+                                   /* startIJK_vec = */             {{0,0,0}, {1,0,0}},
+                                   /* endIJK_vec = */               {{2,2,2}, {3,1,1}},
+                                   /* lgr_name_vec = */             {"NEST1", "LGR1"},
+                                   /* lgr_parent_grid_name_vec = */ {"LGR1", "GLOBAL"}),
         std::logic_error, isUnbuiltParent);
 }
 
@@ -933,11 +950,11 @@ BOOST_AUTO_TEST_CASE(nestedFullyContainedBuilds)
     // LGR1: GLOBAL cells i:1-2, j:1, k:1 (2x1x1) refined 3x3x3 -> LGR1-local 6x3x3 = 54.
     // NEST1: LGR1-local i:1-4, j:1, k:1 (4 LGR1 cells) refined 2x2x2 = 32 -> strictly
     //        interior to LGR1 (touches no LGR1 boundary face), parent grid "LGR1".
-    grid.addLgrsUpdateLeafView({{3,3,3}, {2,2,2}},
-                               {{1,1,1}, {1,1,1}},
-                               {{3,2,2}, {5,2,2}},
-                               {"LGR1", "NEST1"},
-                               {"GLOBAL", "LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */        {{3,3,3}, {2,2,2}},
+                               /* startIJK_vec = */             {{1,1,1}, {1,1,1}},
+                               /* endIJK_vec = */               {{3,2,2}, {5,2,2}},
+                               /* lgr_name_vec = */             {"LGR1", "NEST1"},
+                               /* lgr_parent_grid_name_vec = */ {"GLOBAL", "LGR1"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_EQUAL(grid.getLgrNameToLevel().at("LGR1"), 1);
@@ -1022,7 +1039,10 @@ BOOST_AUTO_TEST_CASE(faultInsideBoxEndToEnd)
     // unfaulted boundaries (i=0|1 and i=3|4 columns are unfaulted... note
     // the fault plane is i=2, the box boundary planes are i=1 and i=3,
     // both unfaulted since the throw is constant on each side).
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,0,0}}, {{3,2,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{1,0,0}},
+                               /* endIJK_vec = */        {{3,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
@@ -1064,7 +1084,10 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryBuilds)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,0}}, {{4,2,2}}, {"LGR1"}));
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                      /* startIJK_vec = */      {{2,0,0}},
+                                                      /* endIJK_vec = */        {{4,2,2}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
 
@@ -1123,7 +1146,10 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryJDirectionBuilds)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,2,0}}, {{2,4,2}}, {"LGR1"}));
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                      /* startIJK_vec = */      {{0,2,0}},
+                                                      /* endIJK_vec = */        {{2,4,2}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
 }
 
@@ -1145,7 +1171,10 @@ BOOST_AUTO_TEST_CASE(faultAtBoxBoundaryUpThrownSideBuilds)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,0,0}}, {{2,2,2}}, {"LGR1"}));
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                      /* startIJK_vec = */      {{0,0,0}},
+                                                      /* endIJK_vec = */        {{2,2,2}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
 }
 
@@ -1167,7 +1196,10 @@ BOOST_AUTO_TEST_CASE(faultLargeThrowAtBoxBoundaryBuilds)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,0}}, {{4,2,3}}, {"LGR1"}));
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                      /* startIJK_vec = */      {{2,0,0}},
+                                                      /* endIJK_vec = */        {{4,2,3}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
 }
 
@@ -1215,7 +1247,10 @@ BOOST_AUTO_TEST_CASE(faultThrowTallerThanBoxKeepsConnections)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,3}}, {{4,2,5}}, {"LGR1"}));
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                      /* startIJK_vec = */      {{2,0,3}},
+                                                      /* endIJK_vec = */        {{4,2,5}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
     checkValidFaultedLeaf(grid, volumeBefore);
     BOOST_CHECK_CLOSE(areaAcrossIFace(grid, 2, 1, 3, 5), areaBefore, 1e-8);
 }
@@ -1237,10 +1272,10 @@ BOOST_AUTO_TEST_CASE(boxesMeetingOnlyAcrossThrowMustNest)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,3,2}, {2,2,3}},
-                                                 {{0,0,6}, {2,0,3}},
-                                                 {{2,2,8}, {4,2,5}},
-                                                 {"A", "B"}),
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,3,2}, {2,2,3}},
+                                                 /* startIJK_vec = */      {{0,0,6}, {2,0,3}},
+                                                 /* endIJK_vec = */        {{2,2,8}, {4,2,5}},
+                                                 /* lgr_name_vec = */      {"A", "B"}),
                       std::invalid_argument);
 }
 
@@ -1265,7 +1300,10 @@ BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
 
     useConformingBuilder(grid, parent);
 
-    BOOST_CHECK_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{2,0,0}}, {{4,2,2}}, {"LGR1"}));
+    BOOST_CHECK_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                    /* startIJK_vec = */      {{2,0,0}},
+                                                    /* endIJK_vec = */        {{4,2,2}},
+                                                    /* lgr_name_vec = */      {"LGR1"}));
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
 }
@@ -1283,7 +1321,10 @@ BOOST_AUTO_TEST_CASE(throwInsideBoxJoiningCellsOutsideIsRefused)
     const auto refine = [&](Dune::CpGrid& grid, std::array<int,3> start, std::array<int,3> end) {
         grid.processEclipseFormat(rawParent, false);
         useConformingBuilder(grid, parent);
-        grid.addLgrsUpdateLeafView({{3,1,3}}, {start}, {end}, {"LGR1"});
+        grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,1,3}},
+                                   /* startIJK_vec = */      {start},
+                                   /* endIJK_vec = */        {end},
+                                   /* lgr_name_vec = */      {"LGR1"});
     };
     const auto namesTheCells = [](const std::string& box, const std::string& outside) {
         return [box, outside](const std::invalid_argument& e) {
@@ -1458,10 +1499,10 @@ BOOST_AUTO_TEST_CASE(skewPillarFaceSharingBoxes)
 
     useConformingBuilder(grid, parent);
 
-    grid.addLgrsUpdateLeafView({{2,2,2}, {3,2,2}},
-                               {{0,0,0}, {2,0,0}},
-                               {{2,2,2}, {4,2,2}},
-                               {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,0,0}},
+                               /* endIJK_vec = */        {{2,2,2}, {4,2,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_EQUAL(grid.size(0), 8*8 + 8*12);
@@ -1487,10 +1528,10 @@ BOOST_AUTO_TEST_CASE(skewPillarCompatibleSubdivisionMosaic)
 
     useConformingBuilder(grid, parent);
 
-    grid.addLgrsUpdateLeafView({{2,4,4}, {2,2,2}},
-                               {{0,0,0}, {2,0,0}},
-                               {{2,2,2}, {4,2,2}},
-                               {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,4,4}, {2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,0,0}},
+                               /* endIJK_vec = */        {{2,2,2}, {4,2,2}},
+                               /* lgr_name_vec = */      {"A", "B"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_EQUAL(grid.size(0), 8*32 + 8*8);
@@ -1517,10 +1558,10 @@ BOOST_AUTO_TEST_CASE(skewPillarStackedBoxesShareKFace)
 
     useConformingBuilder(grid, parent);
 
-    grid.addLgrsUpdateLeafView({{2,2,2}, {2,2,3}},
-                               {{0,0,0}, {0,0,2}},
-                               {{2,2,2}, {2,2,4}},
-                               {"LOW", "HIGH"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,2,3}},
+                               /* startIJK_vec = */      {{0,0,0}, {0,0,2}},
+                               /* endIJK_vec = */        {{2,2,2}, {2,2,4}},
+                               /* lgr_name_vec = */      {"LOW", "HIGH"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
     BOOST_CHECK_EQUAL(grid.size(0), 8*8 + 8*12);

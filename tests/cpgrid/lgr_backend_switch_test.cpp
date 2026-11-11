@@ -90,8 +90,11 @@ DY
  36*1 /
 DZ
  36*1 /
+BOX
+ 1 4 1 3 1 1 /
 TOPS
  12*0 /
+ENDBOX
 PORO
  36*0.2 /
 )";
@@ -105,7 +108,10 @@ BOOST_AUTO_TEST_CASE(trilinearRequestsMatchVectors)
     makeGrid(byRequests);
     BOOST_CHECK(byRequests.lgrBackend() == Backend::Trilinear);
 
-    byVectors.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{3,2,2}}, {"LGR1"});
+    byVectors.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                    /* startIJK_vec = */      {{1,1,1}},
+                                    /* endIJK_vec = */        {{3,2,2}},
+                                    /* lgr_name_vec = */      {"LGR1"});
     byRequests.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ box("LGR1", {1,1,1}, {3,2,2}) });
 
     BOOST_CHECK_EQUAL(byRequests.maxLevel(), 1);
@@ -161,11 +167,11 @@ BOOST_AUTO_TEST_CASE(trilinearRefinesNestedLgrsOnTheParentBoundary)
     Dune::CpGrid byVectors, byRequests;
     makeGrid(byVectors);
     makeGrid(byRequests);
-    byVectors.addLgrsUpdateLeafView({{2,2,2}, {2,2,2}, {2,2,2}},
-                                    {{1,1,1}, {0,0,0}, {0,0,0}},
-                                    {{2,2,2}, {1,1,1}, {1,1,1}},
-                                    {"LGR1", "LGR2", "LGR3"},
-                                    {"GLOBAL", "LGR1", "LGR2"});
+    byVectors.addLgrsUpdateLeafView(/* cells_per_dim_vec = */        {{2,2,2}, {2,2,2}, {2,2,2}},
+                                    /* startIJK_vec = */             {{1,1,1}, {0,0,0}, {0,0,0}},
+                                    /* endIJK_vec = */               {{2,2,2}, {1,1,1}, {1,1,1}},
+                                    /* lgr_name_vec = */             {"LGR1", "LGR2", "LGR3"},
+                                    /* lgr_parent_grid_name_vec = */ {"GLOBAL", "LGR1", "LGR2"});
     byRequests.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
         box("LGR1", {1,1,1}, {2,2,2}), lgr2, lgr3 });
 
@@ -181,7 +187,10 @@ BOOST_AUTO_TEST_CASE(backendFixedOnceRefined)
 {
     Dune::CpGrid grid;
     makeGrid(grid);
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{2,2,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{1,1,1}},
+                               /* endIJK_vec = */        {{2,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
     BOOST_CHECK_THROW(grid.setLgrBackend(Backend::Conforming), std::logic_error);
     BOOST_CHECK_NO_THROW(grid.setLgrBackend(Backend::Trilinear));
 }
@@ -193,12 +202,18 @@ BOOST_AUTO_TEST_CASE(conformingForwardsToItsBuilder)
     Dune::CpGrid grid;
     makeGrid(grid);
     grid.setLgrBackend(Backend::Conforming);
-    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{2,2,2}}, {"LGR1"}),
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                 /* startIJK_vec = */      {{1,1,1}},
+                                                 /* endIJK_vec = */        {{2,2,2}},
+                                                 /* lgr_name_vec = */      {"LGR1"}),
                       std::logic_error);
 
     auto builder = std::make_shared<RecordingBuilder>();
     grid.setRefinementBuilder(builder);
-    grid.addLgrsUpdateLeafView({{2,2,2}, {3,3,3}}, {{0,0,0}, {2,1,1}}, {{1,1,1}, {4,3,3}}, {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,1,1}},
+                               /* endIJK_vec = */        {{1,1,1}, {4,3,3}},
+                               /* lgr_name_vec = */      {"A", "B"});
     BOOST_REQUIRE_EQUAL(builder->recorded.size(), 2u);
     BOOST_CHECK_EQUAL(builder->recorded[0].name, "A");
     BOOST_CHECK_EQUAL(builder->recorded[1].name, "B");
@@ -324,7 +339,11 @@ BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
     grid.setLgrBackend(Backend::Conforming);
     Opm::createGridFromDeckString(grid, deckWithCarfin);
     BOOST_CHECK(Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
-    grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"});
+    // Any request refines from the retained input; it need not match the CARFIN.
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2, 1, 1}},
+                               /* startIJK_vec = */      {{1, 0, 0}},
+                               /* endIJK_vec = */        {{3, 1, 1}},
+                               /* lgr_name_vec = */      {"LGR1"});
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 2*2);
     // Refined once, the grid lets the description go.
@@ -337,6 +356,9 @@ BOOST_AUTO_TEST_CASE(conformingChosenAfterProcessingThrows)
     Dune::CpGrid grid;
     Opm::createGridFromDeckString(grid, deckWithCarfin);
     grid.setLgrBackend(Backend::Conforming);
-    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2, 1, 1}}, {{1, 0, 0}}, {{3, 1, 1}}, {"LGR1"}),
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2, 1, 1}},
+                                                 /* startIJK_vec = */      {{1, 0, 0}},
+                                                 /* endIJK_vec = */        {{3, 1, 1}},
+                                                 /* lgr_name_vec = */      {"LGR1"}),
                       std::logic_error);
 }
