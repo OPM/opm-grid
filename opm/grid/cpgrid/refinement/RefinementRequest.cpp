@@ -221,6 +221,14 @@ void validateBlockRefinements(const std::vector<BlockRefinement>& requests,
                           "each starting where the one before it ends.");
             }
         }
+        // The MINPV mask has one entry per refined cell of the box, or none.
+        const auto dims = refinedDims(req);
+        if (!req.minpvRemoved.empty()
+            && (req.minpvRemoved.size() != static_cast<std::size_t>(dims[0])*dims[1]*dims[2]))
+        {
+            OPM_THROW(std::invalid_argument, "Refinement '" + req.name
+                                             + "' has a MINPV removal mask of the wrong size.");
+        }
     }
     // Pairwise disjointness of boxes refining the same parent grid. Note:
     // trilinear backend never validated this and overlapping CARFIN boxes corrupt

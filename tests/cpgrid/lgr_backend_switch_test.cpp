@@ -290,6 +290,33 @@ BOOST_AUTO_TEST_CASE(conformingRefusesBrokenColumnTables)
     BOOST_CHECK_EQUAL(builder->recorded.size(), 1u);
 }
 
+// A MINPV mask has one entry per refined cell of the box, or none; the grid refuses a
+// mask of another size before the builder is called.
+BOOST_AUTO_TEST_CASE(conformingRefusesMinpvMaskOfWrongSize)
+{
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    auto builder = std::make_shared<RecordingBuilder>();
+    grid.setRefinementBuilder(builder);
+
+    // Two parent cells in I, each into 2x2x2 children: 16 refined cells.
+    auto request = box("A", {1,1,1}, {3,2,2});
+    const auto wrongSize = [](const std::invalid_argument& e) {
+        return std::string(e.what()).find("MINPV removal mask of the wrong size") != std::string::npos;
+    };
+    for (const std::size_t size : {1, 8, 15, 17}) {
+        request.minpvRemoved.assign(size, 0);
+        BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),
+                              std::invalid_argument, wrongSize);
+    }
+    BOOST_CHECK(builder->recorded.empty());
+
+    request.minpvRemoved.assign(16, 0);
+    grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request });
+    BOOST_CHECK_EQUAL(builder->recorded.size(), 1u);
+}
+
 // A Conforming grid built from a deck with LGRs refines without an explicit builder.
 BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
 {

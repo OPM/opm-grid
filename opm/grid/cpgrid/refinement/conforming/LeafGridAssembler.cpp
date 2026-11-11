@@ -1386,9 +1386,9 @@ void LeafGridAssembler::buildSyntheticFaces()
     const auto hostOfRemovedChild = [&](int b, const std::array<int,3>& lattice) {
         const auto& removed = requests_[b].minpvRemoved;
         const auto& rd = boxes()[b].refinedDims;
-        const std::size_t child = lattice[0]
-            + static_cast<std::size_t>(rd[0])*(lattice[1] + static_cast<std::size_t>(rd[1])*lattice[2]);
-        if ((removed.size() != static_cast<std::size_t>(rd[0])*rd[1]*rd[2]) || (removed[child] == 0)) {
+        // minpvRemoved: 1 = removed, 0 = stays on the leaf; empty when the box set no MINPV.
+        const auto child = lattice[0] + rd[0]*(lattice[1] + rd[1]*lattice[2]);
+        if (removed.empty() || (removed[child] == 0)) {
             return -1;
         }
         const auto& dims = nested(b) ? boxes()[parentBoxOf_[b]].refinedDims : dims0_;
