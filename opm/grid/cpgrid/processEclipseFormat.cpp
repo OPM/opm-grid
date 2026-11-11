@@ -357,6 +357,8 @@ namespace cpgrid
         }
 
         // Post-MINPV input, for the Conforming backend's refinement builder.
+        // Warning: taken before clip_z and periodic_extension below, so refined cells
+        // will not match a level zero built with either.
         if (retain_cp_input_ && ecl_state && ecl_state->getLgrs().size() > 0) {
             auto retained = std::make_shared<Opm::Refinement::RetainedCornerPointInput>();
             retained->dims = { static_cast<int>(ecl_grid.getNX()),
