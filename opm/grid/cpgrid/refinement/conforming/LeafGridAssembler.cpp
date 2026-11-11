@@ -620,9 +620,9 @@ void LeafGridAssembler::collectBoxData()
         }
     }
 #endif
-    // nestedBoxOf[b][cell]: the nested box refining that cell of box b's level grid, or -1;
-    // also a cell whose children the nested box's MINPV removes, which is refined into
-    // nothing.
+    // nestedBoxOf_[pb][cell]: for a cell of the level grid of the parent box pb, the index
+    // of the nested (child) box that refines it, or -1. A cell whose children the nested
+    // box's MINPV removes all has that box's index too: it is refined into nothing.
     nestedBoxOf_.resize(numBoxes_);
     for (int b = 0; b < numBoxes_; ++b) {
         nestedBoxOf_[b].assign(boxes_[b].level->size(0), -1);
@@ -767,10 +767,15 @@ void LeafGridAssembler::buildLeafCells()
             continue;
         }
         const int pb = parentBoxOf_[nb];
+        // Several nested boxes can refine one LGR: its table is made by the first of them,
+        // and each fills in the cells it refines.
         auto [it, fresh] = nestedParentToChildren_.try_emplace(pb);
         if (fresh) {
             it->second.assign(boxes()[pb].level->size(0), std::make_tuple(-1, std::vector<int>{}));
         }
+        // Each cell nb refines gets (nb + 1, its children): the level of nb, and the cell's
+        // children there, none when nb's MINPV removed them all. The cells no nested box
+        // refines keep (-1, {}).
         for (int parent = 0; parent < boxes()[pb].level->size(0); ++parent) {
             if (nestedBoxOf()[pb][parent] == nb) {
                 const auto kids = boxes()[nb].childrenOfParent.find(parent);
@@ -802,10 +807,13 @@ std::array<int,3> LeafGridAssembler::parentGridIJK(int b, int cell) const
 
 void LeafGridAssembler::refuseThrowsLeavingBoxes() const
 {
-    // A fault or a pinch-out inside a box can join a box cell to a cell outside the box
-    // through a face that is not on a box side, when the box does not cover every layer
-    // the throw joins. The box's level grid leaves its side of that face open, and the
-    // cell outside loses its face: not supported.
+    // Refuse a connection from a cell inside the box to a cell outside it through a face
+    // that is internal to the box's logical IJK extent, not on a box side. Faults and
+    // pinch-outs create such connections when the box does not cover every layer they
+    // connect. Connections across the box's logical boundary are handled by
+    // buildLeafFaces() and buildSyntheticFaces(). Internal ones are not: refining the box
+    // leaves an open face, and the leaf assembly removes the outside cell's original face
+    // without supplying a replacement.
     const auto text = [](const std::array<int,3>& c) {
         return "(" + std::to_string(c[0] + 1) + "," + std::to_string(c[1] + 1) + ","
             + std::to_string(c[2] + 1) + ")";
@@ -825,6 +833,9 @@ void LeafGridAssembler::refuseThrowsLeavingBoxes() const
                     continue;
                 }
                 const int axis = axisOf(tags.get(face));
+                // By construction, a cell's faces toward -I, -J and -K have orientation
+                // false and those toward +I, +J and +K orientation true, whatever the grid's
+                // handedness. If the processing changes this, it must change here as well.
                 const bool onSide = row[e].orientation() ? (ijk[axis] == requests_[b].endIJK[axis] - 1)
                                                          : (ijk[axis] == requests_[b].startIJK[axis]);
                 const auto cells = GridStateWriter::faceToCell(grid)[EntityRep<1>(face, true)];
@@ -855,6 +866,9 @@ int LeafGridAssembler::nestedNeighborOf(int b, int parent, int axis, int side) c
     const CpGridData& grid = *boxes_[parentBoxOf_[b]].level;
     const auto faces = facesOnSide(grid, parent, axis, side);
     const auto expected = cornersOnSide(grid, parent, boxes_[parentBoxOf_[b]].cornerMask, axis, side);
+    // One face whose points are the parent's four corners on this side is the parent's
+    // whole face. Several faces (a fault), one face with other points (a partial face, on
+    // a fault or at a pinch-out with a gap), or no face, are not supported.
     std::set<int> actual;
     if (faces.size() == 1) {
         const auto points = GridStateWriter::faceToPoint(grid)[faces[0]];
@@ -881,6 +895,8 @@ void LeafGridAssembler::findDroppedFaces()
     // For parent faces toward an unrefined neighbor, the refined boundary
     // faces of the box take over, paired with that neighbor. A parent with no
     // child left leaves the face to the unrefined neighbor, as its boundary face.
+    // Level zero only: buildLeafFaces() drops a parent LGR's faces toward the cells
+    // its nested boxes refine, by the same rule.
     faceDropped_.assign(numFaces0_, false);
     for (int face = 0; face < numFaces0_; ++face) {
         const auto row = faceToCell0_[EntityRep<1>(face, true)];
@@ -992,12 +1008,26 @@ int LeafGridAssembler::outsideNeighborOf(int parent, int axis, int side) const
 
 void LeafGridAssembler::findFaultedSides()
 {
-    // Pre-pass: which (box, axis, side) boundaries are faulted (some parent on
-    // that side has a split/partial level-zero face). Decided before the face
-    // loop so that ALL box boundary faces on a faulted side are suppressed
-    // consistently -- including parents whose throw clears the neighbour
-    // entirely (those alone look like a plain domain boundary). The whole side
-    // is then rebuilt from the corner-point processor below.
+    // Identify top-level box sides that require reconstruction by the corner-point
+    // processor rather than assembly from existing refined boundary faces. If any
+    // host cell has a split or partial face on a side, mark the entire box side in
+    // faultedSides_. This includes cells whose fault displacement leaves no neighbour:
+    // viewed alone, their faces can look like ordinary domain-boundary faces.
+    // buildLeafFaces() uses this set to exclude the existing refined boundary faces;
+    // buildSyntheticFaces() reconstructs those sides, including their exposed parts.
+    //
+    // Record the bounding IJK range of cells across each side in acrossRange_.
+    // buildSyntheticFaces() passes this range to boxBoundaryConnections() so the
+    // corner-point processor includes the cells connected across the fault.
+    // The local boxesAcross map records neighbouring boxes and propagates marked
+    // sides across box-to-box connections. Both sides then use the reconstruction
+    // path; ownership rules in buildSyntheticFaces() prevent duplicate interface faces.
+    //
+    // Only top-level boxes are examined here, using level-zero connectivity. Nested
+    // box boundaries are checked separately by nestedNeighborOf(), called from
+    // buildLeafFaces(); it rejects sides on faults or pinch-outs that do not form
+    // a whole face of the parent LGR cell, rather than reconstructing those sides.
+
     // Boxes across each box side: a side shared with a faulted side is rebuilt with it.
     std::map<std::tuple<int,int,int>, std::set<int>> boxesAcross;
     const auto extendAcross = [&](int b, int parent, int axis, int side) {
@@ -1044,9 +1074,11 @@ void LeafGridAssembler::findFaultedSides()
             }
         }
     }
-    // Both sides of a box-to-box interface take the same path, so its faces are
-    // emitted once, by the side that owns them. Process each marked side once;
-    // newly marked sides are appended to the queue to propagate the marking.
+    // A side across a faulted side is rebuilt with it, so both sides of a box-to-box
+    // interface take the same path. buildSyntheticFaces() emits each face there once: by
+    // the finer box, or by the lower box index when the in-face factors are equal. Each
+    // marked side is processed once; newly marked sides are appended to propagate the
+    // marking.
     std::vector<std::tuple<int,int,int>> pending(faultedSides_.begin(), faultedSides_.end());
     for (std::size_t i = 0; i < pending.size(); ++i) {
         // Copy the entry: appending to pending can invalidate its references.
@@ -1073,12 +1105,13 @@ void LeafGridAssembler::buildLeafFaces()
         }
     }
     // Face-sharing LGRs: a boundary face of box A toward another refined
-    // box B pairs with B's matching boundary face. Both have the same
-    // merged corner set (corners already merged), so we key by it. The box
-    // seen first owns the leaf face; the partner maps onto it and patches
-    // in its cell as the second side (the same mechanism as a coarse
-    // mosaic neighbor, only the outside cell is refined).
-    std::map<std::vector<int>, int> sharedBoundaryFaceLeaf; // corner set -> owner leaf face
+    // box B pairs with B's matching boundary face. Both have the same leaf
+    // corners (corners already merged); the key is them sorted, so the two
+    // orderings match. The box seen first, the one with the lower index, owns
+    // the leaf face; the partner maps onto it and patches in its cell as the
+    // second side (the same mechanism as a coarse mosaic neighbor, only the
+    // outside cell is refined).
+    std::map<std::vector<int>, int> sharedBoundaryFaceLeaf; // sorted leaf corners -> owner leaf face
 
     // Per box: refined (box-global) Cartesian index -> level cell index. Used by
     // the compatible sub-face mosaic below to find, for a finer box's boundary
@@ -1114,7 +1147,7 @@ void LeafGridAssembler::buildLeafFaces()
             int outside = -1;
             // Toward a cell a nested box refines: that box's faces take over. A cell with
             // no child left leaves the face to the cell on the other side, as its
-            // boundary face.
+            // boundary face. The same rule as findDroppedFaces() for level zero.
             bool towardNested = false;
             bool towardEmpty = false;
             bool towardUnrefined = false;
@@ -1164,9 +1197,13 @@ void LeafGridAssembler::buildLeafFaces()
                         // other than `axis` (the perpendicular touch direction).
                         const int nbBox = boxOfParentGridCell(b, neighbor);
                         if (box.graded || boxes()[nbBox].graded) {
-                            // The conformity rule below compares one subdivision
-                            // factor per in-face direction; a graded box has a
-                            // column-by-column subdivision instead.
+                            // checkTouchingBoxes() refuses, before the build, graded
+                            // boxes whose index ranges share a face or an edge. Boxes
+                            // can also meet across a pinch-out or a throw, where the
+                            // cell across is not the index neighbour; those are
+                            // refused here. The conformity rule below compares one
+                            // subdivision factor per in-face direction, which a
+                            // graded box does not have.
                             OPM_THROW(std::invalid_argument,
                                 "Refinement boxes '" + requests_[b].name + "' and '"
                                 + requests_[nbBox].name + "' touch and at least one is "
@@ -1381,13 +1418,6 @@ void LeafGridAssembler::buildSyntheticFaces()
                 axis, side, /*edgeConformal=*/true,
                 (rangeIt != acrossRange().end()) ? &rangeIt->second : nullptr);
             const auto& rd = boxes()[b].refinedDims;
-            // Where the sub-layers of the two sides line up across the throw, the same
-            // depth comes out of two computations that can differ in the last bit, and
-            // the processing cuts a piece of no area between them, which would join
-            // cells that meet only along an edge. A piece below 1e-8 of its box cell's
-            // side, which the cell's pieces tile, is dropped: such pieces have an area
-            // of 1e-16 of the side or less, and the face geometry itself rounds at
-            // about 1e-9 at field coordinates.
             const auto pieceArea = [](const BoundaryConnection& conn) {
                 std::vector<Dune::FieldVector<double,3>> xs;
                 for (const auto& nd : conn.faceNodes) {
@@ -1400,6 +1430,13 @@ void LeafGridAssembler::buildSyntheticFaces()
                 sideArea[conn.boxCell] += pieceArea(conn);
             }
             for (const auto& conn : conns) {
+                // Where the sub-layers of the two sides line up across the throw, the same
+                // depth comes out of two computations that can differ in the last bit, and
+                // the processing cuts a piece of no area between them, which would join
+                // cells that meet only along an edge. A piece below 1e-8 of its box cell's
+                // side, which the cell's pieces tile, is dropped: such pieces have an area
+                // of 1e-16 of the side or less, and the face geometry itself rounds at
+                // about 1e-9 at field coordinates.
                 if (pieceArea(conn) <= 1e-8 * sideArea[conn.boxCell]) {
                     continue;
                 }
@@ -1450,6 +1487,9 @@ void LeafGridAssembler::buildSyntheticFaces()
                         }
                         const int u = (axis == 0) ? 1 : 0;
                         const int v = (axis == 2) ? 1 : 2;
+                        // checkTouchingBoxes() compares boxes by index and does not see
+                        // boxes that meet only across the fault, so the two checks below
+                        // are made here.
                         if (boxes()[b].graded || boxes()[nbBox].graded) {
                             // Pairing the two sides' sub-faces below compares one
                             // subdivision factor per in-face direction, which a
@@ -1462,9 +1502,8 @@ void LeafGridAssembler::buildSyntheticFaces()
                         }
                         const auto& facThis = boxes()[b].factors;
                         const auto& facN    = boxes()[nbBox].factors;
-                        // checkTouchingBoxes compares boxes by index and does not see
-                        // boxes that meet only across the fault. With factors that do
-                        // not nest, both sides would skip the face below.
+                        // With factors that do not nest, both sides would skip the face
+                        // below.
                         const auto nests = [u, v](const auto& fine, const auto& coarse) {
                             return fine[u] % coarse[u] == 0 && fine[v] % coarse[v] == 0;
                         };
@@ -1671,7 +1710,7 @@ void LeafGridAssembler::buildLeafTopology()
             rowBuffer.push_back(EntityRep<0>(leafCell, srcRow[e].orientation()));
         }
         if (mosaicOutside()[face] >= 0) {
-            // The refined cell entry already exists; add the coarse neighbor
+            // The refined cell entry already exists; add the cell across
             // with opposite orientation, keeping normal-side first.
             const bool refinedNormalOut = srcRow[0].orientation();
             const EntityRep<0> outsideEntry(mosaicOutside()[face], !refinedNormalOut);
@@ -1767,6 +1806,8 @@ void LeafGridAssembler::computeCellData()
     for (int cell = 0; cell < numLeafCells(); ++cell) {
         const SourceRef src = leafCells()[cell];
         if (src.grid == 0) {
+            // The leaf keeps level zero's corners first, at their own indices
+            // (buildCornerPool), so a level-zero cell's corners need no mapping.
             leafCellToPoint[cell] = cellToPoint0_[src.index];
             leafGlobalCell_[cell] = level0_.globalCell()[src.index];
             leafToLevel_[cell] = {0, src.index};

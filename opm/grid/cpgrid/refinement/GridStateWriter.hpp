@@ -86,10 +86,12 @@ struct GridStateWriter
     static void setRefinementMaxLevel(Data& grid, int maxLevel);
 
     /// Set the collective communicator (ccobj_) a grid reports. Used by the
-    /// refine-before-redistribute path: the new level grids and the leaf are
-    /// assembled with a self-communicator (collective-free serial refinement),
-    /// then restored to the world communicator here so the refined grid still
-    /// reports the full parallel communicator and can be load balanced.
+    /// refine-before-redistribute path, where rank 0 refines every box alone:
+    /// the new level grids and the leaf are assembled with a self-communicator,
+    /// since processEclipseFormat builds a grid only on rank 0 of its
+    /// communicator, and the leaf assembly then does no collective operation.
+    /// They get level zero's communicator here afterwards, so the refined grid
+    /// reports every rank and can be load balanced.
     static void setCommunicator(Data& grid, const Data::Communication& comm);
 
     /// Topology/geometry table access. The mutable...() accessors are for

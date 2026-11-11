@@ -264,6 +264,7 @@ private:
     // Written by collectBoxData.
     std::vector<BoxData> boxes_;
     int mask0_{0};      // cornerSlotMask of level zero
+    // [parent box][cell of its level grid] -> nested (child) box index, or -1
     std::vector<std::vector<int>> nestedBoxOf_;
 
     // Written by buildCornerPool. The later stages fill the leaf.
@@ -285,21 +286,26 @@ private:
     int numLeafCells_{0};
     std::map<int, std::vector<std::tuple<int, std::vector<int>>>> nestedParentToChildren_;
 
-    // Written by findDroppedFaces.
+    // Written by findDroppedFaces: by level-zero face, whether the leaf drops it.
     std::vector<bool> faceDropped_;
 
-    // Written by outsideNeighborOf(): its answers, by (parent, axis, side).
+    // Written by outsideNeighborOf(): its answers, by (level-zero cell, axis 0..2, side -1
+    // or +1); top-level boxes only.
     mutable std::map<std::tuple<int,int,int>, int> verifiedNeighbor_;
 
-    // Written by findFaultedSides.
+    // Written by findFaultedSides: the faulted sides, as (top-level box index, axis 0..2,
+    // side -1 or +1).
     std::set<std::tuple<int,int,int>> faultedSides_;
-    // Parent IJK range of the cells really across each box side, from the level-zero
-    // faces: a throw taller than the box puts them outside the box's own layers.
+    // By the same (box, axis, side): the parent IJK range of the cells really across that
+    // box side, from the level-zero faces: a throw taller than the box puts them outside
+    // the box's own layers.
     std::map<std::tuple<int,int,int>, CellRange> acrossRange_;
 
     // Written by buildLeafFaces.
     std::vector<SourceRef> leafFaces_;
-    // outside coarse leaf cell for mosaic faces, aligned with leafFaces (-1 otherwise)
+    // The leaf cell across a face that its source grid sees as a box boundary face (an
+    // unrefined cell of the grid the box refines, or a child of another box), aligned
+    // with leafFaces_; -1 otherwise.
     std::vector<int> mosaicOutside_;
     std::vector<std::map<int,int>> refinedCartToCell_;
     int numSourceFaces_{0};
