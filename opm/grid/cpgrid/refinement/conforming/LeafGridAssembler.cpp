@@ -1170,6 +1170,31 @@ void LeafGridAssembler::findFaultedSides()
     }
 }
 
+int LeafGridAssembler::childAcross(int b, const std::array<int,3>& lattice, int axis, int side,
+                                   int nb, int neighbor) const
+{
+    // The sub-position of b's child within its host, mapped to nb's frame: the in-face
+    // components scale by the factor ratio (finer -> coarser); along the axis it is nb's
+    // boundary layer facing b.
+    const auto& facA = boxes()[b].factors;
+    const auto& facB = boxes()[nb].factors;
+    std::array<int,3> subB{};
+    for (int c = 0; c < 3; ++c) {
+        subB[c] = (c == axis) ? ((side > 0) ? 0 : (facB[axis] - 1))
+                              : (lattice[c] % facA[c]) * facB[c] / facA[c];
+    }
+    const std::array<int,3> nijk = parentGridIJK(b, neighbor);
+    const auto& startB = requests_[nb].startIJK;
+    const auto& rdB = boxes()[nb].refinedDims;
+    std::array<int,3> latB{};
+    for (int c = 0; c < 3; ++c) {
+        latB[c] = (nijk[c] - startB[c]) * facB[c] + subB[c];
+    }
+    const int cartB = latB[0] + rdB[0]*latB[1] + rdB[0]*rdB[1]*latB[2];
+    const auto cit = refinedCartToCell()[nb].find(cartB);
+    return (cit != refinedCartToCell()[nb].end()) ? cit->second : -1;
+}
+
 void LeafGridAssembler::buildLeafFaces()
 {
     // ----- Leaf faces ------------------------------------------------------
@@ -1290,52 +1315,47 @@ void LeafGridAssembler::buildLeafFaces()
                         const int v = (axis == 2) ? 1 : 2;
                         if (facA[u] == facB[u] && facA[v] == facB[v]) {
                             // Matching in-face subdivisions: 1:1 face pairing by
-                            // corner set (both sides have identical sub-faces).
-                            const auto key = mergedCornerSet(face);
-                            const auto it = sharedBoundaryFaceLeaf.find(key);
-                            const int thisCellLeaf = leafIdxOfLevelCell()[b][cell];
-                            if (it != sharedBoundaryFaceLeaf.end()) {
-                                // Partner: map onto the owner's face, supply our
-                                // cell as its second side, do not emit a face.
-                                box.faceToLeaf[face] = it->second;
-                                mosaicOutside_[it->second] = thisCellLeaf;
-                                continue;
+                            // corner set (both sides have identical sub-faces). A
+                            // partner the other box's MINPV removed leaves the face
+                            // to this cell, as a boundary face.
+                            if (childAcross(b, lattice, axis, side, nbBox, neighbor) >= 0) {
+                                const auto key = mergedCornerSet(face);
+                                const auto it = sharedBoundaryFaceLeaf.find(key);
+                                const int thisCellLeaf = leafIdxOfLevelCell()[b][cell];
+                                if (it != sharedBoundaryFaceLeaf.end()) {
+                                    // Partner: map onto the owner's face, supply our
+                                    // cell as its second side, do not emit a face.
+                                    box.faceToLeaf[face] = it->second;
+                                    mosaicOutside_[it->second] = thisCellLeaf;
+                                    continue;
+                                }
+                                // Owner: emits the face; the partner adds its cell to it.
+                                sharedBoundaryFaceLeaf.emplace(key, static_cast<int>(leafFaces_.size()));
                             }
-                            // Owner: emits the face; the partner adds its cell to it.
-                            sharedBoundaryFaceLeaf.emplace(key, static_cast<int>(leafFaces_.size()));
                         }
                         else {
                             // Different factors, one box finer in both in-face
                             // directions (checkTouchingBoxes refuses other pairs).
                             // The finer side emits every sub-face, with the
                             // coarser box's child that covers it as the outside
-                            // cell. The coarser side emits no face there, so each
-                            // of its children on the face has the finer sub-faces
-                            // in place of its face: a mosaic, with more than six
-                            // faces per cell.
+                            // cell, or none where its MINPV removed that child. The
+                            // coarser side emits no face there, so each of its
+                            // children on the face has the finer sub-faces in place
+                            // of its face: a mosaic, with more than six faces per
+                            // cell. Where the finer box's MINPV removes a child,
+                            // buildSyntheticFaces() gives the coarser child a
+                            // boundary face in its place; where it removes every
+                            // child of the host across, the coarser side keeps its
+                            // faces, as boundary faces.
                             const bool thisFiner = (facA[u] >= facB[u] && facA[v] >= facB[v]);
-                            if (!thisFiner) {
+                            if (thisFiner) {
+                                const int across = childAcross(b, lattice, axis, side, nbBox, neighbor);
+                                if (across >= 0) {
+                                    outside = leafIdxOfLevelCell()[nbBox][across];
+                                }
+                            }
+                            else if (boxes()[nbBox].childrenOfParent.count(neighbor) > 0) {
                                 continue;       // coarser side: the finer references us
-                            }
-                            // Sub-position of this finer cell within its parent;
-                            // map it to the coarser box's covering child cell.
-                            std::array<int,3> subB{};
-                            subB[axis] = (side > 0) ? 0 : (facB[axis] - 1);
-                            for (const int c : {u, v}) {
-                                const int subA = lattice[c] % facA[c];
-                                subB[c] = subA * facB[c] / facA[c];
-                            }
-                            const std::array<int,3> nijk = parentGridIJK(b, neighbor);
-                            const auto& startB = requests_[nbBox].startIJK;
-                            const auto& rdB = boxes()[nbBox].refinedDims;
-                            std::array<int,3> latB{};
-                            for (int c = 0; c < 3; ++c) {
-                                latB[c] = (nijk[c] - startB[c]) * facB[c] + subB[c];
-                            }
-                            const int cartB = latB[0] + rdB[0]*latB[1] + rdB[0]*rdB[1]*latB[2];
-                            const auto cit = refinedCartToCell_[nbBox].find(cartB);
-                            if (cit != refinedCartToCell_[nbBox].end()) {
-                                outside = leafIdxOfLevelCell()[nbBox][cit->second];
                             }
                         }
                     }
@@ -1348,9 +1368,10 @@ void LeafGridAssembler::buildLeafFaces()
         }
     }
 
-    // Every face-sharing owner face must have been claimed by its partner box.
-    // An unclaimed one means the shared-face corners did not merge exactly in
-    // the corner pool, and the box<->box interface would silently seal.
+    // Every face-sharing owner face must have been claimed by its partner box: an
+    // owner is recorded only where the partner box has the child across. An
+    // unclaimed one means the shared-face corners did not merge exactly in the
+    // corner pool, and the box<->box interface would silently seal.
     for (const auto& entry : sharedBoundaryFaceLeaf) {
         const int leafFace = entry.second;
         if (mosaicOutside_[leafFace] < 0) {
@@ -1670,13 +1691,32 @@ void LeafGridAssembler::buildSyntheticFaces()
                 if ((host < 0) || (boxes()[b].childrenOfParent.count(host) == 0)) {
                     continue;
                 }
-                // Across: a cell of the grid the box refines that no box refines.
                 const int across = parentCellOfCart(b, conn.coarseNeighborCart);
-                if ((across < 0) || (boxOfParentGridCell(b, across) >= 0)) {
+                if (across < 0) {
                     continue;
                 }
-                addPiece(b, centreOf(parentGridOf(b), across), leafOfParentGridCell(b, across), -1,
-                         axis, -side, conn.faceNodes);
+                const int nb = boxOfParentGridCell(b, across);
+                if (nb < 0) {
+                    // Across: a cell of the grid the box refines that no box refines.
+                    addPiece(b, centreOf(parentGridOf(b), across), leafOfParentGridCell(b, across), -1,
+                             axis, -side, conn.faceNodes);
+                    continue;
+                }
+                // Across: a host of another box. When that box is coarser along the side,
+                // its children there have this box's faces in place of theirs
+                // (buildLeafFaces()), so its child under the piece keeps it as a boundary
+                // face. A box with equal or finer subdivisions keeps its own face there.
+                const auto& fac = boxes()[b].factors;
+                const auto& facN = boxes()[nb].factors;
+                const int u = (axis == 0) ? 1 : 0;
+                const int v = (axis == 2) ? 1 : 2;
+                const bool coarserAcross = (fac[u] >= facN[u]) && (fac[v] >= facN[v])
+                                         && ((fac[u] != facN[u]) || (fac[v] != facN[v]));
+                const int child = coarserAcross ? childAcross(b, conn.boxCell, axis, side, nb, across) : -1;
+                if (child >= 0) {
+                    addPiece(b, centreOf(*boxes()[nb].level, child), leafIdxOfLevelCell()[nb][child], -1,
+                             axis, -side, conn.faceNodes);
+                }
             }
         }
 

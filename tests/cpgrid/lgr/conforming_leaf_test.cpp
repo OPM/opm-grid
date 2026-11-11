@@ -165,6 +165,94 @@ BOOST_AUTO_TEST_CASE(removedChildOnTheBoxSide)
     }
 }
 
+// Two boxes share the face x = 2 of a 2x1x1 grid of cells 2 x 4 x 6: LGR1 refines cell
+// (0,0,0), LGR2 cell (1,0,0). One box's MINPV removes children on the shared face, or
+// every child of its host: the cells of the other box keep a boundary face where each
+// removed child would be. With different factors the finer box makes the faces between
+// the boxes, so a removal in the finer box leaves the coarser box's child a boundary
+// face on part of its side; with equal ones, a face's partner is missing.
+//
+// The face x = 2 (y right, depth down) as each box divides it, with child 0 marked:
+//
+//            LGR1 1x2x3       LGR2 1x4x6
+//   z=0   +-----+-----+     +--+--+--+--+
+//         |  0  |     |     |0 |  |  |  |
+//   z=1   |     |     |     +--+--+--+--+
+//         |     |     |     |  |  |  |  |
+//   z=2   +-----+-----+     +--+--+--+--+
+//         |     |     |     |  |  |  |  |
+//   z=3   |     |     |     +--+--+--+--+
+//         |     |     |     |  |  |  |  |
+//   z=4   +-----+-----+     +--+--+--+--+
+//         |     |     |     |  |  |  |  |
+//   z=5   |     |     |     +--+--+--+--+
+//         |     |     |     |  |  |  |  |
+//   z=6   +-----+-----+     +--+--+--+--+
+//        y=0         y=4   y=0         y=4
+//
+// LGR1's child 0 (volume 8) faces four children of LGR2 (volume 2 each), over area 4.
+BOOST_AUTO_TEST_CASE(removedChildOnASharedFace)
+{
+    const auto g = makeGrid({2, 1, 1},
+        [](int i, int j) { return std::array<double,6>{2.0*i, 4.0*j, 0.0, 2.0*i, 4.0*j, 100.0}; },
+        [](int, int, int k_) { return 6.0*nodeOf(k_); });
+    // The area of the leaf faces on x = 2 with no cell across.
+    const auto boundaryAreaOnTheSharedFace = [](const Dune::CpGrid& grid) {
+        double area = 0.0;
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+                if (!is.neighbor() && (std::abs(is.geometry().center()[0] - 2.0) < 1e-12)) {
+                    area += is.geometry().volume();
+                }
+            }
+        }
+        return area;
+    };
+    const auto mask = [](int size, const std::vector<int>& removed) {
+        std::vector<int> m(size, 0);
+        for (const int child : removed) {
+            m[child] = 1;
+        }
+        return m;
+    };
+    struct Case
+    {
+        std::array<int,3> factors1;
+        std::array<int,3> factors2;
+        std::vector<int> removed1;      // LGR1's MINPV mask, empty for none
+        std::vector<int> removed2;      // LGR2's MINPV mask, empty for none
+        int cells;                      // leaf cells
+        double volume;
+        double boundaryArea;            // on x = 2
+    };
+    for (const auto& c : std::vector<Case>{
+             // The coarser box removes its child 0: LGR2's 4 sub-faces there face the domain.
+             {{1,2,3}, {1,4,6}, mask(6, {0}), {}, 5 + 24, 96.0 - 8.0, 4.0},
+             // The finer box removes its child 0, then every child.
+             {{1,2,3}, {1,4,6}, {}, mask(24, {0}), 6 + 23, 96.0 - 2.0, 1.0},
+             {{1,2,3}, {1,4,6}, {}, std::vector<int>(24, 1), 6, 48.0, 24.0},
+             // The finer box first.
+             {{1,4,6}, {1,2,3}, mask(24, {0}), {}, 23 + 6, 96.0 - 2.0, 1.0},
+             {{1,4,6}, {1,2,3}, {}, mask(6, {0}), 24 + 5, 96.0 - 8.0, 4.0},
+             // Equal factors: the child across is the face's partner.
+             {{1,2,3}, {1,2,3}, mask(6, {0}), {}, 5 + 6, 96.0 - 8.0, 4.0},
+             {{1,2,3}, {1,2,3}, {}, mask(6, {0}), 6 + 5, 96.0 - 8.0, 4.0}}) {
+        auto lgr1 = box("LGR1", c.factors1, {0,0,0}, {1,1,1});
+        auto lgr2 = box("LGR2", c.factors2, {1,0,0}, {2,1,1});
+        lgr1.minpvRemoved = c.removed1;
+        lgr2.minpvRemoved = c.removed2;
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        refine(grid, g, {lgr1, lgr2});
+
+        BOOST_CHECK_EQUAL(grid.size(0), c.cells);
+        BOOST_CHECK_CLOSE(totalVolume(grid), c.volume, 1e-10);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+        BOOST_CHECK_CLOSE(boundaryAreaOnTheSharedFace(grid), c.boundaryArea, 1e-10);
+    }
+}
+
 // Each grid maps its cells to the leaf: a leaf cell is found again through the grid it
 // comes from, and the hosts of the box, refined, have no leaf cell.
 BOOST_AUTO_TEST_CASE(levelCellsMapToTheLeaf)

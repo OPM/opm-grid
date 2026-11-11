@@ -211,6 +211,12 @@ private:
     int nestedNeighborOf(int b, int parent, int axis, int side) const;
     /// The level-zero cell across a host cell's face on a box side (after collectBoxData).
     int outsideNeighborOf(int parent, int axis, int side) const;
+    /// The cell of box nb's level grid across the face, on a side of box b, of b's child
+    /// at a lattice position of b, where nb refines the cell `neighbor` across that side
+    /// and is not finer than b along it; -1 if nb's MINPV removed that child (after
+    /// buildLeafFaces fills refinedCartToCell_).
+    int childAcross(int b, const std::array<int,3>& lattice, int axis, int side,
+                    int nb, int neighbor) const;
 
     // Const access for the stages after the one that writes each member.
     const std::vector<BoxData>& boxes() const { return boxes_; }
