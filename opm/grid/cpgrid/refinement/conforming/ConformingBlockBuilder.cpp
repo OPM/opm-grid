@@ -36,9 +36,12 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <exception>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -313,6 +316,22 @@ void ConformingBlockBuilder::build(Dune::CpGrid& grid,
     checkTouchingBoxes(requests);
 
     auto& storage = grid.currentData();
+    // A throw from here on must leave the grid as it was: drop the new levels and leaf.
+    struct RestoreOnThrow
+    {
+        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage;
+        std::size_t size = storage.size();
+        std::vector<std::tuple<int, std::vector<int>>> parentToChildren0
+            = storage.front()->getParentToChildren();
+        int pending = std::uncaught_exceptions();
+        ~RestoreOnThrow()
+        {
+            if (std::uncaught_exceptions() > pending) {
+                storage.resize(size);
+                GridStateWriter::setParentToChildren(*storage.front(), std::move(parentToChildren0));
+            }
+        }
+    } restoreOnThrow{storage};
     // Distributed: loadBalance() has scattered the grid over the ranks, and each box
     // is refined by the one rank that holds it.
     const bool distributed = grid.comm().size() > 1 && grid.isDistributed();

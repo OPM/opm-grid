@@ -1257,6 +1257,43 @@ BOOST_AUTO_TEST_CASE(boxesMeetingOnlyAcrossThrowMustNest)
                       std::invalid_argument);
 }
 
+// The leaf assembly refuses after the level grids are built; the grid must be left
+// unrefined and accept a valid request afterwards.
+BOOST_AUTO_TEST_CASE(failedRefinementLeavesGridUnchanged)
+{
+    auto depth = [](int i_, int j_, int k_) {
+        (void)j_;
+        const double base = 2.0*(cellOf(k_) + sideOf(k_));
+        return (cellOf(i_) >= 2) ? base + 5.0 : base;
+    };
+    auto parent = makeGrid(/* dims = */ {4, 2, 8}, depth);
+
+    Dune::CpGrid grid;
+    auto rawParent = parent.raw();
+    grid.processEclipseFormat(rawParent, false);
+    const int cellsBefore = grid.leafGridView().size(0);
+    const double volumeBefore = totalVolume(grid);
+
+    useConformingBuilder(grid, parent);
+
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,3,2}, {2,2,3}},
+                                                 /* startIJK_vec = */      {{0,0,6}, {2,0,3}},
+                                                 /* endIJK_vec = */        {{2,2,8}, {4,2,5}},
+                                                 /* lgr_name_vec = */      {"A", "B"}),
+                      std::invalid_argument);
+    BOOST_CHECK_EQUAL(grid.currentData().size(), 1u);
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 0);
+    BOOST_CHECK_EQUAL(grid.leafGridView().size(0), cellsBefore);
+    BOOST_CHECK(grid.currentData().front()->getParentToChildren().empty());
+
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,3,2}},
+                               /* startIJK_vec = */      {{0,0,6}},
+                               /* endIJK_vec = */        {{2,2,8}},
+                               /* lgr_name_vec = */      {"A"});
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volumeBefore, 1e-8);
+}
+
 BOOST_AUTO_TEST_CASE(faultNotOnBoxBoundaryBuilds)
 {
     // Control: a fault exists (between i=0 and i=1) but the box (i=2..3) sits
