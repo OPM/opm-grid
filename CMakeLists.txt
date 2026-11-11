@@ -61,7 +61,7 @@ endmacro()
 
 macro(opm-grid_language_hook)
   include(FortranCInterface)
-  fortrancinterface_header(${PROJECT_BINARY_DIR}/FCMacros.h MACRO_NAMESPACE FC_)
+  fortrancinterface_header(${PROJECT_BINARY_DIR}/generated/include/FCMacros.h MACRO_NAMESPACE FC_)
 endmacro()
 
 macro(opm-grid_config_hook)
@@ -193,4 +193,3 @@ include(Findopm-tests)
 
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
-
