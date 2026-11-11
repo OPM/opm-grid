@@ -300,9 +300,10 @@ private:
     // Written by findFaultedSides: the faulted sides, as (top-level box index, axis 0..2,
     // side -1 or +1).
     std::set<std::tuple<int,int,int>> faultedSides_;
-    // By the same (box, axis, side): the parent IJK range of the cells really across that
-    // box side, from the level-zero faces: a throw taller than the box puts them outside
-    // the box's own layers.
+    // By (box index, axis, side), for top-level and nested boxes: the IJK range, in the
+    // grid the box refines, of the cells really across that box side, from that grid's
+    // faces: a throw taller than one cell next to the box puts them outside the box's
+    // own layers.
     std::map<std::tuple<int,int,int>, CellRange> acrossRange_;
 
     // Written by buildLeafFaces.

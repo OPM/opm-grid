@@ -1093,31 +1093,35 @@ void LeafGridAssembler::findFaultedSides()
     //
     // Record the bounding IJK range of cells across each side in acrossRange_.
     // buildSyntheticFaces() passes this range to boxBoundaryConnections() so the
-    // corner-point processor includes the cells connected across the fault.
+    // corner-point processor includes the cells connected across the fault, or
+    // across a throw of whole layers on a side with a child the box's MINPV removes.
     // The local boxesAcross map records neighbouring boxes and propagates marked
     // sides across box-to-box connections. Both sides then use the reconstruction
     // path; ownership rules in buildSyntheticFaces() prevent duplicate interface faces.
     //
-    // Only top-level boxes are examined here, using level-zero connectivity. Nested
-    // box boundaries are checked separately by nestedNeighborOf(), called from
+    // Only top-level boxes are examined for faults here, using level-zero connectivity.
+    // Nested box boundaries are checked separately by nestedNeighborOf(), called from
     // buildLeafFaces(); it rejects sides on faults or pinch-outs that do not form
     // a whole face of the parent LGR cell, rather than reconstructing those sides.
+    // acrossRange_ covers nested boxes too, from their parent LGR's connectivity:
+    // a throw of whole layers inside the parent LGR leaves the faces whole.
 
     // Boxes across each box side: a side shared with a faulted side is rebuilt with it.
     std::map<std::tuple<int,int,int>, std::set<int>> boxesAcross;
     const auto extendAcross = [&](int b, int parent, int axis, int side) {
-        for (const int face : facesOnSide(level0_, parent, axis, side)) {
-            const auto cells = faceToCell0_[EntityRep<1>(face, true)];
+        const CpGridData& grid = nested(b) ? *boxes()[parentBoxOf_[b]].level : level0_;
+        for (const int face : facesOnSide(grid, parent, axis, side)) {
+            const auto cells = GridStateWriter::faceToCell(grid)[EntityRep<1>(face, true)];
             for (int q = 0; q < cells.size(); ++q) {
                 const int cell = cells[q].index();
                 if (cell == parent || cell == kRemoteCell) {
                     continue;
                 }
-                std::array<int,3> nijk;
-                level0_.getIJK(cell, nijk);
+                const std::array<int,3> nijk = parentGridIJK(b, cell);
                 const auto key = std::make_tuple(b, axis, side);
-                if ((boxOfCell_[cell] >= 0) && (boxOfCell_[cell] != b)) {
-                    boxesAcross[key].insert(boxOfCell_[cell]);
+                const int nb = boxOfParentGridCell(b, cell);
+                if ((nb >= 0) && (nb != b)) {
+                    boxesAcross[key].insert(nb);
                 }
                 auto [it, fresh] = acrossRange_.try_emplace(key);
                 for (int d = 0; d < 3; ++d) {
@@ -1146,6 +1150,26 @@ void LeafGridAssembler::findFaultedSides()
                     faultedSides_.emplace(b, axis, side);
                 }
                 extendAcross(b, c, axis, side);
+            }
+        }
+    }
+    for (int b = 0; b < numBoxes_; ++b) {
+        if (!nested(b)) {
+            continue;
+        }
+        const auto& inParent = nestedBoxOf()[parentBoxOf_[b]];
+        for (int c = 0; c < static_cast<int>(inParent.size()); ++c) {
+            if (inParent[c] != b) {
+                continue;
+            }
+            const std::array<int,3> ijk = parentGridIJK(b, c);
+            for (int axis = 0; axis < 3; ++axis) {
+                for (int side = -1; side <= 1; side += 2) {
+                    if (ijk[axis] == ((side < 0) ? requests_[b].startIJK[axis]
+                                                 : requests_[b].endIJK[axis] - 1)) {
+                        extendAcross(b, c, axis, side);
+                    }
+                }
             }
         }
     }
@@ -1673,14 +1697,18 @@ void LeafGridAssembler::buildSyntheticFaces()
                 parentLgrGeometry[parentBoxOf_[b]] = refineBlock(parentDims_, coord_, zcorn_, actnum_,
                                                                  requests_[parentBoxOf_[b]]);
             }
+            // A throw of two or more whole layers leaves the side unfaulted, with the cells
+            // across outside the box's own layers.
+            const auto rangeIt = acrossRange().find(std::make_tuple(b, axis, side));
+            const CellRange* cellsAcross = (rangeIt != acrossRange().end()) ? &rangeIt->second : nullptr;
             const auto conns = nested(b)
                 ? boxBoundaryConnections(parentLgrGeometry[parentBoxOf_[b]].intDims(),
                                          parentLgrGeometry[parentBoxOf_[b]].coord.data(),
                                          parentLgrGeometry[parentBoxOf_[b]].zcorn.data(),
                                          parentLgrGeometry[parentBoxOf_[b]].actnum.data(),
-                                         requests_[b], axis, side, /*edgeConformal=*/true)
+                                         requests_[b], axis, side, /*edgeConformal=*/true, cellsAcross)
                 : boxBoundaryConnections(parentDims_, coord_, zcorn_, actnum_, requests_[b],
-                                         axis, side, /*edgeConformal=*/true);
+                                         axis, side, /*edgeConformal=*/true, cellsAcross);
             const auto& rd = boxes()[b].refinedDims;
             for (const auto& conn : conns) {
                 const int refinedCart = conn.boxCell[0] + rd[0]*(conn.boxCell[1] + rd[1]*conn.boxCell[2]);

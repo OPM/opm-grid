@@ -107,7 +107,8 @@ BOOST_AUTO_TEST_CASE(faultedIBoundarySplitsConnections)
         g.dims, g.coord.data(), g.zcorn.data(), /*actnum=*/nullptr,
         Opm::Refinement::BlockRefinement{ .name = "BOX", .cellsPerDim = {2,2,2},
                                           .startIJK = {2,0,0}, .endIJK = {4,2,2} },
-        /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true);
+        /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true,
+        /*across=*/nullptr);
 
     BOOST_REQUIRE(!conns.empty());
     // Each of the 16 refined cells at the i-minus box boundary gets 2 connections.
@@ -201,7 +202,8 @@ BOOST_AUTO_TEST_CASE(unfaultedBoundaryGivesOneToOne)
         g.dims, g.coord.data(), g.zcorn.data(), /*actnum=*/nullptr,
         Opm::Refinement::BlockRefinement{ .name = "BOX", .cellsPerDim = {2,2,2},
                                           .startIJK = {2,0,0}, .endIJK = {4,2,2} },
-        /*axis=*/0, /*side=*/+1, /*edgeConformal=*/true);
+        /*axis=*/0, /*side=*/+1, /*edgeConformal=*/true,
+        /*across=*/nullptr);
 
     // Each of the 16 refined cells at the i-plus box boundary gets 1 connection.
     BOOST_CHECK_EQUAL(conns.size(), 16u);
@@ -281,7 +283,8 @@ BOOST_AUTO_TEST_CASE(domainBoundarySideFacesTheDomain)
         g.dims, g.coord.data(), g.zcorn.data(), /*actnum=*/nullptr,
         Opm::Refinement::BlockRefinement{ .name = "BOX", .cellsPerDim = {2,2,2},
                                           .startIJK = {2,0,0}, .endIJK = {4,2,2} },
-        /*axis=*/1, /*side=*/-1, /*edgeConformal=*/true);
+        /*axis=*/1, /*side=*/-1, /*edgeConformal=*/true,
+        /*across=*/nullptr);
 
     // Each of the 16 refined cells at the j-minus box boundary gets 1 connection.
     BOOST_CHECK_EQUAL(conns.size(), 16u);
@@ -309,4 +312,70 @@ BOOST_AUTO_TEST_CASE(domainBoundarySideFacesTheDomain)
                                          {2.5, 0.0, 4.0}, {2.0, 0.0, 4.0} });
     checkFaceNodes(conns, {3,0,0}, -1, { {3.5, 0.0, 0.0}, {4.0, 0.0, 0.0},
                                          {4.0, 0.0, 1.0}, {3.5, 0.0, 1.0} });
+}
+
+BOOST_AUTO_TEST_CASE(acrossRangeReachesThinCells)
+{
+    // Thin cells across a box side: column i=0 has layers 0.5 thick, column i=1
+    // layers 2 thick. The box refines cell (1,0,0) into 1x1x2; its i-minus side
+    // x=1 ('#') faces the four cells of column i=0 down to depth 2. Indices are
+    // zero-based.
+    //
+    // Section at any y (depth down):
+    //
+    //   depth   i=0     box, i=1
+    //    0.0   +-----#----------+
+    //          | k=0 #          |
+    //    0.5   +-----#  (0,0,0) |
+    //          | k=1 #          |
+    //    1.0   +-----#----------+
+    //          | k=2 #          |
+    //    1.5   +-----#  (0,0,1) |
+    //          | k=3 #          |
+    //    2.0   +-----#----------+
+    //                | i=1, k=1 |  down to depth 4
+    //
+    // The box covers layer k=0 only; with a one-cell margin the processing of the
+    // side sees layers k=0 and k=1 of column i=0, down to depth 1. The cells
+    // across, k=0 to k=3, reach further: without their range the lower box cell
+    // faces the domain, with it the thin cells (0,0,2) and (0,0,3). Each box face
+    // is also cut where column i=0, refined like the box (2 per cell), has a
+    // sub-layer: 4 pieces per box cell.
+    auto depth = [](int i_, int, int k_) {
+        return ((cellOf(i_) == 0) ? 0.5 : 2.0)*nodeOf(k_);
+    };
+    auto g = makeGrid({2, 1, 4}, depth);
+    const Opm::Refinement::BlockRefinement request{ .name = "BOX", .cellsPerDim = {1,1,2},
+                                                    .startIJK = {1,0,0}, .endIJK = {2,1,1} };
+    // grid dims {2,1,4}: coarse cart = i + 2*k
+    const auto neighborsOf = [](const std::vector<Opm::Refinement::BoundaryConnection>& conns) {
+        std::map<std::array<int,3>, std::set<int>> neighbors;   // box cell -> coarse carts
+        for (const auto& c : conns) {
+            neighbors[c.boxCell].insert(c.coarseNeighborCart);
+        }
+        return neighbors;
+    };
+
+    const auto withoutRange = Opm::Refinement::boxBoundaryConnections(
+        g.dims, g.coord.data(), g.zcorn.data(), /*actnum=*/nullptr, request,
+        /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true, /*across=*/nullptr);
+    BOOST_CHECK_EQUAL(withoutRange.size(), 4u + 1u);
+    const auto without = neighborsOf(withoutRange);
+    BOOST_CHECK(without.at({0,0,0}) == (std::set<int>{0, 2}));
+    BOOST_CHECK(without.at({0,0,1}) == (std::set<int>{-1}));   // the domain
+
+    const Opm::Refinement::CellRange across{ .startIJK = {0,0,0}, .endIJK = {1,1,4} };
+    const auto withRange = Opm::Refinement::boxBoundaryConnections(
+        g.dims, g.coord.data(), g.zcorn.data(), /*actnum=*/nullptr, request,
+        /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true, &across);
+    BOOST_CHECK_EQUAL(withRange.size(), 4u + 4u);
+    const auto with = neighborsOf(withRange);
+    BOOST_CHECK(with.at({0,0,0}) == (std::set<int>{0, 2}));
+    BOOST_CHECK(with.at({0,0,1}) == (std::set<int>{4, 6}));
+    // Column i=0's sub-layer at depth 1.75 cuts the lower box cell's face toward
+    // (0,0,3) in two.
+    const auto last = std::count_if(withRange.begin(), withRange.end(), [](const auto& c) {
+        return (c.boxCell == std::array{0,0,1}) && (c.coarseNeighborCart == 6);
+    });
+    BOOST_CHECK_EQUAL(last, 2);
 }

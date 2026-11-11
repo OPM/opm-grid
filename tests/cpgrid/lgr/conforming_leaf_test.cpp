@@ -165,6 +165,64 @@ BOOST_AUTO_TEST_CASE(removedChildOnTheBoxSide)
     }
 }
 
+// The box's MINPV removes a child on a side across a throw of two whole layers: the
+// side is not faulted, as each host's face is the whole face of the cell across, but
+// that cell is two layers above the host. It keeps a boundary face where the child would
+// be. The same for a nested box beside such a throw inside its parent LGR.
+//
+//   Section y = const (depth down), 2x1x4 grid, column i=1 shifted up by 2:
+//
+//   depth   i=0      i=1
+//    -2              +-----+
+//                    | k=0 |
+//    -1              +-----+
+//                    | k=1 |
+//     0    +-----+   +-----+
+//          | k=0 |===| box |   LGR1 refines (1,0,2) into 1x1x2; its child 0, the
+//     1    +-----+   +-----+   upper one, is removed: (0,0,0) keeps the upper half
+//          | k=1 |   | k=3 |   of the face '===' as a boundary face.
+//     2    +-----+   +-----+
+//          | k=2 |
+//     3    +-----+
+//          | k=3 |
+//     4    +-----+
+BOOST_AUTO_TEST_CASE(removedChildAcrossAWholeLayerThrow)
+{
+    {
+        const auto g = makeGrid({2, 1, 4}, vertical, [](int i_, int, int k_) {
+            return 1.0*nodeOf(k_) - ((cellOf(i_) >= 1) ? 2.0 : 0.0);
+        });
+        auto request = box("LGR1", {1,1,2}, {1,0,2}, {2,1,3});
+        request.minpvRemoved = {1, 0};
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        refine(grid, g, {request});
+
+        BOOST_CHECK_EQUAL(grid.size(0), 8 - 1 + 2 - 1);
+        BOOST_CHECK_CLOSE(totalVolume(grid), 8.0 - 0.5, 1e-10);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    }
+    {
+        // LGR1 refines the whole 3x1x6 grid into 2x3x1 cells of volume 1/6; NEST refines
+        // its cell (4,1,3), beside the throw between parent columns i=1 and i=2, into
+        // 1x1x2 children of volume 1/12, and removes the upper one.
+        const auto g = makeGrid({3, 1, 6}, vertical, [](int i_, int, int k_) {
+            return 1.0*nodeOf(k_) - ((cellOf(i_) >= 2) ? 2.0 : 0.0);
+        });
+        auto nest = box("NEST", {1,1,2}, {4,1,3}, {5,2,4}, "LGR1");
+        nest.minpvRemoved = {1, 0};
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        refine(grid, g, {box("LGR1", {2,3,1}, {0,0,0}, {3,1,6}), nest});
+
+        BOOST_CHECK_EQUAL(grid.size(0), 18*6 - 1 + 2 - 1);
+        BOOST_CHECK_CLOSE(totalVolume(grid), 18.0 - 1.0/12.0, 1e-10);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    }
+}
+
 // Two boxes share the face x = 2 of a 2x1x1 grid of cells 2 x 4 x 6: LGR1 refines cell
 // (0,0,0), LGR2 cell (1,0,0). One box's MINPV removes children on the shared face, or
 // every child of its host: the cells of the other box keep a boundary face where each

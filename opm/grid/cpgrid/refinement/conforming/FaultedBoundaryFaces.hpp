@@ -59,9 +59,12 @@ struct BoundaryConnection
 /// grid there is no shell and every piece faces the domain.
 ///
 /// axis in {0,1,2}; side in {-1, +1}. edgeConformal selects edge-conformal
-/// processing, matching the leaf's final edgeConformalizeLeaf pass. across, if
-/// given, holds the parent cells actually across the side; the mini region grows
-/// to cover it, since a large throw puts them outside the box's own layers.
+/// processing, matching the leaf's final edgeConformalizeLeaf pass. across holds
+/// the parent cells actually across the side; the mini region grows to cover it,
+/// since a throw puts them outside the box's own layers when it is taller than
+/// one cell next to them: thin cells across a fault, or a throw of two or more
+/// whole layers. It is null only where no cell is across or the cells across are
+/// known to lie within one cell of the box's own range.
 std::vector<BoundaryConnection>
 boxBoundaryConnections(const std::array<int,3>& parentDims,
                        const double* coord,
@@ -71,7 +74,7 @@ boxBoundaryConnections(const std::array<int,3>& parentDims,
                        int axis,
                        int side,
                        bool edgeConformal,
-                       const CellRange* across = nullptr);
+                       const CellRange* across);
 
 } // namespace Refinement
 } // namespace Opm
