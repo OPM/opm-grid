@@ -51,10 +51,10 @@ void GridStateWriter::setSubdivision(Data& grid,
 
 void GridStateWriter::setParentRelations(Data& grid,
                                          std::vector<std::array<int,2>> childToParent,
-                                         std::vector<int> idxInParent)
+                                         std::vector<int> cartesianIndexInParentCell)
 {
     grid.levels_.child_to_parent_cells = std::move(childToParent);
-    grid.levels_.cell_to_idxInParentCell = std::move(idxInParent);
+    grid.levels_.cell_to_idxInParentCell = std::move(cartesianIndexInParentCell);
 }
 
 void GridStateWriter::setParentToChildren(Data& grid,
@@ -73,9 +73,9 @@ void GridStateWriter::setAquiferCells(Data& grid, std::vector<int> cells)
     grid.aquifer_cells_ = std::move(cells);
 }
 
-void GridStateWriter::setCornerHistory(Data& grid, std::vector<std::array<int,2>> cornerHistory)
+void GridStateWriter::setCornerOrigin(Data& grid, std::vector<std::array<int,2>> cornerOrigin)
 {
-    grid.levels_.corner_history = std::move(cornerHistory);
+    grid.levels_.corner_history = std::move(cornerOrigin);
 }
 
 void GridStateWriter::setLogicalCartesianSize(Data& grid, const std::array<int,3>& size)
@@ -111,17 +111,22 @@ void GridStateWriter::setCommunicator(Data& grid, const Data::Communication& com
     grid.ccobj_ = comm;
 }
 
-std::vector<std::array<int,8>>& GridStateWriter::cellToPoint(Data& grid)
+std::vector<std::array<int,8>>& GridStateWriter::mutableCellToPoint(Data& grid)
 {
     return grid.cell_to_point_;
 }
 
-Dune::cpgrid::OrientedEntityTable<0,1>& GridStateWriter::cellToFace(Data& grid)
+Dune::cpgrid::OrientedEntityTable<0,1>& GridStateWriter::mutableCellToFace(Data& grid)
 {
     return grid.cell_to_face_;
 }
 
-Dune::cpgrid::OrientedEntityTable<1,0>& GridStateWriter::faceToCell(Data& grid)
+const Dune::cpgrid::OrientedEntityTable<0,1>& GridStateWriter::cellToFace(const Data& grid)
+{
+    return grid.cell_to_face_;
+}
+
+Dune::cpgrid::OrientedEntityTable<1,0>& GridStateWriter::mutableFaceToCell(Data& grid)
 {
     return grid.face_to_cell_;
 }
@@ -131,12 +136,17 @@ const Dune::cpgrid::OrientedEntityTable<1,0>& GridStateWriter::faceToCell(const 
     return grid.face_to_cell_;
 }
 
-Opm::SparseTable<int>& GridStateWriter::faceToPoint(Data& grid)
+Opm::SparseTable<int>& GridStateWriter::mutableFaceToPoint(Data& grid)
 {
     return grid.face_to_point_;
 }
 
-Dune::cpgrid::EntityVariable<enum face_tag, 1>& GridStateWriter::faceTag(Data& grid)
+const Opm::SparseTable<int>& GridStateWriter::faceToPoint(const Data& grid)
+{
+    return grid.face_to_point_;
+}
+
+Dune::cpgrid::EntityVariable<enum face_tag, 1>& GridStateWriter::mutableFaceTag(Data& grid)
 {
     return grid.face_tag_;
 }
@@ -146,12 +156,22 @@ const Dune::cpgrid::EntityVariable<enum face_tag, 1>& GridStateWriter::faceTag(c
     return grid.face_tag_;
 }
 
-Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& GridStateWriter::faceNormals(Data& grid)
+Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& GridStateWriter::mutableFaceNormals(Data& grid)
 {
     return grid.face_normals_;
 }
 
-Dune::cpgrid::DefaultGeometryPolicy& GridStateWriter::geometry(Data& grid)
+const Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& GridStateWriter::faceNormals(const Data& grid)
+{
+    return grid.face_normals_;
+}
+
+Dune::cpgrid::DefaultGeometryPolicy& GridStateWriter::mutableGeometry(Data& grid)
+{
+    return grid.geometry_;
+}
+
+const Dune::cpgrid::DefaultGeometryPolicy& GridStateWriter::geometry(const Data& grid)
 {
     return grid.geometry_;
 }
@@ -161,7 +181,7 @@ const std::vector<std::array<int,2>>& GridStateWriter::childToParent(const Data&
     return grid.levels_.child_to_parent_cells;
 }
 
-const std::vector<int>& GridStateWriter::idxInParent(const Data& grid)
+const std::vector<int>& GridStateWriter::cartesianIndexInParentCell(const Data& grid)
 {
     return grid.levels_.cell_to_idxInParentCell;
 }

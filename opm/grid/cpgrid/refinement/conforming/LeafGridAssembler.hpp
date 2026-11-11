@@ -62,8 +62,8 @@ namespace Refinement
 /// through the parent cells (so faults inside blocks identify per cell,
 /// not per lattice key), and the rest are appended.
 ///
-/// Ids work through the existing delegation machinery: leaf_to_level_cells_
-/// and corner_history_ are populated so IdSet routes every leaf entity to
+/// Ids work through the existing delegation machinery: levels_.leaf_to_level_cells
+/// and levels_.corner_history are populated so IdSet routes every leaf entity to
 /// the id of its birth-level entity.
 ///
 /// Block-boundary parent faces crossed by a fault are rebuilt from the
@@ -82,10 +82,10 @@ namespace Refinement
 /// members listed with it; a later stage reads them through the const accessors.
 ///  1. collectBoxData: boxes_ (except their cornerToLeaf and faceToLeaf), mask0_
 ///     and nestedBoxOf_.
-///  2. buildCornerPool: leaf_ with its corners, leafCornerHistory_,
+///  2. buildCornerPool: leaf_ with its corners, leafCornerOrigin_,
 ///     numLeafCorners_, and each box's cornerToLeaf.
 ///  3. buildLeafCells: leafCells_, leafIdxOfCell0_, leafIdxOfLevelCell_,
-///     parentToChildren_, numLeafCells_ and nestedParentToChildren_.
+///     level0ToChildren_, numLeafCells_ and nestedParentToChildren_.
 ///  4. refuseThrowsLeavingBoxes: nothing; it refuses a fault or pinch-out inside
 ///     a box that joins a box cell to a cell outside the box.
 ///  5. findDroppedFaces: faceDropped_.
@@ -96,7 +96,8 @@ namespace Refinement
 ///  9. buildLeafTopology: the leaf's face_to_cell, face_to_point, cell_to_face,
 ///     face tags, normals and face geometries.
 /// 10. computeCellData: the leaf's cell_to_point and cell geometries,
-///     leafGlobalCell_, leafChildToParent_, leafIdxInParent_ and leafToLevel_.
+///     leafGlobalCell_, leafChildToParent_, leafCartesianIndexInParentCell_ and
+///     leafToLevel_.
 /// 11. buildParallelStructures: the leaf's parallel cell index set, partition
 ///     types, communication interfaces and global ids (distributed grids only).
 /// 12. recordLeafMetadata: the leaf's metadata, the parent-to-children relations
@@ -130,7 +131,7 @@ public:
     /// @param parentDims, coord, zcorn, actnum  The parent corner-point
     ///                  description (actnum may be null).
     /// @param comm      Communicator for the leaf grid object.
-    LeafGridAssembler(std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage,
+    LeafGridAssembler(const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage,
                       const std::vector<BlockRefinement>& requests,
                       const std::array<int,3>& parentDims,
                       const double* coord,
@@ -152,7 +153,7 @@ private:
         std::array<AxisPositions,3> pos;
         bool graded{false};
         std::array<int,3> refinedDims;
-        // children of each parent cell, ordered by idxInParent
+        // children of each parent cell, ordered by cartesianIndexInParentCell
         std::map<int, std::vector<int>> childrenOfParent;
         // level corner -> corner of the parent grid (or -1)
         std::vector<int> cornerEquiv;
@@ -217,7 +218,7 @@ private:
     const std::vector<SourceRef>& leafCells() const { return leafCells_; }
     const std::vector<int>& leafIdxOfCell0() const { return leafIdxOfCell0_; }
     const std::vector<std::vector<int>>& leafIdxOfLevelCell() const { return leafIdxOfLevelCell_; }
-    const std::vector<std::tuple<int, std::vector<int>>>& parentToChildren() const { return parentToChildren_; }
+    const std::vector<std::tuple<int, std::vector<int>>>& level0ToChildren() const { return level0ToChildren_; }
     int numLeafCells() const { return numLeafCells_; }
     const std::vector<bool>& faceDropped() const { return faceDropped_; }
     const std::set<std::tuple<int,int,int>>& faultedSides() const { return faultedSides_; }
@@ -231,7 +232,7 @@ private:
     int numLeafCorners() const { return numLeafCorners_; }
 
     // The input.
-    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage_;
+    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& storage_;
     const std::vector<BlockRefinement>& requests_;
     const std::array<int,3> parentDims_;
     const double* const coord_;
@@ -266,14 +267,20 @@ private:
 
     // Written by buildCornerPool. The later stages fill the leaf.
     std::shared_ptr<Dune::cpgrid::CpGridData> leaf_;
-    std::vector<std::array<int,2>> leafCornerHistory_;
+    // leafCornerOrigin_[corner] = {level, index}: the grid where the leaf corner first
+    // appears, and its index there; {0, corner} for the corners of level zero.
+    std::vector<std::array<int,2>> leafCornerOrigin_;
     int numLeafCorners_{0};     // updated by buildSyntheticFaces
 
     // Written by buildLeafCells.
     std::vector<SourceRef> leafCells_;
     std::vector<int> leafIdxOfCell0_;
     std::vector<std::vector<int>> leafIdxOfLevelCell_;
-    std::vector<std::tuple<int, std::vector<int>>> parentToChildren_;
+    // level0ToChildren_[c] = {level, children}: the immediate children of level-zero cell c in
+    // its box's level grid ({level, {}} if the box's MINPV removed them all), or {-1, {}}.
+    // TODO: nested vectors are slow to fill and read; a SparseTable<int> with the level stored
+    // alongside would do better, here and for nestedParentToChildren_.
+    std::vector<std::tuple<int, std::vector<int>>> level0ToChildren_;
     int numLeafCells_{0};
     std::map<int, std::vector<std::tuple<int, std::vector<int>>>> nestedParentToChildren_;
 
@@ -303,7 +310,7 @@ private:
     // Written by computeCellData; recordLeafMetadata moves them into the leaf.
     std::vector<int> leafGlobalCell_;
     std::vector<std::array<int,2>> leafChildToParent_;
-    std::vector<int> leafIdxInParent_;
+    std::vector<int> leafCartesianIndexInParentCell_;
     std::vector<std::array<int,2>> leafToLevel_;
 
     bool built_{false};

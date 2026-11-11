@@ -59,11 +59,11 @@ struct GridStateWriter
 
     /// Set the parent relations of a refined level or leaf grid:
     /// childToParent[c] = {parent level, parent cell index} ({-1,-1} for
-    /// cells without a parent), and idxInParent[c] = lattice index
-    /// i + j*rx + k*rx*ry within the parent (-1 without a parent).
+    /// cells without a parent), and cartesianIndexInParentCell[c] = lattice
+    /// index i + j*rx + k*rx*ry within the parent (-1 without a parent).
     static void setParentRelations(Data& grid,
                                    std::vector<std::array<int,2>> childToParent,
-                                   std::vector<int> idxInParent);
+                                   std::vector<int> cartesianIndexInParentCell);
 
     /// Set parent-to-children on the grid the parents live in:
     /// entry = {child level, child indices} or {-1, {}}.
@@ -76,8 +76,9 @@ struct GridStateWriter
     /// Set the sorted cell indices of numerical aquifer cells.
     static void setAquiferCells(Data& grid, std::vector<int> cells);
 
-    /// Set corner history: entry = {birth level, corner index there} or {-1,-1}.
-    static void setCornerHistory(Data& grid, std::vector<std::array<int,2>> cornerHistory);
+    /// Set the corner origins, which fill LevelHierarchy::corner_history:
+    /// entry = {level where the corner first appears, its index there} or {-1,-1}.
+    static void setCornerOrigin(Data& grid, std::vector<std::array<int,2>> cornerOrigin);
 
     static void setLogicalCartesianSize(Data& grid, const std::array<int,3>& size);
     static void setGlobalCell(Data& grid, std::vector<int> globalCell);
@@ -91,19 +92,24 @@ struct GridStateWriter
     /// reports the full parallel communicator and can be load balanced.
     static void setCommunicator(Data& grid, const Data::Communication& comm);
 
-    /// Topology/geometry table access for assembling a grid (and reading
-    /// the tables of source grids during assembly).
-    static std::vector<std::array<int,8>>& cellToPoint(Data& grid);
-    static Dune::cpgrid::OrientedEntityTable<0,1>& cellToFace(Data& grid);
-    static Dune::cpgrid::OrientedEntityTable<1,0>& faceToCell(Data& grid);
+    /// Topology/geometry table access. The mutable...() accessors are for
+    /// writing the grid being assembled; the others read a grid, such as the
+    /// source grids of an assembly.
+    static std::vector<std::array<int,8>>& mutableCellToPoint(Data& grid);
+    static Dune::cpgrid::OrientedEntityTable<0,1>& mutableCellToFace(Data& grid);
+    static const Dune::cpgrid::OrientedEntityTable<0,1>& cellToFace(const Data& grid);
+    static Dune::cpgrid::OrientedEntityTable<1,0>& mutableFaceToCell(Data& grid);
     static const Dune::cpgrid::OrientedEntityTable<1,0>& faceToCell(const Data& grid);
-    static Opm::SparseTable<int>& faceToPoint(Data& grid);
-    static Dune::cpgrid::EntityVariable<enum face_tag, 1>& faceTag(Data& grid);
+    static Opm::SparseTable<int>& mutableFaceToPoint(Data& grid);
+    static const Opm::SparseTable<int>& faceToPoint(const Data& grid);
+    static Dune::cpgrid::EntityVariable<enum face_tag, 1>& mutableFaceTag(Data& grid);
     static const Dune::cpgrid::EntityVariable<enum face_tag, 1>& faceTag(const Data& grid);
-    static Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& faceNormals(Data& grid);
-    static Dune::cpgrid::DefaultGeometryPolicy& geometry(Data& grid);
+    static Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& mutableFaceNormals(Data& grid);
+    static const Dune::cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& faceNormals(const Data& grid);
+    static Dune::cpgrid::DefaultGeometryPolicy& mutableGeometry(Data& grid);
+    static const Dune::cpgrid::DefaultGeometryPolicy& geometry(const Data& grid);
     static const std::vector<std::array<int,2>>& childToParent(const Data& grid);
-    static const std::vector<int>& idxInParent(const Data& grid);
+    static const std::vector<int>& cartesianIndexInParentCell(const Data& grid);
 
     /// Corner-point input retained for refinement (nullptr unless the deck
     /// requested LGRs at construction time).
