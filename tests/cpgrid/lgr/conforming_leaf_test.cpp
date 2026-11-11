@@ -37,8 +37,8 @@
 #include <vector>
 
 // The leaf of the conforming refinement: cells whose children a box's MINPV removes,
-// the corner order of a box on a left-handed grid, and the level-zero face an LGR
-// boundary face comes from.
+// the corner order of a box on a left-handed grid, the level-zero face an LGR
+// boundary face comes from, and the leaf index each grid gives its cells.
 
 namespace
 {
@@ -276,5 +276,23 @@ BOOST_AUTO_TEST_CASE(removedChildOnTheBoxSide)
             volume += element.geometry().volume();
         }
         BOOST_CHECK_CLOSE(volume, 72.0 - 0.25*count, 1e-10);
+    }
+}
+
+// Each grid maps its cells to the leaf: a leaf cell is found again through the grid it
+// comes from, and the hosts of the box, refined, have no leaf cell.
+BOOST_AUTO_TEST_CASE(levelCellsMapToTheLeaf)
+{
+    const auto g = makeGrid({4, 1, 1}, vertical, [](int, int, int k_) { return 2.0*nodeOf(k_); });
+    Dune::CpGrid grid;
+    refine(grid, g, box({2,1,1}, {1,0,0}, {3,1,1}));
+
+    const auto& data = grid.currentData();
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        BOOST_CHECK_EQUAL(data[element.level()]->getLeafIdxFromLevelIdx(element.getLevelElem().index()),
+                          element.index());
+    }
+    for (const int host : {1, 2}) {
+        BOOST_CHECK_EQUAL(data.front()->getLeafIdxFromLevelIdx(host), -1);
     }
 }

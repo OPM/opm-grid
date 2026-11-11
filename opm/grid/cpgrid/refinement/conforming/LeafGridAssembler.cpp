@@ -2005,6 +2005,21 @@ void LeafGridAssembler::recordLeafMetadata()
     GridStateWriter::setParentRelations(*leaf_, std::move(leafChildToParent_),
                                         std::move(leafCartesianIndexInParentCell_));
     GridStateWriter::setAquiferCells(*leaf_, leafAquiferCells(level0_, leafToLevel_));
+    // Level zero and each level grid learn the leaf index of their cells, -1 for a cell
+    // the leaf does not have, as getLeafIdxFromLevelIdx() reads it.
+    std::vector<std::vector<int>> levelToLeaf(numBoxes_ + 1);
+    levelToLeaf[0].assign(numCells0_, -1);
+    for (int b = 0; b < numBoxes_; ++b) {
+        levelToLeaf[b + 1].assign(boxes()[b].level->size(0), -1);
+    }
+    for (int cell = 0; cell < numLeafCells(); ++cell) {
+        const auto& [level, index] = leafToLevel_[cell];
+        levelToLeaf[level][index] = cell;
+    }
+    GridStateWriter::setLevelToLeaf(level0_, std::move(levelToLeaf[0]));
+    for (int b = 0; b < numBoxes_; ++b) {
+        GridStateWriter::setLevelToLeaf(*boxes()[b].level, std::move(levelToLeaf[b + 1]));
+    }
     GridStateWriter::setLeafToLevel(*leaf_, std::move(leafToLevel_));
     GridStateWriter::setCornerOrigin(*leaf_, std::move(leafCornerOrigin_));
     GridStateWriter::setRefinementMaxLevel(*leaf_, numBoxes_);
