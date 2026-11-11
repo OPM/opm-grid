@@ -73,6 +73,10 @@ struct GridStateWriter
     /// Set leaf-to-level mapping on the leaf: entry = {level, level index}.
     static void setLeafToLevel(Data& grid, std::vector<std::array<int,2>> leafToLevel);
 
+    /// Set level-to-leaf mapping on a level grid: entry = leaf index of the
+    /// level cell, or -1 for a cell the leaf does not have (refined).
+    static void setLevelToLeaf(Data& grid, std::vector<int> levelToLeaf);
+
     /// Set the sorted cell indices of numerical aquifer cells.
     static void setAquiferCells(Data& grid, std::vector<int> cells);
 

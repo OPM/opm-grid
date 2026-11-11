@@ -99,8 +99,9 @@ namespace Refinement
 ///     leafToLevel_.
 /// 11. buildParallelStructures: the leaf's parallel cell index set, partition
 ///     types, communication interfaces and global ids (distributed grids only).
-/// 12. recordLeafMetadata: the leaf's metadata, the parent-to-children relations
-///     of level zero and of the parent LGRs, and the levels' refinement maximum.
+/// 12. recordLeafMetadata: the leaf's metadata, the leaf index of the cells of
+///     level zero and of the level grids, the parent-to-children relations of
+///     level zero and of the parent LGRs, and the levels' refinement maximum.
 ///
 /// A later stage modifies a member of an earlier one only here: buildCornerPool
 /// and buildLeafFaces write their fields of boxes_; buildSyntheticFaces adds the
