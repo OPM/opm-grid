@@ -141,6 +141,9 @@ BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_cartesian_cpgrid_wi
 BOOST_AUTO_TEST_CASE(extract_wells_from_deck_and_loadBalance_level_zero_of_cpgrid_with_lgrs_created_from_deck){
     const std::string deck_string = R"(
 RUNSPEC
+OIL
+GAS
+WATER
 DIMENS
    10 10 3 /
 START
@@ -275,11 +278,14 @@ BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_global_refined_cpgr
     }
 }
 
-bool
-init_unit_test_func()
+namespace {
+
+bool init_unit_test_func()
 {
     return true;
 }
+
+} // end anonymous namespace
 
 int main(int argc, char** argv)
 {
