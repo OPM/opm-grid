@@ -22,12 +22,14 @@
 #include <opm/output/data/Cells.hpp>
 #include <opm/output/data/Solution.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LgrOutputHelpers.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 
 #include <algorithm> // for std::sort
 #include <utility>   // for std::pair
+#include <string>
 #include <vector>
 
 namespace Opm
@@ -75,6 +77,71 @@ std::vector<std::unordered_map<int,int>> levelCartesianToLevelCompressedMaps(con
         }
     }
     return levelCartToLevelCompressed;
+}
+
+void assembleSolutionFromLevelGrids(const Dune::CpGrid& grid,
+                                    const std::vector<Opm::data::Solution>& levelSolutions,
+                                    Opm::data::Solution& leafSolution)
+{
+    const int maxLevel = grid.maxLevel();
+    if (static_cast<int>(levelSolutions.size()) != maxLevel + 1) {
+        OPM_THROW(std::invalid_argument,
+                  "Restart solution has " + std::to_string(levelSolutions.size())
+                  + " level sections for a grid with " + std::to_string(maxLevel + 1)
+                  + " levels.");
+    }
+
+    // The permutation the writer applied to every level above zero.
+    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+    std::vector<std::vector<int>> toOutput_refinedLevels(maxLevel);
+    for (int level = 1; level <= maxLevel; ++level) {
+        toOutput_refinedLevels[level-1] =
+            mapLevelIndicesToCartesianOutputOrder(grid, levelCartMapp, level);
+    }
+
+    const auto leafSize = static_cast<std::size_t>(grid.leafGridView().size(0));
+
+    for (const auto& [name, levelZeroData] : levelSolutions.front()) {
+        // A key has to be on every level to be assembled; the writer emits them
+        // together, so a missing one means the file was not written by this path.
+        const bool everywhere =
+            std::all_of(levelSolutions.begin() + 1, levelSolutions.end(),
+                        [&name = name](const Opm::data::Solution& sol)
+                        { return sol.has(name); });
+        if (! everywhere) {
+            continue;
+        }
+
+        levelZeroData.visit([&](const auto& levelZeroVector) {
+            using T = std::decay_t<decltype(levelZeroVector)>;
+
+            if constexpr (! std::is_same_v<T, std::monostate>) {
+                // Undo the output ordering, then let each leaf cell take the
+                // value its own level holds for it.
+                std::vector<T> levelVectors(maxLevel + 1);
+                levelVectors[0] = levelZeroVector;
+                for (int level = 1; level <= maxLevel; ++level) {
+                    levelVectors[level] =
+                        reorderFromOutput(levelSolutions[level].data<typename T::value_type>(name),
+                                          toOutput_refinedLevels[level-1]);
+                }
+
+                T leafVector(leafSize);
+                for (const auto& element : Dune::elements(grid.leafGridView())) {
+                    leafVector[element.index()] =
+                        levelVectors[element.level()][element.getLevelElem().index()];
+                }
+
+                if constexpr (std::is_same_v<T, std::vector<double>>) {
+                    leafSolution.insert(name, levelZeroData.dim,
+                                        std::move(leafVector), levelZeroData.target);
+                }
+                else {
+                    leafSolution.insert(name, std::move(leafVector), levelZeroData.target);
+                }
+            }
+        });
+    }
 }
 
 void extractSolutionLevelGrids(const Dune::CpGrid& grid,

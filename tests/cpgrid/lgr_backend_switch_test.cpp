@@ -22,12 +22,14 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <dune/common/parallel/mpihelper.hh>
 
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -74,6 +76,28 @@ struct RecordingBuilder : Opm::Refinement::Builder
     std::vector<BlockRefinement> recorded{};
 };
 
+// A 4x3x3 grid with one CARFIN box.
+const std::string deckWithCarfin = R"(RUNSPEC
+DIMENS
+ 4 3 3 /
+GRID
+CARFIN
+'LGR1' 2 3 1 1 1 1 4 2 2 /
+ENDFIN
+DX
+ 36*1 /
+DY
+ 36*1 /
+DZ
+ 36*1 /
+BOX
+ 1 4 1 3 1 1 /
+TOPS
+ 12*0 /
+ENDBOX
+PORO
+ 36*0.2 /
+)";
 } // anonymous namespace
 
 // Under the default backend the request form refines exactly as the vector form.
@@ -84,7 +108,10 @@ BOOST_AUTO_TEST_CASE(trilinearRequestsMatchVectors)
     makeGrid(byRequests);
     BOOST_CHECK(byRequests.lgrBackend() == Backend::Trilinear);
 
-    byVectors.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{3,2,2}}, {"LGR1"});
+    byVectors.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                    /* startIJK_vec = */      {{1,1,1}},
+                                    /* endIJK_vec = */        {{3,2,2}},
+                                    /* lgr_name_vec = */      {"LGR1"});
     byRequests.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ box("LGR1", {1,1,1}, {3,2,2}) });
 
     BOOST_CHECK_EQUAL(byRequests.maxLevel(), 1);
@@ -101,12 +128,10 @@ BOOST_AUTO_TEST_CASE(trilinearRefusesConformingOnlyRequests)
 {
     auto graded = box("LGR1", {1,1,1}, {2,2,2});
     graded.subdivision[0] = { {0, 0, 0}, {0.0, 0.2, 0.5}, {0.2, 0.5, 1.0} };
-    auto pillars = box("LGR1", {1,1,1}, {2,2,2});
-    pillars.pillarsFromBoxLayer = true;
     auto minpv = box("LGR1", {1,1,1}, {2,2,2});
     minpv.minpvRemoved.assign(8, 0);
 
-    for (const auto& request : { graded, pillars, minpv }) {
+    for (const auto& request : { graded, minpv }) {
         Dune::CpGrid grid;
         makeGrid(grid);
         BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),
@@ -115,12 +140,57 @@ BOOST_AUTO_TEST_CASE(trilinearRefusesConformingOnlyRequests)
     }
 }
 
+// Under the default backend too, a parent LGR must come before its children.
+BOOST_AUTO_TEST_CASE(trilinearRefusesChildBeforeParent)
+{
+    auto child = box("LGR2", {0,0,0}, {1,1,1});
+    child.parentGridName = "LGR1";
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
+                          child, box("LGR1", {1,1,1}, {2,2,2}) }),
+                      std::invalid_argument);
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 0);
+}
+
+// The conforming refinement's nesting rules do not apply to the default backend: a
+// nested LGR may touch its parent LGR's boundary, and nest more than one level deep.
+BOOST_AUTO_TEST_CASE(trilinearRefinesNestedLgrsOnTheParentBoundary)
+{
+    // LGR1 refines cell (1,1,1) into 2x2x2; LGR2 refines LGR1's cell (0,0,0), on
+    // LGR1's boundary, into 2x2x2; LGR3 does the same with LGR2's cell (0,0,0).
+    auto lgr2 = box("LGR2", {0,0,0}, {1,1,1});
+    lgr2.parentGridName = "LGR1";
+    auto lgr3 = box("LGR3", {0,0,0}, {1,1,1});
+    lgr3.parentGridName = "LGR2";
+
+    Dune::CpGrid byVectors, byRequests;
+    makeGrid(byVectors);
+    makeGrid(byRequests);
+    byVectors.addLgrsUpdateLeafView(/* cells_per_dim_vec = */        {{2,2,2}, {2,2,2}, {2,2,2}},
+                                    /* startIJK_vec = */             {{1,1,1}, {0,0,0}, {0,0,0}},
+                                    /* endIJK_vec = */               {{2,2,2}, {1,1,1}, {1,1,1}},
+                                    /* lgr_name_vec = */             {"LGR1", "LGR2", "LGR3"},
+                                    /* lgr_parent_grid_name_vec = */ {"GLOBAL", "LGR1", "LGR2"});
+    byRequests.addLgrsUpdateLeafView(std::vector<BlockRefinement>{
+        box("LGR1", {1,1,1}, {2,2,2}), lgr2, lgr3 });
+
+    BOOST_CHECK_EQUAL(byRequests.maxLevel(), 3);
+    // 36 cells, less each refined parent cell, plus its 8 children, three times.
+    BOOST_CHECK_EQUAL(byRequests.size(0), 36 + 3*(8 - 1));
+    BOOST_CHECK_EQUAL(byRequests.size(0), byVectors.size(0));
+    BOOST_CHECK(byRequests.getLgrNameToLevel() == byVectors.getLgrNameToLevel());
+}
+
 // The two backends never meet on one grid.
 BOOST_AUTO_TEST_CASE(backendFixedOnceRefined)
 {
     Dune::CpGrid grid;
     makeGrid(grid);
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{2,2,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{1,1,1}},
+                               /* endIJK_vec = */        {{2,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
     BOOST_CHECK_THROW(grid.setLgrBackend(Backend::Conforming), std::logic_error);
     BOOST_CHECK_NO_THROW(grid.setLgrBackend(Backend::Trilinear));
 }
@@ -132,12 +202,18 @@ BOOST_AUTO_TEST_CASE(conformingForwardsToItsBuilder)
     Dune::CpGrid grid;
     makeGrid(grid);
     grid.setLgrBackend(Backend::Conforming);
-    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,1,1}}, {{2,2,2}}, {"LGR1"}),
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                 /* startIJK_vec = */      {{1,1,1}},
+                                                 /* endIJK_vec = */        {{2,2,2}},
+                                                 /* lgr_name_vec = */      {"LGR1"}),
                       std::logic_error);
 
     auto builder = std::make_shared<RecordingBuilder>();
     grid.setRefinementBuilder(builder);
-    grid.addLgrsUpdateLeafView({{2,2,2}, {3,3,3}}, {{0,0,0}, {2,1,1}}, {{1,1,1}, {4,3,3}}, {"A", "B"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                               /* startIJK_vec = */      {{0,0,0}, {2,1,1}},
+                               /* endIJK_vec = */        {{1,1,1}, {4,3,3}},
+                               /* lgr_name_vec = */      {"A", "B"});
     BOOST_REQUIRE_EQUAL(builder->recorded.size(), 2u);
     BOOST_CHECK_EQUAL(builder->recorded[0].name, "A");
     BOOST_CHECK_EQUAL(builder->recorded[1].name, "B");
@@ -174,4 +250,115 @@ BOOST_AUTO_TEST_CASE(conformingRefusesChildBeforeParent)
 
     grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ box("A", {1,1,1}, {3,3,3}), child });
     BOOST_CHECK_EQUAL(builder->recorded.size(), 2u);
+}
+
+// A graded table gives the box's parent cells their columns one after the other, each
+// from 0 to 1, every column starting where the one before it ends; the grid refuses
+// another table before the builder is called. Tables as opm-common builds them pass.
+BOOST_AUTO_TEST_CASE(conformingRefusesBrokenColumnTables)
+{
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    auto builder = std::make_shared<RecordingBuilder>();
+    grid.setRefinementBuilder(builder);
+
+    // The box has two parent cells in I.
+    const auto graded = [](Opm::Refinement::AxisSubdivision columns) {
+        auto request = box("A", {1,1,1}, {3,2,2});
+        request.subdivision[0] = std::move(columns);
+        return request;
+    };
+    const auto inOrder = [](const std::invalid_argument& e) {
+        return std::string(e.what()).find("do not cover each parent cell") != std::string::npos;
+    };
+    const double third = 1.0/3.0;
+    for (const auto& request : {
+             graded({ {0, 0, 1}, {0.0, 0.34, 0.0}, {third, 1.0, 1.0} }),        // a gap
+             graded({ {0, 0, 1}, {0.0, third, 0.0},
+                      {std::nextafter(third, 1.0), 1.0, 1.0} }),               // one bit over
+             graded({ {0, 1}, {0.1, 0.0}, {1.0, 1.0} }),                        // starts after 0
+             graded({ {0, 1}, {0.0, 0.0}, {0.9, 1.0} }),                        // ends before 1
+             graded({ {0, 0}, {0.0, 0.5}, {0.5, 1.0} }),                        // one parent cell
+             graded({ {1, 0}, {0.0, 0.0}, {1.0, 1.0} }),                        // out of order
+             graded({ {0, 0, 0, 1}, {0.0, 0.5, 0.5, 0.0}, {0.5, 0.5, 1.0, 1.0} }) }) { // empty column
+        BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),
+                              std::invalid_argument, inOrder);
+    }
+    BOOST_CHECK(builder->recorded.empty());
+
+    // Cumulative widths over their sum in each parent cell, the last column closed at 1:
+    // 0.3 + 0.3 + 0.3 in one cell, 0.2 + 0.3 + 0.5 in the other.
+    const std::vector<double> widths{ 0.3, 0.3, 0.3, 0.2, 0.3, 0.5 };
+    Opm::Refinement::AxisSubdivision columns;
+    for (int parent = 0; parent < 2; ++parent) {
+        const double total = widths[3*parent] + widths[3*parent + 1] + widths[3*parent + 2];
+        double cumulative = 0.0;
+        for (int c = 0; c < 3; ++c) {
+            columns.parentOffset.push_back(parent);
+            columns.fracLo.push_back(cumulative / total);
+            cumulative += widths[3*parent + c];
+            columns.fracHi.push_back((c == 2) ? 1.0 : cumulative / total);
+        }
+    }
+    grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ graded(columns) });
+    BOOST_CHECK_EQUAL(builder->recorded.size(), 1u);
+}
+
+// A MINPV mask has one entry per refined cell of the box, or none; the grid refuses a
+// mask of another size before the builder is called.
+BOOST_AUTO_TEST_CASE(conformingRefusesMinpvMaskOfWrongSize)
+{
+    Dune::CpGrid grid;
+    makeGrid(grid);
+    grid.setLgrBackend(Backend::Conforming);
+    auto builder = std::make_shared<RecordingBuilder>();
+    grid.setRefinementBuilder(builder);
+
+    // Two parent cells in I, each into 2x2x2 children: 16 refined cells.
+    auto request = box("A", {1,1,1}, {3,2,2});
+    const auto wrongSize = [](const std::invalid_argument& e) {
+        return std::string(e.what()).find("MINPV removal mask of the wrong size") != std::string::npos;
+    };
+    for (const std::size_t size : {1, 8, 15, 17}) {
+        request.minpvRemoved.assign(size, 0);
+        BOOST_CHECK_EXCEPTION(grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request }),
+                              std::invalid_argument, wrongSize);
+    }
+    BOOST_CHECK(builder->recorded.empty());
+
+    request.minpvRemoved.assign(16, 0);
+    grid.addLgrsUpdateLeafView(std::vector<BlockRefinement>{ request });
+    BOOST_CHECK_EQUAL(builder->recorded.size(), 1u);
+}
+
+// A Conforming grid built from a deck with LGRs refines without an explicit builder.
+BOOST_AUTO_TEST_CASE(conformingUsesRetainedDeckInput)
+{
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Backend::Conforming);
+    Opm::createGridFromDeckString(grid, deckWithCarfin);
+    BOOST_CHECK(Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
+    // Any request refines from the retained input; it need not match the CARFIN.
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2, 1, 1}},
+                               /* startIJK_vec = */      {{1, 0, 0}},
+                               /* endIJK_vec = */        {{3, 1, 1}},
+                               /* lgr_name_vec = */      {"LGR1"});
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
+    BOOST_CHECK_EQUAL(grid.size(0), 36 - 2 + 2*2);
+    // Refined once, the grid lets the description go.
+    BOOST_CHECK(!Opm::Refinement::GridStateWriter::retainedCornerPointInput(*grid.currentData().front()));
+}
+
+// Input is retained only when the backend is chosen before processEclipseFormat().
+BOOST_AUTO_TEST_CASE(conformingChosenAfterProcessingThrows)
+{
+    Dune::CpGrid grid;
+    Opm::createGridFromDeckString(grid, deckWithCarfin);
+    grid.setLgrBackend(Backend::Conforming);
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2, 1, 1}},
+                                                 /* startIJK_vec = */      {{1, 0, 0}},
+                                                 /* endIJK_vec = */        {{3, 1, 1}},
+                                                 /* lgr_name_vec = */      {"LGR1"}),
+                      std::logic_error);
 }
