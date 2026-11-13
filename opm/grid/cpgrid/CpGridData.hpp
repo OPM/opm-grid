@@ -79,6 +79,9 @@ namespace Opm
 {
 class EclipseState;
 }
+
+struct UnstructuredGrid;
+
 namespace Dune
 {
 class CpGrid;
@@ -307,6 +310,11 @@ public:
                               bool pinchActive,
                               double tolerance_unique_points,
                               bool edge_conformal);
+
+    /// Read serialized UnstructuredGrid data.
+    ///
+    /// Phase 1 scope: requires hexahedral cells with exactly eight corners.
+    void processUnstructuredGrid(const UnstructuredGrid& input_grid);
 
     /// @brief
     ///    Extract Cartesian index triplet (i,j,k) of an active cell.

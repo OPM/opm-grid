@@ -403,6 +403,21 @@ namespace Dune
       init();
     }
 
+        /** \brief constructor
+     *
+     *  \param[in]  filename  path to a serialized UnstructuredGrid file
+     */
+    explicit PolyhedralGrid(const std::string& filename)
+    : gridPtr_(createGrid(filename)),
+      grid_(*gridPtr_),
+      comm_(MPIHelper::getCommunicator()),
+      leafIndexSet_(*this),
+      globalIdSet_(*this),
+      localIdSet_(*this),
+      nBndSegments_(0)
+    {
+      init();
+    }
     /** \} */
 
     /** \name Casting operators
@@ -869,7 +884,8 @@ namespace Dune
 
     void getIJK(const int c, std::array<int,3>& ijk) const
     {
-      int gc = globalCell()[c];
+      // Grids without global_cell use the compressed index as Cartesian index.
+      int gc = globalCellPtr() ? globalCellPtr()[c] : c;
       ijk[0] = gc % logicalCartesianSize()[0];  gc /= logicalCartesianSize()[0];
       ijk[1] = gc % logicalCartesianSize()[1];
       ijk[2] = gc / logicalCartesianSize()[1];
@@ -981,6 +997,16 @@ namespace Dune
         Dune::unstructured::connectCellsAcrossGaps( *cgrid, pairs );
       }
 
+      return cgrid;
+    }
+
+    UnstructuredGridType* createGrid(const std::string& filename) const
+    {
+      UnstructuredGridType* cgrid = read_grid(filename.c_str());
+      if (!cgrid) {
+        OPM_THROW(std::runtime_error,
+                  "Failed to read UnstructuredGrid from file: " + filename);
+      }
       return cgrid;
     }
 
