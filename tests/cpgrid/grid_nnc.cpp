@@ -106,6 +106,53 @@ struct Fixture
 	BOOST_CHECK_EQUAL_COLLECTIONS(nb.begin(), nb.end(),
                                       ex_nb.begin(), ex_nb.end());
     }
+
+    // A grid of 3x1x2 cells given by DX, DY, DZ and TOPS, the cells are 25 m high.
+    // Cell numbers: i + 3*k.
+    static std::string blockCentredDeck(const std::string& tops,
+                                        const std::string& actnum,
+                                        const std::string& extra)
+    {
+        return "RUNSPEC\n"
+               "DIMENS\n 3 1 2 /\n"
+               "GRID\n"
+               + extra +
+               "DX\n 6*100 /\n"
+               "DY\n 6*100 /\n"
+               "DZ\n 6*25 /\n"
+               "BOX\n 1 3 1 1 1 1 /\n"
+               "TOPS\n " + tops + " /\n"
+               "ENDBOX\n"
+               "ACTNUM\n " + actnum + " /\n"
+               "PORO\n 6*0.15 /\n"
+               "EDIT\n";
+    }
+
+    // The sorted connected cell pairs of the grid. With useState false the grid is made
+    // without an EclipseState.
+    std::vector<std::pair<int, int>> neighbours(const std::string& deckString, const bool useState)
+    {
+        Opm::Deck deck = parser.parseString(deckString);
+        Opm::EclipseState es(deck);
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(&es.getInputGrid(), useState ? &es : nullptr, false, false, false);
+        const auto& gv = grid.leafGridView();
+        ElementMapper elmap(gv, Dune::mcmgElementLayout());
+        std::vector<std::pair<int, int>> nb;
+        for (const auto& elem : elements(gv)) {
+            for (const auto& inter : intersections(gv, elem)) {
+                if (!inter.boundary()) {
+                    const int c1 = elmap.index(elem);
+                    const int c2 = elmap.index(inter.outside());
+                    if (c1 < c2) {
+                        nb.emplace_back(c1, c2);
+                    }
+                }
+            }
+        }
+        std::ranges::sort(nb);
+        return nb;
+    }
 };
 
 BOOST_AUTO_TEST_SUITE(ConstructingWithNNC)
@@ -224,5 +271,53 @@ BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)
     testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 2 + 1, 18 + 1, { {0,1}, {1,2}, {1,3}, {2,3} }, true);
 }
 
+
+// OLDTRAN (the default for grids given by DX, DY, DZ and TOPS): the cells in a layer are
+// connected also when they do not overlap. The columns are stepped by 30 m and the
+// cells are 25 m high, so the cells of a layer do not overlap, and the cells of the
+// second layer overlap the first layer of the neighbouring column.
+BOOST_FIXTURE_TEST_CASE(OldTranConnectsLateralNeighbours, Fixture)
+{
+    const auto deck = blockCentredDeck("2500 2530 2560", "6*1", "");
+    const std::vector<std::pair<int, int>> expected{
+        {0,1}, {0,3}, {1,2}, {1,3}, {1,4}, {2,4}, {2,5}, {3,4}, {4,5} };
+    for (const bool useState : {true, false}) {
+        const auto nb = neighbours(deck, useState);
+        // the grid-only construction has no state, and gets the same topology
+        BOOST_CHECK_EQUAL_COLLECTIONS(nb.begin(), nb.end(), expected.begin(), expected.end());
+    }
+}
+
+// NEWTRAN: only the cells that overlap are connected
+BOOST_FIXTURE_TEST_CASE(NewTranDoesNotConnectLateralNeighbours, Fixture)
+{
+    const auto deck = blockCentredDeck("2500 2530 2560", "6*1", "NEWTRAN\n");
+    const std::vector<std::pair<int, int>> expected{ {0,3}, {1,3}, {1,4}, {2,4}, {2,5} };
+    const auto nb = neighbours(deck, true);
+    BOOST_CHECK_EQUAL_COLLECTIONS(nb.begin(), nb.end(), expected.begin(), expected.end());
+}
+
+// Inactive cells are not connected
+BOOST_FIXTURE_TEST_CASE(OldTranInactiveCells, Fixture)
+{
+    const auto deck = blockCentredDeck("2500 2530 2560", "1 0 1 1 1 1", "");
+    // cell 1 is inactive, the cells are numbered 0, 1, 2, 3, 4 (cell 2 -> 1, ...)
+    // active cells 0, 2, 3, 4, 5 become 0, 1, 2, 3, 4
+    const std::vector<std::pair<int, int>> expected{
+        {0,2}, {1,3}, {1,4}, {2,3}, {3,4} };
+    const auto nb = neighbours(deck, true);
+    BOOST_CHECK_EQUAL_COLLECTIONS(nb.begin(), nb.end(), expected.begin(), expected.end());
+}
+
+// Cells in a flat grid are connected by faces, no connection is added twice
+BOOST_FIXTURE_TEST_CASE(OldTranFlatGridSameAsNewTran, Fixture)
+{
+    const auto oldtran = neighbours(blockCentredDeck("6*2500", "6*1", ""), true);
+    const auto newtran = neighbours(blockCentredDeck("6*2500", "6*1", "NEWTRAN\n"), true);
+    const std::vector<std::pair<int, int>> expected{
+        {0,1}, {0,3}, {1,2}, {1,4}, {2,5}, {3,4}, {4,5} };
+    BOOST_CHECK_EQUAL_COLLECTIONS(oldtran.begin(), oldtran.end(), expected.begin(), expected.end());
+    BOOST_CHECK_EQUAL_COLLECTIONS(newtran.begin(), newtran.end(), expected.begin(), expected.end());
+}
 
 BOOST_AUTO_TEST_SUITE_END()
