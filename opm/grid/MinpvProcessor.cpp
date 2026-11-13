@@ -317,6 +317,19 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         option4ALLZero = option4ALLZero || (!permz.empty() && permz[c_above] == 0.0) || multz(c_above) == 0.0;
                         nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap) && (!pinchOption4ALL || !option4ALLZero) ;
 
+                        // For NOGAP case, we compute the whole gap between active cell (stack) by
+                        // taking the maximum gap among 4 pillars
+                        if (pinchNOGAP) {
+                            double total_gap = 0.0;
+
+                            // loop over pillars
+                            for (int p=0; p<4; p++){
+                                total_gap = std::max(total_gap, cz_below[p] - cz_above[p+4]);
+                            }
+
+                            nnc_allowed = nnc_allowed && (total_gap < z_tolerance);
+                        }
+
                         // Note that collapsed cells become inactive in preprocess.c
                         // We treat them as a barrier preventing NNCs here.
                         if ( nnc_allowed &&
