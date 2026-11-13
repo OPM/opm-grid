@@ -1819,7 +1819,7 @@ void LeafGridAssembler::buildSyntheticFaces()
 
         // Split corners belong to the lowest box using them and are ordered by coordinate
         // there, so their ids do not depend on the order the faces were emitted in.
-        const int firstSplit = static_cast<int>(leafCornerHistory_.size());
+        const int firstSplit = static_cast<int>(leafCornerOrigin_.size());
         std::vector<int> owner(numLeafCorners_ - firstSplit, numBoxes_);
         for (const auto& sf : syntheticFaces_) {
             for (const int p : sf.points) {
@@ -1836,8 +1836,12 @@ void LeafGridAssembler::buildSyntheticFaces()
                     mine.push_back(static_cast<int>(s));
                 }
             }
+            const auto coordinatesOf = [&](int s) {
+                const auto& c = leafCorners[firstSplit + s].center();
+                return std::array<double,3>{c[0], c[1], c[2]};
+            };
             std::ranges::sort(mine, [&](int x, int y) {
-                return coordKey(leafCorners[firstSplit + x]) < coordKey(leafCorners[firstSplit + y]);
+                return coordinatesOf(x) < coordinatesOf(y);
             });
             for (std::size_t n = 0; n < mine.size(); ++n) {
                 splitKeys_[mine[n]] = {b, static_cast<int>(n)};
@@ -2051,7 +2055,7 @@ void LeafGridAssembler::buildParallelStructures()
     // Coarse leaf cells inherit their level-zero global index and attribute;
     // refined cells are rank-interior (owner only) and get assignRefinedIds' ids,
     // which are above every coarse global id.
-    const auto ids = assignRefinedIds(storage_, numBoxes_, leafToLevel_, leafCornerHistory_,
+    const auto ids = assignRefinedIds(storage_, numBoxes_, leafToLevel_, leafCornerOrigin_,
                                       splitKeys(), comm_);
 #if HAVE_MPI
     Dune::Communication<Dune::MPIHelper::MPICommunicator> cc(comm_);
