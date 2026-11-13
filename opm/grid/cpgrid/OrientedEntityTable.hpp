@@ -40,6 +40,7 @@
 #include <opm/common/utility/SparseTable.hpp>
 #include <map>
 #include <climits>
+#include <stdexcept>
 
 /// The namespace Dune is the main namespace for all Dune code.
 namespace Dune
@@ -302,13 +303,16 @@ namespace Dune
                 }
             }
 
-            /// @brief Makes the inverse relation, mapping codim_to entities
+            /// @brief Returns the inverse relation, mapping codim_to entities
             /// to their codim_from neighbours.
             ///
             /// Implementation note: The algorithm has been changed
             /// to a three-pass O(n) algorithm.
-            /// @param inv  The OrientedEntityTable
-            void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
+            /// InvalidIndex entries are omitted. The row count is inferred from
+            /// the largest valid index; trailing empty rows cannot be inferred.
+            /// Entries in each inverse row are ordered by source index, with
+            /// mutual orientations preserved.
+            OrientedEntityTable<codim_to, codim_from> makeInverseRelation() const
             {
                 // Find the maximum index used. This will give (one less than) the size
                 // of the table to be created.
@@ -318,21 +322,46 @@ namespace Dune
                     row_type r = operator[](from_ent);
                     for (int j = 0; j < r.size(); ++j) {
                         EntityRep<codim_to> to_ent = r[j];
+                        if (!to_ent.isValid()) {
+                            continue;
+                        }
                         int ind = to_ent.index();
                         maxind = std::max(ind, maxind);
                     }
                 }
+                return makeInverseRelation(maxind + 1);
+            }
+
+            /// @brief Returns the inverse relation with an explicit row count.
+            /// Skips the size-inference pass and preserves trailing empty rows.
+            /// InvalidIndex entries are omitted and orientations are preserved,
+            /// as in the no-argument overload.
+            /// @param num_rows Number of destination entities.
+            /// @throws std::invalid_argument if num_rows is negative.
+            /// @throws std::out_of_range if a valid destination index is >= num_rows.
+            OrientedEntityTable<codim_to, codim_from> makeInverseRelation(int num_rows) const
+            {
+                if (num_rows < 0) {
+                    throw std::invalid_argument("Inverse relation row count must be nonnegative");
+                }
+
                 // Build the new_sizes vector and compute datacount.
-                std::vector<int> new_sizes(maxind + 1);
+                std::vector<int> new_sizes(num_rows);
                 int datacount = 0;
                 for (int i = 0; i < size(); ++i) {
                     EntityRep<codim_from> from_ent(i, true);
                     row_type r = operator[](from_ent);
-                    datacount += r.size();
                     for (int j = 0; j < r.size(); ++j) {
                         EntityRep<codim_to> to_ent = r[j];
+                        if (!to_ent.isValid()) {
+                            continue;
+                        }
                         int ind = to_ent.index();
+                        if (ind >= num_rows) {
+                            throw std::out_of_range("Inverse relation destination index exceeds row count");
+                        }
                         ++new_sizes[ind];
+                        ++datacount;
                     }
                 }
                 // Compute the cumulative sizes.
@@ -348,16 +377,19 @@ namespace Dune
                     row_type r = operator[](from_ent);
                     for (int j = 0; j < r.size(); ++j) {
                         EntityRep<codim_to> to_ent(r[j]);
+                        if (!to_ent.isValid()) {
+                            continue;
+                        }
                         int ind = to_ent.index();
                         int data_ind = cumul_sizes[ind];
                         new_data[data_ind] = to_ent.orientation() ? from_ent : from_ent.opposite();
                         ++cumul_sizes[ind];
                     }
                 }
-                inv = OrientedEntityTable<codim_to, codim_from>(new_data.begin(),
-                                                                new_data.end(),
-                                                                new_sizes.begin(),
-                                                                new_sizes.end());
+                return OrientedEntityTable<codim_to, codim_from>(new_data.begin(),
+                                                               new_data.end(),
+                                                               new_sizes.begin(),
+                                                               new_sizes.end());
             }
 
         private:
