@@ -410,8 +410,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
     check_refined_grid(parent_geometry, geometries.template geomVector<0>(),
                        geometries.template geomVector<1>(),
                        geometries.template geomVector<3>(), cells);
-    cpgrid::OrientedEntityTable<1,0> face_to_cell_computed;
-    cell_to_face.makeInverseRelation(face_to_cell_computed);
+    const auto face_to_cell_computed = cell_to_face.makeInverseRelation();
     BOOST_CHECK(face_to_cell_computed == face_to_cell);
 
     if (is_simple)

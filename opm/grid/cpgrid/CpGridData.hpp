@@ -766,7 +766,7 @@ private:
      *
      * All faces have two neighbours except for those at the domain boundary.
      * @warn  Note that along the front partition there are invalid neighbours
-     * marked with index std::numeric_limits<int>::max()
+     * marked with index cpgrid::EntityRep<0>::InvalidIndex
      */
     cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
     /** @brief Container for the lookup of the points for each face. */

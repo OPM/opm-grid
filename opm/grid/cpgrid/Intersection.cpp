@@ -103,10 +103,10 @@ void Intersection::update()
                 // Wether there is no nother nbcell for this intersection
                 // i.e. either this on the boundary or a front intersection
                 bool has_no_nbcell = is_on_boundary_ ||
-                    cells_of_face[0].index()==std::numeric_limits<int>::max() ||
-                    cells_of_face[1].index()==std::numeric_limits<int>::max();
+                    !cells_of_face[0].isValid() ||
+                    !cells_of_face[1].isValid();
                 if (has_no_nbcell) {
-                    nbcell_ = std::numeric_limits<int>::max(); // neighbor is not within this process
+                    nbcell_ = EntityRep<0>::InvalidIndex; // neighbor is not within this process
                 } else {
                     assert(cells_of_face.size() == 2);
                     if (cells_of_face[0].index() == index_) {
