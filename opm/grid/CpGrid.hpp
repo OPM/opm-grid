@@ -57,6 +57,7 @@
 
 #include <opm/grid/utility/OpmWellType.hpp>
 
+#include <cstdint>
 #include <set>
 
 namespace Opm
@@ -369,6 +370,10 @@ namespace Dune
         /// from whence the current CpGrid was constructed.
         const std::vector<int>& globalCell() const;
 
+        /// Rank- and partition-independent cell id of the current view; unlike globalCell(),
+        /// refined siblings get distinct ids.
+        std::vector<std::int64_t> stableCellId() const;
+
         /// @brief Returns either data_ or distributed_data_(if non empty).
         const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData() const;
 
@@ -503,9 +508,9 @@ namespace Dune
                                    const std::vector<std::string>& lgr_name_vec,
                                    const std::vector<std::string>& lgr_parent_grid_name_vec = std::vector<std::string>{});
 
-        /// @brief The same refinement given as block requests. Under the Conforming backend the
-        ///        requests may also be graded, carry a block MINPV, or take pillars from the box layer.
-        void addLgrsUpdateLeafView(std::vector<Opm::Refinement::BlockRefinement> requests);
+        /// @brief The same refinement given as block requests. Under the Conforming backend a
+        ///        request may also be graded or carry a block MINPV.
+        void addLgrsUpdateLeafView(const std::vector<Opm::Refinement::BlockRefinement>& requests);
 
         /// @brief Choose the refinement algorithm; only before the grid is refined.
         void setLgrBackend(Opm::Refinement::Backend backend);
@@ -513,6 +518,12 @@ namespace Dune
         Opm::Refinement::Backend lgrBackend() const
         {
             return lgr_backend_;
+        }
+
+        /// True once the grid has been scattered by loadBalance().
+        bool isDistributed() const
+        {
+            return !distributed_data_.empty();
         }
 
         /// @brief The builder the Conforming backend refines with.
@@ -1149,6 +1160,13 @@ namespace Dune
 
         /// \brief Get the collective communication object.
         const typename CpGridTraits::Communication& comm () const;
+
+        /// \brief Get the collective communication object of level zero.
+        ///
+        /// comm() returns the one of the last grid in currentData(), which is the
+        /// leaf grid once the grid is refined, and the newest level grid while
+        /// a refinement adds them. Level zero's does not change.
+        const typename CpGridTraits::Communication& getLevelZeroComm() const;
         //@}
 
         // ------------ End of Dune interface, start of simplified interface --------------
