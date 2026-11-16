@@ -26,6 +26,16 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <opm/grid/CpGrid.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+
+#include <array>
+#include <limits>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
 namespace Dune
 {
 namespace cpgrid
@@ -142,6 +152,229 @@ void CpGridData::computeUniqueBoundaryIds()
     std::cout << "computeUniqueBoundaryIds() gave all boundary intersections\n"
               << "unique boundaryId()s ranging from 1 to " << count << std::endl;
 #endif
+}
+
+namespace
+{
+
+/// Append the rows of an oriented entity table to another, adding \p offset
+/// to the index of every entity referred to. Orientations are kept.
+template <int codim_from, int codim_to>
+void appendOffsetRows(OrientedEntityTable<codim_from, codim_to>& dst,
+                      const OrientedEntityTable<codim_from, codim_to>& src,
+                      const int offset)
+{
+    std::vector<EntityRep<codim_to>> row;
+    for (int i = 0; i < src.size(); ++i) {
+        const auto src_row = src[EntityRep<codim_from>(i, true)];
+        row.clear();
+        row.reserve(src_row.size());
+        for (int j = 0; j < src_row.size(); ++j) {
+            const auto entity = src_row[j];
+            row.emplace_back(entity.index() + offset, entity.orientation());
+        }
+        dst.appendRow(row.begin(), row.end());
+    }
+}
+
+/// Append the entries of an entity variable to another.
+template <class Variable>
+void appendEntries(Variable& dst, const Variable& src)
+{
+    dst.reserve(dst.size() + src.size());
+    for (const auto& entry : src) {
+        dst.push_back(entry);
+    }
+}
+
+} // anonymous namespace
+
+void CpGridData::appendDisjointGrid(const CpGridData& other)
+{
+    // Check everything before modifying anything, so that a failure
+    // leaves the grid as it was.
+    if ((levels_.level_data_ptr != nullptr && levels_.level_data_ptr->size() > 1) ||
+        (other.levels_.level_data_ptr != nullptr && other.levels_.level_data_ptr->size() > 1)) {
+        OPM_THROW(std::invalid_argument,
+                  "Cannot append grids with local grid refinement.");
+    }
+    if ((logical_cartesian_size_[0] != other.logical_cartesian_size_[0]) ||
+        (logical_cartesian_size_[1] != other.logical_cartesian_size_[1])) {
+        OPM_THROW(std::invalid_argument,
+                  "Cannot append grids with different logical NX and NY: ("
+                  + std::to_string(logical_cartesian_size_[0]) + ", "
+                  + std::to_string(logical_cartesian_size_[1]) + ") vs ("
+                  + std::to_string(other.logical_cartesian_size_[0]) + ", "
+                  + std::to_string(other.logical_cartesian_size_[1]) + ").");
+    }
+    if (&other == this) {
+        OPM_THROW(std::invalid_argument, "Cannot append a grid to itself.");
+    }
+
+    const int num_cells = cell_to_face_.size();
+    const int num_faces = face_to_cell_.size();
+    const int num_points = geomVector<3>().size();
+
+    // The Cartesian index of a cell of the appended grid is shifted by the
+    // number of cells in the logical Cartesian grid of this one (not by the
+    // number of active cells), such that cell (i,j,k) becomes (i,j,k+NZ).
+    const std::size_t cartesian_offset = static_cast<std::size_t>(logical_cartesian_size_[0])
+        * logical_cartesian_size_[1] * logical_cartesian_size_[2];
+    if (cartesian_offset + static_cast<std::size_t>(other.logical_cartesian_size_[0])
+        * other.logical_cartesian_size_[1] * other.logical_cartesian_size_[2]
+        > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        OPM_THROW(std::invalid_argument,
+                  "The extended logical Cartesian grid is too large to be indexed.");
+    }
+
+    // Topology.
+    appendOffsetRows(cell_to_face_, other.cell_to_face_, num_faces);
+    appendOffsetRows(face_to_cell_, other.face_to_cell_, num_cells);
+
+    std::vector<int> point_row;
+    for (const auto& src_row : other.face_to_point_) {
+        point_row.assign(src_row.begin(), src_row.end());
+        for (auto& p : point_row) {
+            p += num_points;
+        }
+        face_to_point_.appendRow(point_row.begin(), point_row.end());
+    }
+
+    cell_to_point_.reserve(cell_to_point_.size() + other.cell_to_point_.size());
+    for (auto corners : other.cell_to_point_) {
+        for (auto& p : corners) {
+            p += num_points;
+        }
+        cell_to_point_.push_back(corners);
+    }
+
+    global_cell_.reserve(global_cell_.size() + other.global_cell_.size());
+    for (const int g : other.global_cell_) {
+        global_cell_.push_back(g + static_cast<int>(cartesian_offset));
+    }
+
+    logical_cartesian_size_[2] += other.logical_cartesian_size_[2];
+
+    face_tag_.reserve(face_tag_.size() + other.face_tag_.size());
+    for (const auto tag : other.face_tag_) {
+        face_tag_.push_back(tag);
+    }
+
+    for (const int cell : other.aquifer_cells_) {
+        aquifer_cells_.push_back(cell + num_cells);
+    }
+
+    // Retain the internalized zcorn only if both parts have it. The ZCORN
+    // layout is such that the values of the second grid directly follow
+    // those of the first on the extended Cartesian grid.
+    if (!zcorn.empty() && !other.zcorn.empty()) {
+        zcorn.insert(zcorn.end(), other.zcorn.begin(), other.zcorn.end());
+    }
+    else {
+        zcorn.clear();
+    }
+
+    // Geometry. Faces and points hold only values and are copied as they are.
+    // Cells refer to their corners by pointer into cell_to_point_, which has
+    // just been reallocated, so all the cell geometries are recreated.
+    appendEntries(face_normals_, other.face_normals_);
+    appendEntries(geometry_.geomVector(std::integral_constant<int, 1>()),
+                  other.geometry_.geomVector(std::integral_constant<int, 1>()));
+    appendEntries(geometry_.geomVector(std::integral_constant<int, 3>()),
+                  other.geometry_.geomVector(std::integral_constant<int, 3>()));
+
+    EntityVariable<Geometry<3, 3>, 0> cell_geometry;
+    cell_geometry.reserve(cell_to_point_.size());
+    const auto point_geometry = geometry_.pointGeometryPtr();
+    const auto add_cell_geometry = [&](const auto& source_cells, const int count, const int first)
+    {
+        for (int c = 0; c < count; ++c) {
+            const auto& geom = source_cells[EntityRep<0>(c, true)];
+            cell_geometry.push_back(Geometry<3, 3>(geom.center(), geom.volume(), point_geometry,
+                                                   cell_to_point_[first + c].data()));
+        }
+    };
+    add_cell_geometry(geometry_.geomVector(std::integral_constant<int, 0>()), num_cells, 0);
+    add_cell_geometry(other.geometry_.geomVector(std::integral_constant<int, 0>()),
+                      static_cast<int>(other.cell_to_face_.size()), num_cells);
+    geometry_.geomVector(std::integral_constant<int, 0>()) = std::move(cell_geometry);
+
+    computeUniqueBoundaryIds();
+    index_set_ = std::make_unique<IndexSet>(cell_to_face_.size(), geomVector<3>().size());
+
+#if HAVE_MPI
+    // The index set of the cells of the global grid has to hold all the cells, as
+    // the interfaces used to distribute the grid are made from it.
+    cellIndexSet() = ParallelIndexSet();
+    populateGlobalCellIndexSet();
+#endif
+}
+
+void CpGridData::appendNncFaces(const std::vector<std::pair<int, int>>& cell_pairs)
+{
+    if (cell_pairs.empty()) {
+        return;
+    }
+
+    const int num_cells = cell_to_face_.size();
+    for (const auto& [c1, c2] : cell_pairs) {
+        if (c1 < 0 || c2 < 0 || c1 >= num_cells || c2 >= num_cells || c1 == c2) {
+            OPM_THROW(std::invalid_argument,
+                      "Invalid NNC between cells " + std::to_string(c1) + " and "
+                      + std::to_string(c2) + " in a grid with " + std::to_string(num_cells)
+                      + " cells.");
+        }
+    }
+
+    // New face-to-cell table: the NNC faces, then the existing faces. The
+    // cell-to-face table is then the inverse relation, as when processing
+    // the Eclipse format, and lists the faces of each cell in increasing order.
+    OrientedEntityTable<1, 0> face_to_cell;
+    EntityRep<0> cells[2];
+    for (const auto& [c1, c2] : cell_pairs) {
+        cells[0].setValue(c1, true);
+        cells[1].setValue(c2, false);
+        if (cells[1] < cells[0]) {
+            std::swap(cells[0], cells[1]);
+        }
+        face_to_cell.appendRow(cells, cells + 2);
+    }
+    appendOffsetRows(face_to_cell, face_to_cell_, 0);
+
+    OrientedEntityTable<0, 1> cell_to_face;
+    face_to_cell.makeInverseRelation(cell_to_face);
+
+    // The NNC faces have no points.
+    Opm::SparseTable<int> face_to_point;
+    const std::vector<int> no_points;
+    for (std::size_t i = 0; i < cell_pairs.size(); ++i) {
+        face_to_point.appendRow(no_points.begin(), no_points.end());
+    }
+    for (const auto& row : face_to_point_) {
+        face_to_point.appendRow(row.begin(), row.end());
+    }
+
+    // As for NNC faces from the Eclipse format: unit area, and the normal
+    // and centroid are not defined.
+    const PointType undefined(-1e100);
+    std::vector<face_tag> tags(cell_pairs.size(), NNC_FACE);
+    tags.insert(tags.end(), face_tag_.begin(), face_tag_.end());
+
+    std::vector<PointType> normals(cell_pairs.size(), undefined);
+    normals.insert(normals.end(), face_normals_.begin(), face_normals_.end());
+
+    auto& face_geometry = geometry_.geomVector(std::integral_constant<int, 1>());
+    std::vector<Geometry<2, 3>> geometries(cell_pairs.size(), Geometry<2, 3>(undefined, 1.0));
+    geometries.insert(geometries.end(), face_geometry.begin(), face_geometry.end());
+
+    face_to_cell_ = std::move(face_to_cell);
+    cell_to_face_ = std::move(cell_to_face);
+    face_to_point_ = std::move(face_to_point);
+    face_tag_.assign(tags.begin(), tags.end());
+    face_normals_.assign(normals.begin(), normals.end());
+    face_geometry.assign(geometries.begin(), geometries.end());
+
+    computeUniqueBoundaryIds();
 }
 
 int CpGridData::size(int codim) const

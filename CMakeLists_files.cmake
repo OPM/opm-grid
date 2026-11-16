@@ -83,10 +83,13 @@ list(APPEND MAIN_SOURCE_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
+  tests/cpgrid/dual_continuum_grid_test.cpp
+  tests/cpgrid/dual_continuum_distribution_test.cpp
   tests/cpgrid/lgr_backend_switch_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/entityrep_test.cpp
+  tests/cpgrid/extend_grid_test.cpp
   tests/cpgrid/facetag_test.cpp
   tests/cpgrid/geometry_test.cpp
   tests/cpgrid/grid_nnc.cpp
