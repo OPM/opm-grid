@@ -116,6 +116,10 @@ struct ContinuumSlice
     /// Cartesian index, in the dual-continuum grid, of the first cell of this continuum.
     std::size_t cartOffset{0};
 
+    /// Whether the processes that have no grid are told that processing succeeded. Only the
+    /// last continuum does, as they wait for one message only.
+    bool broadcastSuccess{true};
+
     /// Pinch-out connections generated for this continuum (option 4 of
     /// PINCH set to ALL): first cell, second cell and transmissibility, with
     /// the cells numbered as in the dual-continuum grid.
@@ -419,6 +423,14 @@ public:
     const std::vector<int>& globalCell() const
     {
         return  global_cell_;
+    }
+
+    /// For the grid of a dual-continuum run: the number of cells of the Cartesian grid of one
+    /// continuum, the difference between the Cartesian indices of a matrix cell and its
+    /// fracture twin. Zero if the grid is not dual-continuum.
+    std::size_t continuumCartOffset() const
+    {
+        return continuum_cart_offset_;
     }
 
     /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
@@ -849,6 +861,11 @@ private:
      * by the mapping to the underlying global cartesian mesh..
      */
     std::vector<int>                  global_cell_;
+
+    /// For the grid of a dual-continuum run: the number of cells of the Cartesian grid of one
+    /// continuum. The fracture twin of the cell with Cartesian index g, in the matrix half, has
+    /// Cartesian index g + continuum_cart_offset_. Zero if the grid is not dual-continuum.
+    std::size_t                       continuum_cart_offset_{0};
     /** @brief The tag of the faces. */
     cpgrid::EntityVariable<enum face_tag, 1> face_tag_;
     /** @brief The geometries representing the grid. */

@@ -381,8 +381,22 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
         cartesian_to_compressed[grid.globalCell()[i]] = i;
     }
     well_indices_.init(*wells, possibleFutureConnections, cpgdim, cartesian_to_compressed);
-    std::vector<int>().swap(cartesian_to_compressed); // free memory.
     addCompletionSetToGraph();
+
+    // The matrix cell and the fracture twin of a dual-continuum grid are connected like
+    // the cells of a well, so that they are not separated.
+    if (const std::size_t offset = grid.currentData().front()->continuumCartOffset(); offset > 0) {
+        for (int i = 0; i < grid.numCells(); ++i) {
+            const std::size_t cartesian = grid.globalCell()[i];
+            if (cartesian < offset) {
+                if (const int twin = cartesian_to_compressed[cartesian + offset]; twin >= 0) {
+                    wellsGraph_[i].insert(twin);
+                    wellsGraph_[twin].insert(i);
+                }
+            }
+        }
+    }
+    std::vector<int>().swap(cartesian_to_compressed); // free memory.
 
     if (edgeWeightsMethod == logTransEdgeWgt)
         findMaxMinTrans();
