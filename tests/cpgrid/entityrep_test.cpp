@@ -74,6 +74,27 @@ BOOST_AUTO_TEST_CASE(entity_rep)
     BOOST_CHECK_EQUAL(sizeof e1, sizeof(int));
 }
 
+BOOST_AUTO_TEST_CASE(entity_rep_validity)
+{
+    using Cell = cpgrid::EntityRep<0>;
+    for (const bool orientation : {false, true}) {
+        const Cell valid(0, orientation);
+        BOOST_CHECK(valid.isValid());
+        BOOST_CHECK(valid.opposite().isValid());
+
+        const Cell invalid(Cell::InvalidIndex, orientation);
+        BOOST_CHECK(!invalid.isValid());
+        BOOST_CHECK(!invalid.opposite().isValid());
+        BOOST_CHECK_EQUAL(invalid.index(), Cell::InvalidIndex);
+        BOOST_CHECK_EQUAL(invalid.orientation(), orientation);
+
+        const cpgrid::EntityRep<1> face(cpgrid::EntityRep<1>::InvalidIndex, orientation);
+        const cpgrid::EntityRep<3> point(cpgrid::EntityRep<3>::InvalidIndex, orientation);
+        BOOST_CHECK(!face.isValid());
+        BOOST_CHECK(!point.isValid());
+    }
+}
+
 BOOST_AUTO_TEST_CASE(entity_variable)
 {
     // EntityVariableBase tests

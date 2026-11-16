@@ -1429,7 +1429,7 @@ void populateRefinedCells(const Dune::cpgrid::CpGridData& current_data,
             refined_cells_vec[shiftedLevel][cell] = Dune::cpgrid::Geometry<3,3>(elemLgrGeom.center(), elemLgrGeom.volume(), allLevelCorners, indices_storage_ptr);
         } // refined_cells
         // Refined face to cell.
-        refined_cell_to_face_vec[shiftedLevel].makeInverseRelation(refined_face_to_cell_vec[shiftedLevel]);
+        refined_face_to_cell_vec[shiftedLevel] = refined_cell_to_face_vec[shiftedLevel].makeInverseRelation();
     } // end-shiftedLevel-for-loop
 }
 
@@ -1726,7 +1726,7 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
     } // adapted_cells
 
     // Adapted/Leaf-grid-view face to cell.
-    adapted_cell_to_face.makeInverseRelation(adapted_face_to_cell);
+    adapted_face_to_cell = adapted_cell_to_face.makeInverseRelation();
 }
 
 void detectActiveLgrs(const Dune::CpGrid& grid,

@@ -1086,15 +1086,15 @@ int CpGrid::faceCell(int face, int local_index, int level) const
     }
 
     // In the parallel case we store non-existent cells for faces along the front region.
-    // These are marked with index std::numeric_limits<int>::max(), we will replace them
+    // These are marked with EntityRep<0>::InvalidIndex; replace them
     // with -1 for this interface's sake.
-    auto getIndexConvertMaxToNegOne = [](const cpgrid::EntityRep<0>& cell) {
-        return cell.index() == std::numeric_limits<int>::max() ? -1 : cell.index();
+    auto getLocalIndexOrMinusOne = [](const cpgrid::EntityRep<0>& cell) {
+        return cell.isValid() ? cell.index() : -1;
     };
 
     // We will use a helper array to store the ordered face->cell relation requested in
     // this interface, i.e. the face (normal) is oriented from nb[0] to nb[1].
-    std::array<int, 2> nbs{ getIndexConvertMaxToNegOne(r[0]), getIndexConvertMaxToNegOne(r[1]) };
+    std::array<int, 2> nbs{ getLocalIndexOrMinusOne(r[0]), getLocalIndexOrMinusOne(r[1]) };
 
     // The entities in r are in arbitrary order, and we must use the orientations to
     // get the correct order. If the first entity has orientation true, we are fine,

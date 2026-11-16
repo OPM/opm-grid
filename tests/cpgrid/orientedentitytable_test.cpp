@@ -103,12 +103,10 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     BOOST_CHECK(c4[0] == cpgrid::EntityRep<1>(1, true));
 
     // Testing makeInverseRelation() method.
-    cpgrid::OrientedEntityTable<1, 0> face2cell_byinv;
-    cell2face.makeInverseRelation(face2cell_byinv);
+    const auto face2cell_byinv = cell2face.makeInverseRelation();
     const cpgrid::OrientedEntityTable<1, 0> face2cell(data2, data2 + num_data2, row_sizes2, row_sizes2 + num_rows2);
     BOOST_CHECK(face2cell == face2cell_byinv);
-    cpgrid::OrientedEntityTable<0, 1> cell2face_byinv;
-    face2cell.makeInverseRelation(cell2face_byinv);
+    const auto cell2face_byinv = face2cell.makeInverseRelation();
     BOOST_CHECK(cell2face == cell2face_byinv);
 
     // Printing test
@@ -127,4 +125,74 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     std::ostringstream s2;
     face2cell.printRelationMatrix(s2);
     BOOST_CHECK(expect2 == s2.str());
+}
+
+BOOST_AUTO_TEST_CASE(inverse_relation_skips_invalid_entities)
+{
+    using Cell = cpgrid::EntityRep<0>;
+    using Face = cpgrid::EntityRep<1>;
+    const Cell data[] = {
+        Cell(Cell::InvalidIndex, false), Cell(2, true),
+        Cell(0, false), Cell(Cell::InvalidIndex, true),
+        Cell(2, false), Cell(0, true)
+    };
+    const int row_sizes[] = {2, 2, 2, 0};
+    const cpgrid::OrientedEntityTable<1, 0> faces(data, data + 6, row_sizes, row_sizes + 4);
+
+    // Inversion preserves orientations and orders incidences by face index,
+    // even when source rows have different cell ordering and remote neighbours.
+    const Face expected_data[] = {Face(1, false), Face(2, true), Face(0, true), Face(2, false)};
+    const int expected_sizes[] = {2, 0, 2};
+    const cpgrid::OrientedEntityTable<0, 1> expected(
+        expected_data, expected_data + 4, expected_sizes, expected_sizes + 3);
+    BOOST_CHECK(faces.makeInverseRelation() == expected);
+    BOOST_CHECK(faces.makeInverseRelation(3) == expected);
+
+    const int extended_sizes[] = {2, 0, 2, 0, 0};
+    const cpgrid::OrientedEntityTable<0, 1> extended(
+        expected_data, expected_data + 4, extended_sizes, extended_sizes + 5);
+    BOOST_CHECK(faces.makeInverseRelation(5) == extended);
+}
+
+BOOST_AUTO_TEST_CASE(inverse_relation_empty_and_invalid_only)
+{
+    using Cell = cpgrid::EntityRep<0>;
+    const cpgrid::OrientedEntityTable<1, 0> empty;
+    BOOST_CHECK(empty.makeInverseRelation().empty());
+    const auto empty_inverse = empty.makeInverseRelation(3);
+    BOOST_REQUIRE_EQUAL(empty_inverse.size(), 3);
+    BOOST_CHECK_EQUAL(empty_inverse.dataSize(), 0);
+    for (int cell = 0; cell < empty_inverse.size(); ++cell) {
+        BOOST_CHECK(empty_inverse[Cell(cell, true)].empty());
+    }
+
+    const Cell data[] = {Cell(Cell::InvalidIndex, true), Cell(Cell::InvalidIndex, false)};
+    const int row_sizes[] = {1, 1};
+    const cpgrid::OrientedEntityTable<1, 0> invalid_only(data, data + 2, row_sizes, row_sizes + 2);
+    BOOST_CHECK(invalid_only.makeInverseRelation().empty());
+    BOOST_CHECK(invalid_only.makeInverseRelation(0).empty());
+    BOOST_CHECK(invalid_only.makeInverseRelation(3) == empty_inverse);
+
+    // The same sentinel rule applies when the destination entities are faces.
+    using Face = cpgrid::EntityRep<1>;
+    const Face face_data[] = {Face(Face::InvalidIndex, false), Face(0, true)};
+    const int face_row_sizes[] = {2};
+    const cpgrid::OrientedEntityTable<0, 1> cells(face_data, face_data + 2, face_row_sizes, face_row_sizes + 1);
+    const auto inverse = cells.makeInverseRelation();
+    BOOST_REQUIRE_EQUAL(inverse.size(), 1);
+    const auto row = inverse[Face(0, true)];
+    BOOST_REQUIRE_EQUAL(row.size(), 1);
+    BOOST_CHECK(row[0] == Cell(0, true));
+}
+
+BOOST_AUTO_TEST_CASE(inverse_relation_validates_destination_size)
+{
+    using Cell = cpgrid::EntityRep<0>;
+    const Cell data[] = {Cell(2, true)};
+    const int row_sizes[] = {1};
+    const cpgrid::OrientedEntityTable<1, 0> faces(data, data + 1, row_sizes, row_sizes + 1);
+    BOOST_CHECK_THROW(faces.makeInverseRelation(-1), std::invalid_argument);
+    BOOST_CHECK_THROW(faces.makeInverseRelation(0), std::out_of_range);
+    BOOST_CHECK_THROW(faces.makeInverseRelation(2), std::out_of_range);
+    BOOST_CHECK_NO_THROW(faces.makeInverseRelation(3));
 }

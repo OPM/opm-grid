@@ -127,6 +127,15 @@ namespace Dune
                 return entityrep_ < 0 ? ~entityrep_ : entityrep_;
             }
 
+            /// @brief Whether this representation has a local entity index.
+            /// InvalidIndex marks absent entities, including off-rank neighbours
+            /// and entries that have not yet been populated by communication.
+            /// Validity does not depend on orientation or check grid bounds.
+            bool isValid() const
+            {
+                return index() != InvalidIndex;
+            }
+
             /// @brief The signed index that also tells us the orientation
             int signedIndex() const
             {
@@ -188,6 +197,7 @@ namespace Dune
                 return !operator==(other);
             }
 
+            /// Sentinel for an absent local entity, with either orientation.
             enum { InvalidIndex = INT_MAX };
 
         private:

@@ -62,12 +62,12 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
             PartitionType cell_part = getPartitionType(cell0);
             return cell_part;
         } else {
-            // One of the cells might have index std::numeric_limits<int>::max().
+            // One of the cells might have index EntityRep<0>::InvalidIndex.
             // That means that the neighbor is not on this process but on
             // another one. In this case the intersection is Front
             auto idx0 = cells_of_face[0].index();
             auto idx1 = cells_of_face[1].index();
-            if (idx0 == std::numeric_limits<int>::max() || idx1 == std::numeric_limits<int>::max()) {
+            if (!cells_of_face[0].isValid() || !cells_of_face[1].isValid()) {
                 // One neighbor is on another process => FrontEntity
                 return FrontEntity;
             }

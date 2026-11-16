@@ -1197,7 +1197,7 @@ namespace cpgrid
             int num_faces = f2c.size();
 
             // Build cell to face.
-            f2c.makeInverseRelation(c2f);
+            c2f = f2c.makeInverseRelation();
             int num_cells = c2f.size();
 
             // Build face to point
@@ -1244,8 +1244,7 @@ namespace cpgrid
 #ifdef VERBOSE
             std::cout << "Doing extra topology integrity check." << std::endl;
 #endif
-            cpgrid::OrientedEntityTable<1, 0> f2c_again;
-            c2f.makeInverseRelation(f2c_again);
+            const auto f2c_again = c2f.makeInverseRelation();
             assert(f2c == f2c_again);
 #endif
         }

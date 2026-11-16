@@ -132,7 +132,7 @@ namespace Dune
             /// @return
             bool neighbor() const
             {
-                return !boundary() && nbcell_!=std::numeric_limits<int>::max();
+                return !boundary() && nbcell_!=EntityRep<0>::InvalidIndex;
             }
 
             /// @brief
@@ -264,7 +264,7 @@ namespace Dune
                 if (is_on_boundary_) {
                     OPM_THROW(std::runtime_error, "There is no outside cell, intersection is at boundary.");
                 }
-                if(nbcell_==std::numeric_limits<int>::max())
+                if(nbcell_==EntityRep<0>::InvalidIndex)
                     OPM_THROW(std::runtime_error, "There is no outside cell, intersection is at processor boundary.");
                 return nbcell_;
             }

@@ -164,7 +164,7 @@ struct CountExistent
 
     void operator()(const int i)
     {
-        if(i < std::numeric_limits<int>::max())
+        if(i < EntityRep<0>::InvalidIndex)
             count++;
     }
     int count;
@@ -173,7 +173,7 @@ struct CountExistent
 struct AssignAndIncrement
 {
     AssignAndIncrement() : i_(){}
-    void operator()(int& val){ if(val<std::numeric_limits<int>::max()) val=i_++; }
+    void operator()(int& val){ if(val<EntityRep<0>::InvalidIndex) val=i_++; }
     int i_;
 } assigner;
 
@@ -714,7 +714,7 @@ struct SparseTableDataHandle
         {
             int i{};
             buffer.read(i);
-            if ( point != std::numeric_limits<int>::max() )
+            if ( point != EntityRep<3>::InvalidIndex )
             {
                 // face already processed
                 continue;
@@ -883,7 +883,7 @@ public:
         for (auto&& entry : entries)
         {
             buffer.read(i);
-            if (entry.index() != std::numeric_limits<int>::max())
+            if (entry.isValid())
             {
                 // face already processed, continue to save map lookup
                 continue;
@@ -903,7 +903,7 @@ public:
             if (candidate == global2Local_.end() || i != candidate->global())
             {
                 // mark cell as being stored elsewhere
-                i = std::numeric_limits<int>::max();
+                i = ToEntity::InvalidIndex;
             }
             else
             {
@@ -1245,12 +1245,12 @@ void computeFace2Point(const CpGrid& grid,
         wrappedSizeHandle(rowSizeHandle, globalCell2Faces, cell2Faces);
     grid.scatterData(wrappedSizeHandle);
     face2Points.allocate(rowSizes.begin(), rowSizes.end());
-    // Use entity with index INT_MAX to mark unprocessed row entries
+    // Use InvalidIndex to mark unprocessed row entries
     for (int row = 0, size = face2Points.size(); row < size; ++row)
     {
         for (auto&& point : face2Points[row])
         {
-            point = std::numeric_limits<int>::max();
+            point = EntityRep<3>::InvalidIndex;
         }
     }
     SparseTableDataHandle handle(globalFace2Points, globalIds, face2Points, global2local);
@@ -1276,12 +1276,12 @@ void computeFace2Cell(CpGrid& grid,
                                                                             globalCell2Faces, cell2Faces);
     grid.scatterData(wrappedSizeHandle);
     face2Cells.allocate(rowSizes.begin(), rowSizes.end());
-    // Use entity with index INT_MAX to mark unprocessed row entries
+    // Use InvalidIndex to mark unprocessed row entries
     for (int row = 0, size = face2Cells.size(); row < size; ++row)
     {
         for (auto&& face : face2Cells.row(EntityRep<1>(row, true)))
         {
-            face = EntityRep<0>(std::numeric_limits<int>::max(), true);
+            face = EntityRep<0>(EntityRep<0>::InvalidIndex, true);
         }
     }
     IndexSet2IdSet<IndexSet> local2Global(globalIndexSet);
@@ -1295,7 +1295,7 @@ void computeFace2Cell(CpGrid& grid,
         bool oneValid = false;
         for (auto&& face : face2Cells.row(EntityRep<1>(row, true)))
         {
-            oneValid = oneValid || face.index() != std::numeric_limits<int>::max();
+            oneValid = oneValid || face.isValid();
         }
         assert(oneValid);
     }
@@ -1502,7 +1502,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     // We can identify existing cells with the help of the index set.
     // Now we need to compute the existing faces and points. Either exist
     // if they are reachable from an existing cell.
-    // We use std::numeric_limits<int>::max() to indicate non-existent entities.
+    // EntityRep::InvalidIndex indicates non-existent local entities.
     std::vector<int> map2GlobalFaceId;
     std::vector<int> map2GlobalPointId;
     std::map<int,int> point_indicator =
