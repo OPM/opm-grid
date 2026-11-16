@@ -36,11 +36,15 @@
 #ifndef OPM_ORIENTEDENTITYTABLE_HEADER
 #define OPM_ORIENTEDENTITYTABLE_HEADER
 
-#include "EntityRep.hpp"
+#include <opm/grid/cpgrid/EntityRep.hpp>
+#include <opm/common/ErrorMacros.hpp>
 #include <opm/common/utility/SparseTable.hpp>
-#include <map>
+#include <algorithm>
 #include <climits>
+#include <map>
+#include <numeric>
 #include <stdexcept>
+#include <vector>
 
 /// The namespace Dune is the main namespace for all Dune code.
 namespace Dune
@@ -342,7 +346,7 @@ namespace Dune
             OrientedEntityTable<codim_to, codim_from> makeInverseRelation(int num_rows) const
             {
                 if (num_rows < 0) {
-                    throw std::invalid_argument("Inverse relation row count must be nonnegative");
+                    OPM_THROW(std::invalid_argument, "Inverse relation row count must be nonnegative");
                 }
 
                 // Build the new_sizes vector and compute datacount.
@@ -358,7 +362,7 @@ namespace Dune
                         }
                         int ind = to_ent.index();
                         if (ind >= num_rows) {
-                            throw std::out_of_range("Inverse relation destination index exceeds row count");
+                            OPM_THROW(std::out_of_range, "Inverse relation destination index exceeds row count");
                         }
                         ++new_sizes[ind];
                         ++datacount;
