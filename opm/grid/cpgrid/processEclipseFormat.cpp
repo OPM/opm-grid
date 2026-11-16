@@ -350,6 +350,37 @@ namespace cpgrid
                 // transmissibilities are added.
                 nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
             }
+            // OLDTRAN: grids given by DX, DY, DZ and TOPS have their cells connected to the
+            // neighbours in the same layer, also when the cells are stepped and do not
+            // overlap, or overlap other layers. The connections the cells have as faces in
+            // the grid are not changed here (NNCs that are faces are filtered out when the
+            // topology is built), the transmissibilities are calculated from the cell sizes
+            // for these connections.
+            if (ecl_grid.useOldTran()) {
+                const std::size_t nx = g.dims[0];
+                const std::size_t ny = g.dims[1];
+                const std::size_t nz = g.dims[2];
+                const auto active = [&actnumData](std::size_t cell) {
+                    return actnumData.empty() || actnumData[cell] != 0;
+                };
+                for (std::size_t k = 0; k < nz; ++k) {
+                    for (std::size_t j = 0; j < ny; ++j) {
+                        for (std::size_t i = 0; i < nx; ++i) {
+                            const std::size_t cell = i + j*nx + k*nx*ny;
+                            if (!active(cell)) {
+                                continue;
+                            }
+                            if (i + 1 < nx && active(cell + 1)) {
+                                nnc_cells[ExplicitNNC].insert({static_cast<int>(cell), static_cast<int>(cell + 1)});
+                            }
+                            if (j + 1 < ny && active(cell + nx)) {
+                                nnc_cells[ExplicitNNC].insert({static_cast<int>(cell), static_cast<int>(cell + nx)});
+                            }
+                        }
+                    }
+                }
+            }
+
             // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
             ecl_state->setPinchNNC(std::move(pinchedNNCs));
             ecl_state->prune_global_for_schedule_run();
