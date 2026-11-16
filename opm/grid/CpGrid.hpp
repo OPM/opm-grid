@@ -369,8 +369,9 @@ namespace Dune
         /// logical size N, cell g of the first and cell g+N of the second
         /// grid are the same logical cell of the two continua.
         ///
-        /// Both grids must be on a single process, hence call this before load
-        /// balancing, and must not have local grid refinement. They must have the same
+        /// Both grids must be the global grids, hence call this before load
+        /// balancing, and must not have local grid refinement. In a parallel
+        /// run only the process that holds the global grid calls this. They must have the same
         /// logical NX and NY. On failure the grid is unchanged and an
         /// exception is thrown.
         ///
@@ -391,7 +392,8 @@ namespace Dune
         /// as are duplicates and connections between cells that already share
         /// a face.
         ///
-        /// The grid must be serial, without local grid refinement. The face
+        /// The grid must be the global grid, before load balancing, without
+        /// local grid refinement. The face
         /// numbers of the existing faces increase by the number of added faces.
         ///
         /// \param[in] nnc Pairs of Cartesian indices of the logical grid, as

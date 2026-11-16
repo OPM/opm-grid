@@ -85,7 +85,7 @@ list(APPEND MAIN_SOURCE_FILES
 list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/dual_continuum_grid_test.cpp
-  tests/cpgrid/dual_continuum_refusal_test.cpp
+  tests/cpgrid/dual_continuum_distribution_test.cpp
   tests/cpgrid/lgr_backend_switch_test.cpp
   tests/cpgrid/eclCentroid_test.cpp
   tests/cpgrid/entity_test.cpp
