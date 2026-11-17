@@ -45,7 +45,7 @@ CpGridData::CpGridData(const CpGridData& g)
 #endif
 }
 
-CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
+CpGridData::CpGridData(const std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
@@ -59,7 +59,7 @@ CpGridData::CpGridData(std::vector<std::shared_ptr<CpGridData>>& data)
     levels_.level_data_ptr = &data;
 }
 
-CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data)
+CpGridData::CpGridData(MPIHelper::MPICommunicator comm,  const std::vector<std::shared_ptr<CpGridData>>& data)
     : index_set_(new IndexSet()), local_id_set_(new IdSet(*this)),
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)
@@ -1550,6 +1550,15 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     // communicate global cell
     DefaultContainerHandle<std::vector<int> > indexHandle(view_data.global_cell_, global_cell_);
     grid.scatterData(indexHandle);
+
+    // A distributed refined leaf is flat; idxInParent still tells refined siblings apart.
+    if (grid.lgrBackend() == Opm::Refinement::Backend::Conforming
+        && ccobj_.max(view_data.levels_.cell_to_idxInParentCell.empty() ? 0 : 1)) {
+        levels_.cell_to_idxInParentCell.assign(cell_indexset.size(), -1);
+        DefaultContainerHandle<std::vector<int>>
+            idxInParentHandle(view_data.levels_.cell_to_idxInParentCell, levels_.cell_to_idxInParentCell);
+        grid.scatterData(idxInParentHandle);
+    }
 
     // Scatter face tags, normals, and boundary ids.
     auto noBids = view_data.unique_boundary_ids_.size();

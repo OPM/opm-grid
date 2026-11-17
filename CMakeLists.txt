@@ -79,8 +79,10 @@ macro(opm-grid_tests_hook)
       addLgrsOnDistributedGrid_test
       autoRefine_test
       communicate_distributed_grid_with_lgrs_test
+      conforming_before_load_balancing_test
       distribute_level_zero_from_grid_with_lgrs_and_wells_test
       distribute_level_zero_from_grid_with_lgrs_test
+      distributed_builder_test
       distribution_test
       grid_global_id_set_test
       id_entity_entityrep_test
@@ -88,6 +90,8 @@ macro(opm-grid_tests_hook)
       lgr_cell_id_sync_test
       logicalCartesianSize_and_refinement_test
       mapLevelIndicesToCartesianOutputOrder_test
+      partition_cell_groups_test
+      refined_distribution_test
       test_communication_utils
     )
 
