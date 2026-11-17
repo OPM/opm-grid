@@ -1,5 +1,5 @@
 /*
-  Copyright 2026 SINTEF Digital.
+  Copyright 2026 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -21,6 +21,7 @@
 
 #include <array>
 #include <cstddef>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -67,13 +68,13 @@ struct BlockRefinement
     /// simulation grid and the LGR grids written to the EGRID agree on which
     /// refined cells exist.
     std::vector<int> minpvRemoved{};
-    /// Where a refined pillar's line comes from. False (the default): the
-    /// parent column's first non-collapsed layer, so boxes stacked in one column
-    /// share their refined pillars. True: the box's own first layer, as the
-    /// deck's LGRPILLR asks for; on sheared pillars, boxes stacked in one column
-    /// then do not share them. On vertical or parallel pillars both give the
-    /// same lines.
-    bool pillarsFromBoxLayer{false};
+};
+
+/// A block of cells of a grid: startIJK <= (i,j,k) < endIJK, as in a BlockRefinement.
+struct CellRange
+{
+    std::array<int,3> startIJK{};
+    std::array<int,3> endIJK{};
 };
 
 /// The request's subdivision in one direction, uniform tables filled in when
@@ -83,6 +84,10 @@ AxisSubdivision axisSubdivision(const BlockRefinement& request, int dim);
 /// Refined dimensions of the block: the subdivision sizes, which for a uniform
 /// request are box size times cellsPerDim.
 std::array<int,3> refinedDims(const BlockRefinement& request);
+
+/// Whether the parent cell with Cartesian index triplet @p ijk lies in the box:
+/// startIJK <= ijk < endIJK in every direction.
+bool contains(const BlockRefinement& request, const std::array<int,3>& ijk);
 
 /// Where each refined column sits inside its parent cell, in one direction.
 /// For example, a box of two parent cells split into 2 and 3 columns:
@@ -114,9 +119,14 @@ blockRefinements(const std::vector<std::array<int,3>>& cellsPerDim,
 
 /// Validate a set of block requests: matching sizes are the caller's
 /// responsibility; this checks per-box consistency (start < end, positive
-/// subdivisions) and pairwise disjointness of boxes sharing a parent grid.
+/// subdivisions, graded columns that cover each parent cell from 0 to 1 in
+/// order, a MINPV mask with one entry per refined cell or none), pairwise
+/// disjointness of boxes sharing a parent grid, and
+/// that each box's parent grid exists already (a name in @p nameToLevel, the
+/// grid's CpGrid::getLgrNameToLevel()) or comes earlier in @p requests.
 /// Throws std::invalid_argument with a message naming the offending box(es).
-void validateBlockRefinements(const std::vector<BlockRefinement>& requests);
+void validateBlockRefinements(const std::vector<BlockRefinement>& requests,
+                              const std::map<std::string,int>& nameToLevel);
 
 } // namespace Refinement
 } // namespace Opm
