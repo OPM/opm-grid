@@ -28,7 +28,10 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/grid/CpGrid.hpp>
 
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
+
 #include <array>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -193,4 +196,35 @@ BOOST_AUTO_TEST_CASE(leafGlobalIdCellAndGridGlobalIdsCoincideWithDistributedLeve
             BOOST_CHECK_EQUAL( gridGlobalIdSet.id(element), leafGlobalIdSet.id(element));
         }
     }
+}
+
+// A distributed conforming leaf must give distinct cells and vertices distinct
+// global IDs, including across codimensions. Check that public API contract on
+// each rank after refining a rank-interior box, without assuming ID ranges.
+BOOST_AUTO_TEST_CASE(distributedConformingCellAndVertexIdsAreDistinct)
+{
+#if HAVE_MPI
+    using namespace Opm::ConformingTest;
+    Dune::CpGrid grid;
+    if (grid.comm().size() < 2) {
+        return; // Sequential grids compute IDs rather than using distributed mappings.
+    }
+    const std::array<int, 3> dims = {6 * grid.comm().size(), 3, 2};
+    const auto g = makeGrid(dims, flat);
+    grid.createCartesian(dims, {1.0, 1.0, 2.0});
+    std::vector<int> parts(dims[0] * dims[1] * dims[2]);
+    for (int cell = 0; cell < static_cast<int>(parts.size()); ++cell) {
+        parts[cell] = (cell % dims[0]) / 6;
+    }
+    grid.loadBalance(parts);
+    refine(grid, g, {box("LGR1", {2, 2, 2}, {2, 1, 0}, {3, 2, 1})});
+
+    std::set<Dune::CpGrid::GlobalIdSet::IdType> ids;
+    for (const auto& cell : Dune::elements(grid.leafGridView())) {
+        BOOST_CHECK(ids.insert(grid.globalIdSet().id(cell)).second);
+    }
+    for (const auto& vertex : Dune::vertices(grid.leafGridView())) {
+        BOOST_CHECK(ids.insert(grid.globalIdSet().id(vertex)).second);
+    }
+#endif
 }
