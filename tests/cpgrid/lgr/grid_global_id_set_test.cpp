@@ -100,6 +100,24 @@ SCHEDULE
     return grid;
 }
 
+// An empty MPI rank can have empty mappings. Looking for their maximum must
+// not dereference an end iterator; return zero, as the sequential path does,
+// so the rank can still participate in a communicator-wide maximum.
+BOOST_AUTO_TEST_CASE(maximumHandlesEmptyMappings)
+{
+    Dune::cpgrid::LevelGlobalIdSet ids;
+    BOOST_CHECK_EQUAL(ids.getMaxCodimGlobalId<0>(), 0);
+    BOOST_CHECK_EQUAL(ids.getMaxCodimGlobalId<1>(), 0);
+    BOOST_CHECK_EQUAL(ids.getMaxCodimGlobalId<3>(), 0);
+    BOOST_CHECK_EQUAL(ids.getMaxGlobalId(), 0);
+
+    // A missing point mapping must not hide the maximum of a nonempty cell mapping.
+    std::vector<int> cells = {7};
+    std::vector<int> faces;
+    std::vector<int> points;
+    ids.swap(cells, faces, points);
+    BOOST_CHECK_EQUAL(ids.getMaxGlobalId(), 7);
+}
 
 BOOST_AUTO_TEST_CASE(allLevelCellsHaveIdOnGridGlobalIdSet)
 {

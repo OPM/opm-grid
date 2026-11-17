@@ -467,6 +467,9 @@ namespace Dune
                 else  {
                     // This a parallel grid and we need to use the mapping
                     // build from the ids of the sequential grid
+                    if (this->template getMapping<codim>().empty()) {
+                        return 0;
+                    }
                     const auto max_elem_codim =
                         std::ranges::max_element(this->template getMapping<codim>());
                     return *max_elem_codim;
