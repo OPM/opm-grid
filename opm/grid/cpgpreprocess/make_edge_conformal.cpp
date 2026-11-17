@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -287,8 +288,11 @@ void fix_edges_at_top(const struct processed_grid& grid,
             dir_hfaces[hface_tag].push_back(hface);
         }
 
-        my_assert(dir_faces[4].size() == 1, "face size wrong top");
-        my_assert(dir_faces[5].size() == 1, "face size wrong bottom");
+        if (dir_faces[4].size() != 1 || dir_faces[5].size() != 1) {
+            throw std::runtime_error("cell " + std::to_string(cell) + " has "
+                                     + std::to_string(dir_faces[4].size()) + " top and "
+                                     + std::to_string(dir_faces[5].size()) + " bottom faces");
+        }
 
         for (int dir = 0; dir < 4; ++dir) {
             if (dir_faces[dir].size() <= 1) {
@@ -321,14 +325,19 @@ void fix_edges_at_top(const struct processed_grid& grid,
                 const auto bfnodes = face_nodes[bface]; //bd
 
                 {
+                    const auto edgeAt = [&org_bfnodes](const int o) {
+                        return std::array<int,2>{org_bfnodes[(o + 3) % 4], org_bfnodes[o]};
+                    };
+                    const auto onSide = [&sedge](const std::array<int,2>& e) {
+                        return std::ranges::find(sedge, e[0]) != sedge.end()
+                            && std::ranges::find(sedge, e[1]) != sedge.end();
+                    };
+                    // process_grdecl reverses face nodes on left-handed grids, which swaps the J sides.
                     const std::array<int,4> odir {0, 2, 1, 3};
-                    if (odir[dir] == 0) {
-                        bedge[0] = org_bfnodes[3];
-                        bedge[1] = org_bfnodes[0];
-                    }
-                    else {
-                        bedge[0] = org_bfnodes[odir[dir] - 1];
-                        bedge[1] = org_bfnodes[odir[dir] + 0];
+                    const std::array<int,4> odirLeft {0, 2, 3, 1};
+                    bedge = edgeAt(odir[dir]);
+                    if (!onSide(bedge)) {
+                        bedge = edgeAt(odirLeft[dir]);
                     }
                 }
 
@@ -372,6 +381,7 @@ int make_edge_conformal(struct processed_grid* grid)
         std::copy_n(faceNodes.begin(), grid->face_node_ptr[grid->number_of_faces], grid->face_nodes);
     }
     catch (const std::exception& e) {
+        std::cerr << "make_edge_conformal: " << e.what() << '\n';
         return 0;
     }
 
