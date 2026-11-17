@@ -109,7 +109,7 @@ namespace Dune
     /** \brief obtain the partition type of this entity */
     PartitionType partitionType () const
     {
-      return InteriorEntity; // data()->partitionType( *this );
+      return data()->template entityPartitionType< codimension >( seed_.index() );
     }
 
     /** obtain the geometry of this entity */
