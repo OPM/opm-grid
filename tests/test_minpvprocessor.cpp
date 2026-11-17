@@ -287,12 +287,13 @@ BOOST_AUTO_TEST_CASE(Pinch)
          3.5, 3.5, 3.5, 3.5,
          6, 6, 6, 6
         };
-    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
+    // The expected value here is changed due to the new rule to measure the gap.
+    // Now the NOGAP case is calculated by stacking the cell that minpv < 1.1
+    // (not per cell) and take the largest gap among 4 pillars.
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0u);
     BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
     auto exp =  std::vector<std::size_t>{1, 2};
     BOOST_CHECK(minpv_result.removed_cells == exp);
-    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1u);
-    BOOST_CHECK_EQUAL(minpv_result.nnc[0], 3);
 }
 
 BOOST_AUTO_TEST_CASE(Processing)
