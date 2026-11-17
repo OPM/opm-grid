@@ -346,9 +346,20 @@ namespace Dune
                     }
                     else { // Leaf grid view (grid view with mixed coarse and refined cells).
                         assert( grid_.getGridIdx() == (static_cast<int>(grid_.levelData().size()) -1) );
+                        const auto& history = grid_.levels_.corner_history;
+                        if (e.index() >= static_cast<int>(history.size())) {
+                            // A corner only the leaf has (where a fault cuts a refined box's
+                            // side): ids after those of every level grid.
+                            for (int level = 0; level < grid_.getGridIdx(); ++level) {
+                                for (int c = 0; c < 4; ++c) {
+                                    myId += grid_.levelData()[level]->indexSet().size(c);
+                                }
+                            }
+                            return myId + e.index() - static_cast<int>(history.size());
+                        }
                         // In this case, we search for the ids defined in previous levels
                         // (since each entities must keep its id along the entire hiearchy)
-                        const std::array<int,2> level_levelIdx = grid_.levels_.corner_history[e.index()];
+                        const std::array<int,2> level_levelIdx = history[e.index()];
                         const auto& levelEntity =  cpgrid::Entity<3>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
                         return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
                     }

@@ -420,3 +420,126 @@ PORO
                                                                  /* indexInInsideFromLargerLevel = */ 4);
     BOOST_CHECK(parentIntersectionToPoint == expectedCornerIndices);
 }
+
+// A vertically faulted LGR boundary. This is the configuration in which
+// indexInInside() alone cannot identify the parent face, and in which the
+// leaf face sits on the box's LOW side -- both of which a matching,
+// unfaulted box boundary hides.
+//
+//        i=0 (coarse)      i=1 (refined, LGR1)
+//   z=0  +-----------+
+//        |  (0,0,0)  |- - - +-----------+  z=1
+//   z=2  +-----------+      |  (1,0,0)  |
+//        |  (0,0,1)  |      |           |
+//   z=4  +-----------+ - - -+-----------+  z=3
+//        |    ...    |      |    ...    |
+//
+// Each coarse cell overlaps two cells of the refined column, so the coarse
+// cell has two level-0 I+ faces -- and each carries indexInInside() == 1.
+BOOST_AUTO_TEST_CASE(parentIntersectionFaultedLowSideBoundary)
+{
+    // Columns offset by half a cell: column i=0 spans z 0..8, column i=1
+    // spans z 1..9. TOPS is per cell, i fastest.
+    const std::string deck_string =
+        R"(
+RUNSPEC
+DIMENS
+  2 1 4 /
+GRID
+CARFIN
+'LGR1' 2 2 1 1 1 4 2 2 8 /
+ENDFIN
+DX
+  8*8 /
+DY
+  8*4 /
+DZ
+  8*2 /
+TOPS
+  0 1  2 3  4 5  6 7 /
+PORO
+  8*0.15 /
+)";
+
+    // Only the Conforming backend refines across a fault.
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
+    Opm::createGridAndAddLgrs(grid, deck_string,
+                              /* cells_per_dim_vec = */ {{2,2,2}},
+                              /* startIJK_vec = */      {{1,0,0}},
+                              /* endIJK_vec = */        {{2,1,4}},
+                              /* lgr_name_vec = */      {"LGR1"});
+
+    const auto& level0 = grid.levelGridView(0);
+    int coarseToRefined = 0;
+    int ambiguousSides = 0;
+    int sideOnlySearchWouldMiss = 0;
+
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        for (const auto& intersection : Dune::intersections(grid.leafGridView(), element)) {
+            if (!intersection.neighbor() ||
+                (intersection.inside().level() == intersection.outside().level()))
+            {
+                continue;
+            }
+            ++coarseToRefined;
+
+            const bool insideIsCoarse = intersection.inside().level() == 0;
+
+            // The refined column is at i=1, so the coarse cell sees the
+            // interface on its I+ side and the refined cell on its I- side.
+            // Getting this backwards is what a normal pointing down-axis does.
+            BOOST_CHECK_EQUAL(intersection.indexInInside(), insideIsCoarse ? 1 : 0);
+            BOOST_CHECK_EQUAL(intersection.indexInOutside(), insideIsCoarse ? 0 : 1);
+
+            const auto& parentIntersection =
+                grid.getParentIntersectionFromLgrBoundaryFace(intersection);
+
+            // The parent face must be the level-0 face between the two cells'
+            // level-0 ancestors, not merely some face on the same side.
+            BOOST_CHECK(parentIntersection.neighbor());
+            BOOST_CHECK_EQUAL(parentIntersection.inside().index(),
+                              intersection.inside().getOrigin().index());
+            BOOST_CHECK_EQUAL(parentIntersection.outside().index(),
+                              intersection.outside().getOrigin().index());
+            BOOST_CHECK_EQUAL(parentIntersection.indexInInside(),
+                              intersection.indexInInside());
+
+            // Matching on the side alone is genuinely ambiguous here, so the
+            // cell-pair criterion above is doing real work: count the level-0
+            // faces of this ancestor that share the leaf face's side, and note
+            // whether the first of them - what a side-only search returns - is
+            // the face we got.
+            int sameSideCandidates = 0;
+            int firstSameSideId = -1;
+            for (const auto& candidate : Dune::intersections(level0, intersection.inside().getOrigin())) {
+                if (candidate.indexInInside() != intersection.indexInInside()) {
+                    continue;
+                }
+                if (firstSameSideId < 0) {
+                    firstSameSideId = candidate.id();
+                }
+                ++sameSideCandidates;
+            }
+            BOOST_CHECK_GT(sameSideCandidates, 0);
+
+            if (sameSideCandidates > 1) {
+                ++ambiguousSides;
+                if (firstSameSideId != parentIntersection.id()) {
+                    ++sideOnlySearchWouldMiss;
+                }
+            }
+        }
+    }
+
+    BOOST_CHECK_EQUAL(level0.size(0), 8);
+
+    // Without any coarse<->refined face the loop above proves nothing.
+    BOOST_CHECK_GT(coarseToRefined, 0);
+
+    // The fault must actually produce cells with two faces on one side, and a
+    // side-only search must actually pick the wrong one for some of them -
+    // otherwise this deck is not testing what it claims to.
+    BOOST_CHECK_GT(ambiguousSides, 0);
+    BOOST_CHECK_GT(sideOnlySearchWouldMiss, 0);
+}
