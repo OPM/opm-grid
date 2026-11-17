@@ -420,3 +420,28 @@ PERMZ
     BOOST_CHECK_GT(shortEdges(fine, 0.5), 0);
 }
 #endif
+
+// Scissor fault along pillar line i = 2. Left of it the top cells are wedges with the i+ side
+// collapsed, so their boundary top face shares the fault edge with their bottom face.
+BOOST_AUTO_TEST_CASE(PinchedWedgeAtAFault)
+{
+    auto g = uniformGrid();
+    for (int k = 0; k < n; ++k) {
+        for (int j = 0; j < n; ++j) {
+            for (int i = 2; i < n; ++i) {
+                for (int c = 0; c < 8; ++c) {
+                    const int dj = (c >> 1) & 1;
+                    z(g, i, j, k, c & 1, dj, c >> 2) += ((j + dj) % 2 == 0) ? -4.0 : 4.0;
+                }
+            }
+        }
+    }
+    for (int j = 0; j < n; ++j) {
+        for (int dj = 0; dj < 2; ++dj) {
+            z(g, 1, j, 0, 1, dj, 0) = z(g, 1, j, 0, 1, dj, 1);
+        }
+    }
+    const auto check = processed(g, true);
+    BOOST_TEST_MESSAGE(check.summary());
+    BOOST_CHECK(check.ok());
+}

@@ -353,6 +353,59 @@ void fix_edges_at_top(const struct processed_grid& grid,
         } // end dir
     } // end cell
 
+    // A side collapsed to an edge leaves the cell's top and bottom faces sharing that
+    // edge; both must carry the same nodes on it.
+    const auto between = [](const std::vector<int>& f, const std::vector<int>& corners,
+                            const int a, const int b, std::vector<int>& mid) -> int {
+        const int n = static_cast<int>(f.size());
+        const auto ia = std::ranges::find(f, a) - f.begin();
+        if (ia == n || std::ranges::find(f, b) == f.end()) { return 0; }
+        for (const int step : {1, -1}) {
+            mid.clear();
+            for (int k = 1; k < n; ++k) {
+                const int v = f[((ia + step*k) % n + n) % n];
+                if (v == b) { return step; }
+                if (std::ranges::find(corners, v) != corners.end()) { break; }
+                mid.push_back(v);
+            }
+        }
+        return 0;
+    };
+    for (bool changed = true; changed;) {
+        changed = false;
+        for (auto cell = 0*grid.number_of_cells; cell < grid.number_of_cells; ++cell) {
+            int tb[2] = {-1, -1};
+            for (auto hface = grid.cell_face_ptr[cell]; hface < grid.cell_face_ptr[cell + 1]; ++hface) {
+                const auto tag = grid.cell_faces[nhf + hface];
+                if (tag >= 4) { tb[tag - 4] = grid.cell_faces[hface]; }
+            }
+            const std::vector<int> c0(grid.face_nodes + grid.face_node_ptr[tb[0]],
+                                      grid.face_nodes + grid.face_node_ptr[tb[0] + 1]);
+            const std::vector<int> c1(grid.face_nodes + grid.face_node_ptr[tb[1]],
+                                      grid.face_nodes + grid.face_node_ptr[tb[1] + 1]);
+            for (std::size_t e = 0; e < c0.size(); ++e) {
+                const int a = c0[e], b = c0[(e + 1) % c0.size()];
+                if (std::ranges::find(c1, a) == c1.end() || std::ranges::find(c1, b) == c1.end()) { continue; }
+                std::vector<int> m0, m1;
+                const int s0 = between(face_nodes[tb[0]], c0, a, b, m0);
+                const int s1 = between(face_nodes[tb[1]], c1, a, b, m1);
+                if (s0 == 0 || s1 == 0 || m0.size() == m1.size()) { continue; }
+                const bool fillTop = m0.size() < m1.size();
+                auto& f = face_nodes[tb[fillTop ? 0 : 1]];
+                const auto& from = fillTop ? m1 : m0;
+                const int s = fillTop ? s0 : s1;
+                const auto& corners = fillTop ? c0 : c1;
+                std::vector<int> old;
+                between(f, corners, a, b, old);
+                for (const int v : old) { f.erase(std::ranges::find(f, v)); }
+                auto ia = std::ranges::find(f, a);
+                if (s == 1) { f.insert(std::next(ia), from.begin(), from.end()); }
+                else { f.insert(ia, from.rbegin(), from.rend()); }
+                changed = true;
+            }
+        }
+    }
+
     nodePos.resize(face_nodes.size() + 1);
     nodePos[0] = 0;
     int count = 0;
