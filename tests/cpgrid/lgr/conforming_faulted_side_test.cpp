@@ -1,0 +1,487 @@
+/*
+  Copyright 2026 Equinor ASA.
+
+  This file is part of the Open Porous Media project (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+#include <config.h>
+
+#define BOOST_TEST_MODULE ConformingFaultedSideTests
+#include <boost/test/unit_test.hpp>
+
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
+
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <limits>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
+// A refined box whose side a fault crosses: the side is rebuilt by processing the box and
+// the cells across it as one corner-point grid. These cases check that the rebuilt side
+// gives each cell pair one face, uses the box's own corners and keeps every cell closed.
+
+using namespace Opm::ConformingTest;
+
+namespace
+{
+
+// The direction of a pillar changes with j: pillars are not parallel.
+std::array<double,6> fanning(int i, int j)
+{
+    return { double(i), double(j), 0.0, i + 0.5*j, 1.3*j, 100.0 };
+}
+
+// All pillars parallel and slanted: faces stay planar.
+std::array<double,6> sheared(int i, int j)
+{
+    return { double(i), double(j), 0.0, i + 30.0, j + 20.0, 100.0 };
+}
+
+// Vertices of a grid view at a point another of its vertices has: points are equal after
+// rounding to 1e-9. The leaf keeps every vertex of level zero, so a refinement that adds
+// no vertex at a point that has one gives the leaf as many as level zero.
+template <class GridView>
+int duplicateVertices(const GridView& view)
+{
+    std::set<std::array<long long,3>> points;
+    int duplicates = 0;
+    for (const auto& vertex : Dune::vertices(view)) {
+        const auto c = vertex.geometry().center();
+        if (!points.insert({std::llround(c[0]*1e9), std::llround(c[1]*1e9), std::llround(c[2]*1e9)}).second) {
+            ++duplicates;
+        }
+    }
+    return duplicates;
+}
+
+// Cells i >= faultI are `throwBy` deeper; layers 2 thick.
+Depth faulted(int faultI, double throwBy)
+{
+    return [faultI, throwBy](int i_, int, int k_) {
+        return 2.0*nodeOf(k_) + ((cellOf(i_) >= faultI) ? throwBy : 0.0);
+    };
+}
+
+// Layer boundaries that are not on one line per column.
+Depth wedge(int faultI, double throwBy)
+{
+    return [faultI, throwBy](int i_, int j_, int k_) {
+        const int k = nodeOf(k_);
+        return 2.0*k + 0.7*nodeOf(j_)*k*k + ((cellOf(i_) >= faultI) ? throwBy : 0.0);
+    };
+}
+
+} // anonymous namespace
+
+BOOST_GLOBAL_FIXTURE(MPIFixture);
+
+// The helper grid cuts the coarse neighbour at the box's sub-layers; the pieces of one
+// cell pair are one face.
+BOOST_AUTO_TEST_CASE(oneFacePerCellPair)
+{
+    const auto g = makeGrid({4, 2, 2}, vertical, faulted(2, 0.6));
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    const double volume = totalVolume(grid);
+    refine(grid, g, {box("LGR1", {2,2,2}, {2,0,0}, {4,2,2})});
+
+    BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+
+    // A refined child spanning two of the coarse cell's sub-layers keeps the whole area.
+    double refinedToCoarse = 0.0;
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+            if (is.neighbor() && element.hasFather() && !is.outside().hasFather()) {
+                refinedToCoarse += is.geometry().volume();
+            }
+        }
+    }
+    // The fault plane x = 2 overlaps the coarse cells over z in [0.6, 4] along y in [0, 2].
+    BOOST_CHECK_CLOSE(refinedToCoarse, (4.0 - 0.6)*2.0, 1e-10);
+}
+
+// With non-parallel pillars, a faulted low side uses the box's own sub-pillars: the leaf
+// has the same corners as with vertical pillars and the same depths.
+BOOST_AUTO_TEST_CASE(lowSideUsesTheBoxPillars)
+{
+    const auto request = box("LGR1", {2,2,2}, {2,0,0}, {4,2,3});
+    const auto vertices = [&](const Pillar& pillar) {
+        const auto g = makeGrid({4, 2, 3}, pillar, wedge(2, 0.6));
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        refine(grid, g, {request});
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+        return grid.size(3);
+    };
+    BOOST_CHECK_EQUAL(vertices(fanning), vertices(vertical));
+}
+
+// Corners made where the fault cuts the side have ids of their own.
+BOOST_AUTO_TEST_CASE(faultedSideCornersHaveIds)
+{
+    const auto g = makeGrid({4, 2, 2}, vertical, faulted(2, 0.6));
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    refine(grid, g, {box("LGR1", {2,2,2}, {2,0,0}, {4,2,2})});
+
+    BOOST_REQUIRE_GT(static_cast<std::size_t>(grid.size(3)),
+                     grid.currentData().back()->cornerHistorySize());
+    std::set<Dune::CpGrid::GlobalIdSet::IdType> ids;
+    for (const auto& vertex : Dune::vertices(grid.leafGridView())) {
+        ids.insert(grid.localIdSet().id(vertex));
+    }
+    BOOST_CHECK_EQUAL(ids.size(), static_cast<std::size_t>(grid.size(3)));
+}
+
+// On the edge of an edge-conformal grid, a box side a J-fault reaches is rebuilt as
+// faces toward the domain: no refined cell loses its side.
+BOOST_AUTO_TEST_CASE(faultedSideOnTheGridEdge)
+{
+    const auto depth = [](int, int j_, int k_) {
+        return 2.0*nodeOf(k_) + ((cellOf(j_) >= 1) ? 0.6 : 0.0);
+    };
+    const auto g = makeGrid({3, 2, 2}, vertical, depth);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false, false, /*edge_conformal=*/true);
+    const double volume = totalVolume(grid);
+    refine(grid, g, {box("LGR1", {2,2,2}, {0,0,0}, {2,2,2})}, /*edgeConformal=*/true);
+
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+}
+
+// Two boxes share a face; a fault crosses only part of it. Both sides are rebuilt from the
+// fault, so the shared faces are made once.
+BOOST_AUTO_TEST_CASE(sharedFacePartlyFaulted)
+{
+    const auto depth = [](int i_, int j_, int k_) {
+        return 2.0*nodeOf(k_) + (((cellOf(i_) >= 2) && (cellOf(j_) == 0)) ? 0.6 : 0.0);
+    };
+    const auto g = makeGrid({4, 2, 2}, vertical, depth);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    const double volume = totalVolume(grid);
+    BOOST_REQUIRE_NO_THROW(refine(grid, g, {box("A", {2,2,2}, {0,0,0}, {2,2,2}),
+                                            box("B", {2,2,2}, {2,1,0}, {4,2,2})}));
+
+    BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+    int boxToBox = 0;
+    for (const auto& [cells, count] : facesPerPair(grid)) {
+        const auto inBox = [&](int cell, int level) {
+            const auto element = Dune::cpgrid::Entity<0>(*grid.currentData().back(), cell, true);
+            return element.level() == level;
+        };
+        if ((inBox(cells.first, 1) && inBox(cells.second, 2))
+            || (inBox(cells.first, 2) && inBox(cells.second, 1))) {
+            ++boxToBox;
+        }
+    }
+    BOOST_CHECK_GT(boxToBox, 0);
+}
+
+// A cell across the faulted side that the grid does not have leaves the refined cells
+// facing it with boundary faces, not holes.
+BOOST_AUTO_TEST_CASE(missingNeighbourAcrossTheFault)
+{
+    auto allActive = makeGrid({4, 1, 2}, vertical, faulted(2, 0.6));
+    allActive.actnum.assign(8, 1);
+    auto g = allActive;
+    g.actnum[1 + 4*1] = 0;                  // (1,0,1), across the box's low side
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    // The builder has every cell active.
+    refine(grid, allActive, {box("LGR1", {2,1,2}, {2,0,0}, {4,1,2})});
+
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+}
+
+// On a left-handed grid every face still points out of the cell it is seen from.
+BOOST_AUTO_TEST_CASE(leftHandedFaultedSide)
+{
+    const auto depth = [](int, int j_, int k_) {
+        return 2.0*nodeOf(k_) + ((cellOf(j_) >= 1) ? 0.6 : 0.0);
+    };
+    const auto g = makeGrid({2, 2, 2}, leftHanded, depth);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    refine(grid, g, {box("LGR1", {2,2,2}, {0,1,0}, {2,2,2})});
+
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        const auto centre = element.geometry().center();
+        for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+            auto outward = is.geometry().center();
+            outward -= centre;
+            BOOST_CHECK_GT(is.centerUnitOuterNormal() * outward, 0.0);
+        }
+    }
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+}
+
+// A fault whose throw is one bit at one end of the side and a whole unit of depth at the
+// other: the cells' top lines (and bottom lines) cross a few bits from the first pillar,
+// and with coordinates near 1000 the computed crossing point rounds onto that pillar's
+// corner. A piece of the rebuilt side then has two consecutive corners at the same point;
+// the pieces of one cell pair still merge into one face.
+BOOST_AUTO_TEST_CASE(faultCrossingOnAPillarCorner)
+{
+    // Columns i = 0, 1 at y in [1000, 1001]. Column 1 is one bit deeper than column 0 at
+    // y = 1000, and 1 shallower at y = 1001.
+    const auto pillar = [](int i, int j) {
+        return std::array<double,6>{ double(i), 1000.0 + j, 0.0, double(i), 1000.0 + j, 100.0 };
+    };
+    const auto depth = [](int i_, int j_, int k_) {
+        const double base = 10.0 + 3.0*nodeOf(k_);
+        if (cellOf(i_) == 0) {
+            return base;
+        }
+        return (sideOf(j_) == 0) ? std::nextafter(base, 100.0) : base - 1.0;
+    };
+    const auto g = makeGrid({2, 1, 1}, pillar, depth);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    const double volume = totalVolume(grid);
+    refine(grid, g, {box("LGR1", {2,2,2}, {0,0,0}, {1,1,1})});
+
+    BOOST_CHECK_EQUAL(grid.size(0), 8 + 1);
+    BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+}
+
+// Across a fault, a box twice as fine as its neighbour box: each pair of children shares
+// one face, and the faces do not overlap.
+BOOST_AUTO_TEST_CASE(unequalBoxesAcrossTheFault)
+{
+    const auto g = makeGrid({4, 2, 2}, vertical, faulted(2, 0.6));
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(g.raw(), false);
+    const double volume = totalVolume(grid);
+    refine(grid, g, {box("FINE", {4,4,4}, {0,0,0}, {2,2,2}),
+                     box("COARSE", {2,2,2}, {2,0,0}, {4,2,2})});
+
+    BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+    BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+    BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+}
+
+// The same grid written twice: once as is, once with each pillar's end points moved along
+// its own line to depths that differ from pillar to pillar. Refined pillars depend on the
+// lines only, so a box and the helper grid of its faulted side, or two boxes across a
+// fault, compute the same sub-pillars bit for bit either way: the leaf is the same.
+BOOST_AUTO_TEST_CASE(faultedSideIndependentOfEndPointDepths)
+{
+    const auto movedEnds = [](int i, int j) {
+        const auto p = fanning(i, j);
+        const auto at = [&p](double z) {
+            const double t = (z - p[2]) / (p[5] - p[2]);
+            return std::array { p[0] + t*(p[3] - p[0]), p[1] + t*(p[4] - p[1]), z };
+        };
+        const auto top = at(-1.0 - i - 2.0*j);
+        const auto bottom = at(100.0 + 3.0*i + j);
+        return std::array { top[0], top[1], top[2], bottom[0], bottom[1], bottom[2] };
+    };
+    const std::vector<std::vector<Opm::Refinement::BlockRefinement>> layouts {
+        { box("LGR1", {2,2,2}, {2,0,0}, {4,2,3}) },
+        { box("LGR1", {2,2,2}, {0,0,0}, {2,2,3}) },
+        { box("LGR1", {2,2,2}, {0,0,0}, {2,2,3}), box("LGR2", {2,2,2}, {2,0,0}, {4,2,3}) },
+    };
+    for (const auto& requests : layouts) {
+        const auto leaf = [&requests](const Pillar& pillar) {
+            const auto g = makeGrid({4, 2, 3}, pillar, wedge(2, 0.6));
+            Dune::CpGrid grid;
+            grid.processEclipseFormat(g.raw(), false);
+            refine(grid, g, requests);
+            BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+            return std::array { double(grid.size(3)), double(grid.size(0)), totalVolume(grid),
+                                worstClosure(grid) };
+        };
+        const auto written = leaf(fanning);
+        const auto moved = leaf(movedEnds);
+        BOOST_CHECK_EQUAL(written[0], moved[0]);
+        BOOST_CHECK_EQUAL(written[1], moved[1]);
+        BOOST_CHECK_CLOSE(written[2], moved[2], 1e-10);
+        // Faces on fanning pillars are not planar: the cells close equally well, not exactly.
+        BOOST_CHECK_SMALL(written[3] - moved[3], 1e-10);
+    }
+}
+
+// A 2x1x1 grid whose cell I = 1 is shifted up by a fraction of its height, with a box on
+// each side of that fault: unequal factors in both orders, and equal ones. Where the
+// sub-layers of the two boxes line up across the throw, the two sides compute the same
+// depth differently; the leaf still joins only cells whose faces overlap, with faces
+// that tile the overlap of the two cells' faces.
+BOOST_AUTO_TEST_CASE(boxesAcrossAThrowThatLinesUpSubLayers)
+{
+    using Factors = std::array<int,3>;
+    const std::vector<std::pair<Factors, Factors>> pairs { {{1,2,3}, {5,4,6}},
+                                                           {{5,4,6}, {1,2,3}},
+                                                           {{1,2,3}, {1,2,3}} };
+    const auto text = [](const Factors& f) {
+        return std::to_string(f[0]) + "x" + std::to_string(f[1]) + "x" + std::to_string(f[2]);
+    };
+    // Area of the fault plane per unit depth: the pillars run along (0, 0, 1) or
+    // (0.3, 0.2, 1), the face is one unit wide along y.
+    for (const auto& [pillar, areaPerDepth] : std::vector<std::pair<Pillar, double>>{
+             {vertical, 1.0}, {sheared, std::sqrt(1.09)}}) {
+        for (const double shift : {0.25, 0.5, 1.0, 1.5, 2.0, 2.5}) {
+            // Cell (0,0,0) at depth [10, 13], cell (1,0,0) `shift` higher: their faces on
+            // the fault overlap over z in [10, 13 - shift].
+            const auto g = makeGrid({2, 1, 1}, pillar, [shift](int i_, int, int k_) {
+                return 10.0 + 3.0*nodeOf(k_) - ((cellOf(i_) >= 1) ? shift : 0.0);
+            });
+            for (const auto& [left, right] : pairs) {
+                const std::string label = "shift " + std::to_string(shift) + ", "
+                    + text(left) + " | " + text(right);
+                Dune::CpGrid grid;
+                grid.processEclipseFormat(g.raw(), false);
+                refine(grid, g, {box("LGR1", left, {0,0,0}, {1,1,1}),
+                                 box("LGR2", right, {1,0,0}, {2,1,1})});
+
+                double across = 0.0;
+                double smallest = std::numeric_limits<double>::max();
+                for (const auto& element : Dune::elements(grid.leafGridView())) {
+                    for (const auto& is : Dune::intersections(grid.leafGridView(), element)) {
+                        smallest = std::min(smallest, is.geometry().volume());
+                        if (is.neighbor() && (element.level() == 1) && (is.outside().level() == 2)) {
+                            across += is.geometry().volume();
+                        }
+                    }
+                }
+                BOOST_CHECK_MESSAGE(worstClosure(grid) < 1e-12, label << ": a cell is not closed");
+                BOOST_CHECK_MESSAGE(std::abs(across - areaPerDepth*(3.0 - shift)) < 1e-10,
+                                    label << ": faces across the fault cover " << across
+                                          << " instead of " << areaPerDepth*(3.0 - shift));
+                BOOST_CHECK_MESSAGE(smallest > 1e-10, label << ": a face of area " << smallest);
+                BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+                const int added = duplicateVertices(grid.leafGridView())
+                                - duplicateVertices(grid.levelGridView(0));
+                BOOST_CHECK_MESSAGE(added == 0, label << ": " << added
+                                                      << " leaf vertices at a point that has one");
+            }
+        }
+    }
+}
+
+// A 2x1x1 grid whose cell I = 1 is shifted up, with a box on cell I = 0 only. Where a
+// sub-layer of the box lines up with a corner of the coarse cell across the fault, the
+// box's children have a corner there: the leaf has one vertex at that point.
+BOOST_AUTO_TEST_CASE(oneBoxNextToAShiftedCell)
+{
+    for (const double shift : {0.5, 1.0, 1.5, 2.0}) {
+        // Cell (0,0,0) at depth [10, 13], cell (1,0,0) `shift` higher.
+        const auto g = makeGrid({2, 1, 1}, vertical, [shift](int i_, int, int k_) {
+            return 10.0 + 3.0*nodeOf(k_) - ((cellOf(i_) >= 1) ? shift : 0.0);
+        });
+        for (const auto& factors : std::vector<std::array<int,3>>{ {1,2,3}, {5,4,6}, {2,2,2} }) {
+            const std::string label = "shift " + std::to_string(shift) + ", "
+                + std::to_string(factors[0]) + "x" + std::to_string(factors[1]) + "x"
+                + std::to_string(factors[2]);
+            Dune::CpGrid grid;
+            grid.processEclipseFormat(g.raw(), false);
+            const double volume = totalVolume(grid);
+            refine(grid, g, {box("LGR1", factors, {0,0,0}, {1,1,1})});
+
+            const int added = duplicateVertices(grid.leafGridView())
+                            - duplicateVertices(grid.levelGridView(0));
+            BOOST_CHECK_MESSAGE(added == 0, label << ": " << added
+                                                  << " leaf vertices at a point that has one");
+            BOOST_CHECK_MESSAGE(worstClosure(grid) < 1e-12, label << ": a cell is not closed");
+            BOOST_CHECK_CLOSE(totalVolume(grid), volume, 1e-10);
+            BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+        }
+    }
+}
+
+// Two boxes across a fault. The box across from A has a child on the fault that its MINPV
+// removes, or has no child left; A's cells keep a boundary face where that child would
+// be. A makes the faces across the fault: it comes first, or is the finer.
+BOOST_AUTO_TEST_CASE(removedChildAcrossTheFault)
+{
+    const auto g = makeGrid({4, 2, 2}, vertical, faulted(2, 0.6));
+    // B refines the hosts i = 2..3 into 4x4x4 children of volume 0.25; its child
+    // (0,1,1) lies on the fault.
+    std::vector<int> one(64, 0);
+    one[0 + 4*1 + 16*1] = 1;
+    const std::vector<int> every(64, 1);
+    for (const auto& [factorsA, removed] : std::vector<std::pair<std::array<int,3>, std::vector<int>>>{
+             {{2,2,2}, one}, {{4,4,4}, one}, {{2,2,2}, every}}) {
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        const double volume = totalVolume(grid);
+        auto b = box("B", {2,2,2}, {2,0,0}, {4,2,2});
+        b.minpvRemoved = removed;
+        refine(grid, g, {box("A", factorsA, {0,0,0}, {2,2,2}), b});
+
+        const auto count = std::count(removed.begin(), removed.end(), 1);
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+        BOOST_CHECK_CLOSE(totalVolume(grid), volume - 0.25*count, 1e-10);
+    }
+}
+
+// A box on a fault whose MINPV removes a child on the faulted side: the cells across, coarse
+// or of a box across the fault, keep a boundary face where that child would be. Toward a
+// box, the box that removes the child makes the faces across the fault: it comes first, or
+// is the finer; it also removes every child of one host.
+BOOST_AUTO_TEST_CASE(removedChildOnTheFault)
+{
+    const auto g = makeGrid({4, 2, 2}, vertical, faulted(2, 0.6));
+    const auto mask = [](int size, const std::vector<int>& removed) {
+        std::vector<int> m(size, 0);
+        for (const int child : removed) {
+            m[child] = 1;
+        }
+        return m;
+    };
+    const auto check = [&g](std::vector<Opm::Refinement::BlockRefinement> requests, double removedVolume) {
+        Dune::CpGrid grid;
+        grid.processEclipseFormat(g.raw(), false);
+        const double volume = totalVolume(grid);
+        refine(grid, g, std::move(requests));
+        BOOST_CHECK_SMALL(worstClosure(grid), 1e-12);
+        BOOST_CHECK_EQUAL(maxFacesPerPair(grid), 1);
+        BOOST_CHECK_CLOSE(totalVolume(grid), volume - removedVolume, 1e-10);
+    };
+    // A box on hosts i = 2..3 (children 4x4x4 of volume 0.25), its child (0,1,1) on the
+    // fault removed; coarse cells across.
+    auto alone = box("LGR1", {2,2,2}, {2,0,0}, {4,2,2});
+    alone.minpvRemoved = mask(64, {0 + 4*1 + 16*1});
+    check({alone}, 0.25);
+
+    // A on hosts i = 0..1 with its child (3,1,1) on the fault removed, B across.
+    const auto b = box("B", {2,2,2}, {2,0,0}, {4,2,2});
+    auto a = box("A", {2,2,2}, {0,0,0}, {2,2,2});
+    a.minpvRemoved = mask(64, {3 + 4*1 + 16*1});
+    check({a, b}, 0.25);
+    // A finer: children 8x8x8 of volume 1/32, its child (7,2,2) on the fault removed.
+    auto fine = box("A", {4,4,4}, {0,0,0}, {2,2,2});
+    fine.minpvRemoved = mask(512, {7 + 8*2 + 64*2});
+    check({fine, b}, 1.0/32.0);
+    // A with every child of its host (1,0,0) removed.
+    auto emptied = box("A", {2,2,2}, {0,0,0}, {2,2,2});
+    emptied.minpvRemoved = mask(64, {2, 3, 6, 7, 18, 19, 22, 23});
+    check({emptied, b}, 2.0);
+}
