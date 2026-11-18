@@ -590,3 +590,16 @@ BOOST_AUTO_TEST_CASE(AddNncConnectsCellsAcrossTheParts)
     grid->addNnc(nnc);
     BOOST_CHECK_EQUAL(grid->numFaces(), reference->numFaces() + num_nnc);
 }
+
+BOOST_AUTO_TEST_CASE(AddNncRejectsAnIndexOutsideTheLogicalGrid)
+{
+    auto grid = makeCpGrid(firstSpec());
+    const auto second = makeCpGrid(secondSpec());
+    grid->appendDisjointGrid(*second);
+    const int faces = grid->numFaces();
+
+    // The logical grid has 3 * 2 * 5 cells. An index outside it is not an inactive cell.
+    BOOST_CHECK_THROW(grid->addNnc({{0, 30}}), std::invalid_argument);
+    BOOST_CHECK_THROW(grid->addNnc({{-1, 4}}), std::invalid_argument);
+    BOOST_CHECK_EQUAL(grid->numFaces(), faces);
+}

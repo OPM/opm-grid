@@ -62,6 +62,7 @@
 //#include <fstream>
 //#include <iostream>
 #include <algorithm>
+#include <cstdint>
 #include <iomanip>
 #include <numeric>
 #include <tuple>
@@ -1581,7 +1582,9 @@ void CpGrid::addNnc(const std::vector<std::pair<int, int>>& nnc)
 
     auto& data = *data_.back();
     const auto& global_cell = data.global_cell_;
-    const auto localIndex = [&global_cell](const int cartesian)
+    // The compressed index of the cell with the Cartesian index, or -1 if that cell
+    // is inactive.
+    const auto compressedIndex = [&global_cell](const int cartesian)
     {
         // The active cells are numbered in increasing Cartesian order.
         const auto it = std::lower_bound(global_cell.begin(), global_cell.end(), cartesian);
@@ -1603,18 +1606,32 @@ void CpGrid::addNnc(const std::vector<std::pair<int, int>>& nnc)
         return false;
     };
 
+    // An index outside the logical grid is an error, not an inactive cell.
+    const auto& logicalSize = data.logical_cartesian_size_;
+    const auto numCartesian = static_cast<std::int64_t>(logicalSize[0]) * logicalSize[1] * logicalSize[2];
+    const auto checkCartesian = [numCartesian](const int cartesian)
+    {
+        if (cartesian < 0 || cartesian >= numCartesian) {
+            OPM_THROW(std::invalid_argument,
+                      "addNnc(): the Cartesian index " + std::to_string(cartesian)
+                      + " is outside the logical grid of " + std::to_string(numCartesian) + " cells.");
+        }
+    };
+
     // Ordered and unique by Cartesian index, as the NNC faces made when processing the
     // Eclipse format.
     std::set<std::pair<int, int>> unique_nnc;
     for (const auto& [a, b] : nnc) {
+        checkCartesian(a);
+        checkCartesian(b);
         unique_nnc.emplace(std::min(a, b), std::max(a, b));
     }
 
     std::vector<std::pair<int, int>> cell_pairs;
     std::size_t numInactive = 0;
     for (const auto& [a, b] : unique_nnc) {
-        const int c1 = localIndex(a);
-        const int c2 = localIndex(b);
+        const int c1 = compressedIndex(a);
+        const int c2 = compressedIndex(b);
         if (c1 < 0 || c2 < 0) {
             // A connection to an inactive cell has nothing to connect, as for a grid
             // processed in one piece.

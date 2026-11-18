@@ -394,7 +394,9 @@ namespace Dune
         /// The grid must be serial, without local grid refinement. The face
         /// numbers of the existing faces increase by the number of added faces.
         ///
-        /// \param[in] nnc Pairs of global Cartesian cell indices.
+        /// \param[in] nnc Pairs of Cartesian indices of the logical grid, as
+        /// globalCell() returns them. An index outside the logical grid is an
+        /// error, an inactive cell is skipped.
         void addNnc(const std::vector<std::pair<int, int>>& nnc);
         //@}
 
