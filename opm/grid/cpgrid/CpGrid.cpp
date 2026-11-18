@@ -1427,6 +1427,16 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              const bool pinchActive,
                              const bool edge_conformal)
 {
+    // Every process must refuse a dual-continuum grid on more than one process, also
+    // those that are not given the grid, as the process that has it joins the grids
+    // and sends one message more than the others wait for.
+    const bool dualContinuum = (ecl_grid != nullptr && ecl_grid->dualPorosity())
+        || (ecl_state != nullptr && ecl_state->runspec().porosityModel().dualContinuum());
+    if (dualContinuum && current_data_->back()->ccobj_.size() > 1) {
+        OPM_THROW(std::invalid_argument,
+                  "A dual-continuum grid (DUALPORO or DUALPERM) can only be processed on a single process.");
+    }
+
     if (ecl_grid != nullptr && ecl_grid->dualPorosity()) {
         return this->processDualContinuumEclipseFormat(*ecl_grid, ecl_state, periodic_extension,
                                                        turn_normals, clip_z, pinchActive,
