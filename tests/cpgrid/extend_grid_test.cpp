@@ -17,7 +17,7 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Tests for CpGrid::extendGrid(): appending a second corner-point grid to a
+// Tests for CpGrid::appendDisjointGrid(): appending a second corner-point grid to a
 // first one as a disjoint union, as needed for the two continua of a
 // dual-porosity model.
 
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(CountsAndCartesianSize)
     const auto second = makeCpGrid(secondSpec());
     const auto first = makeCpGrid(firstSpec());
 
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     BOOST_CHECK_EQUAL(grid->numCells(), first->numCells() + second->numCells());
     BOOST_CHECK_EQUAL(grid->numFaces(), first->numFaces() + second->numFaces());
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(CellIndexSetHoldsTheCellsOfBothGrids)
     const auto second = makeCpGrid(secondSpec());
     const int numFirst = grid->numCells();
 
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const auto& indexSet = grid->getCellIndexSet();
     BOOST_CHECK_EQUAL(indexSet.size(), static_cast<std::size_t>(grid->numCells()));
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(CartesianIndexOfAppendedCellsUsesLogicalSize)
     auto grid = makeCpGrid(firstSpec());
     const auto first = makeCpGrid(firstSpec());
     const auto second = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const int n1 = first->numCells();
     const int logical_size_first = 3 * 2 * 2;
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(TwinCellsHaveCartesianIndexOffsetByHalf)
     auto grid = makeCpGrid(spec);
     const auto second = makeCpGrid(spec);
     const int n = grid->numCells();
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const int half = grid->logicalCartesianSize()[0] * grid->logicalCartesianSize()[1]
         * grid->logicalCartesianSize()[2] / 2;
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(AppendedPartMatchesStandaloneGrid)
     const auto first = makeCpGrid(firstSpec());
     const auto second = makeCpGrid(secondSpec());
     auto copy_of_second = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const int nc1 = first->numCells();
     const int nf1 = first->numFaces();
@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(CellCornersMatchStandaloneGrid)
     auto grid = makeCpGrid(firstSpec());
     const auto first = makeCpGrid(firstSpec());
     const auto second = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const auto corners = [](const Dune::CpGrid& g)
     {
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(NoFaceConnectsTheTwoParts)
     auto grid = makeCpGrid(firstSpec());
     const int nc1 = grid->numCells();
     const auto second = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     for (int f = 0; f < grid->numFaces(); ++f) {
         const int a = grid->faceCell(f, 0);
@@ -373,7 +373,7 @@ BOOST_AUTO_TEST_CASE(IntersectionsMatchStandaloneGrid)
     const int nc1 = grid->numCells();
     const auto second = makeCpGrid(secondSpec());
     const auto ref = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const auto elements = [](const Dune::CpGrid& g)
     {
@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE(IdsAreUniqueAndBoundaryIdsConsistent)
 {
     auto grid = makeCpGrid(firstSpec());
     const auto second = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const auto view = grid->leafGridView();
     std::set<Dune::CpGrid::GlobalIdSet::IdType> cell_ids, vertex_ids;
@@ -447,7 +447,7 @@ BOOST_AUTO_TEST_CASE(TotalVolumeIsSumOfParts)
     auto grid = makeCpGrid(firstSpec());
     const auto first = makeCpGrid(firstSpec());
     const auto second = makeCpGrid(secondSpec());
-    grid->extendGrid(*second);
+    grid->appendDisjointGrid(*second);
 
     const auto total = [](const Dune::CpGrid& g)
     {
@@ -467,8 +467,8 @@ BOOST_AUTO_TEST_CASE(AppendTwice)
     const auto third = makeCpGrid(firstSpec());
     const int expected_cells = grid->numCells() + second->numCells() + third->numCells();
 
-    grid->extendGrid(*second);
-    grid->extendGrid(*third);
+    grid->appendDisjointGrid(*second);
+    grid->appendDisjointGrid(*third);
 
     BOOST_CHECK_EQUAL(grid->numCells(), expected_cells);
     const std::array<int, 3> expected_size{3, 2, 7};
@@ -492,8 +492,8 @@ BOOST_AUTO_TEST_CASE(RejectsIncompatibleGridsAndLeavesGridUnchanged)
     wrong.actnum.clear();
     const auto other = makeCpGrid(wrong);
 
-    BOOST_CHECK_THROW(grid->extendGrid(*other), std::invalid_argument);
-    BOOST_CHECK_THROW(grid->extendGrid(*grid), std::invalid_argument);
+    BOOST_CHECK_THROW(grid->appendDisjointGrid(*other), std::invalid_argument);
+    BOOST_CHECK_THROW(grid->appendDisjointGrid(*grid), std::invalid_argument);
 
     BOOST_CHECK_EQUAL(grid->numCells(), cells);
     BOOST_CHECK_EQUAL(grid->numFaces(), faces);
@@ -506,9 +506,9 @@ BOOST_AUTO_TEST_CASE(AddNncConnectsCellsAcrossTheParts)
     // Two equal parts, cells 1 and 7 of each inactive.
     const GridSpec spec = firstSpec();
     auto grid = makeCpGrid(spec);
-    grid->extendGrid(*makeCpGrid(spec));
+    grid->appendDisjointGrid(*makeCpGrid(spec));
     auto reference = makeCpGrid(spec);
-    reference->extendGrid(*makeCpGrid(spec));
+    reference->appendDisjointGrid(*makeCpGrid(spec));
 
     const int n = reference->numCells() / 2;
     const int logical_half = 3 * 2 * 2;

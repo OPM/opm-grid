@@ -1491,7 +1491,7 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
         removed_cells.push_back(cell + continuumSize);
     }
 
-    this->extendGrid(fracture_grid);
+    this->appendDisjointGrid(fracture_grid);
 
     if (ecl_state != nullptr) {
         // The pinch-out connections of both continua, and the pruning of the global
@@ -1555,7 +1555,7 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
                                             0);
 }
 
-void CpGrid::extendGrid(const CpGrid& other)
+void CpGrid::appendDisjointGrid(const CpGrid& other)
 {
     const auto isPlainSerialGrid = [](const CpGrid& grid)
     {
@@ -1565,7 +1565,7 @@ void CpGrid::extendGrid(const CpGrid& other)
 
     if (!isPlainSerialGrid(*this) || !isPlainSerialGrid(other)) {
         OPM_THROW(std::invalid_argument,
-                  "extendGrid() requires two serial grids without local grid refinement. "
+                  "appendDisjointGrid() requires two serial grids without local grid refinement. "
                   "Extend the grid before load balancing.");
     }
 

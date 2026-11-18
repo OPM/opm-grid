@@ -266,7 +266,7 @@ namespace Dune
         /// applications.
         ///
         /// If \p ecl_grid is a dual-continuum grid (DUALPORO/DUALPERM) the
-        /// result is one grid per continuum, joined with extendGrid(): the
+        /// result is one grid per continuum, joined with appendDisjointGrid(): the
         /// matrix cells first, then the fracture cells, which have the
         /// geometry of their matrix twins, and the explicit NNCs of \p ecl_state
         /// are added to the grid, including the matrix-fracture couplings.
@@ -348,7 +348,8 @@ namespace Dune
 
         /// \name Combining grids.
         //@{
-        /// Append another grid to this one as a disjoint union.
+        /// Stack another grid on top of this one in the k direction, as a
+        /// disjoint union. NX and NY of the two grids must be equal.
         ///
         /// Intended for continuum models where a second set of cells
         /// is needed on top of the first one, for instance the fracture
@@ -359,8 +360,10 @@ namespace Dune
         /// The cells of \p other are numbered after those of this grid, and
         /// its faces and vertices likewise. No face connects the two parts,
         /// so any coupling between them must be added by the caller, for
-        /// instance as non-neighbour connections. The logical Cartesian grid
-        /// is extended in the k direction: cell (i,j,k) of \p other has the
+        /// instance as non-neighbour connections. The topology is a plain
+        /// disjoint union, but the logical Cartesian grid is not general: it is
+        /// stacked in the k direction, and another kind of extension would need
+        /// its own Cartesian mapping. Cell (i,j,k) of \p other has the
         /// Cartesian index of cell (i,j,k+NZ) of the combined grid, where NZ
         /// is the logical NZ of this grid before the call, independent of
         /// which cells are active. Consequently, with two grids of equal
@@ -373,7 +376,7 @@ namespace Dune
         /// exception is thrown.
         ///
         /// \param[in] other Grid to append. It is not modified.
-        void extendGrid(const CpGrid& other);
+        void appendDisjointGrid(const CpGrid& other);
 
         /// Add non-neighbouring connections (NNCs) between cells.
         ///
@@ -680,7 +683,7 @@ namespace Dune
 
     private:
         /// Process a dual-continuum EclipseGrid into one grid per continuum,
-        /// joined with extendGrid().
+        /// joined with appendDisjointGrid().
         std::vector<std::size_t>
         processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                           Opm::EclipseState* ecl_state,

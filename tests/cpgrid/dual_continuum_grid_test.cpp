@@ -19,7 +19,7 @@
 
 // Building the CpGrid of a dual-continuum run from the EclipseGrid of the
 // deck: one CpGrid per continuum, from EclipseGrid::continuumGrid(), joined
-// with CpGrid::extendGrid().
+// with CpGrid::appendDisjointGrid().
 
 #include <config.h>
 
@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE(MatchesJoiningTheContinuumGridsByHand)
     const auto automatic = makeCpGrid(eclGrid);
 
     auto byHand = makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix));
-    byHand->extendGrid(*makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture)));
+    byHand->appendDisjointGrid(*makeCpGrid(eclGrid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture)));
 
     BOOST_REQUIRE_EQUAL(automatic->numCells(), byHand->numCells());
     BOOST_CHECK_EQUAL(automatic->numFaces(), byHand->numFaces());
