@@ -501,6 +501,18 @@ BOOST_AUTO_TEST_CASE(RejectsIncompatibleGridsAndLeavesGridUnchanged)
     BOOST_CHECK(grid->logicalCartesianSize() == size);
 }
 
+BOOST_AUTO_TEST_CASE(RejectsGridsWithLocalGridRefinement)
+{
+    auto refined = makeCpGrid(firstSpec());
+    refined->addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{1, 1, 1}}, {"LGR1"});
+    const auto plain = makeCpGrid(secondSpec());
+
+    BOOST_CHECK_THROW(refined->appendDisjointGrid(*plain), std::invalid_argument);
+
+    auto other = makeCpGrid(firstSpec());
+    BOOST_CHECK_THROW(other->appendDisjointGrid(*refined), std::invalid_argument);
+}
+
 BOOST_AUTO_TEST_CASE(AddNncConnectsCellsAcrossTheParts)
 {
     // Two equal parts, cells 1 and 7 of each inactive.
@@ -589,6 +601,13 @@ BOOST_AUTO_TEST_CASE(AddNncConnectsCellsAcrossTheParts)
     // Connections that exist are not added again.
     grid->addNnc(nnc);
     BOOST_CHECK_EQUAL(grid->numFaces(), reference->numFaces() + num_nnc);
+}
+
+BOOST_AUTO_TEST_CASE(AddNncRejectsLocalGridRefinement)
+{
+    auto refined = makeCpGrid(firstSpec());
+    refined->addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{1, 1, 1}}, {"LGR1"});
+    BOOST_CHECK_THROW(refined->addNnc({{0, 1}}), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE(AddNncRejectsAnIndexOutsideTheLogicalGrid)
