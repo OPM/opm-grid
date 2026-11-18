@@ -533,3 +533,47 @@ BOOST_AUTO_TEST_CASE(EclipseStateNncGiveTheMatrixFractureCouplingFaces)
         BOOST_CHECK(cellOfGlobal.count(g) == 1 && cellOfGlobal.count(g + half) == 1);
     }
 }
+
+BOOST_AUTO_TEST_CASE(UserNncOfTheDeckIsAddedToTheCouplings)
+{
+    // A record of the NNC keyword between two matrix cells that are not neighbours:
+    // (1,1,1) and (3,2,2), the Cartesian indices 0 and 11.
+    const auto deck = makeDeck(true, "NNC\n 1 1 1 3 2 2 1.0 /\n/\n");
+    Opm::EclipseState eclState(deck);
+    const auto& eclGrid = eclState.getInputGrid();
+    const int half = static_cast<int>(eclGrid.getCartesianSize() / 2);
+    BOOST_REQUIRE_EQUAL(eclState.getInputNNC().input().size(), static_cast<std::size_t>(half) + 1);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclGrid, &eclState, false, false, false);
+    const auto withoutNnc = makeCpGrid(eclGrid);
+
+    // One face for each twin pair and one for the record of the deck.
+    BOOST_CHECK_EQUAL(grid.numFaces(), withoutNnc->numFaces() + half + 1);
+
+    int connections = 0;
+    for (int f = 0; f < grid.numFaces(); ++f) {
+        const int a = grid.faceCell(f, 0);
+        const int b = grid.faceCell(f, 1);
+        if (a < 0 || b < 0) {
+            continue;
+        }
+        const auto cells = std::minmax(grid.globalCell()[a], grid.globalCell()[b]);
+        connections += (cells.first == 0 && cells.second == 11);
+    }
+    BOOST_CHECK_EQUAL(connections, 1);
+}
+
+BOOST_AUTO_TEST_CASE(NncFromACellToItselfNamesTheCell)
+{
+    const auto deck = makeDeck(true, "NNC\n 2 1 1 2 1 1 1.0 /\n/\n");
+    Opm::EclipseState eclState(deck);
+
+    Dune::CpGrid grid;
+    BOOST_CHECK_EXCEPTION(grid.processEclipseFormat(&eclState.getInputGrid(), &eclState, false, false, false),
+                          std::invalid_argument,
+                          [](const std::invalid_argument& e) {
+                              return std::string(e.what()).find("(2,1,1)") != std::string::npos;
+                          });
+}
+

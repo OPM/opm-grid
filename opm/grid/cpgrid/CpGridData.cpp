@@ -321,12 +321,27 @@ void CpGridData::appendNncFaces(const std::vector<std::pair<int, int>>& cell_pai
     }
 
     const int num_cells = cell_to_face_.size();
+    // The one-based (I,J,K) of a cell, to name the cell in the messages.
+    const auto ijk = [this](const int cell)
+    {
+        const auto cartesian = static_cast<std::size_t>(global_cell_[cell]);
+        const auto nx = static_cast<std::size_t>(logical_cartesian_size_[0]);
+        const auto ny = static_cast<std::size_t>(logical_cartesian_size_[1]);
+        return "(" + std::to_string(cartesian % nx + 1) + ","
+            + std::to_string((cartesian / nx) % ny + 1) + ","
+            + std::to_string(cartesian / (nx * ny) + 1) + ")";
+    };
     for (const auto& [c1, c2] : cell_pairs) {
-        if (c1 < 0 || c2 < 0 || c1 >= num_cells || c2 >= num_cells || c1 == c2) {
+        if (c1 < 0 || c2 < 0 || c1 >= num_cells || c2 >= num_cells) {
             OPM_THROW(std::invalid_argument,
-                      "Invalid NNC between cells " + std::to_string(c1) + " and "
-                      + std::to_string(c2) + " in a grid with " + std::to_string(num_cells)
+                      "Invalid NNC between the cells with compressed indices " + std::to_string(c1)
+                      + " and " + std::to_string(c2) + " in a grid with " + std::to_string(num_cells)
                       + " cells.");
+        }
+        if (c1 == c2) {
+            OPM_THROW(std::invalid_argument,
+                      "Invalid NNC from the cell " + ijk(c1) + " to itself. Cells are given by "
+                      "their one-based (I,J,K).");
         }
     }
 
