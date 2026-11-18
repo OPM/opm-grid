@@ -1486,7 +1486,7 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
     // The pore volumes, permeabilities and multipliers used for the MINPV and PINCH
     // processing are those of the dual-continuum grid, indexed by its cells.
     cpgrid::ContinuumSlice matrixSlice{0, {}};
-    cpgrid::ContinuumSlice fractureSlice{continuumSize, {}};
+    cpgrid::ContinuumSlice fractureSlice{static_cast<int>(continuumSize), {}};
 
     auto removed_cells = current_data_->back()->
         processEclipseFormat(&matrix, ecl_state, periodic_extension, turn_normals,

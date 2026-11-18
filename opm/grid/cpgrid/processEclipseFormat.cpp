@@ -181,7 +181,7 @@ namespace cpgrid
             // Cartesian index in ecl_state of the first cell of ecl_grid. The arrays of
             // ecl_state are indexed by the cells of the dual-continuum grid, of which
             // ecl_grid is one continuum.
-            const std::size_t cartOffset = continuum ? continuum->cartOffset : 0;
+            const int cartOffset = continuum ? continuum->cartOffset : 0;
             const auto continuumPart = [cartOffset, cartGridSize](std::vector<double> global)
             {
                 if (cartOffset == 0 && global.size() == cartGridSize) {

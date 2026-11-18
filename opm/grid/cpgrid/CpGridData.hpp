@@ -114,7 +114,7 @@ namespace cpgrid
 struct ContinuumSlice
 {
     /// Cartesian index, in the dual-continuum grid, of the first cell of this continuum.
-    std::size_t cartOffset{0};
+    int cartOffset{0};
 
     /// Pinch-out connections generated for this continuum (option 4 of
     /// PINCH set to ALL): first cell, second cell and transmissibility, with
