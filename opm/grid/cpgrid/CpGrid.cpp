@@ -1466,38 +1466,57 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                           const bool pinchActive,
                                           const bool edge_conformal)
 {
-    // One grid per continuum, each with its own cells, activity, MINPV and
-    // geometry, joined into one grid with the matrix cells first.
-    const auto matrix = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix);
-    const auto fracture = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture);
     const auto continuumSize = ecl_grid.getCartesianSize() / 2;
 
     // The corner-point preprocessing cannot make a grid without cells.
-    if (matrix.getNumActive() == 0 || fracture.getNumActive() == 0) {
+    const auto hasActiveCells = [&ecl_grid, continuumSize](const std::size_t first)
+    {
+        for (std::size_t g = first; g < first + continuumSize; ++g) {
+            if (ecl_grid.cellActive(g)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!hasActiveCells(0) || !hasActiveCells(continuumSize)) {
         OPM_THROW(std::invalid_argument,
                   "A dual-continuum grid needs active cells in both the matrix and the fracture continuum.");
     }
 
+    // One grid per continuum, each with its own cells, activity, MINPV and
+    // geometry, joined into one grid with the matrix cells first. The copies of
+    // the input and the grid of the fracture continuum are released as soon as
+    // they are used, before the NNC faces are added.
+    //
     // The pore volumes, permeabilities and multipliers used for the MINPV and PINCH
     // processing are those of the dual-continuum grid, indexed by its cells.
     cpgrid::ContinuumSlice matrixSlice{0, {}};
     cpgrid::ContinuumSlice fractureSlice{static_cast<int>(continuumSize), {}};
 
-    auto removed_cells = current_data_->back()->
-        processEclipseFormat(&matrix, ecl_state, periodic_extension, turn_normals,
-                             clip_z, pinchActive, edge_conformal, &matrixSlice);
+    auto removed_cells = [&]
+    {
+        const auto matrix = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix);
+        return current_data_->back()->
+            processEclipseFormat(&matrix, ecl_state, periodic_extension, turn_normals,
+                                 clip_z, pinchActive, edge_conformal, &matrixSlice);
+    }();
 
-    CpGrid fracture_grid(current_data_->back()->ccobj_);
-    const auto removed_fracture_cells = fracture_grid.current_data_->back()->
-        processEclipseFormat(&fracture, ecl_state, periodic_extension, turn_normals,
-                             clip_z, pinchActive, edge_conformal, &fractureSlice);
+    {
+        CpGrid fracture_grid(current_data_->back()->ccobj_);
+        {
+            const auto fracture = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture);
+            const auto removed_fracture_cells = fracture_grid.current_data_->back()->
+                processEclipseFormat(&fracture, ecl_state, periodic_extension, turn_normals,
+                                     clip_z, pinchActive, edge_conformal, &fractureSlice);
 
-    // The cells removed from the fracture continuum are numbered in that continuum.
-    for (const auto cell : removed_fracture_cells) {
-        removed_cells.push_back(cell + continuumSize);
+            // The cells removed from the fracture continuum are numbered in that continuum.
+            for (const auto cell : removed_fracture_cells) {
+                removed_cells.push_back(cell + continuumSize);
+            }
+        }
+
+        this->appendDisjointGrid(fracture_grid);
     }
-
-    this->appendDisjointGrid(fracture_grid);
 
     if (ecl_state != nullptr) {
         // The pinch-out connections of both continua, and the pruning of the global
