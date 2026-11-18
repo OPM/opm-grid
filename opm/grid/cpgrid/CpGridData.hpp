@@ -74,7 +74,6 @@
 #include <initializer_list>
 #include <set>
 #include <cstddef>
-#include <tuple>
 #include <vector>
 
 namespace Opm
@@ -119,7 +118,7 @@ struct ContinuumSlice
     /// Pinch-out connections generated for this continuum (option 4 of
     /// PINCH set to ALL): first cell, second cell and transmissibility, with
     /// the cells numbered as in the dual-continuum grid.
-    std::vector<std::tuple<int, int, double>> pinchNnc;
+    std::vector<Opm::NNCdata> pinchNnc;
 };
 } // namespace cpgrid
 

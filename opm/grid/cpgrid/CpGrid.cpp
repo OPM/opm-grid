@@ -1507,12 +1507,8 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
     if (ecl_state != nullptr) {
         // The pinch-out connections of both continua, and the pruning of the global
         // property arrays that follows, are what processing a single grid does.
-        std::vector<Opm::NNCdata> pinchNnc;
-        for (const auto* slice : {&matrixSlice, &fractureSlice}) {
-            for (const auto& [cell1, cell2, trans] : slice->pinchNnc) {
-                pinchNnc.emplace_back(cell1, cell2, trans);
-            }
-        }
+        std::vector<Opm::NNCdata> pinchNnc = std::move(matrixSlice.pinchNnc);
+        pinchNnc.insert(pinchNnc.end(), fractureSlice.pinchNnc.begin(), fractureSlice.pinchNnc.end());
         ecl_state->setPinchNNC(std::move(pinchNnc));
         ecl_state->prune_global_for_schedule_run();
 

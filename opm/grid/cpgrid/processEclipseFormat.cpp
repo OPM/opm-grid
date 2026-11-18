@@ -364,9 +364,7 @@ namespace cpgrid
                 // grid. They are added after the continua have been joined. The pinch-out
                 // connections are passed on, and ecl_state is updated when all continua
                 // are done.
-                for (const auto& nnc : pinchedNNCs) {
-                    continuum->pinchNnc.emplace_back(nnc.cell1, nnc.cell2, nnc.trans);
-                }
+                continuum->pinchNnc = pinchedNNCs;
             }
             else {
                 // Add explicit NNCs.
