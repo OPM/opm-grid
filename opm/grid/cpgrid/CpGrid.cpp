@@ -1466,11 +1466,6 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                           const bool pinchActive,
                                           const bool edge_conformal)
 {
-    if (ecl_state != nullptr && ecl_state->aquifer().hasNumericalAquifer()) {
-        OPM_THROW(std::invalid_argument,
-                  "Numerical aquifers are not supported for dual-continuum grids.");
-    }
-
     // One grid per continuum, each with its own cells, activity, MINPV and
     // geometry, joined into one grid with the matrix cells first.
     const auto matrix = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix);
