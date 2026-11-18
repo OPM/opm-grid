@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(MatrixAndFractureCellsAreNeverNeighbours)
         }
         return count;
     };
-    BOOST_CHECK(crossing(*stacked) > 0);
+    BOOST_CHECK_EQUAL(crossing(*stacked), nx * ny);
 
     // With one grid per continuum no face connects the continua.
     const auto dual = makeDualCpGrid(eclGrid);
@@ -441,7 +441,10 @@ BOOST_AUTO_TEST_CASE(PinchOutConnectionsOfBothContinuaUseTheDualGridNumbering)
     BOOST_CHECK_EQUAL(pinch[0].cell2, std::size_t{4});
     BOOST_CHECK_EQUAL(pinch[1].cell1, std::size_t{6});
     BOOST_CHECK_EQUAL(pinch[1].cell2, std::size_t{10});
-    BOOST_CHECK(pinch[0].trans > 0.0);
+    // 1 mD across a column of 100 m by 100 m: half of the 10 m cell above, the 0.2 m
+    // of the pinched layer and half of the 9.8 m cell below, 10.1 m in all.
+    constexpr double milliDarcy = 9.869232667160128e-16;
+    BOOST_CHECK_CLOSE(pinch[0].trans, milliDarcy * 100.0 * 100.0 / 10.1, 1e-6);
     // Same permeability and geometry in both continua.
     BOOST_CHECK_CLOSE(pinch[0].trans, pinch[1].trans, 1e-10);
 }
