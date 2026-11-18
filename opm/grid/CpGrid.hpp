@@ -270,7 +270,6 @@ namespace Dune
         /// matrix cells first, then the fracture cells, which have the
         /// geometry of their matrix twins, and the explicit NNCs of \p ecl_state
         /// are added to the grid, including the matrix-fracture couplings.
-        /// MINPV and PINCH are not yet supported in this case.
         std::vector<std::size_t>
         processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
@@ -370,8 +369,8 @@ namespace Dune
         /// logical size N, cell g of the first and cell g+N of the second
         /// grid are the same logical cell of the two continua.
         ///
-        /// Both grids must be serial, hence call this before load balancing,
-        /// and must not have local grid refinement. They must have the same
+        /// Both grids must be on a single process, hence call this before load
+        /// balancing, and must not have local grid refinement. They must have the same
         /// logical NX and NY. On failure the grid is unchanged and an
         /// exception is thrown.
         ///
