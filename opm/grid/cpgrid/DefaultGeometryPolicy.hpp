@@ -38,6 +38,9 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "EntityRep.hpp"
 
+#include <memory>
+#include <type_traits>
+
 namespace Dune
 {
 
@@ -56,26 +59,19 @@ class DefaultGeometryPolicy
     friend class Geometry;
     friend class ::Dune::CpGrid;
 public:
+    // The constructors create the geometry containers, so they are defined in
+    // DefaultGeometryPolicy.cpp, where the geometries are complete.
+
     /// @brief
     /// @todo Doc me
-    DefaultGeometryPolicy()
-        : cell_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<3, 3>, 0>>()),
-          face_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<2, 3>, 1>>()),
-          point_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>())
-    {
-    }
+    DefaultGeometryPolicy();
 
     /// @brief
     /// @todo Doc me
     /// @param
     DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
                           const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
-                          const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
-        : cell_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<3, 3>, 0>>(cell_geom)),
-          face_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<2, 3>, 1>>(face_geom)),
-          point_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>(point_geom))
-    {
-    }
+                          const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom);
 
     /// @brief
     /// @todo Doc me!
