@@ -61,6 +61,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/DataHandleWrappers.cpp
+  opm/grid/cpgrid/DefaultGeometryPolicy.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/Intersection.cpp
