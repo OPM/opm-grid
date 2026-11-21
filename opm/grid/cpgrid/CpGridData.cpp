@@ -204,15 +204,14 @@ PartitionType getPartitionType(const PartitionTypeIndicator& p, int i,
     return p.getPartitionType(Entity<3>(grid, i, true));
 }
 
-int getIndex(const int* i)
+int getIndex(const EntityRep<1>& f)
 {
-    return *i;
+    return f.index();
 }
 
-template<class T>
-int getIndex(T i)
+int getIndex(int i)
 {
-    return i->index();
+    return i;
 }
 
 template<class C>
@@ -958,7 +957,7 @@ struct AttributeDataHandle
         {
             std::pair<int,char> rank_attr;
             buffer.read(rank_attr);
-            vals_[getIndex(f)].insert(rank_attr);
+            vals_[getIndex(*f)].insert(rank_attr);
         }
     }
     int rank_;
