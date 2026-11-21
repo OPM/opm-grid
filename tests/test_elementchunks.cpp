@@ -61,6 +61,22 @@ std::vector<int> countChunks(const EC& chunks)
     return counts;
 }
 
+// The same counting through operator[], which the index-based OpenMP loops
+// use. It must see the same chunks as the iterators, empty trailing chunks
+// included.
+template <class EC>
+std::vector<int> countChunksIndexed(const EC& chunks)
+{
+    std::vector<int> counts(chunks.size(), 0);
+    for (std::size_t ci = 0; ci < chunks.size(); ++ci) {
+        for (const auto& elem : chunks[ci]) {
+            static_cast<void>(elem); // silence unused variable warning
+            ++counts[ci];
+        }
+    }
+    return counts;
+}
+
 using GV = Dune::CpGrid::LeafGridView;
 
 template <class PartitionSet>
@@ -73,6 +89,8 @@ testCase(const GV& gv,
     Opm::ElementChunks chunks(gv, part, num_chunks);
     auto counts = countChunks(chunks);
     BOOST_CHECK_EQUAL_COLLECTIONS(counts.begin(), counts.end(), expected.begin(), expected.end());
+    const auto indexed = countChunksIndexed(chunks);
+    BOOST_CHECK_EQUAL_COLLECTIONS(indexed.begin(), indexed.end(), expected.begin(), expected.end());
 }
 
 BOOST_FIXTURE_TEST_CASE(ElementChunksTests, Fixture)

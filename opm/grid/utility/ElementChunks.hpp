@@ -46,32 +46,20 @@ namespace Opm
 /// }
 ///
 /// Typical OpenMP-threaded loop over grid using this class:
+/// ElementChunks chunks(gridview, Dune::Partitions::all, num_threads);
 /// #pragma omp parallel for
-/// for (const auto& chunk : ElementChunks(gridview, Dune::Partitions::all, num_threads)) {
-///     for (const auto& elem : chunk) {
+/// for (std::size_t ci = 0; ci < chunks.size(); ++ci) {
+///     for (const auto& elem : chunks[ci]) {
 ///         // Do something with elem
 ///     }
 /// }
 ///
-/// The ElementChunks object stores a vector of iterators, so if you
-/// have several such loops it can be a good idea to create the object
-/// once instead of once per loop:
-/// ElementChunks chunks(gridview, Dune::Partitions::all, num_threads);
-/// // First loop
-/// #pragma omp parallel for
-/// for (const auto& chunk : chunks) {
-///     for (const auto& elem : chunk) {
-///         // Do something with elem
-///     }
-/// }
-/// // ...
-/// // Second loop
-/// #pragma omp parallel for
-/// for (const auto& chunk : chunks) {
-///     for (const auto& elem : chunk) {
-///         // Do something else with elem
-///     }
-/// }
+/// The loop over the chunks is index-based: OpenMP accepts a
+/// range-based for loop after the pragma only from version 5.0 on,
+/// while the index-based form needs only version 3.0.
+///
+/// The ElementChunks object stores a vector of iterators, so create it
+/// once and reuse it when several loops run over the same chunks.
 template <class GridView, class PartitionSet>
 class ElementChunks
 {
@@ -121,6 +109,12 @@ public:
     auto size() const
     {
         return grid_chunk_iterators_.size() - 1;
+    }
+    /// Chunk number i, for i < size(): the same chunk as
+    /// *std::next(begin(), i).
+    Chunk operator[](std::size_t i) const
+    {
+        return Chunk{grid_chunk_iterators_[i], grid_chunk_iterators_[i + 1]};
     }
 private:
     Storage grid_chunk_iterators_;
