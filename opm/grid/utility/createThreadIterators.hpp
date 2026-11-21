@@ -59,7 +59,7 @@ namespace Opm
             chunk_iterators.push_back(it);
             chunk_iterators.push_back(end);
         } else {
-            const auto chunk_size = std::max(num_elem / num_chunks, 1ul);
+            const auto chunk_size = std::max(num_elem / num_chunks, std::size_t{1});
             chunk_iterators.reserve(num_chunks + 1);
             // Push evenly spaced iterators for the beginning of each chunk.
             // We do this a number of times equal to the number of chunks.
@@ -120,7 +120,7 @@ namespace Opm
             chunk_iterators.push_back(it);
             chunk_iterators.push_back(end);
         } else {
-            chunk_size = static_cast<int>(std::clamp(num_elem / num_threads, 1ul, max_chunk_size));
+            chunk_size = static_cast<int>(std::clamp(num_elem / num_threads, std::size_t{1}, max_chunk_size));
             chunk_iterators.reserve(num_elem / chunk_size + 2);
             for (int count = 0; it != end; ++it, ++count) {
                 if (count % chunk_size == 0) {
