@@ -73,6 +73,7 @@
 #include <array>
 #include <initializer_list>
 #include <set>
+#include <cstddef>
 #include <vector>
 
 namespace Opm
@@ -102,6 +103,25 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
 
 namespace Dune
 {
+namespace cpgrid
+{
+/// A grid that is one continuum of a dual-continuum grid.
+///
+/// The continuum is processed as an ordinary grid, while the pore volumes,
+/// permeabilities and multipliers used for the MINPV and PINCH processing
+/// are indexed by the cells of the dual-continuum grid.
+struct ContinuumSlice
+{
+    /// Cartesian index, in the dual-continuum grid, of the first cell of this continuum.
+    int cartOffset{0};
+
+    /// Pinch-out connections generated for this continuum (option 4 of
+    /// PINCH set to ALL): first cell, second cell and transmissibility, with
+    /// the cells numbered as in the dual-continuum grid.
+    std::vector<Opm::NNCdata> pinchNnc;
+};
+} // namespace cpgrid
+
 namespace cpgrid
 {
 namespace mover
@@ -259,6 +279,14 @@ public:
     /// edge-conformal grid.  Typically useful in geo-mechanical
     /// applications.
     ///
+    /// \param[in,out] continuum Non-null if \p ecl_grid is one continuum of
+    /// the dual-continuum grid described by \p ecl_state. The MINPV and PINCH
+    /// processing then reads the pore volumes, permeabilities and
+    /// multipliers of that continuum from \p ecl_state, and the pinch-out
+    /// connections are collected in \p continuum rather than stored in
+    /// \p ecl_state, which also keeps its global property arrays. The
+    /// explicit NNCs and the aquifers of \p ecl_state are not applied.
+    ///
     /// \return Cells removed due low pore-volume and across which to create
     /// non-neighbouring connections if item 4 of the 'PINCH' keyword is set
     /// to 'ALL'.
@@ -269,7 +297,8 @@ public:
                          bool turn_normals = false,
                          bool clip_z = false,
                          bool pinchActive = true,
-                         bool edge_conformal = false);
+                         bool edge_conformal = false,
+                         ContinuumSlice* continuum = nullptr);
 
     /// Read the Eclipse grid format ('grdecl').
     ///
@@ -557,6 +586,38 @@ public:
     const std::vector<double>& zcornData() const {
         return zcorn;
     }
+
+    /// Append the cells of another (serial, single-level) grid to this one
+    /// as a disjoint union.
+    ///
+    /// The cells, faces and vertices of \p other are added after those of
+    /// this grid. No face connects the two parts. The logical Cartesian
+    /// grid is extended in the k direction: cell (i,j,k) of \p other gets
+    /// the Cartesian index of cell (i,j,k+NZ) of the extended grid, whether
+    /// or not the cells of either part are active. The two parts must
+    /// therefore have the same logical NX and NY.
+    ///
+    /// All derived geometry, such as cell volumes, centroids, face areas
+    /// and normals, is carried over unchanged. This means that each part
+    /// can have its own pillars.
+    ///
+    /// \param[in] other Grid to append. Must have been processed, be
+    ///   serial and have no local grid refinement.
+    void appendDisjointGrid(const CpGridData& other);
+
+    /// Add a face for each of a number of connections between cells that
+    /// do not otherwise share a face (non-neighbouring connections, NNCs).
+    ///
+    /// The new faces have the NNC face tag, no points and no geometry
+    /// (unit area), as the NNC faces made when the grid is processed from
+    /// the Eclipse format. They are numbered before the existing faces,
+    /// which keeps the top and bottom faces last in the face list of each
+    /// cell. The face numbers of the existing faces thus increase by the
+    /// number of new faces.
+    ///
+    /// \param[in] cell_pairs Pairs of distinct, existing cells. The pairs
+    ///   must be unique and must not already be connected by a face.
+    void appendNncFaces(const std::vector<std::pair<int, int>>& cell_pairs);
 
 
     /// Get the index set. This is the lead as well as th level index set.

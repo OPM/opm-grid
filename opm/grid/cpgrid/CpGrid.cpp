@@ -43,7 +43,9 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/common/OpmLog/OpmLog.hpp>
 
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
@@ -60,6 +62,7 @@
 //#include <fstream>
 //#include <iostream>
 #include <algorithm>
+#include <cstdint>
 #include <iomanip>
 #include <numeric>
 #include <tuple>
@@ -1424,6 +1427,22 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              const bool pinchActive,
                              const bool edge_conformal)
 {
+    // Every process must refuse a dual-continuum grid on more than one process, also
+    // those that are not given the grid, as the process that has it joins the grids
+    // and sends one message more than the others wait for.
+    const bool dualContinuum = (ecl_grid != nullptr && ecl_grid->dualPorosity())
+        || (ecl_state != nullptr && ecl_state->runspec().porosityModel().dualContinuum());
+    if (dualContinuum && current_data_->back()->ccobj_.size() > 1) {
+        OPM_THROW(std::invalid_argument,
+                  "A dual-continuum grid (DUALPORO or DUALPERM) can only be processed on a single process.");
+    }
+
+    if (ecl_grid != nullptr && ecl_grid->dualPorosity()) {
+        return this->processDualContinuumEclipseFormat(*ecl_grid, ecl_state, periodic_extension,
+                                                       turn_normals, clip_z, pinchActive,
+                                                       edge_conformal);
+    }
+
     auto removed_cells = current_data_->back()->
         processEclipseFormat(ecl_grid, ecl_state,
                              periodic_extension,
@@ -1431,6 +1450,91 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              clip_z,
                              pinchActive,
                              edge_conformal);
+
+    current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
+                                            current_data_->back()->logical_cartesian_size_.size(),
+                                            0);
+    return removed_cells;
+}
+
+std::vector<std::size_t>
+CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+                                          Opm::EclipseState* ecl_state,
+                                          const bool periodic_extension,
+                                          const bool turn_normals,
+                                          const bool clip_z,
+                                          const bool pinchActive,
+                                          const bool edge_conformal)
+{
+    const auto continuumSize = ecl_grid.getCartesianSize() / 2;
+
+    // The corner-point preprocessing cannot make a grid without cells.
+    const auto hasActiveCells = [&ecl_grid, continuumSize](const std::size_t first)
+    {
+        for (std::size_t g = first; g < first + continuumSize; ++g) {
+            if (ecl_grid.cellActive(g)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!hasActiveCells(0) || !hasActiveCells(continuumSize)) {
+        OPM_THROW(std::invalid_argument,
+                  "A dual-continuum grid needs active cells in both the matrix and the fracture continuum.");
+    }
+
+    // One grid per continuum, each with its own cells, activity, MINPV and
+    // geometry, joined into one grid with the matrix cells first. The copies of
+    // the input and the grid of the fracture continuum are released as soon as
+    // they are used, before the NNC faces are added.
+    //
+    // The pore volumes, permeabilities and multipliers used for the MINPV and PINCH
+    // processing are those of the dual-continuum grid, indexed by its cells.
+    cpgrid::ContinuumSlice matrixSlice{0, {}};
+    cpgrid::ContinuumSlice fractureSlice{static_cast<int>(continuumSize), {}};
+
+    auto removed_cells = [&]
+    {
+        const auto matrix = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Matrix);
+        return current_data_->back()->
+            processEclipseFormat(&matrix, ecl_state, periodic_extension, turn_normals,
+                                 clip_z, pinchActive, edge_conformal, &matrixSlice);
+    }();
+
+    {
+        CpGrid fracture_grid(current_data_->back()->ccobj_);
+        {
+            const auto fracture = ecl_grid.continuumGrid(Opm::EclipseGrid::Continuum::Fracture);
+            const auto removed_fracture_cells = fracture_grid.current_data_->back()->
+                processEclipseFormat(&fracture, ecl_state, periodic_extension, turn_normals,
+                                     clip_z, pinchActive, edge_conformal, &fractureSlice);
+
+            // The cells removed from the fracture continuum are numbered in that continuum.
+            for (const auto cell : removed_fracture_cells) {
+                removed_cells.push_back(cell + continuumSize);
+            }
+        }
+
+        this->appendDisjointGrid(fracture_grid);
+    }
+
+    if (ecl_state != nullptr) {
+        // The pinch-out connections of both continua, and the pruning of the global
+        // property arrays that follows, are what processing a single grid does.
+        std::vector<Opm::NNCdata> pinchNnc = std::move(matrixSlice.pinchNnc);
+        pinchNnc.insert(pinchNnc.end(), fractureSlice.pinchNnc.begin(), fractureSlice.pinchNnc.end());
+        ecl_state->setPinchNNC(std::move(pinchNnc));
+        ecl_state->prune_global_for_schedule_run();
+
+        // The explicit NNCs include the coupling between each matrix cell and its
+        // fracture twin. They connect cells of different continua, so they could not be
+        // added when processing the continua one by one.
+        std::vector<std::pair<int, int>> nnc;
+        for (const auto& entry : ecl_state->getInputNNC().input()) {
+            nnc.emplace_back(entry.cell1, entry.cell2);
+        }
+        this->addNnc(nnc);
+    }
 
     current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
                                             current_data_->back()->logical_cartesian_size_.size(),
@@ -1470,6 +1574,102 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
     current_data_->back()->ccobj_.broadcast(current_data_->back()->logical_cartesian_size_.data(),
                                             current_data_->back()->logical_cartesian_size_.size(),
                                             0);
+}
+
+void CpGrid::appendDisjointGrid(const CpGrid& other)
+{
+    const auto isPlainSerialGrid = [](const CpGrid& grid)
+    {
+        return grid.data_.size() == 1 && grid.distributed_data_.empty()
+            && grid.current_data_ == &grid.data_;
+    };
+
+    if (!isPlainSerialGrid(*this) || !isPlainSerialGrid(other)) {
+        OPM_THROW(std::invalid_argument,
+                  "appendDisjointGrid() requires two serial grids without local grid refinement. "
+                  "Extend the grid before load balancing.");
+    }
+
+    data_.back()->appendDisjointGrid(*other.data_.back());
+}
+
+void CpGrid::addNnc(const std::vector<std::pair<int, int>>& nnc)
+{
+    if (data_.size() != 1 || !distributed_data_.empty() || current_data_ != &data_) {
+        OPM_THROW(std::invalid_argument,
+                  "addNnc() requires a serial grid without local grid refinement.");
+    }
+
+    auto& data = *data_.back();
+    const auto& global_cell = data.global_cell_;
+    // The compressed index of the cell with the Cartesian index, or -1 if that cell
+    // is inactive.
+    const auto compressedIndex = [&global_cell](const int cartesian)
+    {
+        // The active cells are numbered in increasing Cartesian order.
+        const auto it = std::lower_bound(global_cell.begin(), global_cell.end(), cartesian);
+        return (it != global_cell.end() && *it == cartesian)
+            ? static_cast<int>(it - global_cell.begin())
+            : -1;
+    };
+    const auto areNeighbours = [this](const int c1, const int c2)
+    {
+        const auto faces = this->cellFaceRow(c1);
+        for (int i = 0; i < faces.size(); ++i) {
+            const int face = faces[i].index();
+            const int other = (this->faceCell(face, 0) == c1) ? this->faceCell(face, 1)
+                                                               : this->faceCell(face, 0);
+            if (other == c2) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // An index outside the logical grid is an error, not an inactive cell.
+    const auto& logicalSize = data.logical_cartesian_size_;
+    const auto numCartesian = static_cast<std::int64_t>(logicalSize[0]) * logicalSize[1] * logicalSize[2];
+    const auto checkCartesian = [numCartesian](const int cartesian)
+    {
+        if (cartesian < 0 || cartesian >= numCartesian) {
+            OPM_THROW(std::invalid_argument,
+                      "addNnc(): the Cartesian index " + std::to_string(cartesian)
+                      + " is outside the logical grid of " + std::to_string(numCartesian) + " cells.");
+        }
+    };
+
+    // Ordered and unique by Cartesian index, as the NNC faces made when processing the
+    // Eclipse format.
+    std::set<std::pair<int, int>> unique_nnc;
+    for (const auto& [a, b] : nnc) {
+        checkCartesian(a);
+        checkCartesian(b);
+        unique_nnc.emplace(std::min(a, b), std::max(a, b));
+    }
+
+    std::vector<std::pair<int, int>> cell_pairs;
+    std::size_t numInactive = 0;
+    for (const auto& [a, b] : unique_nnc) {
+        const int c1 = compressedIndex(a);
+        const int c2 = compressedIndex(b);
+        if (c1 < 0 || c2 < 0) {
+            // A connection to an inactive cell has nothing to connect, as for a grid
+            // processed in one piece.
+            ++numInactive;
+            continue;
+        }
+        if (areNeighbours(c1, c2)) {
+            continue;
+        }
+        cell_pairs.emplace_back(c1, c2);
+    }
+
+    if (numInactive > 0) {
+        Opm::OpmLog::info(std::to_string(numInactive) +
+                          " non-neighbouring connection(s) skipped because a cell is inactive.");
+    }
+
+    data.appendNncFaces(cell_pairs);
 }
 
 template<int dim>

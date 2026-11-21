@@ -131,7 +131,8 @@ namespace cpgrid
                                      const bool turn_normals,
                                      const bool clip_z,
                                      const bool pinchActive,
-                                     const bool edge_conformal)
+                                     const bool edge_conformal,
+                                     ContinuumSlice* continuum)
     {
         if (ccobj_.rank() != 0) {
             if (ecl_state != nullptr) {
@@ -177,10 +178,22 @@ namespace cpgrid
             bool pinchOptionALL = false;
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             const auto& fp = ecl_state->fieldProps();
-            const auto& permZ = [&fp, cartGridSize](){
-                if(fp.has_double("PERMZ")) return fp.get_global_double("PERMZ");
-                if(fp.has_double("PERMY")) return fp.get_global_double("PERMY");
-                if(fp.has_double("PERMX")) return fp.get_global_double("PERMX");
+            // Cartesian index in ecl_state of the first cell of ecl_grid. The arrays of
+            // ecl_state are indexed by the cells of the dual-continuum grid, of which
+            // ecl_grid is one continuum.
+            const int cartOffset = continuum ? continuum->cartOffset : 0;
+            const auto continuumPart = [cartOffset, cartGridSize](std::vector<double> global)
+            {
+                if (cartOffset == 0 && global.size() == cartGridSize) {
+                    return global;
+                }
+                return std::vector<double>(global.begin() + cartOffset,
+                                           global.begin() + cartOffset + cartGridSize);
+            };
+            const auto& permZ = [&fp, cartGridSize, &continuumPart](){
+                if(fp.has_double("PERMZ")) return continuumPart(fp.get_global_double("PERMZ"));
+                if(fp.has_double("PERMY")) return continuumPart(fp.get_global_double("PERMY"));
+                if(fp.has_double("PERMX")) return continuumPart(fp.get_global_double("PERMX"));
                 // Make this part run without PERM* for some tests
                 return std::vector<double>(cartGridSize, 1);
             }();
@@ -193,10 +206,11 @@ namespace cpgrid
                 }
                 const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
                 const bool nogap = !pinchActive || ecl_grid.getPinchGapMode() ==  Opm::PinchMode::NOGAP;
-                const auto& poreVolume = ecl_state->fieldProps().porv(true);
+                const auto poreVolume = continuumPart(ecl_state->fieldProps().porv(true));
                 pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
                 const auto& transMult = ecl_state->getTransMult();
-                auto multZ =[ &transMult] (int cartindex) {
+                auto multZ =[ &transMult, cartOffset] (int cartindex) {
+                    cartindex += cartOffset;
                     return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
                         transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
                 };
@@ -296,7 +310,11 @@ namespace cpgrid
                     // Possibly overwrite with specified TRANZ values.
                     if (fp.tran_active("TRANZ"))
                     {
-                        fp.apply_tranz_global(cells_between, trans_between);
+                        auto global_cells_between = cells_between;
+                        for (auto& cell : global_cells_between) {
+                            cell += cartOffset;
+                        }
+                        fp.apply_tranz_global(global_cells_between, trans_between);
                     }
 
                     // Apply Multipliers
@@ -312,8 +330,8 @@ namespace cpgrid
                          cell_top < static_cast<std::size_t>(cell2);
                          cell_top = cell_bottom, cell_bottom +=  ecl_grid.getNX() * ecl_grid.getNY(), ++trans) {
 
-                        *trans *= transMult.getMultiplier(cell_top, ::Opm::FaceDir::ZPlus) *
-                            transMult.getMultiplier(cell_bottom, ::Opm::FaceDir::ZMinus);
+                        *trans *= transMult.getMultiplier(cell_top + cartOffset, ::Opm::FaceDir::ZPlus) *
+                            transMult.getMultiplier(cell_bottom + cartOffset, ::Opm::FaceDir::ZMinus);
                     }
 
                     //Compute harmonic average over pinched out cells.
@@ -332,7 +350,7 @@ namespace cpgrid
 
                     // Set nnc and transmissibility, last param indicates that this from pinch
                     // It is needed to overwrite transmissibilities instead of adding to existing ones.
-                    pinchedNNCs.emplace_back(cell1, cell2, average);
+                    pinchedNNCs.emplace_back(cell1 + cartOffset, cell2 + cartOffset, average);
                 }
             }
 
@@ -341,18 +359,27 @@ namespace cpgrid
                 Opm::OpmLog::info(std::to_string(nnc_cells[PinchNNC].size()) + " pinch-out connection" + suffix + " generated");
             }
 
-            // Add explicit NNCs.
-            const auto& nncs = ecl_state->getInputNNC();
-            for (const auto& single_nnc : nncs.input()) {
-                // Repeated NNCs will only exist in the map once (repeated
-                // insertions have no effect). The code that computes the
-                // transmissibilities is responsible for ensuring repeated NNC
-                // transmissibilities are added.
-                nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
+            if (continuum) {
+                // The explicit NNCs of ecl_state are numbered as in the dual-continuum
+                // grid. They are added after the continua have been joined. The pinch-out
+                // connections are passed on, and ecl_state is updated when all continua
+                // are done.
+                continuum->pinchNnc = pinchedNNCs;
             }
-            // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
-            ecl_state->setPinchNNC(std::move(pinchedNNCs));
-            ecl_state->prune_global_for_schedule_run();
+            else {
+                // Add explicit NNCs.
+                const auto& nncs = ecl_state->getInputNNC();
+                for (const auto& single_nnc : nncs.input()) {
+                    // Repeated NNCs will only exist in the map once (repeated
+                    // insertions have no effect). The code that computes the
+                    // transmissibilities is responsible for ensuring repeated NNC
+                    // transmissibilities are added.
+                    nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
+                }
+                // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
+                ecl_state->setPinchNNC(std::move(pinchedNNCs));
+                ecl_state->prune_global_for_schedule_run();
+            }
         }
 
         // this variable is only required because getCellZvals() needs
@@ -409,7 +436,7 @@ namespace cpgrid
 
             // Make the grid.
             this->processEclipseFormat(new_g,
-                                       ecl_state,
+                                       continuum ? nullptr : ecl_state,
                                        nnc_cells,
                                        true,
                                        turn_normals,
@@ -429,7 +456,7 @@ namespace cpgrid
                 assert(nnc_cells[ExplicitNNC].empty());
             }
             this->processEclipseFormat(g,
-                                       ecl_state,
+                                       continuum ? nullptr : ecl_state,
                                        nnc_cells,
                                        false,
                                        turn_normals,

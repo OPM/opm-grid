@@ -58,6 +58,7 @@
 #include <opm/grid/utility/OpmWellType.hpp>
 
 #include <set>
+#include <utility>
 
 namespace Opm
 {
@@ -263,6 +264,12 @@ namespace Dune
         /// \param[in] edge_conformal Whether or not to construct an
         /// edge-conformal grid.  Typically useful in geo-mechanical
         /// applications.
+        ///
+        /// If \p ecl_grid is a dual-continuum grid (DUALPORO/DUALPERM) the
+        /// result is one grid per continuum, joined with appendDisjointGrid(): the
+        /// matrix cells first, then the fracture cells, which have the
+        /// geometry of their matrix twins, and the explicit NNCs of \p ecl_state
+        /// are added to the grid, including the matrix-fracture couplings.
         std::vector<std::size_t>
         processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
@@ -336,6 +343,61 @@ namespace Dune
                                   bool turn_normals = false,
                                   bool edge_conformal = false);
 
+        //@}
+
+        /// \name Combining grids.
+        //@{
+        /// Stack another grid on top of this one in the k direction, as a
+        /// disjoint union. NX and NY of the two grids must be equal.
+        ///
+        /// Intended for continuum models where a second set of cells
+        /// is needed on top of the first one, for instance the fracture
+        /// continuum of a dual-porosity model. Each of the two grids is an
+        /// ordinary corner-point grid, built from its own corners (pillars)
+        /// and its own set of active cells.
+        ///
+        /// The cells of \p other are numbered after those of this grid, and
+        /// its faces and vertices likewise. No face connects the two parts,
+        /// so any coupling between them must be added by the caller, for
+        /// instance as non-neighbour connections. The topology is a plain
+        /// disjoint union, but the logical Cartesian grid is not general: it is
+        /// stacked in the k direction, and another kind of extension would need
+        /// its own Cartesian mapping. Cell (i,j,k) of \p other has the
+        /// Cartesian index of cell (i,j,k+NZ) of the combined grid, where NZ
+        /// is the logical NZ of this grid before the call, independent of
+        /// which cells are active. Consequently, with two grids of equal
+        /// logical size N, cell g of the first and cell g+N of the second
+        /// grid are the same logical cell of the two continua.
+        ///
+        /// Both grids must be on a single process, hence call this before load
+        /// balancing, and must not have local grid refinement. They must have the same
+        /// logical NX and NY. On failure the grid is unchanged and an
+        /// exception is thrown.
+        ///
+        /// \param[in] other Grid to append. It is not modified.
+        void appendDisjointGrid(const CpGrid& other);
+
+        /// Add non-neighbouring connections (NNCs) between cells.
+        ///
+        /// A face is added for each connection, as for the explicit NNCs
+        /// of a grid processed from the Eclipse format, so that the
+        /// connection is part of the grid topology: it is an intersection
+        /// between the cells with intersection index -1, and it counts in
+        /// numFaces(). Use it for connections that cannot be known when the
+        /// grids are processed, such as between the two parts of an extended
+        /// grid.
+        ///
+        /// Connections between cells that are not both active are skipped,
+        /// as are duplicates and connections between cells that already share
+        /// a face.
+        ///
+        /// The grid must be serial, without local grid refinement. The face
+        /// numbers of the existing faces increase by the number of added faces.
+        ///
+        /// \param[in] nnc Pairs of Cartesian indices of the logical grid, as
+        /// globalCell() returns them. An index outside the logical grid is an
+        /// error, an inactive cell is skipped.
+        void addNnc(const std::vector<std::pair<int, int>>& nnc);
         //@}
 
         /// \name Cartesian grid extensions.
@@ -621,6 +683,17 @@ namespace Dune
         /// --------------- Adaptivity (end) ---------------
 
     private:
+        /// Process a dual-continuum EclipseGrid into one grid per continuum,
+        /// joined with appendDisjointGrid().
+        std::vector<std::size_t>
+        processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+                                          Opm::EclipseState* ecl_state,
+                                          bool periodic_extension,
+                                          bool turn_normals,
+                                          bool clip_z,
+                                          bool pinchActive,
+                                          bool edge_conformal);
+
         void updateCornerHistoryLevels(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                        const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                        const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
