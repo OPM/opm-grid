@@ -654,7 +654,7 @@ namespace {
     {
         using namespace Opm;
         return Dune::cpgrid::OpmWellType(name,name,0,0,0,0,0.,WellType(),
-                   Well::ProducerCMode(),Connection::Order(),UnitSystem(),
+                   Well::ProducerCMode(),UnitSystem(),
                    0.,false,false,0,Well::GasInflowEquation());
     };
 } // end anonymous namespace
@@ -680,19 +680,19 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     wellCon->add(createConnection(0,1,1));
     std::vector<Dune::cpgrid::OpmWellType> wells;
     wells.push_back(createWell("first"));
-    wells[0].updateConnections(wellCon,true);
+    wells[0].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wellCon = std::make_shared<Opm::WellConnections>(); //reset
     wellCon->add(createConnection(0,0,1));
     wellCon->add(createConnection(1,1,0));
     wells.push_back(createWell("second"));
-    wells[1].updateConnections(wellCon,true);
+    wells[1].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wellCon = std::make_shared<Opm::WellConnections>(); //reset
     wellCon->add(createConnection(0,0,1));
     wellCon->add(createConnection(1,0,1));
     wells.push_back(createWell("third")); // intersects with second
-    wells[2].updateConnections(wellCon,true);
+    wells[2].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     Dune::cpgrid::WellConnections wellConnections(wells,std::unordered_map<std::string, std::set<int>>(),gog.getGrid());
     BOOST_REQUIRE(wellConnections.size()==3);
@@ -861,13 +861,13 @@ BOOST_AUTO_TEST_CASE(test_getWellRanks)
     wellCon->add(createConnection(0,1,1));
     std::vector<Dune::cpgrid::OpmWellType> wells;
     wells.push_back(createWell("first"));
-    wells[0].updateConnections(wellCon,true);
+    wells[0].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wellCon = std::make_shared<Opm::WellConnections>(); // reset
     wellCon->add(createConnection(0,0,2));
     wellCon->add(createConnection(0,1,2));
     wells.push_back(createWell("second"));
-    wells[1].updateConnections(wellCon,true);
+    wells[1].updateConnections(wellCon,Opm::Connection::Order::TRACK,true);
 
     wells.push_back(createWell("third"));
 
