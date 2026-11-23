@@ -67,6 +67,8 @@
 #include <cstdint>
 #include <iomanip>
 #include <numeric>
+#include <string>
+#include <unordered_map>
 #include <tuple>
 
 namespace
@@ -421,39 +423,78 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                         : -1;
                 };
 
-                // The cells of the wells keep the partition they were given, which keeps
-                // the wells together. A twin follows a cell with a well, and the matrix
-                // twin otherwise.
+                // Cells that have to be on one process form a group: a matrix cell and its
+                // twin, and, unless wells may be distributed, the cells of a well. A group
+                // that the partitioner has split, as a twin pair of two different wells can
+                // be, is moved as a whole, so that no well is split by the pairing. It goes
+                // to the process of the first cell of a well in it, or else of its first
+                // matrix cell.
+                std::vector<int> group(globalCell.size());
+                std::iota(group.begin(), group.end(), 0);
+                const auto find = [&group](int c) {
+                    while (group[c] != c) {
+                        group[c] = group[group[c]];
+                        c = group[c];
+                    }
+                    return c;
+                };
+                const auto join = [&group, &find](const int c1, const int c2) {
+                    const auto r1 = find(c1);
+                    const auto r2 = find(c2);
+                    // The smaller index is the root, so that it is the first cell of the group.
+                    group[std::max(r1, r2)] = std::min(r1, r2);
+                };
+
                 std::vector<char> wellCell(globalCell.size(), 0);
+                std::unordered_map<std::string, int> firstCellOfWell;
+                const auto addToWell = [&](const std::string& name, const std::size_t cartesian) {
+                    const auto c = localIndex(cartesian);
+                    if (c < 0) {
+                        return;
+                    }
+                    wellCell[c] = 1;
+                    if (allowDistributedWells) {
+                        return;
+                    }
+                    if (const auto it = firstCellOfWell.find(name); it != firstCellOfWell.end()) {
+                        join(it->second, c);
+                    } else {
+                        firstCellOfWell.emplace(name, c);
+                    }
+                };
                 if (wells != nullptr) {
                     for (const auto& well : *wells) {
                         for (const auto& connection : well.getConnections()) {
-                            if (const auto c = localIndex(connection.global_index()); c >= 0) {
-                                wellCell[c] = 1;
-                            }
+                            addToWell(well.name(), connection.global_index());
                         }
                     }
                 }
                 for (const auto& future : possibleFutureConnections) {
                     for (const auto cartesian : future.second) {
-                        if (const auto c = localIndex(cartesian); c >= 0) {
-                            wellCell[c] = 1;
-                        }
+                        addToWell(future.first, cartesian);
                     }
                 }
 
-                twinParts = computedCellPart;
                 for (std::size_t c = 0; c < globalCell.size(); ++c) {
                     if (static_cast<std::size_t>(globalCell[c]) >= offset) {
                         break;      // the matrix cells come first
                     }
-                    const auto twin = localIndex(globalCell[c] + offset);
-                    if (twin < 0) {
-                        continue;
+                    if (const auto twin = localIndex(globalCell[c] + offset); twin >= 0) {
+                        join(c, twin);
                     }
-                    const auto part = wellCell[twin] ? computedCellPart[twin] : computedCellPart[c];
-                    twinParts[c] = part;
-                    twinParts[twin] = part;
+                }
+
+                // The part of a group: that of its first well cell, otherwise of its first cell.
+                std::vector<int> groupPart(globalCell.size(), -1);
+                for (std::size_t c = 0; c < globalCell.size(); ++c) {
+                    if (wellCell[c] && groupPart[find(c)] < 0) {
+                        groupPart[find(c)] = computedCellPart[c];
+                    }
+                }
+                twinParts = computedCellPart;
+                for (std::size_t c = 0; c < globalCell.size(); ++c) {
+                    const auto root = find(c);
+                    twinParts[c] = (groupPart[root] >= 0) ? groupPart[root] : computedCellPart[root];
                 }
             }
 
