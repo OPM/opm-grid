@@ -22,6 +22,7 @@
 #include <opm/grid/cpgrid/refinement/RefinementRequest.hpp>
 
 #include <array>
+#include <optional>
 #include <vector>
 
 namespace Opm
@@ -58,10 +59,13 @@ struct BoundaryConnection
 /// sub-pillars. A piece facing the domain has no neighbour; on the edge of the
 /// grid there is no shell and every piece faces the domain.
 ///
-/// axis in {0,1,2}; side in {-1, +1}. edgeConformal selects edge-conformal
-/// processing, matching the leaf's final edgeConformalizeLeaf pass. across, if
-/// given, holds the parent cells actually across the side; the mini region grows
-/// to cover it, since a large throw puts them outside the box's own layers.
+/// axis in {0,1,2}; side in {-1, +1}. The side is processed edge-conformally, so
+/// the pieces of one cell pair list the same points along the edges they share
+/// and can be merged into one face. across holds the parent cells actually across
+/// the side; the mini region grows to cover it, since a throw puts them outside
+/// the box's own layers when it is taller than one cell next to them: thin cells
+/// across a fault, or a throw of two or more whole layers. It is std::nullopt only
+/// where no cell is across the side, at the edge of the grid.
 std::vector<BoundaryConnection>
 boxBoundaryConnections(const std::array<int,3>& parentDims,
                        const double* coord,
@@ -70,8 +74,7 @@ boxBoundaryConnections(const std::array<int,3>& parentDims,
                        const BlockRefinement& box,
                        int axis,
                        int side,
-                       bool edgeConformal,
-                       const CellRange* across = nullptr);
+                       const std::optional<CellRange>& across);
 
 } // namespace Refinement
 } // namespace Opm

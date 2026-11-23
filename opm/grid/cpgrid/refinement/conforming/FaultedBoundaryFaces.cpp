@@ -46,8 +46,7 @@ boxBoundaryConnections(const std::array<int,3>& parentDims,
                        const BlockRefinement& box,
                        int axis,
                        int side,
-                       bool edgeConformal,
-                       const CellRange* across)
+                       const std::optional<CellRange>& across)
 {
     std::vector<BoundaryConnection> result;
 
@@ -128,7 +127,7 @@ boxBoundaryConnections(const std::array<int,3>& parentDims,
 
     // No merging tolerance, as for the box's level grid: equal depths stay equal points.
     struct processed_grid out;
-    if (!process_grdecl(/*pinchActive=*/1, edgeConformal ? 1 : 0, 0.0, &raw, nullptr, &out)) {
+    if (!process_grdecl(/*pinchActive=*/1, /*edge_conformal=*/1, /*tolerance=*/0.0, &raw, /*is_aquifer_cell=*/nullptr, &out)) {
         OPM_THROW(std::runtime_error, "Processing the faulted side of refinement '" + box.name
                   + "' as a corner-point grid failed.");
     }
