@@ -426,7 +426,8 @@ public:
 
     /// For the grid of a dual-continuum run: the number of cells of the Cartesian grid of one
     /// continuum, the difference between the Cartesian indices of a matrix cell and its
-    /// fracture twin. Zero if the grid is not dual-continuum.
+    /// fracture twin. Zero if the grid is not dual-continuum. It is set on the global grid and
+    /// carried over to the distributed grid by loadBalance().
     std::size_t continuumCartOffset() const
     {
         return continuum_cart_offset_;

@@ -108,6 +108,9 @@ void checkTwinsTogether(const bool holes, const double sigma)
     const auto cells = localCells(grid);
     const int half = nx * ny * nz / 2;
 
+    // The distributed grid knows the offset between a cell and its twin, as the global grid does.
+    BOOST_CHECK_EQUAL(grid.currentData().front()->continuumCartOffset(), static_cast<std::size_t>(half));
+
     int owned = 0;
     for (const auto& [cartesian, isOwned] : cells) {
         owned += isOwned;

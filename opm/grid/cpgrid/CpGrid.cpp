@@ -276,8 +276,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         // The grid of a dual-continuum run is partitioned with its matrix cells and fracture
         // twins joined, as the cells of a well, and with Zoltan on the graph of the grid.
         // The graph of the wells gets the pairs, also if there are no wells.
-        const bool dualContinuum =
-            cc.max(static_cast<int>(data_[selectedLevel]->continuum_cart_offset_ > 0)) > 0;
+        // The offset is known on the root only, where the global grid is.
+        const int continuumOffset = cc.max(static_cast<int>(data_[selectedLevel]->continuum_cart_offset_));
+        const bool dualContinuum = continuumOffset > 0;
         const std::vector<cpgrid::OpmWellType> noWells;
         if (dualContinuum) {
             if (wells == nullptr) {
@@ -632,6 +633,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
         distributed_data_[0]->distributeGlobalGrid(*this,*this->data_[selectedLevel], computedCellPart);
+        distributed_data_[0]->continuum_cart_offset_ = continuumOffset;
         (*global_id_set_ptr_).insertIdSet(*distributed_data_[0]);
         distributed_data_[0]-> index_set_.reset(new cpgrid::IndexSet(distributed_data_[0]->cell_to_face_.size(),
                                                                      distributed_data_[0]-> geomVector<3>().size()));
