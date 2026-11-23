@@ -1179,6 +1179,31 @@ BOOST_AUTO_TEST_CASE(faultLargeThrowAtBoxBoundaryBuilds)
     checkLeafClosedAndConnectionsToCoarse(grid, volumeBefore);
 }
 
+// A throw of half a layer puts the thrown depths on the box's sub-layer boundary, equal
+// only up to rounding (feet converted to metres, dipping layers).
+BOOST_AUTO_TEST_CASE(faultThrowOnSubLayerBoundaryBuilds)
+{
+    auto depth = [](int i_, int, int k_) {
+        const double ft = 0.3048;
+        const double z = ft*(8325.0 + 6.0*(cellOf(i_) + sideOf(i_)) + 20.0*(cellOf(k_) + sideOf(k_)));
+        return (cellOf(i_) >= 2) ? z + 10.0*ft : z;
+    };
+    auto parent = makeGrid(/* dims = */ {4, 2, 4}, depth);
+
+    Dune::CpGrid grid;
+    auto rawParent = parent.raw();
+    grid.processEclipseFormat(rawParent, false);
+    const double volumeBefore = totalVolume(grid);
+
+    useConformingBuilder(grid, parent);
+
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,3,2}},
+                                                      /* startIJK_vec = */      {{0,0,1}},
+                                                      /* endIJK_vec = */        {{2,2,3}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
+    checkLeafClosedAndConnectionsToCoarse(grid, volumeBefore);
+}
+
 namespace
 {
 
