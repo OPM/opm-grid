@@ -41,7 +41,6 @@ namespace Dune
 namespace cpgrid
 {
 class CpGridData;
-template <int mydim, int cdim> class Geometry;
 }
 }
 
@@ -201,8 +200,6 @@ private:
     // Used by several stages.
     /// Whether box b is nested, refining another box's level grid.
     bool nested(int b) const;
-    /// The key of a corner in the maps of corners by coordinates.
-    static std::array<double,3> coordKey(const Dune::cpgrid::Geometry<0,3>& corner);
     /// The box refining a cell of the grid box b refines, or -1 (after collectBoxData).
     int boxOfParentGridCell(int b, int cell) const;
     /// The leaf index of an unrefined cell of the grid box b refines (after buildLeafCells).
