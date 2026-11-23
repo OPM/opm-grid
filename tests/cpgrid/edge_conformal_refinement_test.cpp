@@ -29,94 +29,19 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
-#include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/GridStateWriter.hpp>
-#include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
-#include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <dune/common/parallel/mpihelper.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
 #include <array>
 #include <cmath>
-#include <functional>
-#include <memory>
 #include <vector>
 #include <set>
 
+using namespace Opm::ConformingTest;
+
 namespace
 {
-
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-struct TestGrdecl
-{
-    std::array<int,3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
-    grdecl raw() const
-    {
-        grdecl g;
-        g.dims[0] = dims[0]; g.dims[1] = dims[1]; g.dims[2] = dims[2];
-        g.coord = coord.data(); g.zcorn = zcorn.data();
-        g.actnum = actnum.empty() ? nullptr : actnum.data();
-        return g;
-    }
-};
-
-int cellOf(int doubled) { return doubled / 2; }
-int sideOf(int doubled) { return doubled % 2; }
-
-// Vertical-pillar grid; per-corner depth via depth(i_,j_,k_) on the doubled
-// lattice, so faults (z jumps between columns) are expressible.
-TestGrdecl makeGrid(const std::array<int,3>& dims,
-                    const std::function<double(int,int,int)>& depth)
-{
-    TestGrdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            double* p = &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)];
-            p[0] = i; p[1] = j; p[2] = 0.0;
-            p[3] = i; p[4] = j; p[5] = 100.0;
-        }
-    }
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
-
-void useConformingBuilder(Dune::CpGrid& grid, std::unique_ptr<Opm::Refinement::Builder> builder)
-{
-    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
-    grid.setRefinementBuilder(std::move(builder));
-}
-
-double totalVolume(const Dune::CpGrid& grid)
-{
-    double v = 0.0;
-    for (const auto& e : Dune::elements(grid.leafGridView())) {
-        v += e.geometry().volume();
-    }
-    return v;
-}
 
 // Leaf faces whose polygon, from the listed nodes in order, does not have the
 // face's stored area or does not wind along its stored normal: a node inserted
@@ -212,13 +137,15 @@ BOOST_AUTO_TEST_CASE(refineBoxAwayFromFaultOnEdgeConformalGrid)
                               /*turn_normals=*/false, /*edge_conformal=*/true);
     const double v0 = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
+    useConformingBuilder(grid, g, /*edgeConformal=*/true);
 
     // Box = the single cell (0,0,0)..(0,1,1) on the unfaulted left side,
     // i in [0,1): its boundary faces toward the fault are at i=1, which is
     // not the fault plane (i=2).
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,0,0}}, {{1,2,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}},
+                               /* endIJK_vec = */        {{1,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
@@ -242,12 +169,14 @@ BOOST_AUTO_TEST_CASE(refineBoxContainingFaultOnEdgeConformalGrid)
     grid.processEclipseFormat(raw, false, false, /*edge_conformal=*/true);
     const double v0 = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
+    useConformingBuilder(grid, g, /*edgeConformal=*/true);
 
     // Box i in [1,3): fault plane i=2 is inside, boundaries i=1 and i=3 are
     // unfaulted.
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{1,0,0}}, {{3,2,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{1,0,0}},
+                               /* endIJK_vec = */        {{3,2,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
@@ -295,12 +224,14 @@ BOOST_AUTO_TEST_CASE(fourColumnsFaultedAroundAPillarEdgeConformal)
 
     const double v0 = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
+    useConformingBuilder(grid, g, /*edgeConformal=*/true);
 
     // Refine the flat corner cell (0,0): its boundaries (i=1, j=1) are
     // unfaulted, away from the complex pillar.
-    grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,0,0}}, {{1,1,2}}, {"LGR1"});
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                               /* startIJK_vec = */      {{0,0,0}},
+                               /* endIJK_vec = */        {{1,1,2}},
+                               /* lgr_name_vec = */      {"LGR1"});
 
     BOOST_REQUIRE_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
@@ -326,9 +257,11 @@ BOOST_AUTO_TEST_CASE(edgeConformalToggleInsertsBoundaryNodes)
         Dune::CpGrid grid;
         auto raw = g.raw();
         grid.processEclipseFormat(raw, false);
-        useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-            g.dims, g.coord, g.zcorn, g.actnum, edgeConformal));
-        grid.addLgrsUpdateLeafView({{3,3,3}}, {{1,1,0}}, {{2,2,2}}, {"LGR1"});
+        useConformingBuilder(grid, g, edgeConformal);
+        grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,3,3}},
+                                   /* startIJK_vec = */      {{1,1,0}},
+                                   /* endIJK_vec = */        {{2,2,2}},
+                                   /* lgr_name_vec = */      {"LGR1"});
         // The inserted nodes keep each face's polygon: same area, same winding.
         BOOST_CHECK_EQUAL(foldedFaces(grid), 0);
         return Opm::Refinement::GridStateWriter::faceToPoint(*grid.currentData().back()).dataSize();
@@ -354,9 +287,11 @@ BOOST_AUTO_TEST_CASE(edgeConformalLeavesNoHangingNode)
         Dune::CpGrid grid;
         auto raw = g.raw();
         grid.processEclipseFormat(raw, false);
-        useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-            g.dims, g.coord, g.zcorn, g.actnum, edgeConformal));
-        grid.addLgrsUpdateLeafView({{3,3,3}}, {{1,1,0}}, {{2,2,2}}, {"LGR1"});
+        useConformingBuilder(grid, g, edgeConformal);
+        grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{3,3,3}},
+                                   /* startIJK_vec = */      {{1,1,0}},
+                                   /* endIJK_vec = */        {{2,2,2}},
+                                   /* lgr_name_vec = */      {"LGR1"});
 
         auto& leaf = *grid.currentData().back();
         const auto& cg = Opm::Refinement::GridStateWriter::geometry(leaf)
@@ -410,11 +345,13 @@ BOOST_AUTO_TEST_CASE(refineBoxBoundaryOnFaultBuilds)
     grid.processEclipseFormat(raw, false, false, /*edge_conformal=*/true);
     const double v0 = totalVolume(grid);
 
-    useConformingBuilder(grid, std::make_unique<Opm::Refinement::ConformingBlockBuilder>(
-        g.dims, g.coord, g.zcorn, g.actnum, /*edgeConformal=*/true));
+    useConformingBuilder(grid, g, /*edgeConformal=*/true);
 
     // Box i in [0,2): right boundary is the fault plane i=2.
-    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView({{2,2,2}}, {{0,0,0}}, {{2,2,2}}, {"LGR1"}));
+    BOOST_REQUIRE_NO_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
+                                                      /* startIJK_vec = */      {{0,0,0}},
+                                                      /* endIJK_vec = */        {{2,2,2}},
+                                                      /* lgr_name_vec = */      {"LGR1"}));
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_CLOSE(totalVolume(grid), v0, 1e-8);
     BOOST_CHECK_EQUAL(hangingNodes(grid), 0);

@@ -25,8 +25,7 @@
 #include <opm/grid/cpgrid/refinement/conforming/ConformingBlockBuilder.hpp>
 #include <opm/grid/cpgrid/refinement/RefinementBuilder.hpp>
 
-#include <dune/common/parallel/mpihelper.hh>
-#include <dune/grid/common/rangegenerators.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
@@ -41,22 +40,14 @@
 // on several: before load balancing the whole grid is on rank 0, and the other ranks hold
 // no cells.
 
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
+using namespace Opm::ConformingTest;
 
 BOOST_GLOBAL_FIXTURE(MPIFixture);
 
 // A box with an inactive host cell is refined on rank 0 like any other box.
 BOOST_AUTO_TEST_CASE(boxWithInactiveHostRefinesBeforeLoadBalancing)
 {
-    // 12x12x4 unit cells; cell (1,1,1), inside the box, is inactive.
+    // 12x12x4 unit cells; cell (2,2,2) (I,J,K from 1), inside the box, is inactive.
     const std::string deckString = R"(RUNSPEC
 DIMENS
  12 12 4 /
@@ -67,8 +58,11 @@ DY
  576*1 /
 DZ
  576*1 /
+BOX
+ 1 12 1 12 1 1 /
 TOPS
  144*0 /
+ENDBOX
 ACTNUM
  157*1 0 418*1 /
 PORO
@@ -88,11 +82,14 @@ PORO
     grid.setRefinementBuilder(std::make_shared<Opm::Refinement::ConformingBlockBuilder>(
         std::array<int,3>{12, 12, 4}, eclGrid.getCOORD(), eclGrid.getZCORN(), eclGrid.getACTNUM()));
 
-    // The box is i = 0..5 (all j and k). A rank that refuses it throws; the ranks agree
+    // The box is I = 1..6 (all J and K). A rank that refuses it throws; the ranks agree
     // on the outcome before the grid is checked.
     int refused = 0;
     try {
-        grid.addLgrsUpdateLeafView({{2, 2, 2}}, {{0, 0, 0}}, {{6, 12, 4}}, {"LGR1"});
+        grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2, 2, 2}},
+                                   /* startIJK_vec = */      {{0, 0, 0}},
+                                   /* endIJK_vec = */        {{6, 12, 4}},
+                                   /* lgr_name_vec = */      {"LGR1"});
     }
     catch (const std::exception& e) {
         refused = 1;
@@ -104,11 +101,7 @@ PORO
     // of each of the 287 active cells inside it.
     BOOST_CHECK_EQUAL(grid.maxLevel(), 1);
     BOOST_CHECK_EQUAL(grid.size(0), (comm.rank() == 0) ? 288 + 287*8 : 0);
-    double volume = 0.0;
-    for (const auto& element : Dune::elements(grid.leafGridView())) {
-        volume += element.geometry().volume();
-    }
-    BOOST_CHECK_CLOSE(comm.sum(volume), 575.0, 1e-10);
+    BOOST_CHECK_CLOSE(comm.sum(totalVolume(grid)), 575.0, 1e-10);
     // The refined grid keeps level zero's communicator, so load balancing sees every rank.
     BOOST_CHECK_EQUAL(grid.comm().size(), comm.size());
 }

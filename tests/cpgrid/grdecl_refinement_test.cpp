@@ -25,44 +25,19 @@
 #include <opm/grid/cpgrid/refinement/conforming/GrdeclRefinement.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <dune/common/parallel/mpihelper.hh>
+#include <tests/cpgrid/lgr/ConformingTestHelpers.hpp>
+
 #include <dune/grid/common/mcmgmapper.hh>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
-#include <functional>
 #include <vector>
+
+using namespace Opm::ConformingTest;
 
 namespace
 {
-
-struct MPIFixture
-{
-    MPIFixture()
-    {
-        auto& argv = boost::unit_test::framework::master_test_suite().argv;
-        auto& argc = boost::unit_test::framework::master_test_suite().argc;
-        Dune::MPIHelper::instance(argc, argv);
-    }
-};
-
-struct TestGrdecl
-{
-    std::array<int,3> dims;
-    std::vector<double> coord;
-    std::vector<double> zcorn;
-    std::vector<int> actnum;
-
-    grdecl raw() const
-    {
-        grdecl g;
-        g.dims[0] = dims[0]; g.dims[1] = dims[1]; g.dims[2] = dims[2];
-        g.coord = coord.data();
-        g.zcorn = zcorn.data();
-        g.actnum = actnum.empty() ? nullptr : actnum.data();
-        return g;
-    }
-};
 
 // The corner-point processor's input for a refined block.
 grdecl rawOf(const Opm::Refinement::RefinedBlockGrdecl& refined)
@@ -72,88 +47,22 @@ grdecl rawOf(const Opm::Refinement::RefinedBlockGrdecl& refined)
                    refined.coord.data(), refined.zcorn.data(), refined.actnum.data() };
 }
 
-// Build a corner-point description with straight pillars from (x,y,ztop) to
-// (x,y,zbot) (vertical) and per-corner depths given by a callback
-// z(i_, j_, k_) on the doubled lattice.
-TestGrdecl makeVerticalPillarGrid(const std::array<int,3>& dims,
-                                  const std::function<double(int,int,int)>& depth)
+// Slanted (non-vertical, non-parallel) pillars: the bottom of each pillar is
+// sheared laterally by a position-dependent amount, so every cell is a genuinely
+// skewed hexahedron. On such a grid an index-space ("trilinear in cell
+// coordinates") subdivision does not preserve a parent cell's centre of mass,
+// whereas a geometrically faithful subdivision of the pillars does -- which is
+// exactly what this exercises.
+std::array<double,6> slanted(int i, int j)
 {
-    TestGrdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            double* p = &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)];
-            p[0] = i; p[1] = j; p[2] = 0.0;     // top
-            p[3] = i; p[4] = j; p[5] = 100.0;   // bottom
-        }
-    }
-
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
-
-// Build a corner-point description with *slanted* (non-vertical, non-parallel)
-// pillars: the bottom of each pillar is sheared laterally by a position-
-// dependent amount, so every cell is a genuinely skewed hexahedron. On such a
-// grid an index-space ("trilinear in cell coordinates") subdivision does not
-// preserve a parent cell's centre of mass, whereas a geometrically faithful
-// subdivision of the pillars does -- which is exactly what this exercises.
-TestGrdecl makeSlantedPillarGrid(const std::array<int,3>& dims,
-                                 const std::function<double(int,int,int)>& depth)
-{
-    TestGrdecl g;
-    g.dims = dims;
-    const auto& [nx, ny, nz] = dims;
-
-    g.coord.resize(6*(nx + 1)*(ny + 1));
-    for (int j = 0; j <= ny; ++j) {
-        for (int i = 0; i <= nx; ++i) {
-            double* p = &g.coord[6*(static_cast<std::size_t>(j)*(nx + 1) + i)];
-            // Smoothly varying lateral shear of the pillar bottom. Kept to a
-            // realistic magnitude (a few percent of a cell) so the hexahedron
-            // geometry-discretisation artifact stays well below the tolerances
-            // below, the way it does on real corner-point decks.
-            const double sx = 0.06*std::sin(0.7*i) + 0.02*j;
-            const double sy = 0.05*std::cos(0.5*j) + 0.015*i;
-            p[0] = i;      p[1] = j;      p[2] = 0.0;     // top
-            p[3] = i + sx; p[4] = j + sy; p[5] = 100.0;   // bottom (sheared)
-        }
-    }
-
-    g.zcorn.resize(8*static_cast<std::size_t>(nx)*ny*nz);
-    for (int k_ = 0; k_ < 2*nz; ++k_) {
-        for (int j_ = 0; j_ < 2*ny; ++j_) {
-            for (int i_ = 0; i_ < 2*nx; ++i_) {
-                g.zcorn[static_cast<std::size_t>(i_) + 2*static_cast<std::size_t>(nx)*j_
-                        + 4*static_cast<std::size_t>(nx)*ny*k_] = depth(i_, j_, k_);
-            }
-        }
-    }
-    return g;
-}
-
-// Doubled-lattice index -> the (cell, corner-side) pair it represents.
-int cellOf(int doubled) { return doubled / 2; }
-int sideOf(int doubled) { return doubled % 2; }
-
-double totalVolume(const Dune::CpGrid& grid)
-{
-    double vol = 0.0;
-    for (const auto& element : Dune::elements(grid.leafGridView())) {
-        vol += element.geometry().volume();
-    }
-    return vol;
+    // Smoothly varying lateral shear of the pillar bottom. Kept to a
+    // realistic magnitude (a few percent of a cell) so the hexahedron
+    // geometry-discretisation artifact stays well below the tolerances
+    // below, the way it does on real corner-point decks.
+    const double sx = 0.06*std::sin(0.7*i) + 0.02*j;
+    const double sy = 0.05*std::cos(0.5*j) + 0.015*i;
+    return { double(i), double(j), 0.0,       // top
+             i + sx, j + sy, 100.0 };         // bottom (sheared)
 }
 
 double boxVolume(const Dune::CpGrid& grid,
@@ -221,18 +130,15 @@ BOOST_GLOBAL_FIXTURE(MPIFixture);
 BOOST_AUTO_TEST_CASE(uniformGridRefinesToUniformLattice)
 {
     // Unit cells: depth(k_) = layer boundaries 0,1,...
-    auto parent = makeVerticalPillarGrid({4, 3, 3}, [](int, int, int k_) {
+    auto parent = makeGrid(/* dims = */ {4, 3, 3}, [](int, int, int k_) {
         return static_cast<double>(cellOf(k_) + sideOf(k_));
     });
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 3, 2};
-    req.startIJK = {1, 1, 1};
-    req.endIJK = {3, 2, 3};
+    const auto req = box("LGR1", /* cellsPerDim = */ {2, 3, 2}, /* startIJK = */ {1, 1, 1},
+                         /* endIJK = */ {3, 2, 3});
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     BOOST_CHECK(refined.dims == (std::array<std::size_t,3>{4, 3, 4}));
 
@@ -247,17 +153,21 @@ BOOST_AUTO_TEST_CASE(uniformGridRefinesToUniformLattice)
     }
 
     // Refined zcorn: layer kr spans [1 + kr/2, 1 + (kr+1)/2].
-    for (std::size_t idx = 0; idx < refined.zcorn.size(); ++idx) {
-        // All values must lie in the box's z range.
-        BOOST_CHECK(refined.zcorn[idx] >= 1.0 - 1e-12);
-        BOOST_CHECK(refined.zcorn[idx] <= 3.0 + 1e-12);
+    const int rx = refined.dims[0], ry = refined.dims[1], rz = refined.dims[2];
+    for (int k_ = 0; k_ < 2*rz; ++k_) {
+        for (int j_ = 0; j_ < 2*ry; ++j_) {
+            for (int i_ = 0; i_ < 2*rx; ++i_) {
+                BOOST_CHECK_CLOSE(refined.zcorn[i_ + 2*rx*j_ + 4*rx*ry*k_],
+                                  1.0 + 0.5*nodeOf(k_), 1e-12);
+            }
+        }
     }
 
     // Process the refined description and verify cell count and volume:
     // box is 2x1x2 unit cells -> volume 4, refined into 4x3x4 = 48 cells.
     Dune::CpGrid refinedGrid;
     const auto raw = rawOf(refined);
-    refinedGrid.processEclipseFormat(raw, false);
+    refinedGrid.processEclipseFormat(raw, /* remove_ij_boundary = */ false);
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 48);
     BOOST_CHECK_CLOSE(totalVolume(refinedGrid), 4.0, 1e-9);
 }
@@ -271,24 +181,21 @@ BOOST_AUTO_TEST_CASE(distortedVerticalPillarGridConservesVolume)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return base + 0.3*std::sin(0.8*x) + 0.2*std::cos(0.5*y) + 0.05*x*y;
     };
-    auto parent = makeVerticalPillarGrid({5, 4, 3}, depth);
+    auto parent = makeGrid(/* dims = */ {5, 4, 3}, depth);
 
     Dune::CpGrid parentGrid;
     auto rawParent = parent.raw();
-    parentGrid.processEclipseFormat(rawParent, false);
+    parentGrid.processEclipseFormat(rawParent, /* remove_ij_boundary = */ false);
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {3, 2, 4};
-    req.startIJK = {1, 1, 0};
-    req.endIJK = {4, 3, 2};
+    const auto req = box("LGR1", /* cellsPerDim = */ {3, 2, 4}, /* startIJK = */ {1, 1, 0},
+                         /* endIJK = */ {4, 3, 2});
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     Dune::CpGrid refinedGrid;
     const auto rawRefined = rawOf(refined);
-    refinedGrid.processEclipseFormat(rawRefined, false);
+    refinedGrid.processEclipseFormat(rawRefined, /* remove_ij_boundary = */ false);
 
     // On vertical pillars the resampled sub-cells partition the parent
     // cells exactly: total refined volume == parent box volume.
@@ -307,30 +214,30 @@ BOOST_AUTO_TEST_CASE(collapsedParentGivesCollapsedChildren)
         const double y = cellOf(j_) + sideOf(j_);
         return 2.0*(cellOf(k_) + sideOf(k_)) + 0.3*std::sin(0.8*x) + 0.2*std::cos(0.5*y);
     };
-    auto parent = makeVerticalPillarGrid({3, 3, 3}, depth);
+    auto parent = makeGrid(/* dims = */ {3, 3, 3}, depth);
     const int nx = parent.dims[0], ny = parent.dims[1];
     const auto z = [&](int i_, int j_, int k_) -> double& {
         return parent.zcorn[i_ + 2*nx*j_ + 4*nx*ny*k_];
     };
+    // Give every cell in layer k = 1 zero thickness.
     for (int j_ = 0; j_ < 2*ny; ++j_) {
         for (int i_ = 0; i_ < 2*nx; ++i_) {
             z(i_, j_, 3) = z(i_, j_, 2);        // layer k = 1 collapsed at its top
         }
     }
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {3, 3, 3};
-    req.startIJK = {0, 0, 0};
-    req.endIJK = {3, 3, 3};
+    const auto req = box("LGR1", /* cellsPerDim = */ {3, 3, 3}, /* startIJK = */ {0, 0, 0},
+                         /* endIJK = */ {3, 3, 3});
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     const int rx = refined.dims[0], ry = refined.dims[1];
     const auto rz = [&](int i_, int j_, int k_) {
         return refined.zcorn[i_ + 2*rx*j_ + 4*rx*ry*k_];
     };
+    // For the children of parent layer k = 1 (refined layers kr = 3, 4 and 5), every
+    // bottom corner must equal its top corner.
     for (int kr = 3; kr < 6; ++kr) {
         for (int j_ = 0; j_ < 2*ry; ++j_) {
             for (int i_ = 0; i_ < 2*rx; ++i_) {
@@ -341,7 +248,7 @@ BOOST_AUTO_TEST_CASE(collapsedParentGivesCollapsedChildren)
 
     Dune::CpGrid refinedGrid;
     const auto rawRefined = rawOf(refined);
-    BOOST_CHECK_NO_THROW(refinedGrid.processEclipseFormat(rawRefined, false));
+    BOOST_CHECK_NO_THROW(refinedGrid.processEclipseFormat(rawRefined, /* remove_ij_boundary = */ false));
 }
 
 BOOST_AUTO_TEST_CASE(slantedPillarRefinementConservesCenterOfMass)
@@ -359,24 +266,21 @@ BOOST_AUTO_TEST_CASE(slantedPillarRefinementConservesCenterOfMass)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return base + 0.3*std::sin(0.8*x) + 0.2*std::cos(0.5*y) + 0.05*x*y;
     };
-    auto parent = makeSlantedPillarGrid({5, 4, 3}, depth);
+    auto parent = makeGrid(/* dims = */ {5, 4, 3}, slanted, depth);
 
     Dune::CpGrid parentGrid;
     auto rawParent = parent.raw();
-    parentGrid.processEclipseFormat(rawParent, false);
+    parentGrid.processEclipseFormat(rawParent, /* remove_ij_boundary = */ false);
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {3, 2, 4};
-    req.startIJK = {1, 1, 0};
-    req.endIJK = {4, 3, 2};
+    const auto req = box("LGR1", /* cellsPerDim = */ {3, 2, 4}, /* startIJK = */ {1, 1, 0},
+                         /* endIJK = */ {4, 3, 2});
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     Dune::CpGrid refinedGrid;
     const auto rawRefined = rawOf(refined);
-    refinedGrid.processEclipseFormat(rawRefined, false);
+    refinedGrid.processEclipseFormat(rawRefined, /* remove_ij_boundary = */ false);
 
     // (1) Volume of the refined block equals the parent box volume. The small
     //     residual is the hexahedron-volume discretisation artifact (the coarse
@@ -413,25 +317,22 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockIsPreserved)
         const double base = 2.0*(cellOf(k_) + sideOf(k_));
         return (cellOf(i_) >= 2) ? base + throwZ : base;
     };
-    auto parent = makeVerticalPillarGrid({4, 2, 2}, depth);
+    auto parent = makeGrid(/* dims = */ {4, 2, 2}, depth);
 
     Dune::CpGrid parentGrid;
     auto rawParent = parent.raw();
-    parentGrid.processEclipseFormat(rawParent, false);
+    parentGrid.processEclipseFormat(rawParent, /* remove_ij_boundary = */ false);
 
     // Refine a block containing the fault.
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 2, 2};
-    req.startIJK = {1, 0, 0};
-    req.endIJK = {3, 2, 2};
+    const auto req = box("LGR1", /* cellsPerDim = */ {2, 2, 2}, /* startIJK = */ {1, 0, 0},
+                         /* endIJK = */ {3, 2, 2});
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     Dune::CpGrid refinedGrid;
     const auto rawRefined = rawOf(refined);
-    refinedGrid.processEclipseFormat(rawRefined, false);
+    refinedGrid.processEclipseFormat(rawRefined, /* remove_ij_boundary = */ false);
 
     // Volume is conserved across the faulted block (vertical pillars).
     BOOST_CHECK_CLOSE(totalVolume(refinedGrid),
@@ -443,36 +344,40 @@ BOOST_AUTO_TEST_CASE(faultInsideBlockIsPreserved)
     // grid would have... A robust simple check: the number of leaf faces of
     // the refined faulted grid exceeds that of the same block refined from
     // an unfaulted twin.
-    auto depthNoFault = [](int, int, int k_) {
-        return 2.0*(cellOf(k_) + sideOf(k_));
-    };
-    auto parentNoFault = makeVerticalPillarGrid({4, 2, 2}, depthNoFault);
+    auto parentNoFault = makeGrid(/* dims = */ {4, 2, 2}, flat);
     const auto refinedNoFault = Opm::Refinement::refineBlock(parentNoFault.dims,
                                                              parentNoFault.coord.data(),
                                                              parentNoFault.zcorn.data(),
-                                                             nullptr, req);
+                                                             /* actnum = */ nullptr, req);
     Dune::CpGrid refinedGridNoFault;
     const auto rawNoFault = rawOf(refinedNoFault);
-    refinedGridNoFault.processEclipseFormat(rawNoFault, false);
+    refinedGridNoFault.processEclipseFormat(rawNoFault, /* remove_ij_boundary = */ false);
 
     BOOST_CHECK_EQUAL(refinedGrid.size(0), refinedGridNoFault.size(0));
     BOOST_CHECK_GT(refinedGrid.numFaces(), refinedGridNoFault.numFaces());
+
+    // The cells on either side of the fault inside the block, refined columns i = 1 and
+    // i = 2, have their faulted face cut in two: more than 6 faces.
+    for (const auto& element : Dune::elements(refinedGrid.leafGridView())) {
+        std::array<int,3> ijk;
+        refinedGrid.getIJK(element.index(), ijk);
+        if ((ijk[0] == 1) || (ijk[0] == 2)) {
+            BOOST_CHECK_GT(refinedGrid.numCellFaces(element.index()), 6);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(inactiveParentsProduceInactiveChildren)
 {
-    auto parent = makeVerticalPillarGrid({3, 2, 2}, [](int, int, int k_) {
+    auto parent = makeGrid(/* dims = */ {3, 2, 2}, [](int, int, int k_) {
         return static_cast<double>(cellOf(k_) + sideOf(k_));
     });
     // Deactivate cell (1,0,0).
     parent.actnum.assign(3*2*2, 1);
     parent.actnum[1] = 0;
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 2, 2};
-    req.startIJK = {0, 0, 0};
-    req.endIJK = {3, 2, 1};
+    const auto req = box("LGR1", /* cellsPerDim = */ {2, 2, 2}, /* startIJK = */ {0, 0, 0},
+                         /* endIJK = */ {3, 2, 1});
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
                                                       parent.zcorn.data(), parent.actnum.data(), req);
@@ -481,37 +386,46 @@ BOOST_AUTO_TEST_CASE(inactiveParentsProduceInactiveChildren)
     for (int flag : refined.actnum) {
         inactive += (flag == 0);
     }
-    // One parent cell -> 2x2x2 children inactive.
+    // One inactive parent cell -> 2x2x2 children inactive.
     BOOST_CHECK_EQUAL(inactive, 8);
 
     Dune::CpGrid refinedGrid;
     const auto rawRefined = rawOf(refined);
-    refinedGrid.processEclipseFormat(rawRefined, false);
+    refinedGrid.processEclipseFormat(rawRefined, /* remove_ij_boundary = */ false);
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 3*2*1*8 - 8);
+
+    // The children of the inactive parent (1,0,0), refined cells i = 2..3, j = 0..1,
+    // k = 0..1 of the 6x4x2 block, are not in the grid.
+    const auto& globalCell = refinedGrid.globalCell();
+    for (int k = 0; k < 2; ++k) {
+        for (int j = 0; j < 2; ++j) {
+            for (int i = 2; i < 4; ++i) {
+                const int cart = i + 6*j + 24*k;
+                BOOST_CHECK(std::find(globalCell.begin(), globalCell.end(), cart) == globalCell.end());
+            }
+        }
+    }
 }
 
 // Graded boxes: how many refined columns each parent cell takes, and their
 // relative widths within it.
 BOOST_AUTO_TEST_CASE(gradedRefinementFollowsColumnTables)
 {
-    auto parent = makeVerticalPillarGrid({4, 3, 3}, [](int, int, int k_) {
+    auto parent = makeGrid(/* dims = */ {4, 3, 3}, [](int, int, int k_) {
         return static_cast<double>(cellOf(k_) + sideOf(k_));
     });
 
     // Box spans parent cells i = 1..2. The first takes one column, the second
     // three with widths 1 : 2 : 1 -- so x runs 1, 2, 2.25, 2.75, 3.
-    Opm::Refinement::BlockRefinement req;
-    req.name = "GRADED";
-    req.cellsPerDim = {1, 1, 1};
-    req.startIJK = {1, 1, 1};
-    req.endIJK = {3, 2, 3};
+    auto req = box("GRADED", /* cellsPerDim = */ {1, 1, 1}, /* startIJK = */ {1, 1, 1},
+                   /* endIJK = */ {3, 2, 3});
     req.subdivision[0] = Opm::Refinement::AxisSubdivision{
         /* parentOffset = */ {0, 1, 1, 1},
         /* fracLo       = */ {0.0, 0.0,  0.25, 0.75},
         /* fracHi       = */ {1.0, 0.25, 0.75, 1.0} };
 
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     // The refined count comes from the tables, not from a factor.
     BOOST_CHECK(refined.dims == (std::array<std::size_t,3>{4, 1, 2}));
@@ -527,41 +441,53 @@ BOOST_AUTO_TEST_CASE(gradedRefinementFollowsColumnTables)
     // Volume is conserved whatever the columns do: the box is 2x1x2 unit cells.
     Dune::CpGrid refinedGrid;
     const auto raw = rawOf(refined);
-    refinedGrid.processEclipseFormat(raw, false);
+    refinedGrid.processEclipseFormat(raw, /* remove_ij_boundary = */ false);
     BOOST_CHECK_EQUAL(refinedGrid.size(0), 8);
     BOOST_CHECK_CLOSE(totalVolume(refinedGrid), 4.0, 1e-9);
 
-    // A parent that keeps only one column is left exactly as it was.
-    BOOST_CHECK_CLOSE(refined.coord[0], 1.0, 1e-11);
+    // A parent that keeps only one column is left exactly as it was: its pillars are
+    // the parent's.
+    for (std::size_t jr = 0; jr <= 1; ++jr) {
+        for (std::size_t ir = 0; ir <= 1; ++ir) {
+            const double* p = &refined.coord[6*(jr*(refined.dims[0] + 1) + ir)];
+            const double* q = &parent.coord[6*((1 + jr)*(parent.dims[0] + 1) + 1 + ir)];
+            for (const int c : {0, 1, 3, 4}) {    // x and y of the top and bottom points
+                BOOST_CHECK_CLOSE(p[c], q[c], 1e-11);
+            }
+        }
+    }
 }
 
 // Spelling a uniform box as explicit tables must change nothing: this is the
 // path every existing deck now takes through axisSubdivision().
 BOOST_AUTO_TEST_CASE(explicitUniformTablesMatchTheFactorPath)
 {
-    auto parent = makeVerticalPillarGrid({4, 3, 3}, [](int i_, int j_, int k_) {
+    auto parent = makeGrid(/* dims = */ {4, 3, 3}, [](int i_, int j_, int k_) {
         return static_cast<double>(cellOf(k_) + sideOf(k_))
              + 0.1*cellOf(i_) - 0.05*cellOf(j_);      // non-trivial geometry
     });
 
-    Opm::Refinement::BlockRefinement uniform;
-    uniform.name = "LGR1";
-    uniform.cellsPerDim = {2, 3, 2};
-    uniform.startIJK = {1, 1, 1};
-    uniform.endIJK = {3, 2, 3};
+    const auto uniform = box("LGR1", /* cellsPerDim = */ {2, 3, 2}, /* startIJK = */ {1, 1, 1},
+                             /* endIJK = */ {3, 2, 3});
 
     auto graded = uniform;
     graded.subdivision[0] = Opm::Refinement::AxisSubdivision{
-        {0, 0, 1, 1}, {0.0, 0.5, 0.0, 0.5}, {0.5, 1.0, 0.5, 1.0} };
+        /* parentOffset = */ {0, 0, 1, 1},
+        /* fracLo       = */ {0.0, 0.5, 0.0, 0.5},
+        /* fracHi       = */ {0.5, 1.0, 0.5, 1.0} };
     graded.subdivision[1] = Opm::Refinement::AxisSubdivision{
-        {0, 0, 0}, {0.0, 1.0/3.0, 2.0/3.0}, {1.0/3.0, 2.0/3.0, 1.0} };
+        /* parentOffset = */ {0, 0, 0},
+        /* fracLo       = */ {0.0, 1.0/3.0, 2.0/3.0},
+        /* fracHi       = */ {1.0/3.0, 2.0/3.0, 1.0} };
     graded.subdivision[2] = Opm::Refinement::AxisSubdivision{
-        {0, 0, 1, 1}, {0.0, 0.5, 0.0, 0.5}, {0.5, 1.0, 0.5, 1.0} };
+        /* parentOffset = */ {0, 0, 1, 1},
+        /* fracLo       = */ {0.0, 0.5, 0.0, 0.5},
+        /* fracHi       = */ {0.5, 1.0, 0.5, 1.0} };
 
     const auto a = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                parent.zcorn.data(), nullptr, uniform);
+                                                parent.zcorn.data(), /* actnum = */ nullptr, uniform);
     const auto b = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                parent.zcorn.data(), nullptr, graded);
+                                                parent.zcorn.data(), /* actnum = */ nullptr, graded);
 
     BOOST_CHECK(a.dims == b.dims);
     BOOST_REQUIRE_EQUAL(a.coord.size(), b.coord.size());
@@ -589,13 +515,10 @@ BOOST_AUTO_TEST_CASE(refinedPillarStaysBetweenParentPillars)
     }
     parent.zcorn = { 0, 0, 0, 0,  90, 10, 90, 10,  90, 10, 90, 10,  600, 600, 600, 600 };
 
-    Opm::Refinement::BlockRefinement req;
-    req.name = "LGR1";
-    req.cellsPerDim = {2, 1, 2};
-    req.startIJK = {0, 0, 0};
-    req.endIJK = {1, 1, 2};
+    const auto req = box("LGR1", /* cellsPerDim = */ {2, 1, 2}, /* startIJK = */ {0, 0, 0},
+                         /* endIJK = */ {1, 1, 2});
     const auto refined = Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                                      parent.zcorn.data(), nullptr, req);
+                                                      parent.zcorn.data(), /* actnum = */ nullptr, req);
 
     const double* middle = &refined.coord[6];
     for (const double z : {0.0, 100.0, 300.0, 556.0, 600.0}) {
@@ -605,11 +528,11 @@ BOOST_AUTO_TEST_CASE(refinedPillarStaysBetweenParentPillars)
 
     Dune::CpGrid parentGrid;
     auto rawParent = parent.raw();
-    parentGrid.processEclipseFormat(rawParent, false);
+    parentGrid.processEclipseFormat(rawParent, /* remove_ij_boundary = */ false);
 
     Dune::CpGrid refinedGrid;
     const auto rawRefined = rawOf(refined);
-    refinedGrid.processEclipseFormat(rawRefined, false);
+    refinedGrid.processEclipseFormat(rawRefined, /* remove_ij_boundary = */ false);
     for (const auto& element : Dune::elements(refinedGrid.leafGridView())) {
         BOOST_CHECK_GT(element.geometry().volume(), 0.0);
     }
@@ -631,17 +554,15 @@ BOOST_AUTO_TEST_CASE(blocksAgreeOnPillarsAcrossFault)
     parent.zcorn = { 0, 0, 200, 200,  0, 0, 200, 200,  90, 90, 290, 290,  10, 10, 210, 210 };
 
     const auto refinedCoord = [&parent](int i0) {
-        Opm::Refinement::BlockRefinement req;
-        req.name = "LGR1";
-        req.cellsPerDim = {2, 2, 1};
-        req.startIJK = {i0, 0, 0};
-        req.endIJK = {i0 + 1, 1, 1};
+        const auto req = box("LGR1", /* cellsPerDim = */ {2, 2, 1}, /* startIJK = */ {i0, 0, 0},
+                             /* endIJK = */ {i0 + 1, 1, 1});
         return Opm::Refinement::refineBlock(parent.dims, parent.coord.data(),
-                                            parent.zcorn.data(), nullptr, req).coord;
+                                            parent.zcorn.data(), /* actnum = */ nullptr, req).coord;
     };
     const auto left = refinedCoord(0);
     const auto right = refinedCoord(1);
     for (std::size_t j = 0; j <= 2; ++j) {
+        // c represents {x_top, y_top, z_top, x_bottom, y_bottom, z_bottom}
         for (std::size_t c = 0; c < 6; ++c) {
             BOOST_CHECK_EQUAL(left[6*(3*j + 2) + c], right[6*(3*j) + c]);
         }
