@@ -30,12 +30,24 @@
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/input/eclipse/EclipseState/Runspec.hpp>
+#include <opm/input/eclipse/EclipseState/Aquifer/NumericalAquifer/NumericalAquifers.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
+#include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Python/Python.hpp>
+#include <opm/input/eclipse/Schedule/Schedule.hpp>
+#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
+#include <opm/input/eclipse/Schedule/Well/Well.hpp>
+#include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 
 #include <algorithm>
 #include <map>
+#include <memory>
+#include <set>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -172,4 +184,107 @@ BOOST_AUTO_TEST_CASE(ExtendedGridCanBeDistributed)
     BOOST_REQUIRE(grid.loadBalance(parts, /* ownersFirst = */ false, /* addCornerCells = */ false, 1));
     BOOST_CHECK(grid.numCells() > 0);
     BOOST_CHECK_EQUAL(grid.comm().sum(grid.numCells()) >= 48, true);
+}
+
+namespace {
+
+// Cartesian index of the cell with the one-based indices (i, j, k).
+int cartesian(const int i, const int j, const int k)
+{
+    return (i - 1) + (j - 1) * nx + (k - 1) * nx * ny;
+}
+
+// Whether one process owns all the cells.
+bool ownedOnOneProcess(const Dune::CpGrid& grid, const std::map<int, bool>& cells, const std::set<int>& wanted)
+{
+    int owned = 0;
+    for (const auto c : wanted) {
+        const auto it = cells.find(c);
+        owned += (it != cells.end() && it->second);
+    }
+    return grid.comm().max(owned) == static_cast<int>(wanted.size());
+}
+
+} // anonymous namespace
+
+static void checkWellsAndTwins(const int partitionMethod)
+{
+    if (Dune::CpGrid().comm().size() == 1) {
+        return;
+    }
+
+    // W1 is in the matrix, W3 in the fracture continuum. W2 has a cell in the fracture twin
+    // of a cell of W1, as a well can perforate both continua, so that the partition that
+    // keeps W1 together and the one that keeps W2 together have to meet.
+    const std::string deckText =
+        "RUNSPEC\nOIL\nWATER\nDIMENS\n 8 6 4 /\nDUALPORO\nSTART\n 1 'JAN' 2015 /\n"
+        "WELLDIMS\n 3 8 1 3 /\n"
+        "GRID\nDX\n 192*100 /\nDY\n 192*100 /\nDZ\n 192*10 /\nTOPS\n 48*2000 /\n"
+        "PORO\n 192*0.2 /\nPERMX\n 192*10 /\nPERMY\n 192*10 /\nPERMZ\n 192*10 /\nSIGMA\n 0.1 /\n"
+        "SCHEDULE\n"
+        "WELSPECS\n 'W1' 'G' 1 1 2005 'OIL' /\n 'W2' 'G' 1 1 2025 'OIL' /\n 'W3' 'G' 4 3 2035 'OIL' /\n/\n"
+        "COMPDAT\n"
+        " 'W1' 1 1 1 1 'OPEN' 1* 1* 0.5 /\n 'W1' 8 1 1 1 'OPEN' 1* 1* 0.5 /\n"
+        " 'W2' 1 1 3 3 'OPEN' 1* 1* 0.5 /\n 'W2' 8 6 3 3 'OPEN' 1* 1* 0.5 /\n"
+        " 'W3' 4 3 4 4 'OPEN' 1* 1* 0.5 /\n 'W3' 5 3 4 4 'OPEN' 1* 1* 0.5 /\n/\n"
+        "END\n";
+    const auto deck = Opm::Parser{}.parseString(deckText);
+    Opm::EclipseState eclState(deck);
+    Opm::EclipseGrid eclGrid = eclState.getInputGrid();
+    const Opm::TableManager table(deck);
+    const Opm::FieldPropsManager fp(deck, Opm::Phases{true, true, false}, eclGrid, table);
+    const Opm::Runspec runspec(deck);
+    const Opm::Schedule schedule{deck, eclGrid, fp, Opm::NumericalAquifers{}, runspec,
+                                 std::make_shared<Opm::Python>()};
+    const auto wells = schedule.getWellsatEnd();
+    BOOST_REQUIRE_EQUAL(wells.size(), 3U);
+
+    // Cells of a well that may get a connection later.
+    const std::unordered_map<std::string, std::set<int>> future{
+        {"W3", {cartesian(2, 5, 2), cartesian(7, 2, 4)}}};
+
+    Dune::CpGrid grid;
+    const bool root = grid.comm().rank() == 0;
+    grid.processEclipseFormat(root ? &eclGrid : nullptr, &eclState, false, false, false);
+    BOOST_REQUIRE(grid.loadBalance(&wells, future, nullptr, 1, partitionMethod).first);
+
+    const auto cells = localCells(grid);
+    const int half = nx * ny * nz / 2;
+
+    // The cells of a well, and their twins, are owned by one process.
+    std::map<std::string, std::set<int>> wellCells;
+    for (const auto& well : wells) {
+        for (const auto& connection : well.getConnections()) {
+            const auto c = static_cast<int>(connection.global_index());
+            const auto twin = c < half ? c + half : c - half;
+            wellCells[well.name()].insert({c, twin});
+        }
+    }
+    for (const auto& [name, c] : future) {
+        for (const auto cell : c) {
+            wellCells[name].insert({cell, cell < half ? cell + half : cell - half});
+        }
+    }
+    for (const auto& [name, wanted] : wellCells) {
+        BOOST_CHECK_MESSAGE(ownedOnOneProcess(grid, cells, wanted),
+                            "the cells of well " << name << " and their twins are not on one process");
+    }
+
+    // W1 and W2 meet in a twin pair, so they are on the same process.
+    auto both = wellCells["W1"];
+    both.insert(wellCells["W2"].begin(), wellCells["W2"].end());
+    BOOST_CHECK_MESSAGE(ownedOnOneProcess(grid, cells, both),
+                        "the wells W1 and W2 share a twin pair, and are not on one process");
+}
+
+BOOST_AUTO_TEST_CASE(WellsAndTheirTwinsAreOnOneProcess)
+{
+    checkWellsAndTwins(Dune::PartitionMethod::zoltan);
+}
+
+BOOST_AUTO_TEST_CASE(WellsAndTheirTwinsAreOnOneProcessWithoutZoltan)
+{
+    // The partitioner does not know the twins, so they are put together afterwards,
+    // together with the cells of the wells that they join.
+    checkWellsAndTwins(Dune::PartitionMethod::simple);
 }
