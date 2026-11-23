@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(faultedIBoundarySplitsConnections)
 
     const auto conns = Opm::Refinement::faultedBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
-        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/-1, /*edgeConformal=*/false);
+        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true);
 
     BOOST_REQUIRE(!conns.empty());
 
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(unfaultedBoundaryGivesOneToOne)
 
     const auto conns = Opm::Refinement::faultedBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
-        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/+1, /*edgeConformal=*/false);
+        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/+1, /*edgeConformal=*/true);
 
     BOOST_REQUIRE(!conns.empty());
 
@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE(domainBoundarySideFacesTheDomain)
 
     const auto conns = Opm::Refinement::faultedBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
-        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/1, /*side=*/-1, /*edgeConformal=*/false);
+        Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/1, /*side=*/-1, /*edgeConformal=*/true);
 
     std::set<std::array<int,3>> cells;
     for (const auto& c : conns) {

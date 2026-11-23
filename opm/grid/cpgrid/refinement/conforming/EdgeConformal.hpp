@@ -42,8 +42,11 @@ namespace Refinement
 /// but not edge-conformal (needed by VEM). This pass closes that gap.
 ///
 /// Only `face_to_point_` changes: no new corners are created (existing leaf
-/// nodes are inserted into face node lists), so cell geometry, face area and
-/// normal are unchanged. Cheap when there is nothing to insert.
+/// nodes are inserted into face node lists, in order along each edge), so
+/// cell geometry, face area and normal are unchanged. Only corners some face
+/// uses are inserted. Each face edge looks at the corners in the buckets its
+/// bounding box covers, with buckets sized per direction to hold about one
+/// corner each.
 void edgeConformalizeLeaf(Dune::cpgrid::CpGridData& leaf);
 
 } // namespace Refinement
