@@ -420,3 +420,218 @@ PORO
                                                                  /* indexInInsideFromLargerLevel = */ 4);
     BOOST_CHECK(parentIntersectionToPoint == expectedCornerIndices);
 }
+
+// A vertically faulted LGR boundary. This is the configuration in which
+// indexInInside() alone cannot identify the parent face, and in which the
+// leaf face sits on the box's LOW side -- both of which a matching,
+// unfaulted box boundary hides.
+//
+// Section at any j, I to the right (east), K down (depth z):
+//
+//        i=0 (coarse)      i=1 (refined, LGR1)
+//   z=0  +-----------+
+//        |  (0,0,0)  |- - - +-----------+  z=1
+//   z=2  +-----------+      |  (1,0,0)  |
+//        |  (0,0,1)  |      |           |
+//   z=4  +-----------+ - - -+-----------+  z=3
+//        |    ...    |      |    ...    |
+//
+// Each coarse cell overlaps two cells of the refined column, so the coarse
+// cell has two level-0 I+ faces -- and each carries indexInInside() == 1.
+BOOST_AUTO_TEST_CASE(parentIntersectionFaultedLowSideBoundary)
+{
+    // Columns offset by half a cell: column i=0 spans z 0..8, column i=1
+    // spans z 1..9. TOPS is per cell, i fastest.
+    const std::string deck_string =
+        R"(
+RUNSPEC
+DIMENS
+  2 1 4 /
+GRID
+CARFIN
+'LGR1' 2 2 1 1 1 4 2 2 8 /
+ENDFIN
+DX
+  8*8 /
+DY
+  8*4 /
+DZ
+  8*2 /
+TOPS
+  0 1  2 3  4 5  6 7 /
+PORO
+  8*0.15 /
+)";
+
+    // Only the Conforming backend refines across a fault.
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
+    Opm::createGridAndAddLgrs(grid, deck_string,
+                              /* cells_per_dim_vec = */ {{2,2,2}},
+                              /* startIJK_vec = */      {{1,0,0}},
+                              /* endIJK_vec = */        {{2,1,4}},
+                              /* lgr_name_vec = */      {"LGR1"});
+
+    const auto& level0 = grid.levelGridView(0);
+    int coarseRefinedConnections = 0;
+    int facesUnderCells1And0 = 0;
+    int ambiguousSides = 0;
+    int sideOnlySearchWouldMiss = 0;
+
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        for (const auto& intersection : Dune::intersections(grid.leafGridView(), element)) {
+            if (!intersection.neighbor() ||
+                (intersection.inside().level() == intersection.outside().level()))
+            {
+                continue;
+            }
+            ++coarseRefinedConnections;
+
+            const bool insideIsCoarse = intersection.inside().level() == 0;
+
+            // The refined column is at i=1, so the coarse cell sees the
+            // interface on its I+ side and the refined cell on its I- side.
+            // Getting this backwards is what a normal pointing down-axis does.
+            BOOST_CHECK_EQUAL(intersection.indexInInside(), insideIsCoarse ? 1 : 0);
+            BOOST_CHECK_EQUAL(intersection.indexInOutside(), insideIsCoarse ? 0 : 1);
+
+            const auto& parentIntersection =
+                grid.getParentIntersectionFromLgrBoundaryFace(intersection);
+
+            // The parent face must be the level-0 face between the two cells'
+            // level-0 ancestors, not merely some face on the same side.
+            BOOST_CHECK(parentIntersection.neighbor());
+            BOOST_CHECK_EQUAL(parentIntersection.inside().index(),
+                              intersection.inside().getOrigin().index());
+            BOOST_CHECK_EQUAL(parentIntersection.outside().index(),
+                              intersection.outside().getOrigin().index());
+            BOOST_CHECK_EQUAL(parentIntersection.indexInInside(),
+                              intersection.indexInInside());
+
+            // Level-zero cells 0 = (0,0,0), depth [0,2], and 1 = (1,0,0), depth [1,3], share the
+            // face x = 8, depth [1,2]: area 4, centre (8, 2, 1.5). The two leaf faces under it, of
+            // cell 1's children, have it as their parent.
+            if ((intersection.inside().getOrigin().index() == 1)
+                && (intersection.outside().getOrigin().index() == 0)) {
+                ++facesUnderCells1And0;
+                const auto centre = parentIntersection.geometry().center();
+                BOOST_CHECK_CLOSE(parentIntersection.geometry().volume(), 4.0, 1e-10);
+                BOOST_CHECK_CLOSE(centre[0], 8.0, 1e-10);
+                BOOST_CHECK_CLOSE(centre[1], 2.0, 1e-10);
+                BOOST_CHECK_CLOSE(centre[2], 1.5, 1e-10);
+            }
+
+            // Matching on the side alone is genuinely ambiguous here, so the
+            // cell-pair criterion above is doing real work: count the level-0
+            // faces of this ancestor that share the leaf face's side, and note
+            // whether the first of them - what a side-only search returns - is
+            // the face we got.
+            int sameSideCandidates = 0;
+            int firstSameSideId = -1;
+            for (const auto& candidate : Dune::intersections(level0, intersection.inside().getOrigin())) {
+                if (candidate.indexInInside() != intersection.indexInInside()) {
+                    continue;
+                }
+                if (firstSameSideId < 0) {
+                    firstSameSideId = candidate.id();
+                }
+                ++sameSideCandidates;
+            }
+            BOOST_CHECK_GT(sameSideCandidates, 0);
+
+            if (sameSideCandidates > 1) {
+                ++ambiguousSides;
+                if (firstSameSideId != parentIntersection.id()) {
+                    ++sideOnlySearchWouldMiss;
+                }
+            }
+        }
+    }
+
+    BOOST_CHECK_EQUAL(level0.size(0), 8);
+
+    // Without any coarse<->refined face the loop above proves nothing.
+    // Column i=1 is 1 deeper than column i=0: on x = 8 its children (1 thick, depths 1 to
+    // 9, 2 in y) face the coarse column in 7 sub-layers, depths 1 to 8: 14 faces,
+    // counted twice (once from each side).
+    BOOST_CHECK_EQUAL(coarseRefinedConnections, 7*2*2);
+    BOOST_CHECK_EQUAL(facesUnderCells1And0, 2);
+
+    // The fault must actually produce cells with two faces on one side, and a
+    // side-only search must actually pick the wrong one for some of them -
+    // otherwise this deck is not testing what it claims to.
+    BOOST_CHECK_GT(ambiguousSides, 0);
+    BOOST_CHECK_GT(sideOnlySearchWouldMiss, 0);
+}
+
+// A box nested in an LGR, one LGR cell inside it on every side. A face between a cell
+// of the nested box and a cell of its parent LGR lies inside one level-zero cell, which
+// has no face between the two: the parent intersection is that level-zero cell's face
+// on the same side.
+BOOST_AUTO_TEST_CASE(parentIntersectionNestedBoxInsideOneCell)
+{
+    const std::string deck_string =
+        R"(
+RUNSPEC
+DIMENS
+  4 3 3 /
+GRID
+CARFIN
+'LGR1' 2 3 2 2 2 2 6 3 3 /
+ENDFIN
+DX
+  36*1 /
+DY
+  36*1 /
+DZ
+  36*1 /
+BOX
+  1 4 1 3 1 1 /
+TOPS
+  12*0 /
+ENDBOX
+PORO
+  36*0.15 /
+)";
+
+    Dune::CpGrid grid;
+    grid.setLgrBackend(Opm::Refinement::Backend::Conforming);
+    Opm::createGridFromDeckString(grid, deck_string);
+    // LGR1: level-zero cells (1,1,1) and (2,1,1) refined 3x3x3, 6x3x3 LGR1 cells. NEST1:
+    // LGR1 cells i = 1..4, j = 1, k = 1 refined 2x2x2, 8x2x2 cells.
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */        {{3,3,3}, {2,2,2}},
+                               /* startIJK_vec = */             {{1,1,1}, {1,1,1}},
+                               /* endIJK_vec = */               {{3,2,2}, {5,2,2}},
+                               /* lgr_name_vec = */             {"LGR1", "NEST1"},
+                               /* lgr_parent_grid_name_vec = */ {"GLOBAL", "LGR1"});
+    BOOST_REQUIRE_EQUAL(grid.maxLevel(), 2);
+
+    int nestedConnections = 0;
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        for (const auto& intersection : Dune::intersections(grid.leafGridView(), element)) {
+            if (!intersection.neighbor()) {
+                continue;
+            }
+            const int levelIn = intersection.inside().level();
+            const int levelOut = intersection.outside().level();
+            // Only faces between an LGR1 cell (level 1) and a NEST1 cell (level 2).
+            if ((levelIn == levelOut) || (levelIn == 0) || (levelOut == 0)) {
+                continue;
+            }
+            ++nestedConnections;
+
+            // Both cells have the same level-zero origin.
+            const int origin = intersection.inside().getOrigin().index();
+            BOOST_CHECK_EQUAL(intersection.outside().getOrigin().index(), origin);
+
+            const auto& parentIntersection =
+                grid.getParentIntersectionFromLgrBoundaryFace(intersection);
+            BOOST_CHECK_EQUAL(parentIntersection.inside().index(), origin);
+            BOOST_CHECK_EQUAL(parentIntersection.indexInInside(), intersection.indexInInside());
+        }
+    }
+
+    // Every face of the NEST1 block toward LGR1: 4 + 4 (I), 16 + 16 (J) and 16 + 16 (K),
+    // 72 faces, counted twice (once from each side).
+    BOOST_CHECK_EQUAL(nestedConnections, 72*2);
+}

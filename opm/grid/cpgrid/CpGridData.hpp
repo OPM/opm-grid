@@ -71,6 +71,7 @@
 #include "LevelHierarchy.hpp"
 
 #include <array>
+#include <cstdint>
 #include <initializer_list>
 #include <set>
 #include <cstddef>
@@ -79,6 +80,7 @@
 namespace Opm
 {
 class EclipseState;
+namespace Refinement { struct GridStateWriter; struct RetainedCornerPointInput; }
 }
 namespace Dune
 {
@@ -145,6 +147,7 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
     friend class Dune::cpgrid::IdSet;
     friend class Dune::cpgrid::LevelGlobalIdSet;
+    friend struct ::Opm::Refinement::GridStateWriter;
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
@@ -179,12 +182,12 @@ public:
     /// \param comm The MPI communicator
     /// \param data Pointer to existing data to use
     /// Default constructor.
-    explicit CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
+    explicit CpGridData(MPIHelper::MPICommunicator comm,  const std::vector<std::shared_ptr<CpGridData>>& data);
 
 
 
     /// Constructor
-    explicit CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);
+    explicit CpGridData(const std::vector<std::shared_ptr<CpGridData>>& data);
     /// Destructor
     ~CpGridData();
 
@@ -412,6 +415,9 @@ public:
             __builtin_unreachable();
         }
     }
+
+    /// See CpGrid::stableCellId().
+    std::vector<std::int64_t> stableCellId() const;
 
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
@@ -902,6 +908,10 @@ private:
 
     /// \brief Sorted vector of aquifer cell indices.
     std::vector<int> aquifer_cells_;
+
+    /// Corner-point input kept for the Conforming refinement backend.
+    std::shared_ptr<const Opm::Refinement::RetainedCornerPointInput> retained_cp_input_;
+    bool retain_cp_input_{false};
 
 #if HAVE_MPI
 

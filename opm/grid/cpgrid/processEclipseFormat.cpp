@@ -38,6 +38,7 @@
 #endif
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/refinement/RetainedCornerPointInput.hpp>
 
 #include <opm/grid/common/GeometryHelpers.hpp>
 
@@ -382,6 +383,23 @@ namespace cpgrid
                 ecl_state->setPinchNNC(std::move(pinchedNNCs));
                 ecl_state->prune_global_for_schedule_run();
             }
+        }
+
+        // Post-MINPV input, for the Conforming backend's refinement builder.
+        // Warning: taken before clip_z and periodic_extension below, so refined cells
+        // will not match a level zero built with either.
+        if (retain_cp_input_ && ecl_state && ecl_state->getLgrs().size() > 0) {
+            auto retained = std::make_shared<Opm::Refinement::RetainedCornerPointInput>();
+            retained->dims = { static_cast<int>(ecl_grid.getNX()),
+                               static_cast<int>(ecl_grid.getNY()),
+                               static_cast<int>(ecl_grid.getNZ()) };
+            retained->coord = coordData;
+            retained->zcorn = zcornData;
+            retained->actnum = actnumData;
+            retained->edgeConformal = edge_conformal;
+            retained->pinchNnc = nnc_cells[PinchNNC];
+            retained->pinchActive = pinchActive;
+            retained_cp_input_ = std::move(retained);
         }
 
         // this variable is only required because getCellZvals() needs
