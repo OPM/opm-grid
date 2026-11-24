@@ -81,7 +81,8 @@ namespace Opm
                        const bool pinchOption4ALL = false,
                        const std::vector<double>& permz = {},
                        const std::function<double(int)>& multZ = [](int){ return 0;},
-                       const double tolerance_unique_points = 0) const;
+                       const double tolerance_unique_points = 0,
+                       const bool pinchActive = true ) const;
     private:
         double computeGap(const std::array<double,8>& coord_above, const std::array<double,8>& coord_below) const;
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
