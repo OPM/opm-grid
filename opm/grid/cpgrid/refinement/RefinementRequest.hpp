@@ -70,6 +70,13 @@ struct BlockRefinement
     std::vector<int> minpvRemoved{};
 };
 
+/// A block of cells of a grid: startIJK <= (i,j,k) < endIJK, as in a BlockRefinement.
+struct CellRange
+{
+    std::array<int,3> startIJK{};
+    std::array<int,3> endIJK{};
+};
+
 /// The request's subdivision in one direction, uniform tables filled in when
 /// the request carries none.
 AxisSubdivision axisSubdivision(const BlockRefinement& request, int dim);

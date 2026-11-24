@@ -50,10 +50,10 @@ namespace Refinement
 ///   of the parent grid (boxes never share cells), or when their cells meet
 ///   through a fault face although their index ranges are not adjacent. On a
 ///   shared face, in each of the face's two directions, one box's number of
-///   children per parent cell is a whole multiple of the other's (equal, or 4
-///   and 2), and the same box is the finer one in both directions: the finer
-///   box's sub-faces then tile the coarser box's faces. Along a shared edge the
-///   numbers are equal.
+///   children per parent cell is a whole multiple of the other's (equal, or,
+///   e.g., 4 and 2), and the same box is the finer one in both directions: the
+///   finer box's sub-faces then tile the coarser box's faces. Along a shared edge
+///   the numbers are equal.
 /// - A graded box, one that gives the extent of each child column instead of
 ///   one number of children per parent cell, meets another box only at a corner.
 class ConformingBlockBuilder : public Builder

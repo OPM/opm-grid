@@ -383,6 +383,9 @@ public:
         }
     }
 
+    /// See CpGrid::stableCellId().
+    std::vector<std::int64_t> stableCellId() const;
+
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -393,9 +396,6 @@ public:
     {
         return  global_cell_;
     }
-
-    /// See CpGrid::stableCellId().
-    std::vector<std::int64_t> stableCellId() const;
 
     /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
     ///        Assumption: all grid cells are active.

@@ -298,7 +298,7 @@ struct FaceTagNormalBIdHandle
         DataType tmp;
         buffer.read(tmp);
         scatterTags_[t]=std::get<0>(tmp);
-        scatterNormals_.get(t.index()) = std::get<1>(tmp);
+        scatterNormals_.set(t.index(), std::get<1>(tmp));
         scatterBIds_[t] = std::get<2>(tmp);
     }
 private:
@@ -353,7 +353,7 @@ struct FaceTagNormalHandle
         DataType tmp;
         buffer.read(tmp);
         scatterTags_[t]=std::get<0>(tmp);
-        scatterNormals_.get(t.index()) = std::get<1>(tmp);
+        scatterNormals_.set(t.index(), std::get<1>(tmp));
     }
 private:
     const TagContainer& gatherTags_;

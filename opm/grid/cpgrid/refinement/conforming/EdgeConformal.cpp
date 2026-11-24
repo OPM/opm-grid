@@ -51,7 +51,7 @@ void edgeConformalizeLeaf(Dune::cpgrid::CpGridData& leaf)
     if (numCorners == 0) {
         return;
     }
-    auto& faceToPoint = GridStateWriter::faceToPoint(leaf);
+    auto& faceToPoint = GridStateWriter::mutableFaceToPoint(leaf);
 
     // Only corners some face uses: level-zero corners of refined cells stay in the
     // pool, unused, and must not land in a face.

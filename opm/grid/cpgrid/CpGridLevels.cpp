@@ -206,7 +206,9 @@ namespace cpgrid
 {
 std::vector<std::int64_t> CpGridData::stableCellId() const
 {
-    // Refined cells: tagged (parent Cartesian index, index in parent); others: Cartesian index.
+    // Refined cell ids use bit 62 as a tag, bits 20-61 for the parent
+    // Cartesian index, and bits 0-19 for the child index; others: Cartesian index.
+    // refined cell id = 2^{62} + (parent Cartesian index)2^{20} + childIdxInParentCell
     constexpr int childBits = 20;
     constexpr std::int64_t refinedTag = std::int64_t(1) << 62;
     const auto& childToParent = levels_.child_to_parent_cells;
@@ -217,6 +219,7 @@ std::vector<std::int64_t> CpGridData::stableCellId() const
             continue;
         }
         const std::int64_t child = levels_.cell_to_idxInParentCell[c];
+        // check child index fits in the 20-bit space to prevent overlapping with the bits used for the parent index
         assert(child >= 0 && child < (std::int64_t(1) << childBits));
         ids[c] = refinedTag | (std::int64_t(global_cell_[c]) << childBits) | child;
     }

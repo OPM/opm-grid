@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(faultedIBoundarySplitsConnections)
     };
     auto g = makeGrid({5, 2, 2}, depth);
 
-    const auto conns = Opm::Refinement::faultedBoundaryConnections(
+    const auto conns = Opm::Refinement::boxBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
         Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/-1, /*edgeConformal=*/true);
 
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(unfaultedBoundaryGivesOneToOne)
     };
     auto g = makeGrid({5, 2, 2}, depth);
 
-    const auto conns = Opm::Refinement::faultedBoundaryConnections(
+    const auto conns = Opm::Refinement::boxBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
         Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/0, /*side=*/+1, /*edgeConformal=*/true);
 
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(domainBoundarySideFacesTheDomain)
     auto depth = [](int, int, int k_) { return 2.0*(cellOf(k_) + sideOf(k_)); };
     auto g = makeGrid({5, 2, 2}, depth);
 
-    const auto conns = Opm::Refinement::faultedBoundaryConnections(
+    const auto conns = Opm::Refinement::boxBoundaryConnections(
         g.dims, g.coord.data(), g.zcorn.data(), nullptr,
         Opm::Refinement::BlockRefinement{ "BOX", "GLOBAL", {2,2,2}, {2,0,0}, {4,2,2} }, /*axis=*/1, /*side=*/-1, /*edgeConformal=*/true);
 

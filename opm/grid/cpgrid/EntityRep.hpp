@@ -244,9 +244,9 @@ namespace Dune
                 return V::operator[](i);
             }
 
-            T& get(int i)
+            void set(int i, const T& value)
             {
-                return V::operator[](i);
+                V::operator[](i) = value;
             }
 
             void swap(EntityVariableBase& other)
@@ -286,7 +286,7 @@ namespace Dune
             /// @return a mutable reference to the varable, at e.
             T& operator[](const EntityRep<codim>& e)
             {
-                return EntityVariableBase<T>::get(e.index());
+                return EntityVariableBase<T>::operator[](e.index());
             }
         };
 

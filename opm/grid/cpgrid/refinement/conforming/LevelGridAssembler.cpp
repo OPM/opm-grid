@@ -180,7 +180,7 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
 
     const int numRefinedCells = level->size(0);
     std::vector<std::array<int,2>> childToParent(numRefinedCells);
-    std::vector<int> idxInParent(numRefinedCells);
+    std::vector<int> cartesianIndexInParentCell(numRefinedCells);
 
     // The level index first: getIJK() reads the grid's own Cartesian size only
     // on a level above zero.
@@ -206,9 +206,9 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
         const int cx = pos[0].parentCount[ir];
         const int cy = pos[1].parentCount[jr];
         childToParent[cell] = {parentLevel, parentIdx};
-        idxInParent[cell] = pos[0].subIndex[ir]
-                          + pos[1].subIndex[jr]*cx
-                          + pos[2].subIndex[kr]*cx*cy;
+        cartesianIndexInParentCell[cell] = pos[0].subIndex[ir]
+                                         + pos[1].subIndex[jr]*cx
+                                         + pos[2].subIndex[kr]*cx*cy;
     }
 
     GridStateWriter::setCellsPerDim(*level, request.cellsPerDim);
@@ -217,7 +217,8 @@ assembleBlockLevelGrid(const Dune::cpgrid::CpGridData& parentGrid,
     if (std::ranges::any_of(request.subdivision, [](const auto& s) { return !s.empty(); })) {
         GridStateWriter::setSubdivision(*level, subs);
     }
-    GridStateWriter::setParentRelations(*level, std::move(childToParent), std::move(idxInParent));
+    GridStateWriter::setParentRelations(*level, std::move(childToParent),
+                                        std::move(cartesianIndexInParentCell));
 
     // Expose the resampled description so a nested child can be refined from
     // this level's geometry (its parent) rather than the global grid.

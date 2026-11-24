@@ -52,9 +52,10 @@ ConformingBlockBuilder::ConformingBlockBuilder(const std::array<int,3>& parentDi
                                                std::vector<double> zcorn,
                                                std::vector<int> actnum,
                                                bool edgeConformal)
-    : input_(std::make_shared<const RetainedCornerPointInput>(
-          RetainedCornerPointInput{ parentDims, std::move(coord), std::move(zcorn),
-                                    std::move(actnum), edgeConformal }))
+    : ConformingBlockBuilder {
+          std::make_shared<const RetainedCornerPointInput>(parentDims, std::move(coord), std::move(zcorn),
+                                                           std::move(actnum), edgeConformal)
+      }
 {
 }
 
@@ -182,7 +183,11 @@ int childCellsLeft(const Dune::cpgrid::CpGridData& parent,
 // - along a shared edge, its direction: the factors are equal;
 // - a shared corner is a corner of the parent grid, with no rule.
 // The factors in a direction where the boxes abut do not matter: the boxes meet there
-// on a boundary between host cells. A graded box may share only a corner.
+// on a boundary between host cells. A graded box may share only a corner. The check
+// reads the index ranges only. Where a fault offsets two boxes, they meet where the
+// geometry joins them; the leaf assembly finds that side from the level-zero faces and
+// builds it, from the corner-point processing where the side is faulted
+// (LeafGridAssembler::findFaultedSides).
 void checkTouchingBoxes(const std::vector<Opm::Refinement::BlockRefinement>& requests)
 {
     for (std::size_t i = 0; i < requests.size(); ++i) {
