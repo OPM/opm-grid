@@ -268,7 +268,8 @@ void CpGridData::appendDisjointGrid(const CpGridData& other)
     // layout is such that the values of the second grid directly follow
     // those of the first on the extended Cartesian grid.
     if (!zcorn.empty() && !other.zcorn.empty()) {
-        zcorn.insert(zcorn.end(), other.zcorn.begin(), other.zcorn.end());
+        // Not vector::insert, for which GCC 14 issues a false -Wstringop-overflow.
+        appendEntries(zcorn, other.zcorn);
     }
     else {
         zcorn.clear();
