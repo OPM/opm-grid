@@ -232,7 +232,9 @@ namespace cpgrid
             }
             int success = 1;
             // communicate success to others
-            ccobj_.broadcast(&success, 1, 0);
+            if (!continuum || continuum->broadcastSuccess) {
+                ccobj_.broadcast(&success, 1, 0);
+            }
 
             // Add PINCH NNCs.
             std::vector<Opm::NNCdata> pinchedNNCs;

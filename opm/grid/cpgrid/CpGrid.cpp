@@ -44,6 +44,8 @@
 #endif
 
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/Schedule/Well/Well.hpp>
+#include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/common/OpmLog/OpmLog.hpp>
 
@@ -65,6 +67,8 @@
 #include <cstdint>
 #include <iomanip>
 #include <numeric>
+#include <string>
+#include <unordered_map>
 #include <tuple>
 
 namespace
@@ -271,6 +275,22 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
     if (cc.size() > 1)
     {
+        // The grid of a dual-continuum run is partitioned with its matrix cells and fracture
+        // twins joined, as the cells of a well, and with Zoltan on the graph of the grid.
+        // The graph of the wells gets the pairs, also if there are no wells.
+        // The offset is known on the root only, where the global grid is.
+        const int continuumOffset = cc.max(static_cast<int>(data_[selectedLevel]->continuum_cart_offset_));
+        const bool dualContinuum = continuumOffset > 0;
+        const std::vector<cpgrid::OpmWellType> noWells;
+        if (dualContinuum) {
+            if (wells == nullptr) {
+                wells = &noWells;
+            }
+            if (partitionMethod == Dune::PartitionMethod::zoltanGoG) {
+                partitionMethod = Dune::PartitionMethod::zoltan;
+            }
+        }
+
         std::vector<int> computedCellPart;
         std::vector<std::pair<std::string,bool>> wells_on_proc;
         std::vector<std::tuple<int,int,char>> exportList;
@@ -386,6 +406,104 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     cpgrid::vanillaPartitionGridOnRoot(*this, wells, possibleFutureConnections, transmissibilities, allowDistributedWells);
             }
         }
+        // A dual-continuum grid keeps each matrix cell on the process of its fracture twin: the
+        // coupling between them is a connection like any other, and the cells have to be
+        // neighbours of each other for the transmissibilities to be computed.
+        if (dualContinuum) {
+            std::vector<int> twinParts;
+            if (cc.rank() == 0) {
+                const auto offset = data_[selectedLevel]->continuum_cart_offset_;
+                const auto& globalCell = data_[selectedLevel]->global_cell_;
+                const auto localIndex = [&globalCell](const std::size_t cartesian)
+                {
+                    const auto it = std::lower_bound(globalCell.begin(), globalCell.end(),
+                                                     static_cast<int>(cartesian));
+                    return (it != globalCell.end() && *it == static_cast<int>(cartesian))
+                        ? static_cast<int>(it - globalCell.begin())
+                        : -1;
+                };
+
+                // Cells that have to be on one process form a group: a matrix cell and its
+                // twin, and, unless wells may be distributed, the cells of a well. A group
+                // that the partitioner has split, as a twin pair of two different wells can
+                // be, is moved as a whole, so that no well is split by the pairing. It goes
+                // to the process of the first cell of a well in it, or else of its first
+                // matrix cell.
+                std::vector<int> group(globalCell.size());
+                std::iota(group.begin(), group.end(), 0);
+                const auto find = [&group](int c) {
+                    while (group[c] != c) {
+                        group[c] = group[group[c]];
+                        c = group[c];
+                    }
+                    return c;
+                };
+                const auto join = [&group, &find](const int c1, const int c2) {
+                    const auto r1 = find(c1);
+                    const auto r2 = find(c2);
+                    // The smaller index is the root, so that it is the first cell of the group.
+                    group[std::max(r1, r2)] = std::min(r1, r2);
+                };
+
+                std::vector<char> wellCell(globalCell.size(), 0);
+                std::unordered_map<std::string, int> firstCellOfWell;
+                const auto addToWell = [&](const std::string& name, const std::size_t cartesian) {
+                    const auto c = localIndex(cartesian);
+                    if (c < 0) {
+                        return;
+                    }
+                    wellCell[c] = 1;
+                    if (allowDistributedWells) {
+                        return;
+                    }
+                    if (const auto it = firstCellOfWell.find(name); it != firstCellOfWell.end()) {
+                        join(it->second, c);
+                    } else {
+                        firstCellOfWell.emplace(name, c);
+                    }
+                };
+                if (wells != nullptr) {
+                    for (const auto& well : *wells) {
+                        for (const auto& connection : well.getConnections()) {
+                            addToWell(well.name(), connection.global_index());
+                        }
+                    }
+                }
+                for (const auto& future : possibleFutureConnections) {
+                    for (const auto cartesian : future.second) {
+                        addToWell(future.first, cartesian);
+                    }
+                }
+
+                for (std::size_t c = 0; c < globalCell.size(); ++c) {
+                    if (static_cast<std::size_t>(globalCell[c]) >= offset) {
+                        break;      // the matrix cells come first
+                    }
+                    if (const auto twin = localIndex(globalCell[c] + offset); twin >= 0) {
+                        join(c, twin);
+                    }
+                }
+
+                // The part of a group: that of its first well cell, otherwise of its first cell.
+                std::vector<int> groupPart(globalCell.size(), -1);
+                for (std::size_t c = 0; c < globalCell.size(); ++c) {
+                    if (wellCell[c] && groupPart[find(c)] < 0) {
+                        groupPart[find(c)] = computedCellPart[c];
+                    }
+                }
+                twinParts = computedCellPart;
+                for (std::size_t c = 0; c < globalCell.size(); ++c) {
+                    const auto root = find(c);
+                    twinParts[c] = (groupPart[root] >= 0) ? groupPart[root] : computedCellPart[root];
+                }
+            }
+
+            std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
+                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, transmissibilities,
+                                             twinParts, (inputNumParts > 0) || allowDistributedWells,
+                                             /* gridAndWells = */ nullptr, level);
+        }
+
         comm().barrier();
 
         // first create the overlap
@@ -556,6 +674,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
         distributed_data_[0]->distributeGlobalGrid(*this,*this->data_[selectedLevel], computedCellPart);
+        distributed_data_[0]->continuum_cart_offset_ = continuumOffset;
         (*global_id_set_ptr_).insertIdSet(*distributed_data_[0]);
         distributed_data_[0]-> index_set_.reset(new cpgrid::IndexSet(distributed_data_[0]->cell_to_face_.size(),
                                                                      distributed_data_[0]-> geomVector<3>().size()));
@@ -1427,16 +1546,6 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              const bool pinchActive,
                              const bool edge_conformal)
 {
-    // Every process must refuse a dual-continuum grid on more than one process, also
-    // those that are not given the grid, as the process that has it joins the grids
-    // and sends one message more than the others wait for.
-    const bool dualContinuum = (ecl_grid != nullptr && ecl_grid->dualPorosity())
-        || (ecl_state != nullptr && ecl_state->runspec().porosityModel().dualContinuum());
-    if (dualContinuum && current_data_->back()->ccobj_.size() > 1) {
-        OPM_THROW(std::invalid_argument,
-                  "A dual-continuum grid (DUALPORO or DUALPERM) can only be processed on a single process.");
-    }
-
     if (ecl_grid != nullptr && ecl_grid->dualPorosity()) {
         return this->processDualContinuumEclipseFormat(*ecl_grid, ecl_state, periodic_extension,
                                                        turn_normals, clip_z, pinchActive,
@@ -1490,8 +1599,10 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
     //
     // The pore volumes, permeabilities and multipliers used for the MINPV and PINCH
     // processing are those of the dual-continuum grid, indexed by its cells.
-    cpgrid::ContinuumSlice matrixSlice{0, {}};
-    cpgrid::ContinuumSlice fractureSlice{static_cast<int>(continuumSize), {}};
+    cpgrid::ContinuumSlice matrixSlice;
+    matrixSlice.broadcastSuccess = false;
+    cpgrid::ContinuumSlice fractureSlice;
+    fractureSlice.cartOffset = static_cast<int>(continuumSize);
 
     auto removed_cells = [&]
     {
@@ -1517,6 +1628,8 @@ CpGrid::processDualContinuumEclipseFormat(const Opm::EclipseGrid& ecl_grid,
 
         this->appendDisjointGrid(fracture_grid);
     }
+
+    current_data_->back()->continuum_cart_offset_ = continuumSize;
 
     if (ecl_state != nullptr) {
         // The pinch-out connections of both continua, and the pruning of the global
@@ -1586,7 +1699,7 @@ void CpGrid::appendDisjointGrid(const CpGrid& other)
 
     if (!isPlainSerialGrid(*this) || !isPlainSerialGrid(other)) {
         OPM_THROW(std::invalid_argument,
-                  "appendDisjointGrid() requires two serial grids without local grid refinement. "
+                  "appendDisjointGrid() requires two grids that are not distributed, without local grid refinement. "
                   "Extend the grid before load balancing.");
     }
 
@@ -1597,7 +1710,7 @@ void CpGrid::addNnc(const std::vector<std::pair<int, int>>& nnc)
 {
     if (data_.size() != 1 || !distributed_data_.empty() || current_data_ != &data_) {
         OPM_THROW(std::invalid_argument,
-                  "addNnc() requires a serial grid without local grid refinement.");
+                  "addNnc() requires a grid that is not distributed, without local grid refinement.");
     }
 
     auto& data = *data_.back();

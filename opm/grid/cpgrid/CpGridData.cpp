@@ -193,10 +193,6 @@ void CpGridData::appendDisjointGrid(const CpGridData& other)
 {
     // Check everything before modifying anything, so that a failure
     // leaves the grid as it was.
-    if ((ccobj_.size() > 1) || (other.ccobj_.size() > 1)) {
-        OPM_THROW(std::invalid_argument,
-                  "Cannot append grids on a parallel run: the grids must be serial.");
-    }
     if ((levels_.level_data_ptr != nullptr && levels_.level_data_ptr->size() > 1) ||
         (other.levels_.level_data_ptr != nullptr && other.levels_.level_data_ptr->size() > 1)) {
         OPM_THROW(std::invalid_argument,
@@ -307,8 +303,8 @@ void CpGridData::appendDisjointGrid(const CpGridData& other)
     index_set_ = std::make_unique<IndexSet>(cell_to_face_.size(), geomVector<3>().size());
 
 #if HAVE_MPI
-    // The index set of the cells of the global grid has to hold the cells of both
-    // grids, as the interfaces used to distribute the grid are made from it.
+    // The index set of the cells of the global grid has to hold all the cells, as
+    // the interfaces used to distribute the grid are made from it.
     cellIndexSet() = ParallelIndexSet();
     populateGlobalCellIndexSet();
 #endif
