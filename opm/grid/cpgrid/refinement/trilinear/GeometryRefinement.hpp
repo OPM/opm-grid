@@ -62,7 +62,7 @@ const std::vector<double>& heightsZ) const
                     all_geom.geomVector(std::integral_constant<int,3>());
                 EntityVariableBase<cpgrid::Geometry<2,3>>& refined_faces =
                     all_geom.geomVector(std::integral_constant<int,1>());
-                EntityVariableBase<cpgrid::Geometry<3,3>>& refined_cells =
+                EntityVariableBase<cpgrid::Geometry<3,cdim>>& refined_cells =
                     all_geom.geomVector(std::integral_constant<int,0>());
                 EntityVariableBase<enum face_tag>& mutable_face_tags = refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = refined_face_normals;
@@ -456,8 +456,8 @@ const std::vector<double>& heightsZ) const
                 // volume of the 'parent cell'.
                 // Compare the sum of all the volumes of all refined cells with 'parent cell' volume.
                 if (std::fabs(sum_all_refined_cell_volumes - this->volume())
-                    > std::numeric_limits<Geometry<3, cdim>::ctype>::epsilon()) {
-                    Geometry<3, cdim>::ctype correction = this->volume() / sum_all_refined_cell_volumes;
+                    > std::numeric_limits<ctype>::epsilon()) {
+                    ctype correction = this->volume() / sum_all_refined_cell_volumes;
                     for(auto& cell: refined_cells){
                         cell.vol_ *= correction;
                     }
