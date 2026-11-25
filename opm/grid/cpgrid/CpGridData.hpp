@@ -93,6 +93,7 @@ class IndexSet;
 class IdSet;
 class LevelGlobalIdSet;
 class PartitionTypeIndicator;
+class Intersection;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
