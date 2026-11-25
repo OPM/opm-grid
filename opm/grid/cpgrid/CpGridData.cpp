@@ -1605,6 +1605,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     computeCellPartitionType();
 
     // Compute partition type for points
+    corner_cells_by_vertex_ = grid.cornerCellsByVertex();
     computePointPartitionType();
 
     computeCommunicationInterfaces(noExistingPoints);
@@ -1638,10 +1639,18 @@ void CpGridData::computePointPartitionType()
     // not border.
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
                                                        InteriorEntity);
+    // Points of interior cells; with by-vertex corner overlap such a point may touch
+    // a foreign cell through no common face, and must then be border, not overlap.
+    std::vector<char> on_interior_cell(partition_type_indicator_->point_indicator_.size(), 0);
     // marking border entities first
     for(int i=0; i<face_to_point_.size(); ++i)
     {
         PartitionType face_type = partition_type_indicator_->getFacePartitionType(i);
+        if (corner_cells_by_vertex_ && (face_type == InteriorEntity || face_type == BorderEntity)) {
+            for (const auto p : face_to_point_[i]) {
+                on_interior_cell[p] = 1;
+            }
+        }
         if (face_type ==  BorderEntity)
         {
             // all vertices are border
@@ -1664,7 +1673,9 @@ void CpGridData::computePointPartitionType()
             {
                 PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
 
-                if ( old_type != BorderEntity && new_type == FrontEntity)
+                if (on_interior_cell[*p]) {
+                    partition_type_indicator_->point_indicator_[*p] = BorderEntity;
+                } else if ( old_type != BorderEntity && new_type == FrontEntity)
                 {
                     partition_type_indicator_->point_indicator_[*p] = FrontEntity;
                 } else if(new_type == OverlapEntity && old_type != FrontEntity && old_type != BorderEntity) {

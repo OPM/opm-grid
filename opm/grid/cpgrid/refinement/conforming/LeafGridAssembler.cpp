@@ -1589,6 +1589,7 @@ assembleLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
 
         leaf->cellRemoteIndices().template rebuild<false>();
         leaf->computeCellPartitionType();
+        leaf->corner_cells_by_vertex_ = level0.corner_cells_by_vertex_;
         leaf->computePointPartitionType();
         leaf->computeCommunicationInterfaces(numLeafCorners);
         setDistributedLeafIds(*leaf, level0, leafCellGlobalId, leafFaces, numLeafFaces,
@@ -2215,6 +2216,7 @@ assembleNestedLeafGrid(std::vector<std::shared_ptr<CpGridData>>& storage,
 
         leaf->cellRemoteIndices().template rebuild<false>();
         leaf->computeCellPartitionType();
+        leaf->corner_cells_by_vertex_ = level0.corner_cells_by_vertex_;
         leaf->computePointPartitionType();
         leaf->computeCommunicationInterfaces(numLeafCorners);
         setDistributedLeafIds(*leaf, level0, leafCellGlobalId, leafFaces, numLeafFaces,

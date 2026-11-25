@@ -627,6 +627,9 @@ public:
 
     void computePointPartitionType();
 
+    /// Overlap was built with corner cells by vertex (CpGrid::cornerCellsByVertex()).
+    bool corner_cells_by_vertex_{false};
+
     void computeCommunicationInterfaces(int noexistingPoints);
 
     /// \brief The type of the mpi communicator.

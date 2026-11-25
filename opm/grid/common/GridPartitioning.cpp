@@ -606,6 +606,17 @@ int addOverlapLayer([[maybe_unused]] const CpGrid& grid,
         else {
             addOverlapLayer(grid, index, *it, owner, cell_part, exportList, addCornerCells, vertex_cell_maps, layers-1, level);
         }
+        // Cells touching another rank only at a vertex or edge have no foreign face neighbour.
+        if (!vertex_cell_maps[1].empty()) {
+            for (const auto vertex : vertex_cell_maps[1][index]) {
+                for (const auto& cell : vertex_cell_maps[0][vertex]) {
+                    if (cell_part[cell] != owner) {
+                        exportList.emplace_back(cell, owner, AttributeSet::copy);
+                        exportList.emplace_back(index, cell_part[cell], AttributeSet::copy);
+                    }
+                }
+            }
+        }
     }
     // remove multiple entries
     auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
