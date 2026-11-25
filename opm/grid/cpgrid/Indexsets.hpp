@@ -569,7 +569,9 @@ namespace Dune
             }
 
             OPM_THROW(std::runtime_error, "No grid or mapping. Should not be here!");
+#if defined(__CUDACC__)
             __builtin_unreachable();
+#endif
         }
         void release()
         {
