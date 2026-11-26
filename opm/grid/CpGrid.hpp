@@ -811,6 +811,24 @@ namespace Dune
 
         void setPartitioningParams(const std::map<std::string,std::string>& params);
 
+        /// \brief Groups of Cartesian cells the graph partitioner keeps on one rank, each grown
+        /// by haloLayers of face or corner neighbours. Set before loadBalance().
+        void setPartitionCellGroups(std::vector<std::set<int>> cellGroups, int haloLayers = 0)
+        {
+            partition_cell_groups_ = std::move(cellGroups);
+            partition_cell_group_halo_ = haloLayers;
+        }
+
+        int partitionCellGroupHalo() const
+        {
+            return partition_cell_group_halo_;
+        }
+
+        const std::vector<std::set<int>>& partitionCellGroups() const
+        {
+            return partition_cell_groups_;
+        }
+
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
@@ -1061,9 +1079,11 @@ namespace Dune
                     bool allowDistributedWells = false,
                     bool useTransToFilterOverlap = true)
         {
+            // A Conforming grid refined before load balancing distributes its leaf.
+            const bool refinedLeaf = (lgr_backend_ == Opm::Refinement::Backend::Conforming) && (maxLevel() > 0);
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
                                    addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells,
-                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ 0,
+                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ refinedLeaf ? -1 : 0,
                                    useTransToFilterOverlap);
             using std::get;
             if (get<0>(ret))
@@ -1546,6 +1566,8 @@ namespace Dune
         const std::vector<int>& sortedNumAquiferCells() const;
 
     private:
+        void broadcastRetainedInput_();
+
         /// \brief Scatter a global grid to all processors.
         /// \param method The edge-weighting method to be used on the graph partitioner.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
@@ -1606,6 +1628,8 @@ namespace Dune
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
         Opm::Refinement::Backend lgr_backend_ = Opm::Refinement::Backend::Trilinear;
         std::shared_ptr<Opm::Refinement::Builder> refinement_builder_;
+        std::vector<std::set<int>> partition_cell_groups_;
+        int partition_cell_group_halo_{0};
         /**
          * @brief Interface for scattering and gathering cell data.
          *
@@ -1692,7 +1716,9 @@ namespace Dune
         if (distributed_data_.empty()) {
             OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
         } else {
-            distributed_data_[0]->scatterData(handle, data_[0].get(),
+            // The distributed view: level zero, or the refined leaf of a Conforming grid.
+            const auto& source = (lgr_backend_ == Opm::Refinement::Backend::Conforming) ? data_.back() : data_[0];
+            distributed_data_[0]->scatterData(handle, source.get(),
                                               distributed_data_[0].get(),
                                               cellScatterGatherInterface(),
                                               pointScatterGatherInterface());
