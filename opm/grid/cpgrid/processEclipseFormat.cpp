@@ -221,7 +221,7 @@ namespace cpgrid
                 minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
                                           poreVolume, ecl_grid.getMinpvVector(), actnumData, mergeMinPVCells,
                                           zcornData.data(), nogap, pinchOptionALL,
-                                          permZ, multZ, tolerance_unique_points);
+                                          permZ, multZ, tolerance_unique_points, pinchActive);
                 if (!minpv_result.nnc.empty()) {
                     this->zcorn = zcornData;
                 }

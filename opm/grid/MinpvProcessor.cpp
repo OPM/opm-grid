@@ -77,7 +77,8 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         bool pinchOption4ALL,
                         const std::vector<double>& permz,
                         const std::function<double(int)>& multz,
-                        const double tolerance_unique_points) const
+                        const double tolerance_unique_points,
+                        const bool pinchActive ) const
 {
     // Algorithm:
     // 1. Process each column of cells (with same i and j
@@ -315,7 +316,22 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         const std::array<double, 8> cz_above = getCellZcorn(ii, jj, k_above, zcorn);
                         // top cell might not have been inspected for option 4 ALL before
                         option4ALLZero = option4ALLZero || (!permz.empty() && permz[c_above] == 0.0) || multz(c_above) == 0.0;
-                        nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap) && (!pinchOption4ALL || !option4ALLZero) ;
+
+                        // For NOGAP case, we compute the whole gap between active cell (stack) by
+                        // taking the maximum gap among 4 pillars
+                        if (pinchNOGAP && pinchActive) {
+                            double total_gap = 0.0;
+                            // loop over pillars
+                            for (int p=0; p<4; p++){
+                                total_gap = std::max(total_gap, cz_below[p] - cz_above[p+4]);
+                            }
+                            nnc_allowed = nnc_allowed && (total_gap < z_tolerance) ;
+                        }
+                        else {
+                            nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap);
+                        }
+
+                        nnc_allowed = nnc_allowed && (!pinchOption4ALL || !option4ALLZero) ;
 
                         // Note that collapsed cells become inactive in preprocess.c
                         // We treat them as a barrier preventing NNCs here.
