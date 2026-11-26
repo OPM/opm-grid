@@ -344,6 +344,12 @@ namespace Dune
                                   bool turn_normals = false,
                                   bool edge_conformal = false);
 
+        /// Process grdecl input with the given pinch-out connections, as a deck run makes them.
+        void processEclipseFormat(const grdecl& input_data,
+                                  const std::set<std::pair<int,int>>& pinchNnc,
+                                  bool pinchActive,
+                                  bool edge_conformal);
+
         //@}
 
         /// \name Combining grids.
@@ -435,7 +441,7 @@ namespace Dune
         const std::vector<int>& globalCell() const;
 
         /// Rank- and partition-independent cell id of the current view; unlike globalCell(),
-        /// refined siblings get distinct ids.
+        /// refined siblings get distinct ids. Throws for nested LGRs.
         std::vector<std::int64_t> stableCellId() const;
 
         /// @brief Returns either data_ or distributed_data_(if non empty).
@@ -589,6 +595,10 @@ namespace Dune
         {
             return !distributed_data_.empty();
         }
+
+        /// True if the current leaf knows each cell's place in its parent, as the flat leaf a
+        /// Conforming grid refined before load balancing does (maxLevel() is 0 there).
+        bool leafHasParentCellIndices() const;
 
         /// @brief The builder the Conforming backend refines with.
         void setRefinementBuilder(std::shared_ptr<Opm::Refinement::Builder> builder);
@@ -810,6 +820,24 @@ namespace Dune
         unsigned int numBoundarySegments() const;
 
         void setPartitioningParams(const std::map<std::string,std::string>& params);
+
+        /// \brief Groups of Cartesian cells the graph partitioner keeps on one rank, each grown
+        /// by haloLayers of face or corner neighbours. Set before loadBalance().
+        void setPartitionCellGroups(std::vector<std::set<int>> cellGroups, int haloLayers = 0)
+        {
+            partition_cell_groups_ = std::move(cellGroups);
+            partition_cell_group_halo_ = haloLayers;
+        }
+
+        int partitionCellGroupHalo() const
+        {
+            return partition_cell_group_halo_;
+        }
+
+        const std::vector<std::set<int>>& partitionCellGroups() const
+        {
+            return partition_cell_groups_;
+        }
 
         // loadbalance is not part of the grid interface therefore we skip it.
 
@@ -1061,9 +1089,11 @@ namespace Dune
                     bool allowDistributedWells = false,
                     bool useTransToFilterOverlap = true)
         {
+            // A Conforming grid refined before load balancing distributes its leaf.
+            const bool refinedLeaf = (lgr_backend_ == Opm::Refinement::Backend::Conforming) && (maxLevel() > 0);
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
                                    addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells,
-                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ 0,
+                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ refinedLeaf ? -1 : 0,
                                    useTransToFilterOverlap);
             using std::get;
             if (get<0>(ret))
@@ -1546,6 +1576,12 @@ namespace Dune
         const std::vector<int>& sortedNumAquiferCells() const;
 
     private:
+        void broadcastRetainedInput_();
+        void throwIfConforming_(const std::string& what) const;
+        Dune::FieldVector<double,3> faceCenterEclConforming_(int cell_index, int face,
+                                                             const Dune::cpgrid::Intersection& intersection) const;
+        void globalRefineConforming_(int refCount);
+
         /// \brief Scatter a global grid to all processors.
         /// \param method The edge-weighting method to be used on the graph partitioner.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
@@ -1606,6 +1642,8 @@ namespace Dune
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
         Opm::Refinement::Backend lgr_backend_ = Opm::Refinement::Backend::Trilinear;
         std::shared_ptr<Opm::Refinement::Builder> refinement_builder_;
+        std::vector<std::set<int>> partition_cell_groups_;
+        int partition_cell_group_halo_{0};
         /**
          * @brief Interface for scattering and gathering cell data.
          *
@@ -1692,7 +1730,9 @@ namespace Dune
         if (distributed_data_.empty()) {
             OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
         } else {
-            distributed_data_[0]->scatterData(handle, data_[0].get(),
+            // The distributed view: level zero, or the refined leaf of a Conforming grid.
+            const auto& source = (lgr_backend_ == Opm::Refinement::Backend::Conforming) ? data_.back() : data_[0];
+            distributed_data_[0]->scatterData(handle, source.get(),
                                               distributed_data_[0].get(),
                                               cellScatterGatherInterface(),
                                               pointScatterGatherInterface());

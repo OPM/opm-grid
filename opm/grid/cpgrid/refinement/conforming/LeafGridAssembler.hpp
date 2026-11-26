@@ -85,20 +85,22 @@ namespace Refinement
 ///     numLeafCorners_, and each box's cornerToLeaf.
 ///  3. buildLeafCells: leafCells_, leafIdxOfCell0_, leafIdxOfLevelCell_,
 ///     level0ToChildren_, numLeafCells_ and nestedParentToChildren_.
-///  4. refuseThrowsLeavingBoxes: nothing; it refuses a fault or pinch-out inside
-///     a box that joins a box cell to a cell outside the box.
-///  5. findDroppedFaces: faceDropped_.
-///  6. findFaultedSides: faultedSides_ and acrossRange_.
+///  4. findDroppedFaces: faceDropped_.
+///  5. findFaultedSides: faultedSides_, acrossRange_ and interiorFaults_.
+///  6. refuseThrowsLeavingBoxes: nothing; it refuses a fault or pinch-out inside
+///     a box that joins a box cell to a cell outside the box, except a fault inside
+///     a top-level box that buildSyntheticFaces rebuilds (interiorFaults_).
 ///  7. buildLeafFaces: leafFaces_, mosaicOutside_, refinedCartToCell_,
 ///     numSourceFaces_, and each box's faceToLeaf.
-///  8. buildSyntheticFaces: syntheticFaces_ and numLeafFaces_.
+///  8. buildSyntheticFaces: syntheticFaces_, splitKeys_ and numLeafFaces_.
 ///  9. buildLeafTopology: the leaf's face_to_cell, face_to_point, cell_to_face,
 ///     face tags, normals and face geometries.
 /// 10. computeCellData: the leaf's cell_to_point and cell geometries,
 ///     leafGlobalCell_, leafChildToParent_, leafCartesianIndexInParentCell_ and
 ///     leafToLevel_.
-/// 11. buildParallelStructures: the leaf's parallel cell index set, partition
-///     types, communication interfaces and global ids (distributed grids only).
+/// 11. buildParallelStructures: the global ids of the leaf and of the level grids,
+///     and the leaf's parallel cell index set, partition types and communication
+///     interfaces (distributed grids only).
 /// 12. recordLeafMetadata: the leaf's metadata, the leaf index of the cells of
 ///     level zero and of the level grids, the parent-to-children relations of
 ///     level zero and of the parent LGRs, and the levels' refinement maximum.
@@ -108,6 +110,12 @@ namespace Refinement
 /// split corners to the leaf and updates numLeafCorners_; every stage after
 /// buildCornerPool fills the leaf; and recordLeafMetadata moves the relations it
 /// records out of their members. outsideNeighborOf() caches its answers.
+///
+/// Stages 1 to 10 do no collective operation, and they hold every refusal of the
+/// assembly. In a distributed run a refusal fires only on the rank that holds the
+/// box, so build() runs these stages in a guard: one reduction tells every rank
+/// whether a rank failed, and then every rank throws, before the collective
+/// operations of stage 11.
 ///
 /// The members of one assembly are filled once: build() runs once (asserted).
 class LeafGridAssembler
@@ -141,6 +149,8 @@ public:
 
     /// Runs the stages; call once.
     /// @return the assembled leaf; the caller appends it to storage.
+    /// @throw std::runtime_error on every rank of a distributed run in which a
+    ///        stage refuses the input on one rank.
     std::shared_ptr<Dune::cpgrid::CpGridData> build();
 
 private:
@@ -176,6 +186,7 @@ private:
         double area;
         enum face_tag tag;
         int side;                                // box boundary side: -1 low, +1 high
+        int box;
     };
 
     // The constructor's lookups; each reads the members declared before the one it
@@ -188,15 +199,18 @@ private:
     void collectBoxData();
     void buildCornerPool();
     void buildLeafCells();
-    void refuseThrowsLeavingBoxes() const;
     void findDroppedFaces();
     void findFaultedSides();
+    void refuseThrowsLeavingBoxes() const;
     void buildLeafFaces();
     void buildSyntheticFaces();
     void buildLeafTopology();
     void computeCellData();
     void buildParallelStructures();
     void recordLeafMetadata();
+
+    /// Part of buildSyntheticFaces: splitKeys_.
+    void orderSplitCorners();
 
     // Used by several stages.
     /// Whether box b is nested, refining another box's level grid.
@@ -229,11 +243,13 @@ private:
     const std::vector<bool>& faceDropped() const { return faceDropped_; }
     const std::set<std::tuple<int,int,int>>& faultedSides() const { return faultedSides_; }
     const std::map<std::tuple<int,int,int>, CellRange>& acrossRange() const { return acrossRange_; }
+    const std::map<std::tuple<int,int,int,int>, CellRange>& interiorFaults() const { return interiorFaults_; }
     const std::vector<SourceRef>& leafFaces() const { return leafFaces_; }
     const std::vector<int>& mosaicOutside() const { return mosaicOutside_; }
     const std::vector<std::map<int,int>>& refinedCartToCell() const { return refinedCartToCell_; }
     int numSourceFaces() const { return numSourceFaces_; }
     const std::vector<SyntheticFace>& syntheticFaces() const { return syntheticFaces_; }
+    const std::vector<std::array<int,2>>& splitKeys() const { return splitKeys_; }
     int numLeafFaces() const { return numLeafFaces_; }
     int numLeafCorners() const { return numLeafCorners_; }
 
@@ -305,6 +321,10 @@ private:
     // faces: a throw taller than one cell next to the box puts them outside the box's
     // own layers.
     std::map<std::tuple<int,int,int>, CellRange> acrossRange_;
+    // Parent sides behind a fault inside a top-level box, by (box, axis, side, parent
+    // layer along axis), with the parent IJK range of the cells across: a throw inside
+    // the box can put them outside the box's layers.
+    std::map<std::tuple<int,int,int,int>, CellRange> interiorFaults_;
 
     // Written by buildLeafFaces.
     std::vector<SourceRef> leafFaces_;
@@ -317,6 +337,7 @@ private:
 
     // Written by buildSyntheticFaces.
     std::vector<SyntheticFace> syntheticFaces_;
+    std::vector<std::array<int,2>> splitKeys_;  // {box, ordinal} per leaf corner past the corner origins
     int numLeafFaces_{0};
 
     // Written by computeCellData; recordLeafMetadata moves them into the leaf.
