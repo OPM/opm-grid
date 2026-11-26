@@ -25,14 +25,26 @@ namespace Dune
     typedef IdSet< Grid, This, IdType > Base;
 
     explicit PolyhedralGridIdSet (const Grid& grid)
-        : grid_( grid ),
-          globalCellPtr_( grid_.globalCellPtr() )
+        : grid_( grid )
     {
+      update();
+    }
+
+    //! Recompute the cached data, to be called when the grid view changes.
+    void update()
+    {
+      globalCellPtr_ = grid_.globalCellPtr();
+      globalFacePtr_ = grid_.globalFacePtr();
+      globalNodePtr_ = grid_.globalNodePtr();
+      // The ids of cells, faces and nodes are in separate ranges, which are the same
+      // in all views of the grid: [0, cells), [cells, cells+faces), then the nodes.
+      const auto ranges = grid_.idRanges();
       codimOffset_[ 0 ] = 0;
-      for( int i=1; i<=dim; ++i )
+      for( int i=1; i<dim; ++i )
       {
-        codimOffset_[ i ] = codimOffset_[ i-1 ] + grid.size( i-1 );
+        codimOffset_[ i ] = ranges[ 0 ];
       }
+      codimOffset_[ dim ] = ranges[ 0 ] + ranges[ 1 ];
     }
 
     //! id meethod for entity and specific codim
@@ -40,13 +52,10 @@ namespace Dune
     IdType id ( const typename Traits::template Codim< codim >::Entity &entity ) const
     {
       const int index = entity.seed().index();
-      // in case
-      if (codim == 0 && globalCellPtr_ )
-        return IdType( globalCellPtr_[ index ] );
-      else
-      {
-        return codimOffset_[ codim ] + index;
-      }
+      const int* global = codim == 0 ? globalCellPtr_
+                        : ( codim == 1 ? globalFacePtr_
+                        : ( codim == dim ? globalNodePtr_ : nullptr ) );
+      return codimOffset_[ codim ] + IdType( global ? global[ index ] : index );
     }
 
     //! id method of all entities
@@ -84,7 +93,9 @@ namespace Dune
 
   protected:
     const Grid& grid_;
-    const int* globalCellPtr_;
+    const int* globalCellPtr_ = nullptr;
+    const int* globalFacePtr_ = nullptr;
+    const int* globalNodePtr_ = nullptr;
     IdType codimOffset_[ dim+1 ];
   };
 
