@@ -161,7 +161,9 @@ namespace Dune
             [[noreturn]] const LocalGeometry& geometryInInside() const
             {
                 OPM_THROW(std::runtime_error, "This intersection class does not support geometryInInside().");
+#if defined(__CUDACC__)
                 __builtin_unreachable();
+#endif
             }
 
             // Geometrical information about this intersection in
@@ -175,7 +177,9 @@ namespace Dune
                     OPM_THROW(std::runtime_error, "Cannot access geometryInOutside(), intersection is at a boundary.");
                 }
                 OPM_THROW(std::runtime_error, "This intersection class does not support geometryInOutside().");
+#if defined(__CUDACC__)
                 __builtin_unreachable();
+#endif
             }
 
             /// @brief

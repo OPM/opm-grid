@@ -93,6 +93,7 @@ class IndexSet;
 class IdSet;
 class LevelGlobalIdSet;
 class PartitionTypeIndicator;
+class Intersection;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
@@ -412,7 +413,9 @@ public:
         }
         else {
             OPM_THROW(std::logic_error, "Vertex has no history record.\n");
+#if defined(__CUDACC__)
             __builtin_unreachable();
+#endif
         }
     }
 
