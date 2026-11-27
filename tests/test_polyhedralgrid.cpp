@@ -3,7 +3,6 @@
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
-#include <dune/common/unused.hh>
 #include <opm/grid/polyhedralgrid.hh>
 
 #include <dune/grid/io/file/vtk/vtkwriter.hh>

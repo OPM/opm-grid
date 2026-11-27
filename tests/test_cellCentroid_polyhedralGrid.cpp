@@ -51,7 +51,6 @@
 
 #include <opm/grid/polyhedralgrid.hh>
 
-#include <dune/common/unused.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <opm/grid/cpgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
